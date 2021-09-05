@@ -6,6 +6,8 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0.40"
 egg-mode = "0.16.0"
+log = "0.4.14"
+pretty_env_logger = "0.4.0"
 reqwest = "0.11.3"
 rss = "1.10.0"
 teloxide = { version = "0.5.2", features = ["throttle"] }

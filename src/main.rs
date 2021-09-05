@@ -5,6 +5,8 @@ use teloxide::Bot;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+	pretty_env_logger::init();
+
 	let news_bot = Bot::new(env::var("NEWS_BOT_TOKEN")?);
 
 	RssNewsReader::new(

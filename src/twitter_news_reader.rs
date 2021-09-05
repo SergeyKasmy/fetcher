@@ -1,15 +1,11 @@
 use crate::error::NewsReaderError;
 use crate::guid::{get_last_read_guid, save_last_read_guid};
+use crate::telegram::Telegram;
 
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
-use teloxide::types::{InputFile, InputMedia, InputMediaPhoto, InputMediaVideo};
-use teloxide::{
-	payloads::SendMessageSetters,
-	requests::{Request, Requester},
-	types::{ChatId, ParseMode},
-	Bot,
-};
+use teloxide::types::{ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, ParseMode};
+use teloxide::Bot;
 
 pub struct TwitterNewsReader {
 	name: &'static str,
@@ -17,8 +13,7 @@ pub struct TwitterNewsReader {
 	handle: &'static str,
 	token: Token,
 	filters: Option<&'static [&'static str]>,
-	bot: Bot,
-	chat_id: ChatId,
+	telegram: Telegram,
 }
 
 impl TwitterNewsReader {
@@ -43,8 +38,7 @@ impl TwitterNewsReader {
 					why: e.to_string(),
 				})?,
 			filters,
-			bot,
-			chat_id: chat_id.into(),
+			telegram: Telegram::new(bot, chat_id),
 		})
 	}
 
@@ -95,21 +89,11 @@ impl TwitterNewsReader {
 								.parse_mode(ParseMode::Html),
 						)),
 						_ => None,
-					});
-				self.bot
-					.send_media_group(self.chat_id.clone(), tg_media)
-					.send()
-					.await
-					.map_err(|e| NewsReaderError::Telegram(e.to_string()))?;
+					})
+					.collect();
+				self.telegram.send_media(tg_media).await?;
 			} else {
-				self.bot
-					.send_message(self.chat_id.clone(), &message)
-					.parse_mode(ParseMode::Html)
-					.disable_web_page_preview(true)
-					.send()
-					.await
-					.map_err(|e| NewsReaderError::Telegram(e.to_string()))?;
-				eprintln!("Sent {:?}", message);
+				self.telegram.send_text(message).await?;
 			}
 
 			last_read_guid = Some(tweet.id);
