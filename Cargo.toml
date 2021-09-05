@@ -1,0 +1,11 @@
+[package]
+name = "news-reader"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0.40"
+reqwest = "0.11.3"
+rss = "1.10.0"
+teloxide = { version = "0.5.2", features = ["throttle"] }
+tokio = { version = "1.6.1", features = ["full"] }
