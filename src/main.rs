@@ -18,6 +18,7 @@ async fn main() -> Result<()> {
 
 	TwitterNewsReader::new(
 		"apex",
+		"ApexLegends",
 		"@Respawn",
 		env::var("TWITTER_API_KEY")?,
 		env::var("TWITTER_API_KEY_SECRET")?,
