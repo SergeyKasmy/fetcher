@@ -9,15 +9,15 @@ use teloxide::{
 };
 
 pub struct NewsReader {
-	name: String,
-	rss: String,
+	name: &'static str,
+	rss: &'static str,
 	bot: Throttle<Bot>,
 	chat_id: ChatId,
 	http_client: reqwest::Client,
 }
 
 impl NewsReader {
-	pub fn new(name: String, rss: String, bot: Bot, chat_id: impl Into<ChatId>) -> Self {
+	pub fn new(name: &'static str, rss: &'static str, bot: Bot, chat_id: impl Into<ChatId>) -> Self {
 		Self {
 			name,
 			rss,
@@ -81,7 +81,7 @@ impl NewsReader {
 	async fn get_rss_feed(&self) -> Result<Channel> {
 		let content = self
 			.http_client
-			.get(&self.rss)
+			.get(self.rss)
 			.send()
 			.await?
 			.bytes()

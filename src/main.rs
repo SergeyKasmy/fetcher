@@ -4,12 +4,12 @@ use teloxide::Bot;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	let news_bot = Bot::new(std::env::var("BOT_TOKEN")?);
+	let news_bot = Bot::new(std::env::var("NEWS_BOT_TOKEN")?);
 	let mut phoronix_news = NewsReader::new(
-		"phoronix".to_string(),
-		"https://www.phoronix.com/rss.php".to_string(),
+		"phoronix",
+		"https://www.phoronix.com/rss.php",
 		news_bot,
-		std::env::var("CHAT_ID")?,
+		std::env::var("NEWS_CHAT_ID")?,
 	);
 	phoronix_news.start().await?;
 	Ok(())
