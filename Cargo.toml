@@ -9,4 +9,5 @@ egg-mode = "0.16.0"
 reqwest = "0.11.3"
 rss = "1.10.0"
 teloxide = { version = "0.5.2", features = ["throttle"] }
+thiserror = "1.0.29"
 tokio = { version = "1.6.1", features = ["full"] }

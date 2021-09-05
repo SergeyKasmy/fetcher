@@ -1,3 +1,4 @@
+mod error;
 pub(crate) mod guid;
 mod rss_news_reader;
 mod twitter_news_reader;

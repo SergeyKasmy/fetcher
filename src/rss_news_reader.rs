@@ -1,7 +1,7 @@
-use crate::guid::get_last_read_guid;
-use crate::guid::save_last_read_guid;
+use crate::error::NewsReaderError;
+use crate::error::Result;
+use crate::guid::{get_last_read_guid, save_last_read_guid};
 
-use anyhow::Result;
 use rss::Channel;
 use std::time::Duration;
 use teloxide::{
@@ -46,7 +46,25 @@ impl RssNewsReader {
 	}
 
 	async fn send_news(&mut self, mut last_read_guid: Option<String>) -> Result<Option<String>> {
-		let mut feed = self.get_rss_feed().await?;
+		let content = self
+			.http_client
+			.get(self.rss)
+			.send()
+			.await
+			.map_err(|e| NewsReaderError::RssGet {
+				feed: self.name,
+				why: e.to_string(),
+			})?
+			.bytes()
+			.await
+			.map_err(|e| NewsReaderError::RssGet {
+				feed: self.name,
+				why: e.to_string(),
+			})?;
+		let mut feed = Channel::read_from(&content[..]).map_err(|e| NewsReaderError::RssParse {
+			feed: self.name,
+			why: e.to_string(),
+		})?;
 
 		if let Some(last_read_guid) = last_read_guid.as_deref() {
 			if let Some(last_read_guid_pos) = feed
@@ -82,19 +100,12 @@ impl RssNewsReader {
 						tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 						continue;
 					}
-					Err(e) => return Err(e.into()),
+					Err(e) => return Err(NewsReaderError::Telegram(e.to_string())),
 				}
 			}
 			last_read_guid = Some(item.guid.unwrap().value); // NOTE: crash if the feed item doesn't have a guid. That should never happen though
 		}
 
 		Ok(last_read_guid)
-	}
-
-	async fn get_rss_feed(&self) -> Result<Channel> {
-		let content = self.http_client.get(self.rss).send().await?.bytes().await?;
-
-		let channel = Channel::read_from(&content[..])?;
-		Ok(channel)
 	}
 }
