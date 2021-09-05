@@ -6,8 +6,9 @@ use rss::Channel;
 use std::time::Duration;
 use teloxide::{
 	adaptors::{throttle::Limits, Throttle},
+	payloads::SendMessageSetters,
 	requests::{Request, Requester, RequesterExt},
-	types::ChatId,
+	types::{ChatId, ParseMode},
 	Bot, RequestError,
 };
 
@@ -37,9 +38,9 @@ impl RssNewsReader {
 
 	pub async fn start(&mut self) -> Result<()> {
 		let last_read_guid = self.send_news(get_last_read_guid(self.name)).await?;
-        if let Some(last_read_guid) = last_read_guid {
-		    save_last_read_guid(self.name, last_read_guid)?;
-        }
+		if let Some(last_read_guid) = last_read_guid {
+			save_last_read_guid(self.name, last_read_guid)?;
+		}
 
 		Ok(())
 	}
@@ -56,11 +57,19 @@ impl RssNewsReader {
 				feed.items.drain(last_read_guid_pos..);
 			}
 		}
-		for item in feed.items {
+		for item in feed.items.into_iter().rev() {
+			let message = format!(
+				"<a href=\"{}\">{}</a>\n{}",
+				item.link.unwrap(),
+				item.title.unwrap(),
+				item.description.unwrap()
+			); // NOTE: these fields are requred
 			loop {
 				match self
 					.bot
-					.send_message(self.chat_id.clone(), item.description.as_ref().unwrap())
+					.send_message(self.chat_id.clone(), &message)
+					.parse_mode(ParseMode::Html)
+					.disable_web_page_preview(true)
 					.send()
 					.await
 				{
