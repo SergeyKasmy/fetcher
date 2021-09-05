@@ -1,16 +1,33 @@
 use anyhow::Result;
-use news_reader::NewsReader;
+use news_reader::{RssNewsReader, TwitterNewsReader};
+use std::env;
 use teloxide::Bot;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	let news_bot = Bot::new(std::env::var("NEWS_BOT_TOKEN")?);
-	let mut phoronix_news = NewsReader::new(
+	let news_bot = Bot::new(env::var("NEWS_BOT_TOKEN")?);
+
+	RssNewsReader::new(
 		"phoronix",
 		"https://www.phoronix.com/rss.php",
-		news_bot,
-		std::env::var("NEWS_CHAT_ID")?,
-	);
-	phoronix_news.start().await?;
+		news_bot.clone(),
+		env::var("PHORONIX_CHAT_ID")?,
+	)
+	.start()
+	.await?;
+
+	TwitterNewsReader::new(
+		"apex",
+		"@Respawn",
+		env::var("TWITTER_API_KEY")?,
+		env::var("TWITTER_API_KEY_SECRET")?,
+		Some(&["@playapex", "update"]),
+		news_bot.clone(),
+		env::var("GAMING_CHAT_ID")?,
+	)
+	.await?
+	.start()
+	.await?;
+
 	Ok(())
 }
