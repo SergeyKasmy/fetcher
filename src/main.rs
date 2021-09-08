@@ -11,6 +11,22 @@ use tokio::select;
 use tokio::sync::broadcast;
 use tokio::time::sleep;
 
+macro_rules! create_task {
+    ($run: stmt, $sig: expr, $dur: expr) => {
+        tokio::spawn(async move {
+            loop {
+                $run
+				select! {
+					_ = sleep(Duration::from_secs(60 * $dur)) => (), // refresh every $dur mins
+					_ = $sig.recv() => break,
+				};
+            }
+
+			Ok::<(), anyhow::Error>(())
+        })
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
 	pretty_env_logger::init();
@@ -28,20 +44,8 @@ async fn main() -> Result<()> {
 			env::var("PHORONIX_CHAT_ID")?,
 		);
 
-		let mut shutdown_signal_rx = shutdown_signal_tx.subscribe();
-
-		tasks.push(tokio::spawn(async move {
-			loop {
-				phoronix.start().await?;
-				select! {
-					_ = sleep(Duration::from_secs(60 * 30)) => (), // refresh every 30 mins
-					_ = shutdown_signal_rx.recv() => break,
-				};
-			}
-
-			println!("Phoronix News Reader quiting");
-			Ok::<(), anyhow::Error>(())
-		}));
+		let mut rx = shutdown_signal_tx.subscribe();
+		tasks.push(create_task!(phoronix.start().await?, rx, 30));
 	}
 
 	{
@@ -57,20 +61,8 @@ async fn main() -> Result<()> {
 		)
 		.await?;
 
-		let mut shutdown_signal_rx = shutdown_signal_tx.subscribe();
-
-		tasks.push(tokio::spawn(async move {
-			loop {
-				apex.start().await?;
-				select! {
-					_ = sleep(Duration::from_secs(60 * 5)) => (), // refresh every 30 mins
-					_ = shutdown_signal_rx.recv() => break,
-				};
-			}
-
-			println!("Apex News Reader quiting");
-			Ok::<(), anyhow::Error>(())
-		}));
+		let mut rx = shutdown_signal_tx.subscribe();
+		tasks.push(create_task!(apex.start().await?, rx, 5));
 	}
 
 	let signals = Signals::new(&[SignalTypes::SIGINT, SignalTypes::SIGTERM])?;
@@ -78,12 +70,10 @@ async fn main() -> Result<()> {
 
 	tokio::spawn(async move {
 		let mut signals = signals.fuse();
-		while let Some(signal) = signals.next().await {
-			println!("Received a signal: {}", signal);
-			shutdown_signal_tx.send(true)?;
+		while let Some(_) = signals.next().await {
+			shutdown_signal_tx.send(())?;
 		}
 
-		println!("Signal receiever quitting");
 		Ok::<(), anyhow::Error>(())
 	});
 
