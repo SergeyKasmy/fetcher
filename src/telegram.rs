@@ -36,7 +36,7 @@ impl Telegram {
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => return Err(NewsReaderError::Telegram(e.to_string())),
+				Err(e) => return Err(NewsReaderError::Send { why: e.to_string() }),
 			}
 		}
 	}
@@ -53,7 +53,7 @@ impl Telegram {
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => return Err(NewsReaderError::Telegram(e.to_string())),
+				Err(e) => return Err(NewsReaderError::Send { why: e.to_string() }),
 			}
 		}
 	}

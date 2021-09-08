@@ -34,7 +34,7 @@ impl TwitterNewsReader {
 			token: bearer_token(&KeyPair::new(api_key, api_key_secret))
 				.await
 				.map_err(|e| NewsReaderError::Auth {
-					service: "Twitter",
+					service: "Twitter".to_string(),
 					why: e.to_string(),
 				})?,
 			filters,
@@ -60,8 +60,8 @@ impl TwitterNewsReader {
 		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token)
 			.older(last_read_guid)
 			.await
-			.map_err(|e| NewsReaderError::Twitter {
-				handle: self.handle,
+			.map_err(|e| NewsReaderError::Get {
+				service: "Twitter".to_string(),
 				why: e.to_string(),
 			})?;
 		for tweet in tweets.iter().rev() {

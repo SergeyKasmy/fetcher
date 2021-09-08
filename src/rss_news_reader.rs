@@ -43,18 +43,18 @@ impl RssNewsReader {
 			.get(self.rss)
 			.send()
 			.await
-			.map_err(|e| NewsReaderError::RssGet {
-				feed: self.name,
+			.map_err(|e| NewsReaderError::Get {
+				service: format!("RSS: {}", self.name),
 				why: e.to_string(),
 			})?
 			.bytes()
 			.await
-			.map_err(|e| NewsReaderError::RssGet {
-				feed: self.name,
+			.map_err(|e| NewsReaderError::Get {
+				service: format!("RSS: {}", self.name),
 				why: e.to_string(),
 			})?;
-		let mut feed = Channel::read_from(&content[..]).map_err(|e| NewsReaderError::RssParse {
-			feed: self.name,
+		let mut feed = Channel::read_from(&content[..]).map_err(|e| NewsReaderError::Parse {
+			service: format!("RSS: {}", self.name),
 			why: e.to_string(),
 		})?;
 
