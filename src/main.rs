@@ -70,7 +70,7 @@ async fn main() -> Result<()> {
 
 	tokio::spawn(async move {
 		let mut signals = signals.fuse();
-		while let Some(_) = signals.next().await {
+		while signals.next().await.is_some() {
 			shutdown_signal_tx.send(())?;
 		}
 

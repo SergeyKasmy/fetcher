@@ -17,6 +17,7 @@ pub struct TwitterNewsReader {
 }
 
 impl TwitterNewsReader {
+	#[allow(clippy::too_many_arguments)]
 	pub async fn new(
 		name: &'static str,
 		pretty_name: &'static str,
@@ -57,7 +58,7 @@ impl TwitterNewsReader {
 		&mut self,
 		mut last_read_guid: Option<u64>,
 	) -> Result<Option<u64>, NewsReaderError> {
-		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token)
+		let (_, tweets) = user_timeline(self.handle, false, true, &self.token)
 			.older(last_read_guid)
 			.await
 			.map_err(|e| NewsReaderError::Get {
@@ -76,7 +77,7 @@ impl TwitterNewsReader {
 			);
 			if let Some(twitter_media) = &tweet.entities.media {
 				let tg_media = twitter_media
-					.into_iter()
+					.iter()
 					.filter_map(|x| match x.media_type {
 						MediaType::Photo => Some(InputMedia::Photo(
 							InputMediaPhoto::new(InputFile::url(x.media_url.clone()))
