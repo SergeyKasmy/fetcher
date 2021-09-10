@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use anyhow::Result;
 use futures::future::select_all;
 use futures::stream::StreamExt;
-use news_reader::{RssNewsReader, TwitterNewsReader};
+use news_reader::{error::NewsReaderError, RssNewsReader, TwitterNewsReader};
 use signal_hook::consts as SignalTypes;
 use signal_hook_tokio::Signals;
 use std::{env, time::Duration};
@@ -22,7 +22,7 @@ macro_rules! create_task {
 				};
             }
 
-			Ok::<(), anyhow::Error>(())
+			Ok::<(), NewsReaderError>(())
         })
     }
 }
@@ -80,7 +80,8 @@ async fn main() -> Result<()> {
 	loop {
 		let finished_task = select_all(tasks).await;
 		match finished_task.0? {
-			Ok(_) => {
+			// TODO: rerun the task after an error instead of ignoring it outright
+			Ok(_) | Err(NewsReaderError::Get { .. }) => {
 				if !finished_task.2.is_empty() {
 					tasks = finished_task.2;
 				} else {

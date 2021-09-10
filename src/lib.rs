@@ -1,4 +1,4 @@
-mod error;
+pub mod error;
 pub(crate) mod guid;
 mod rss_news_reader;
 mod telegram;
