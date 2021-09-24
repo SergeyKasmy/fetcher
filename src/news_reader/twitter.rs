@@ -1,6 +1,8 @@
 use crate::error::NewsReaderError;
+use crate::error::Result;
 use crate::guid::{get_last_read_guid, save_last_read_guid};
 use crate::telegram::Telegram;
+use crate::NewsReader;
 
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
@@ -27,7 +29,7 @@ impl TwitterNewsReader {
 		filters: Option<&'static [&'static str]>,
 		bot: Bot,
 		chat_id: impl Into<ChatId>,
-	) -> Result<Self, NewsReaderError> {
+	) -> Result<Self> {
 		Ok(Self {
 			name,
 			pretty_name,
@@ -43,21 +45,7 @@ impl TwitterNewsReader {
 		})
 	}
 
-	pub async fn start(&mut self) -> Result<(), NewsReaderError> {
-		let last_read_guid = self
-			.send_news(get_last_read_guid(self.name).and_then(|x| x.trim().parse::<u64>().ok()))
-			.await?;
-		if let Some(last_read_guid) = last_read_guid {
-			save_last_read_guid(self.name, last_read_guid.to_string())?;
-		}
-
-		Ok(())
-	}
-
-	async fn send_news(
-		&mut self,
-		mut last_read_guid: Option<u64>,
-	) -> Result<Option<u64>, NewsReaderError> {
+	async fn send_news(&mut self, mut last_read_guid: Option<u64>) -> Result<Option<u64>> {
 		let (_, tweets) = user_timeline(self.handle, false, true, &self.token)
 			.older(last_read_guid)
 			.await
@@ -111,5 +99,19 @@ impl TwitterNewsReader {
 		}
 
 		true
+	}
+}
+
+#[async_trait::async_trait]
+impl NewsReader for TwitterNewsReader {
+	async fn start(&mut self) -> Result<()> {
+		let last_read_guid = self
+			.send_news(get_last_read_guid(self.name).and_then(|x| x.trim().parse::<u64>().ok()))
+			.await?;
+		if let Some(last_read_guid) = last_read_guid {
+			save_last_read_guid(self.name, last_read_guid.to_string())?;
+		}
+
+		Ok(())
 	}
 }

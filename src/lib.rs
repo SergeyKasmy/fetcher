@@ -1,8 +1,6 @@
 pub mod error;
 pub(crate) mod guid;
-mod rss_news_reader;
+mod news_reader;
 mod telegram;
-mod twitter_news_reader;
 
-pub use rss_news_reader::RssNewsReader;
-pub use twitter_news_reader::TwitterNewsReader;
+pub use news_reader::*;

@@ -2,6 +2,7 @@ use crate::error::NewsReaderError;
 use crate::error::Result;
 use crate::guid::{get_last_read_guid, save_last_read_guid};
 use crate::telegram::Telegram;
+use crate::NewsReader;
 
 use rss::Channel;
 use teloxide::types::ChatId;
@@ -27,14 +28,6 @@ impl RssNewsReader {
 			telegram: Telegram::new(bot, chat_id),
 			http_client: reqwest::Client::new(),
 		}
-	}
-
-	pub async fn start(&mut self) -> Result<()> {
-		if let Some(last_read_guid) = self.send_news(get_last_read_guid(self.name)).await? {
-			save_last_read_guid(self.name, last_read_guid)?;
-		}
-
-		Ok(())
 	}
 
 	async fn send_news(&mut self, mut last_read_guid: Option<String>) -> Result<Option<String>> {
@@ -79,5 +72,16 @@ impl RssNewsReader {
 		}
 
 		Ok(last_read_guid)
+	}
+}
+
+#[async_trait::async_trait]
+impl NewsReader for RssNewsReader {
+	async fn start(&mut self) -> Result<()> {
+		if let Some(last_read_guid) = self.send_news(get_last_read_guid(self.name)).await? {
+			save_last_read_guid(self.name, last_read_guid)?;
+		}
+
+		Ok(())
 	}
 }

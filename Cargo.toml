@@ -3,16 +3,21 @@ name = "news-reader"
 version = "0.1.0"
 edition = "2018"
 
+[profile.release]
+lto = true
+codegen-units = 1
+
 [dependencies]
-anyhow = "1.0.40"
+anyhow = "1.0.44"
+async-trait = "0.1.51"
 egg-mode = "0.16.0"
 futures = "0.3.17"
 log = "0.4.14"
 pretty_env_logger = "0.4.0"
-reqwest = "0.11.3"
+reqwest = "0.11.4"
 rss = "1.10.0"
 signal-hook = "0.3.10"
 signal-hook-tokio = { version = "0.3.0", features = ["futures-v0_3"] }
 teloxide = { version = "0.5.2", features = ["throttle"] }
 thiserror = "1.0.29"
-tokio = { version = "1.6.1", features = ["full"] }
+tokio = { version = "1.11.0", features = ["full"] }

@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use anyhow::Result;
 use futures::future::select_all;
 use futures::stream::StreamExt;
-use news_reader::{error::NewsReaderError, RssNewsReader, TwitterNewsReader};
+use news_reader::{error::NewsReaderError, NewsReader, RssNewsReader, TwitterNewsReader};
 use signal_hook::consts as SignalTypes;
 use signal_hook_tokio::Signals;
 use std::{env, time::Duration};
@@ -55,7 +55,7 @@ async fn main() -> Result<()> {
 			"@Respawn",
 			env::var("TWITTER_API_KEY")?,
 			env::var("TWITTER_API_KEY_SECRET")?,
-			Some(&["@playapex", "update"]),
+			Some(&["@playapex"]),
 			news_bot.clone(),
 			env::var("GAMING_CHAT_ID")?,
 		)
