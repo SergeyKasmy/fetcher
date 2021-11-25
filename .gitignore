@@ -1,3 +1,5 @@
 /target
 /Cargo.lock
 last_read_guid/
+env.fish
+.gdbhistory
