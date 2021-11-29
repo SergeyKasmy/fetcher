@@ -1,4 +1,4 @@
-use crate::error::{NewsReaderError, Result};
+use crate::error::{Error, Result};
 
 use std::fs;
 
@@ -9,5 +9,5 @@ pub(crate) fn get_last_read_guid(name: &str) -> Option<String> {
 pub(crate) fn save_last_read_guid(name: &str, guid: String) -> Result<()> {
 	let _ = fs::create_dir("last_read_guid");
 	fs::write(format!("last_read_guid/{}.txt", name), guid)
-		.map_err(|e| NewsReaderError::GuidSave { why: e.to_string() })
+		.map_err(|e| Error::GuidSave { why: e.to_string() })
 }

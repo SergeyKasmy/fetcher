@@ -1,7 +1,5 @@
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum NewsReaderError {
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
 	#[error("{service} authentication error: {why}")]
 	Auth { service: String, why: String },
 	#[error("error getting data from {service}: {why}")]
@@ -24,4 +22,4 @@ pub enum NewsReaderError {
 	//Telegram(String),
 }
 
-pub type Result<T> = std::result::Result<T, NewsReaderError>;
+pub type Result<T> = std::result::Result<T, Error>;

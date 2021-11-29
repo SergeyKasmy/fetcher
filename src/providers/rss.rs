@@ -1,21 +1,20 @@
-use crate::error::NewsReaderError;
+use crate::error::Error;
 use crate::error::Result;
 use crate::guid::{get_last_read_guid, save_last_read_guid};
 use crate::telegram::Telegram;
-use crate::NewsReader;
 
 use rss::Channel;
 use teloxide::types::ChatId;
 use teloxide::Bot;
 
-pub struct RssNewsReader {
+pub struct Rss {
 	name: &'static str,
 	rss: &'static str,
 	telegram: Telegram,
 	http_client: reqwest::Client,
 }
 
-impl RssNewsReader {
+impl Rss {
 	pub fn new(
 		name: &'static str,
 		rss: &'static str,
@@ -36,17 +35,17 @@ impl RssNewsReader {
 			.get(self.rss)
 			.send()
 			.await
-			.map_err(|e| NewsReaderError::Get {
+			.map_err(|e| Error::Get {
 				service: format!("RSS: {}", self.name),
 				why: e.to_string(),
 			})?
 			.bytes()
 			.await
-			.map_err(|e| NewsReaderError::Get {
+			.map_err(|e| Error::Get {
 				service: format!("RSS: {}", self.name),
 				why: e.to_string(),
 			})?;
-		let mut feed = Channel::read_from(&content[..]).map_err(|e| NewsReaderError::Parse {
+		let mut feed = Channel::read_from(&content[..]).map_err(|e| Error::Parse {
 			service: format!("RSS: {}", self.name),
 			why: e.to_string(),
 		})?;
@@ -73,11 +72,8 @@ impl RssNewsReader {
 
 		Ok(last_read_guid)
 	}
-}
 
-#[async_trait::async_trait]
-impl NewsReader for RssNewsReader {
-	async fn start(&mut self) -> Result<()> {
+	pub async fn start(&mut self) -> Result<()> {
 		if let Some(last_read_guid) = self.send_news(get_last_read_guid(self.name)).await? {
 			save_last_read_guid(self.name, last_read_guid)?;
 		}

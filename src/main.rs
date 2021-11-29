@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use anyhow::Result;
 use futures::future::select_all;
 use futures::stream::StreamExt;
-use news_reader::{error::NewsReaderError, NewsReader, RssNewsReader, TwitterNewsReader};
+use news_reader::{error::Error, providers::*};
 use signal_hook::consts as SignalTypes;
 use signal_hook_tokio::Signals;
 use std::{env, time::Duration};
@@ -22,7 +22,7 @@ macro_rules! create_task {
 				};
             }
 
-			Ok::<(), NewsReaderError>(())
+			Ok::<(), Error>(())
         })
     }
 }
@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
 	let news_bot = Bot::new(env::var("NEWS_BOT_TOKEN")?);
 
 	{
-		let mut phoronix = RssNewsReader::new(
+		let mut phoronix = Rss::new(
 			"phoronix",
 			"https://www.phoronix.com/rss.php",
 			news_bot.clone(),
@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
 	}
 
 	{
-		let mut apex = TwitterNewsReader::new(
+		let mut apex = Twitter::new(
 			"apex",
 			"ApexLegends",
 			"@Respawn",
@@ -81,7 +81,7 @@ async fn main() -> Result<()> {
 		let finished_task = select_all(tasks).await;
 		match finished_task.0? {
 			// TODO: rerun the task after an error instead of ignoring it outright
-			Ok(_) | Err(NewsReaderError::Get { .. }) => {
+			Ok(_) | Err(Error::Get { .. }) => {
 				if !finished_task.2.is_empty() {
 					tasks = finished_task.2;
 				} else {

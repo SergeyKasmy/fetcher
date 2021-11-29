@@ -1,6 +1,4 @@
 pub mod error;
 pub(crate) mod guid;
-mod news_reader;
+pub mod providers;
 mod telegram;
-
-pub use news_reader::*;

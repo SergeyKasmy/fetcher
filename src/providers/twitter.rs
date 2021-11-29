@@ -1,15 +1,14 @@
-use crate::error::NewsReaderError;
+use crate::error::Error;
 use crate::error::Result;
 use crate::guid::{get_last_read_guid, save_last_read_guid};
 use crate::telegram::Telegram;
-use crate::NewsReader;
 
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 use teloxide::types::{ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, ParseMode};
 use teloxide::Bot;
 
-pub struct TwitterNewsReader {
+pub struct Twitter {
 	name: &'static str,
 	pretty_name: &'static str,
 	handle: &'static str,
@@ -18,7 +17,7 @@ pub struct TwitterNewsReader {
 	telegram: Telegram,
 }
 
-impl TwitterNewsReader {
+impl Twitter {
 	#[allow(clippy::too_many_arguments)]
 	pub async fn new(
 		name: &'static str,
@@ -36,7 +35,7 @@ impl TwitterNewsReader {
 			handle,
 			token: bearer_token(&KeyPair::new(api_key, api_key_secret))
 				.await
-				.map_err(|e| NewsReaderError::Auth {
+				.map_err(|e| Error::Auth {
 					service: "Twitter".to_string(),
 					why: e.to_string(),
 				})?,
@@ -49,7 +48,7 @@ impl TwitterNewsReader {
 		let (_, tweets) = user_timeline(self.handle, false, true, &self.token)
 			.older(last_read_guid)
 			.await
-			.map_err(|e| NewsReaderError::Get {
+			.map_err(|e| Error::Get {
 				service: "Twitter".to_string(),
 				why: e.to_string(),
 			})?;
@@ -100,11 +99,7 @@ impl TwitterNewsReader {
 
 		true
 	}
-}
-
-#[async_trait::async_trait]
-impl NewsReader for TwitterNewsReader {
-	async fn start(&mut self) -> Result<()> {
+	pub async fn start(&mut self) -> Result<()> {
 		let last_read_guid = self
 			.send_news(get_last_read_guid(self.name).and_then(|x| x.trim().parse::<u64>().ok()))
 			.await?;
