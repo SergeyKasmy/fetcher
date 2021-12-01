@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
 		let mut rx = shutdown_signal_tx.subscribe();
 		let task = tokio::spawn(async move {
 			loop {
-				for m in phoronix.get_unread().await?.into_iter() {
+				for m in phoronix.get_and_save().await?.into_iter() {
 					phoronix_bot.send(m).await?;
 				}
 				select! {
@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
 		let mut rx = shutdown_signal_tx.subscribe();
 		let task = tokio::spawn(async move {
 			loop {
-				for m in apex.get_unread().await?.into_iter() {
+				for m in apex.get_and_save().await?.into_iter() {
 					apex_bot.send(m).await?;
 				}
 				select! {

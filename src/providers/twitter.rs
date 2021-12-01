@@ -39,10 +39,17 @@ impl Twitter {
 		})
 	}
 
-	pub async fn get_unread(&mut self) -> Result<Vec<Message>> {
+	pub async fn get_and_save(&mut self) -> Result<Vec<Message>> {
 		let mut last_read_guid = Guid::new(self.name)?;
+		let messages = self.get(Some(&mut last_read_guid)).await;
+		last_read_guid.save()?;
+
+		messages
+	}
+
+	pub async fn get(&mut self, mut last_read_guid: Option<&mut Guid>) -> Result<Vec<Message>> {
 		let (_, tweets) = user_timeline(self.handle, false, true, &self.token)
-			.older(last_read_guid.guid.parse().ok())
+			.older(last_read_guid.as_ref().and_then(|x| x.guid.parse().ok()))
 			.await
 			.map_err(|e| Error::Get {
 				service: "Twitter".to_string(),
@@ -64,7 +71,9 @@ impl Twitter {
 					self.pretty_name, tweet.text, self.handle, tweet.id
 				);
 
-				last_read_guid.guid = tweet.id.to_string();
+				if let Some(last_read_guid) = &mut last_read_guid {
+					last_read_guid.guid = tweet.id.to_string();
+				}
 				Some(Message {
 					text,
 					media: tweet.entities.media.as_ref().and_then(|x| {
@@ -80,7 +89,6 @@ impl Twitter {
 			})
 			.collect::<Vec<Message>>();
 
-		last_read_guid.save()?;
 		Ok(messages)
 	}
 
