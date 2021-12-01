@@ -8,6 +8,8 @@ pub enum Error {
 	Parse { service: String, why: String },
 	#[error("error sending data to Telegram: {why}")]
 	r#Send { why: String },
+	#[error("error getting last read item's GUID from disk: {why}")]
+	GuidGet { why: String },
 	#[error("error saving last read item's GUID to disk: {why}")]
 	GuidSave { why: String },
 	//#[error(transparent)]

@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use anyhow::Result;
 use futures::future::select_all;
 use futures::stream::StreamExt;
-use news_reader::{error::Error, providers::*};
+use news_reader::{error::Error, providers::*, telegram::Telegram};
 use signal_hook::consts as SignalTypes;
 use signal_hook_tokio::Signals;
 use std::{env, time::Duration};
@@ -10,22 +10,6 @@ use teloxide::Bot;
 use tokio::select;
 use tokio::sync::broadcast;
 use tokio::time::sleep;
-
-macro_rules! create_task {
-    ($run: stmt, $sig: expr, $dur: expr) => {
-        tokio::spawn(async move {
-            loop {
-                $run
-				select! {
-					_ = sleep(Duration::from_secs(60 * $dur)) => (), // refresh every $dur mins
-					_ = $sig.recv() => break,
-				};
-            }
-
-			Ok::<(), Error>(())
-        })
-    }
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -37,18 +21,28 @@ async fn main() -> Result<()> {
 	let news_bot = Bot::new(env::var("NEWS_BOT_TOKEN")?);
 
 	{
-		let mut phoronix = Rss::new(
-			"phoronix",
-			"https://www.phoronix.com/rss.php",
-			news_bot.clone(),
-			env::var("PHORONIX_CHAT_ID")?,
-		);
+		let phoronix_bot = Telegram::new(news_bot.clone(), env::var("PHORONIX_CHAT_ID")?);
+		let mut phoronix = Rss::new("phoronix", "https://www.phoronix.com/rss.php");
 
 		let mut rx = shutdown_signal_tx.subscribe();
-		tasks.push(create_task!(phoronix.start().await?, rx, 30));
+		let task = tokio::spawn(async move {
+			loop {
+				for m in phoronix.get_unread().await?.into_iter() {
+					phoronix_bot.send(m).await?;
+				}
+				select! {
+					_ = sleep(Duration::from_secs(60 * 30)) => (),
+					_ = rx.recv() => break,
+				}
+			}
+
+			Ok::<(), Error>(())
+		});
+		tasks.push(task);
 	}
 
 	{
+		let apex_bot = Telegram::new(news_bot.clone(), env::var("GAMING_CHAT_ID")?);
 		let mut apex = Twitter::new(
 			"apex",
 			"ApexLegends",
@@ -56,13 +50,24 @@ async fn main() -> Result<()> {
 			env::var("TWITTER_API_KEY")?,
 			env::var("TWITTER_API_KEY_SECRET")?,
 			Some(&["@playapex"]),
-			news_bot.clone(),
-			env::var("GAMING_CHAT_ID")?,
 		)
 		.await?;
 
 		let mut rx = shutdown_signal_tx.subscribe();
-		tasks.push(create_task!(apex.start().await?, rx, 5));
+		let task = tokio::spawn(async move {
+			loop {
+				for m in apex.get_unread().await?.into_iter() {
+					apex_bot.send(m).await?;
+				}
+				select! {
+					_ = sleep(Duration::from_secs(60 * 5)) => (),
+					_ = rx.recv() => break,
+				}
+			}
+
+			Ok::<(), Error>(())
+		});
+		tasks.push(task);
 	}
 
 	let signals = Signals::new(&[SignalTypes::SIGINT, SignalTypes::SIGTERM])?;
