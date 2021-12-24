@@ -1,7 +1,5 @@
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum NewsReaderError {
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
 	#[error("{service} authentication error: {why}")]
 	Auth { service: String, why: String },
 	#[error("error getting data from {service}: {why}")]
@@ -10,6 +8,8 @@ pub enum NewsReaderError {
 	Parse { service: String, why: String },
 	#[error("error sending data to Telegram: {why}")]
 	r#Send { why: String },
+	#[error("error getting last read item's GUID from disk: {why}")]
+	GuidGet { why: String },
 	#[error("error saving last read item's GUID to disk: {why}")]
 	GuidSave { why: String },
 	//#[error(transparent)]
@@ -24,4 +24,4 @@ pub enum NewsReaderError {
 	//Telegram(String),
 }
 
-pub type Result<T> = std::result::Result<T, NewsReaderError>;
+pub type Result<T> = std::result::Result<T, Error>;

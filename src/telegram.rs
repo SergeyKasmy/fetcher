@@ -1,13 +1,26 @@
 use std::time::Duration;
 
-use crate::error::{NewsReaderError, Result};
+use crate::error::{Error, Result};
 use teloxide::{
 	adaptors::{throttle::Limits, Throttle},
 	payloads::SendMessageSetters,
 	requests::{Request, Requester, RequesterExt},
-	types::{ChatId, InputMedia, Message, ParseMode},
+	types::{
+		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, Message as TelMessage,
+		ParseMode,
+	},
 	Bot, RequestError,
 };
+
+pub enum Media {
+	Photo(String),
+	Video(String),
+}
+
+pub struct Message {
+	pub text: String,
+	pub media: Option<Vec<Media>>,
+}
 
 pub struct Telegram {
 	bot: Throttle<Bot>,
@@ -22,7 +35,37 @@ impl Telegram {
 		}
 	}
 
-	pub async fn send_text(&self, message: String) -> Result<Message> {
+	pub async fn send(&self, message: Message) -> Result<()> {
+		// NOTE: workaround for some kind of a bug that doesn't let access both text and media fields of the struct in the map closure at once
+		let text = message.text;
+
+		if let Some(media) = message.media {
+			self.send_media(
+				media
+					.into_iter()
+					.map(|x| match x {
+						Media::Photo(url) => InputMedia::Photo(
+							InputMediaPhoto::new(InputFile::url(url))
+								.caption(text.clone())
+								.parse_mode(ParseMode::Html),
+						),
+						Media::Video(url) => InputMedia::Video(
+							InputMediaVideo::new(InputFile::url(url))
+								.caption(text.clone())
+								.parse_mode(ParseMode::Html),
+						),
+					})
+					.collect::<Vec<InputMedia>>(),
+			)
+			.await?;
+		} else {
+			self.send_text(text).await?;
+		}
+
+		Ok(())
+	}
+
+	async fn send_text(&self, message: String) -> Result<TelMessage> {
 		loop {
 			match self
 				.bot
@@ -36,12 +79,12 @@ impl Telegram {
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => return Err(NewsReaderError::Send { why: e.to_string() }),
+				Err(e) => return Err(Error::Send { why: e.to_string() }),
 			}
 		}
 	}
 
-	pub async fn send_media(&self, media: Vec<InputMedia>) -> Result<Vec<Message>> {
+	async fn send_media(&self, media: Vec<InputMedia>) -> Result<Vec<TelMessage>> {
 		loop {
 			match self
 				.bot
@@ -53,7 +96,7 @@ impl Telegram {
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => return Err(NewsReaderError::Send { why: e.to_string() }),
+				Err(e) => return Err(Error::Send { why: e.to_string() }),
 			}
 		}
 	}
