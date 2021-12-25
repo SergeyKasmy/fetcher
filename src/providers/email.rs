@@ -37,53 +37,55 @@ impl Email {
 		let client = imap::connect((self.imap, IMAP_PORT), self.imap, &tls).unwrap();
 
 		let mut session = client.login(&self.email, &self.password).unwrap();
-		session.examine("INBOX").unwrap();
+		session.select("INBOX").unwrap();
 
-		let unread_ids = session.uid_search("UNSEEN").unwrap();
-		let mails = session
-			.uid_fetch(
-				unread_ids
-					.into_iter()
-					.map(|x| x.to_string())
-					.collect::<Vec<_>>()
-					.join(","),
-				"BODY[]",
-			)
+		let search_string = {
+			let mut tmp = "UNSEEN ".to_string();
+
+			if let Some(filters) = self.filters {
+				for f in filters {
+					match f {
+						EmailFilter::Subject(s) => {
+							// TODO: mb use format!()?
+							tmp.push_str(r#"SUBJECT ""#);
+							tmp.push_str(s);
+							tmp.push_str(r#"" "#);
+						}
+						EmailFilter::Sender(s) => {
+							tmp.push_str(r#"FROM ""#);
+							tmp.push_str(s);
+							tmp.push_str(r#"" "#);
+						}
+					}
+				}
+			}
+
+			tmp.trim_end().to_string()
+		};
+		let mail_ids = session.uid_search(search_string).unwrap()
+			.into_iter()
+			.map(|x| x.to_string())
+			.collect::<Vec<_>>()
+			.join(",");
+
+		if mail_ids.is_empty() {
+			return Ok(Vec::new());
+		}
+
+		let mails = session.uid_fetch(&mail_ids, "BODY[]").unwrap();
+
+		session
+			.uid_store(&mail_ids, "+FLAGS.SILENT (\\Deleted)")
 			.unwrap();
+		session.uid_expunge(&mail_ids).unwrap();
 
 		session.logout().unwrap();
 
 		Ok(mails
 			.into_iter()
-			.map(|x| mailparse::parse_mail(x.body().unwrap()).unwrap())
-			.filter(|x| Self::filter(x, self.filters))
-			.map(Self::parse)
+			.filter(|x| x.body().is_some())	// TODO: properly handle error cases and don't just filter them out
+			.map(|x| Self::parse(mailparse::parse_mail(x.body().unwrap()).unwrap()))
 			.collect::<Vec<_>>())
-	}
-
-	fn filter(mail: &ParsedMail, filters: Option<&'static [EmailFilter]>) -> bool {
-		if let Some(filters) = filters {
-			for filter in filters {
-				if match filter {
-					EmailFilter::Subject(s) => mail
-						.headers
-						.iter()
-						.find(|x| x.get_key_ref() == "Subject" && x.get_value().contains(s)),
-					EmailFilter::Sender(s) => mail
-						.headers
-						.iter()
-						.find(|x| x.get_key_ref() == "From" && x.get_value().contains(s)),
-				}
-				.is_some()
-				{
-					return true;
-					// NOTE: I can't just return match... .is_some() because I want to return early only in case it's true but not when it's false
-					// Maybe there's a different way that I'm missing?
-				}
-			}
-		}
-
-		false
 	}
 
 	fn parse(mail: ParsedMail) -> Message {
