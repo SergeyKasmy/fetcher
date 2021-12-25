@@ -8,6 +8,7 @@ lto = true
 codegen-units = 1
 
 [dependencies]
+ammonia = "3.1.2"
 anyhow = "1.0.48"
 async-trait = "0.1.51"
 egg-mode = "0.16.0"

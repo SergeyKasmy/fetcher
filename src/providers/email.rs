@@ -1,7 +1,6 @@
 use mailparse::ParsedMail;
 
 use crate::error::Result;
-use crate::guid::Guid;
 use crate::telegram::Message;
 
 const IMAP_PORT: u16 = 993;
@@ -13,7 +12,7 @@ pub enum EmailFilter {
 
 pub struct Email {
 	imap: &'static str,
-	email: &'static str,
+	email: String,
 	password: String,
 	filters: Option<&'static [EmailFilter]>,
 }
@@ -21,7 +20,7 @@ pub struct Email {
 impl Email {
 	pub fn new(
 		imap: &'static str,
-		email: &'static str,
+		email: String,
 		password: String,
 		filters: Option<&'static [EmailFilter]>,
 	) -> Self {
@@ -37,7 +36,7 @@ impl Email {
 		let tls = native_tls::TlsConnector::builder().build().unwrap();
 		let client = imap::connect((self.imap, IMAP_PORT), self.imap, &tls).unwrap();
 
-		let mut session = client.login(self.email, &self.password).unwrap();
+		let mut session = client.login(&self.email, &self.password).unwrap();
 		session.examine("INBOX").unwrap();
 
 		let unread_ids = session.uid_search("UNSEEN").unwrap();
@@ -57,8 +56,8 @@ impl Email {
 		Ok(mails
 			.into_iter()
 			.map(|x| mailparse::parse_mail(x.body().unwrap()).unwrap())
-			.filter(|x| Self::filter(x, self.filters.clone()))
-			.map(|x| Self::parse(x))
+			.filter(|x| Self::filter(x, self.filters))
+			.map(Self::parse)
 			.collect::<Vec<_>>())
 	}
 
@@ -108,7 +107,11 @@ impl Email {
 			.get_body()
 			.unwrap();
 
-			(subject, body)
+			// NOTE: emails often contain all kinds of html or other text which Telegram's HTML parser doesn't approve of
+			// I dislike the need to add an extra dependency just for this simple task but you gotta do what you gotta do.
+			// Hopefully I'll find a better way to escape everything though since I don't fear a possibility that it'll be
+			// somehow harmful 'cause it doesn't consern me, only Telegram :P
+			(subject, ammonia::clean_text(&body))
 		};
 
 		Message {
