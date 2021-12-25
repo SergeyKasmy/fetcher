@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use anyhow::Result;
 use futures::future::select_all;
 use futures::stream::StreamExt;
+use news_reader::providers::email::EmailFilter;
 use news_reader::{error::Error, providers::*, telegram::Telegram};
 use signal_hook::consts as SignalTypes;
 use signal_hook_tokio::Signals;
@@ -61,6 +62,32 @@ async fn main() -> Result<()> {
 				}
 				select! {
 					_ = sleep(Duration::from_secs(60 * 5)) => (),
+					_ = rx.recv() => break,
+				}
+			}
+
+			Ok::<(), Error>(())
+		});
+		tasks.push(task);
+	}
+
+	{
+		let releases_bot = Telegram::new(news_bot.clone(), env::var("RELEASES_CHAT_ID")?);
+		let mut releases = Email::new(
+			"imap.gmail.com",
+			env::var("EMAIL")?,
+			env::var("EMAIL_PASS")?,
+			Some(&[EmailFilter::Sender("notifications@github.com")]),
+		);
+
+		let mut rx = shutdown_signal_tx.subscribe();
+		let task = tokio::spawn(async move {
+			loop {
+				for m in releases.get().await?.into_iter() {
+					releases_bot.send(m).await?;
+				}
+				select! {
+					_ = sleep(Duration::from_secs(60 * 30)) => (),
 					_ = rx.recv() => break,
 				}
 			}
