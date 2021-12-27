@@ -71,6 +71,7 @@ async fn main() -> Result<()> {
 		tasks.push(task);
 	}
 
+	/*
 	{
 		let releases_bot = Telegram::new(news_bot.clone(), env::var("RELEASES_CHAT_ID")?);
 		let mut releases = Email::new(
@@ -96,6 +97,7 @@ async fn main() -> Result<()> {
 		});
 		tasks.push(task);
 	}
+	*/
 
 	let signals = Signals::new(&[SignalTypes::SIGINT, SignalTypes::SIGTERM])?;
 	let signals_handle = signals.handle();
