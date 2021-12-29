@@ -71,20 +71,24 @@ async fn main() -> Result<()> {
 		tasks.push(task);
 	}
 
-	/*
 	{
 		let releases_bot = Telegram::new(news_bot.clone(), env::var("RELEASES_CHAT_ID")?);
-		let mut releases = Email::new(
+		let mut github_releases = Email::new(
 			"imap.gmail.com",
 			env::var("EMAIL")?,
 			env::var("EMAIL_PASS")?,
-			Some(&[EmailFilter::Sender("notifications@github.com")]),
+			Some(&[
+				EmailFilter::Sender("notifications@github.com"),
+				EmailFilter::Subject("release"),
+			]),
+			false,
+			Some("\r\n\r\n-- \r\n"),
 		);
 
 		let mut rx = shutdown_signal_tx.subscribe();
 		let task = tokio::spawn(async move {
 			loop {
-				for m in releases.get().await?.into_iter() {
+				for m in github_releases.get().await?.into_iter() {
 					releases_bot.send(m).await?;
 				}
 				select! {
@@ -97,7 +101,6 @@ async fn main() -> Result<()> {
 		});
 		tasks.push(task);
 	}
-	*/
 
 	let signals = Signals::new(&[SignalTypes::SIGINT, SignalTypes::SIGTERM])?;
 	let signals_handle = signals.handle();

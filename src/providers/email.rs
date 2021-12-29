@@ -82,6 +82,7 @@ impl Email {
 
 		let mails = session.uid_fetch(&mail_ids, "BODY[]").unwrap();
 
+		// TODO: don't archive if there were any errors while sending
 		if self.archive {
 			session
 				.uid_store(&mail_ids, "+FLAGS.SILENT (\\Deleted)")
@@ -113,24 +114,22 @@ impl Email {
 				}
 			});
 
-			let body = {
-				let mut tmp = if mail.subparts.is_empty() {
-					&mail
-				} else {
-					mail.subparts
-						.iter()
-						.find(|x| x.ctype.mimetype == "text/plain")
-						.unwrap_or(&mail.subparts[0])
-				}
-				.get_body()
-				.unwrap();
+			let mut body = if mail.subparts.is_empty() {
+				&mail
+			} else {
+				mail.subparts
+					.iter()
+					.find(|x| x.ctype.mimetype == "text/plain")
+					.unwrap_or(&mail.subparts[0])
+			}
+			.get_body()
+			.unwrap();
 
-				if let Some(remove_after) = remove_after {
-					tmp.drain(tmp.find(remove_after).unwrap_or(tmp.len())..);
-				}
+			if let Some(remove_after) = remove_after {
+				body.drain(body.find(remove_after).unwrap_or(body.len())..);
+			}
 
-				tmp
-			};
+			// TODO: replace upticks ` with teloxide::utils::html::escape_code
 
 			// NOTE: emails often contain all kinds of html or other text which Telegram's HTML parser doesn't approve of
 			// I dislike the need to add an extra dependency just for this simple task but you gotta do what you gotta do.
@@ -139,12 +138,11 @@ impl Email {
 			(subject, ammonia::clean(&body))
 		};
 
-		Message {
-			text: match subject {
-				Some(subject) => format!("{}\n\n{}", subject, body),
-				None => body,
-			},
-			media: None,
-		}
+		let text = match subject {
+			Some(subject) => format!("{}\n\n{}", subject, body),
+			None => body,
+		};
+
+		Message { text, media: None }
 	}
 }
