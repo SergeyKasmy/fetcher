@@ -10,6 +10,7 @@ impl Guid {
 	pub fn new(name: &'static str) -> Result<Self> {
 		Ok(Self {
 			name,
+			// TODO: don't crash when it doesnt exist
 			guid: fs::read_to_string(format!("last_read_guid/{}.txt", name))
 				.map_err(|e| Error::GuidGet { why: e.to_string() })?,
 		})

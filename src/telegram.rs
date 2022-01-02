@@ -37,7 +37,15 @@ impl Telegram {
 
 	pub async fn send(&self, message: Message) -> Result<()> {
 		// NOTE: workaround for some kind of a bug that doesn't let access both text and media fields of the struct in the map closure at once
-		let text = message.text;
+		let text = if message.text.len() > 4096 {
+			// TODO: log warning that the message was too long
+			let (idx, _) = message.text.char_indices().nth(4096 - 3).unwrap(); // NOTE: safe unwrap, length already confirmed to be bigger
+			let mut m = message.text[..idx].to_string();
+			m.push_str("...");
+			m
+		} else {
+			message.text
+		};
 
 		if let Some(media) = message.media {
 			self.send_media(
