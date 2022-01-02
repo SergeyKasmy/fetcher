@@ -74,6 +74,7 @@ async fn main() -> Result<()> {
 	{
 		let releases_bot = Telegram::new(news_bot.clone(), env::var("RELEASES_CHAT_ID")?);
 		let mut github_releases = Email::new(
+			"Github Releases",
 			"imap.gmail.com",
 			env::var("EMAIL")?,
 			env::var("EMAIL_PASS")?,
