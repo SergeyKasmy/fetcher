@@ -5,6 +5,7 @@ use crate::telegram::Message;
 
 use rss::Channel;
 
+#[derive(Debug)]
 pub struct Rss {
 	name: &'static str,
 	rss: &'static str,

@@ -12,6 +12,7 @@ impl Guid {
 			name,
 			// TODO: don't crash when it doesnt exist
 			guid: fs::read_to_string(format!("last_read_guid/{}.txt", name))
+				// TODO: show file path
 				.map_err(|e| Error::GuidGet { why: e.to_string() })?,
 		})
 	}

@@ -5,11 +5,13 @@ use crate::telegram::Message;
 
 const IMAP_PORT: u16 = 993;
 
+#[derive(Debug)]
 pub enum EmailFilter {
 	Subject(&'static str),
 	Sender(&'static str),
 }
 
+#[derive(Debug)]
 pub struct Email {
 	name: &'static str,
 	imap: &'static str,
@@ -104,6 +106,7 @@ impl Email {
 			return Ok(Vec::new());
 		}
 
+		// TODO: reverse order
 		let mails = session
 			.uid_fetch(&mail_ids, "BODY[]")
 			.map_err(|e| Error::Get {

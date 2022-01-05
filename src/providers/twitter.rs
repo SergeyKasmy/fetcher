@@ -7,6 +7,7 @@ use crate::telegram::Message;
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 
+#[derive(Debug)]
 pub struct Twitter {
 	name: &'static str,
 	pretty_name: &'static str,

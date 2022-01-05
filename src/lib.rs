@@ -5,18 +5,19 @@ pub mod telegram;
 
 use error::Error;
 use error::Result;
-use futures::StreamExt;
 use futures::future::select_all;
+use futures::StreamExt;
 use providers::Provider;
 use signal_hook::consts as SignalTypes;
 use signal_hook_tokio::Signals;
 use std::time::Duration;
 use telegram::Telegram;
-use tokio::{sync::broadcast, time::sleep, select};
+use tokio::{select, sync::broadcast, time::sleep};
 
+#[derive(Debug)]
 pub struct Config {
-	source: Provider,
-	sink: Telegram,
+	pub source: Provider,
+	pub sink: Telegram,
 }
 
 pub async fn run(configs: Vec<Config>) -> Result<()> {
