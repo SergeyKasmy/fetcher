@@ -2,14 +2,15 @@ use crate::error::{Error, Result};
 use std::fs;
 
 pub struct Guid {
-	pub name: &'static str,
+	// TODO: mb use &str here?
+	pub name: String,
 	pub guid: String,
 }
 
 impl Guid {
-	pub fn new(name: &'static str) -> Result<Self> {
+	pub fn new(name: &str) -> Result<Self> {
 		Ok(Self {
-			name,
+			name: name.to_string(),
 			// TODO: don't crash when it doesnt exist
 			guid: fs::read_to_string(format!("last_read_guid/{}.txt", name))
 				// TODO: show file path

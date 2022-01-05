@@ -7,13 +7,13 @@ use rss::Channel;
 
 #[derive(Debug)]
 pub struct Rss {
-	name: &'static str,
-	rss: &'static str,
+	name: String,
+	rss: String,
 	http_client: reqwest::Client,
 }
 
 impl Rss {
-	pub fn new(name: &'static str, rss: &'static str) -> Self {
+	pub fn new(name: String, rss: String) -> Self {
 		Self {
 			name,
 			rss,
@@ -22,10 +22,10 @@ impl Rss {
 	}
 
 	pub async fn get(&mut self) -> Result<Vec<Message>> {
-		let mut last_read_guid = Guid::new(self.name)?;
+		let mut last_read_guid = Guid::new(&self.name)?;
 		let content = self
 			.http_client
-			.get(self.rss)
+			.get(&self.rss)
 			.send()
 			.await
 			.map_err(|e| Error::Get {

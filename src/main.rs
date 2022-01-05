@@ -30,34 +30,34 @@ async fn parse_conf(c: &str) -> Result<Vec<Config>> {
 	let bot = Bot::new(env::var("BOT_TOKEN").unwrap());
 
 	let mut confs: Vec<Config> = Vec::new();
-	for x in t.as_table().ok_or(anyhow!("Not table"))? {
-		let sink = Telegram::new(bot.clone(), env::var(format!("{}_CHAT_ID", x.0.to_ascii_uppercase())).unwrap());
-		let table = x.1.as_table().ok_or(anyhow!("Not table"))?;
-		let conf = match table["type"].as_str().ok_or(anyhow!("Not string"))? {
+	for x in t.as_table().unwrap() {
+		let sink = Telegram::new(
+			bot.clone(),
+			env::var(format!("{}_CHAT_ID", x.0.to_ascii_uppercase())).unwrap(),
+		);
+		let table = x.1.as_table().unwrap();
+		let conf = match table["type"].as_str().unwrap() {
 			"rss" => {
 				let source =
-					Rss::new(x.0, table["url"].as_str().ok_or(anyhow!("Not string"))?).into();
+					Rss::new(x.0.to_string(), table["url"].as_str().unwrap().to_string()).into();
 
 				Config { source, sink }
 			}
 			"twitter" => {
-				let filters = Box::new(
-					table["filters"]
-						.as_array()
-						.ok_or(anyhow!("Not array"))?
-						.iter()
-						.map(|x| x.as_str().ok_or(anyhow!("Not string")).unwrap())
-						.collect::<Vec<&str>>(),
-				);
-				let filters = Box::leak(filters);
+				let filter = table["filter"]
+					.as_array()
+					.unwrap()
+					.iter()
+					.map(|x| x.as_str().unwrap().to_string())
+					.collect::<Vec<String>>();
 
 				let source = Twitter::new(
-					x.0,
-					table["pretty_name"].as_str().unwrap(),
-					table["handle"].as_str().unwrap(),
+					x.0.to_string(),
+					table["pretty_name"].as_str().unwrap().to_string(),
+					table["handle"].as_str().unwrap().to_string(),
 					env::var("TWITTER_API_KEY").unwrap(),
 					env::var("TWITTER_API_KEY_SECRET").unwrap(),
-					Some(filters.as_slice()),
+					filter,
 				)
 				.await
 				.unwrap()
@@ -66,29 +66,32 @@ async fn parse_conf(c: &str) -> Result<Vec<Config>> {
 				Config { source, sink }
 			}
 			"email" => {
-				let sender = table["filters"].as_table().unwrap()["sender"]
-					.as_str()
-					.unwrap();
-				let mut subject = table["filters"].as_table().unwrap()["subject"]
-					.as_array()
-					.unwrap()
-					.iter()
-					.map(|x| EmailFilter::Subject(x.as_str().unwrap()))
-					.collect::<Vec<EmailFilter>>();
+				let filter = {
+					let filter_table = table["filter"].as_table().unwrap();
 
-				let mut filters = Box::new(Vec::new());
-				filters.push(EmailFilter::Sender(sender));
-				filters.append(&mut subject);
-				let filters = Box::leak(filters);
+					let sender = filter_table
+						.get("sender")
+						// TODO: move out to a separate local(?) fn
+						.map(|x| x.as_str().unwrap().to_string());
+					let subject = filter_table.get("subject").map(|x| {
+						x.as_array()
+							.unwrap()
+							.iter()
+							.map(|x| x.as_str().unwrap().to_string())
+							.collect::<Vec<_>>()
+					});
+
+					EmailFilter { sender, subject }
+				};
 
 				let source = Email::new(
-					x.0,
-					table["imap"].as_str().unwrap(),
+					x.0.to_string(),
+					table["imap"].as_str().unwrap().to_string(),
 					env::var("EMAIL").unwrap(),
 					env::var("EMAIL_PASS").unwrap(),
-					Some(filters.as_slice()),
+					filter,
 					table["remove"].as_bool().unwrap(),
-					Some(table["footer"].as_str().unwrap()),
+					Some(table["footer"].as_str().unwrap().to_string()),
 				)
 				.into();
 
