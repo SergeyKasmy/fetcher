@@ -1,27 +1,27 @@
 [package]
 name = "news-reader"
-version = "0.1.0"
-edition = "2018"
+version = "0.1.1"
+edition = "2021"
 
 [profile.release]
 lto = true
-codegen-units = 1
+#codegen-units = 1
 
 [dependencies]
 ammonia = "3.1.2"
-anyhow = "1.0.48"
-async-trait = "0.1.51"
+anyhow = "1.0.52"
+async-trait = "0.1.52"
 egg-mode = "0.16.0"
-futures = "0.3.18"
+futures = "0.3.19"
 imap = "2.4.1"
 log = "0.4.14"
 mailparse = "0.13.7"
 native-tls = "0.2.8"
 pretty_env_logger = "0.4.0"
-reqwest = "0.11.6"
+reqwest = "0.11.8"
 rss = "2.0.0"
-signal-hook = "0.3.10"
+signal-hook = "0.3.13"
 signal-hook-tokio = { version = "0.3.0", features = ["futures-v0_3"] }
 teloxide = { version = "0.5.3", features = ["throttle"] }
 thiserror = "1.0.30"
-tokio = { version = "1.14.0", features = ["full"] }
+tokio = { version = "1.15.0", features = ["full"] }
