@@ -41,7 +41,7 @@ impl Email {
 		}
 	}
 
-	pub async fn get(&mut self) -> Result<Vec<Message>> {
+	pub fn get(&mut self) -> Result<Vec<Message>> {
 		let client = imap::connect(
 			(self.imap, IMAP_PORT),
 			self.imap,
