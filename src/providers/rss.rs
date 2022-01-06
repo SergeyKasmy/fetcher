@@ -5,14 +5,15 @@ use crate::telegram::Message;
 
 use rss::Channel;
 
+#[derive(Debug)]
 pub struct Rss {
-	name: &'static str,
-	rss: &'static str,
+	name: String,
+	rss: String,
 	http_client: reqwest::Client,
 }
 
 impl Rss {
-	pub fn new(name: &'static str, rss: &'static str) -> Self {
+	pub fn new(name: String, rss: String) -> Self {
 		Self {
 			name,
 			rss,
@@ -20,18 +21,11 @@ impl Rss {
 		}
 	}
 
-	pub async fn get_and_save(&mut self) -> Result<Vec<Message>> {
-		let mut last_read_guid = Guid::new(self.name)?;
-		let messages = self.get(Some(&mut last_read_guid)).await;
-		last_read_guid.save()?;
-
-		messages
-	}
-
-	pub async fn get(&mut self, mut last_read_guid: Option<&mut Guid>) -> Result<Vec<Message>> {
+	pub async fn get(&mut self) -> Result<Vec<Message>> {
+		let mut last_read_guid = Guid::new(&self.name)?;
 		let content = self
 			.http_client
-			.get(self.rss)
+			.get(&self.rss)
 			.send()
 			.await
 			.map_err(|e| Error::Get {
@@ -49,14 +43,12 @@ impl Rss {
 			why: e.to_string(),
 		})?;
 
-		if let Some(last_read_guid) = &last_read_guid {
-			if let Some(last_read_guid_pos) = feed
-				.items
-				.iter()
-				.position(|x| x.guid.as_ref().unwrap().value == last_read_guid.guid)
-			{
-				feed.items.drain(last_read_guid_pos..);
-			}
+		if let Some(last_read_guid_pos) = feed
+			.items
+			.iter()
+			.position(|x| x.guid.as_ref().unwrap().value == last_read_guid.guid)
+		{
+			feed.items.drain(last_read_guid_pos..);
 		}
 
 		let messages = feed
@@ -71,12 +63,12 @@ impl Rss {
 					x.description.as_deref().unwrap()
 				); // NOTE: these fields are requred
 
-				if let Some(last_read_guid) = &mut last_read_guid {
-					last_read_guid.guid = x.guid.as_ref().unwrap().value.clone(); // NOTE: crash if the feed item doesn't have a guid. That should never happen though
-				}
+				last_read_guid.guid = x.guid.as_ref().unwrap().value.clone(); // NOTE: crash if the feed item doesn't have a guid. That should never happen though
 				Message { text, media: None }
 			})
 			.collect();
+
+		last_read_guid.save()?;
 
 		Ok(messages)
 	}

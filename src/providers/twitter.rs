@@ -7,23 +7,24 @@ use crate::telegram::Message;
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 
+#[derive(Debug)]
 pub struct Twitter {
-	name: &'static str,
-	pretty_name: &'static str,
-	handle: &'static str,
+	name: String,
+	pretty_name: String,
+	handle: String,
 	token: Token,
-	filters: Option<&'static [&'static str]>,
+	filter: Vec<String>,
 }
 
 impl Twitter {
 	#[allow(clippy::too_many_arguments)]
 	pub async fn new(
-		name: &'static str,
-		pretty_name: &'static str,
-		handle: &'static str,
+		name: String,
+		pretty_name: String,
+		handle: String,
 		api_key: String,
 		api_key_secret: String,
-		filters: Option<&'static [&'static str]>,
+		filter: Vec<String>,
 	) -> Result<Self> {
 		Ok(Self {
 			name,
@@ -35,21 +36,14 @@ impl Twitter {
 					service: "Twitter".to_string(),
 					why: e.to_string(),
 				})?,
-			filters,
+			filter,
 		})
 	}
 
-	pub async fn get_and_save(&mut self) -> Result<Vec<Message>> {
-		let mut last_read_guid = Guid::new(self.name)?;
-		let messages = self.get(Some(&mut last_read_guid)).await;
-		last_read_guid.save()?;
-
-		messages
-	}
-
-	pub async fn get(&mut self, mut last_read_guid: Option<&mut Guid>) -> Result<Vec<Message>> {
-		let (_, tweets) = user_timeline(self.handle, false, true, &self.token)
-			.older(last_read_guid.as_ref().and_then(|x| x.guid.parse().ok()))
+	pub async fn get(&mut self) -> Result<Vec<Message>> {
+		let mut last_read_guid = Guid::new(&self.name)?;
+		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // FIXME: remove clone
+			.older(last_read_guid.guid.parse().ok())
 			.await
 			.map_err(|e| Error::Get {
 				service: "Twitter".to_string(),
@@ -60,10 +54,10 @@ impl Twitter {
 			.iter()
 			.rev()
 			.filter_map(|tweet| {
-				if let Some(filters) = self.filters {
-					if !Self::tweet_contains_filters(&tweet.text, filters) {
-						return None;
-					}
+				if !self.filter.is_empty()
+					&& !Self::tweet_contains_filters(&tweet.text, self.filter.as_slice())
+				{
+					return None;
 				}
 
 				let text = format!(
@@ -71,9 +65,7 @@ impl Twitter {
 					self.pretty_name, tweet.text, self.handle, tweet.id
 				);
 
-				if let Some(last_read_guid) = &mut last_read_guid {
-					last_read_guid.guid = tweet.id.to_string();
-				}
+				last_read_guid.guid = tweet.id.to_string();
 				Some(Message {
 					text,
 					media: tweet.entities.media.as_ref().and_then(|x| {
@@ -89,10 +81,12 @@ impl Twitter {
 			})
 			.collect::<Vec<Message>>();
 
+		last_read_guid.save()?;
+
 		Ok(messages)
 	}
 
-	fn tweet_contains_filters(tweet: &str, filters: &[&str]) -> bool {
+	fn tweet_contains_filters(tweet: &str, filters: &[String]) -> bool {
 		for filter in filters {
 			if !tweet.to_lowercase().contains(&filter.to_lowercase()) {
 				return false;
