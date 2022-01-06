@@ -1,7 +1,3 @@
-use std::env;
-use std::str::FromStr;
-
-use anyhow::anyhow;
 use anyhow::Result;
 use news_reader::providers::email::EmailFilter;
 use news_reader::providers::Email;
@@ -9,6 +5,7 @@ use news_reader::providers::Rss;
 use news_reader::providers::Twitter;
 use news_reader::telegram::Telegram;
 use news_reader::Config;
+use std::str::FromStr;
 use teloxide::Bot;
 use toml::Value;
 
@@ -22,62 +19,125 @@ async fn main() -> Result<()> {
 	Ok(news_reader::run(parsed).await?)
 }
 
-async fn parse_conf(c: &str) -> Result<Vec<Config>> {
-	let t = Value::from_str(c)?;
-	let t = Box::new(t);
-	let t = Box::leak(t);
+async fn parse_conf(conf_raw: &str) -> Result<Vec<Config>> {
+	fn env(s: &str) -> String {
+		std::env::var(s).unwrap_or_else(|e| panic!("{} env not found: {}", s, e))
+	}
 
-	let bot = Bot::new(env::var("BOT_TOKEN").unwrap());
+	let tbl = Value::from_str(conf_raw)?;
+	let bot = Bot::new(env("BOT_TOKEN"));
 
 	let mut confs: Vec<Config> = Vec::new();
-	for x in t.as_table().unwrap() {
-		let sink = Telegram::new(
-			bot.clone(),
-			env::var(format!("{}_CHAT_ID", x.0.to_ascii_uppercase())).unwrap(),
-		);
-		let table = x.1.as_table().unwrap();
-		let conf = match table["type"].as_str().unwrap() {
+	// NOTE: should be safe. AFAIK the root of a TOML is always a table
+	for conf_raw in tbl.as_table().unwrap() {
+		let table = conf_raw
+			.1
+			.as_table()
+			.unwrap_or_else(|| panic!("{} does not contain a table", conf_raw.0));
+		let chat_id = format!("{}_CHAT_ID", conf_raw.0.to_ascii_uppercase());
+		let sink = Telegram::new(bot.clone(), env(&chat_id));
+		let conf = match table
+			.get("type")
+			.unwrap_or_else(|| panic!("{} doesn't contain type field", conf_raw.0))
+			.as_str()
+			.unwrap_or_else(|| panic!("{}' type field is not a valid string", conf_raw.0))
+		{
 			"rss" => {
-				let source =
-					Rss::new(x.0.to_string(), table["url"].as_str().unwrap().to_string()).into();
+				let source = Rss::new(
+					conf_raw.0.to_string(),
+					table
+						.get("url")
+						.unwrap_or_else(|| panic!("{} doesn't contain url field", conf_raw.0))
+						.as_str()
+						.unwrap_or_else(|| {
+							panic!("{}'s url field is not a valid string", conf_raw.0)
+						})
+						.to_string(),
+				)
+				.into();
 
 				Config { source, sink }
 			}
 			"twitter" => {
-				let filter = table["filter"]
+				let filter = table
+					.get("filter")
+					.unwrap_or_else(|| panic!("{} doesn't contain filter field", conf_raw.0))
 					.as_array()
-					.unwrap()
+					.unwrap_or_else(|| panic!("{}'s filter is not an array", conf_raw.0))
 					.iter()
-					.map(|x| x.as_str().unwrap().to_string())
+					.map(|x| {
+						x.as_str()
+							.unwrap_or_else(|| {
+								panic!("{}'s filter is not a valid string", conf_raw.0)
+							})
+							.to_string()
+					})
 					.collect::<Vec<String>>();
 
 				let source = Twitter::new(
-					x.0.to_string(),
-					table["pretty_name"].as_str().unwrap().to_string(),
-					table["handle"].as_str().unwrap().to_string(),
-					env::var("TWITTER_API_KEY").unwrap(),
-					env::var("TWITTER_API_KEY_SECRET").unwrap(),
+					conf_raw.0.to_string(),
+					table
+						.get("pretty_name")
+						.unwrap_or_else(|| {
+							panic!("{} doesn't contain pretty_name field", conf_raw.0)
+						})
+						.as_str()
+						.unwrap_or_else(|| {
+							panic!("{}' pretty_name is not a valid string", conf_raw.0)
+						})
+						.to_string(),
+					table
+						.get("handle")
+						.unwrap_or_else(|| panic!("{} doesn't contain handle field", conf_raw.0))
+						.as_str()
+						.unwrap_or_else(|| panic!("{}'s handle is not a valid string", conf_raw.0))
+						.to_string(),
+					env("TWITTER_API_KEY"),
+					env("TWITTER_API_KEY_SECRET"),
 					filter,
 				)
-				.await
-				.unwrap()
+				.await?
 				.into();
 
 				Config { source, sink }
 			}
 			"email" => {
 				let filter = {
-					let filter_table = table["filter"].as_table().unwrap();
+					let filter_table = table
+						.get("filter")
+						.unwrap_or_else(|| panic!("{} doesn't contain filter field", conf_raw.0))
+						.as_table()
+						.unwrap_or_else(|| panic!("{}'s filter is not a valid table", conf_raw.0));
 
 					let sender = filter_table
 						.get("sender")
 						// TODO: move out to a separate local(?) fn
-						.map(|x| x.as_str().unwrap().to_string());
+						.map(|x| {
+							x.as_str()
+								.unwrap_or_else(|| {
+									panic!(
+										"{}'s filter sender field is not a valid string",
+										conf_raw.0
+									)
+								})
+								.to_string()
+						});
 					let subject = filter_table.get("subject").map(|x| {
 						x.as_array()
-							.unwrap()
+							.unwrap_or_else(|| {
+								panic!("{}'s filter subject is not an valid array", conf_raw.0)
+							})
 							.iter()
-							.map(|x| x.as_str().unwrap().to_string())
+							.map(|x| {
+								x.as_str()
+									.unwrap_or_else(|| {
+										panic!(
+											"{}'s filter subject is not a valid string",
+											conf_raw.0
+										)
+									})
+									.to_string()
+							})
 							.collect::<Vec<_>>()
 					});
 
@@ -85,19 +145,39 @@ async fn parse_conf(c: &str) -> Result<Vec<Config>> {
 				};
 
 				let source = Email::new(
-					x.0.to_string(),
-					table["imap"].as_str().unwrap().to_string(),
-					env::var("EMAIL").unwrap(),
-					env::var("EMAIL_PASS").unwrap(),
+					conf_raw.0.to_string(),
+					table
+						.get("imap")
+						.unwrap_or_else(|| panic!("{} doesn't contain imap field", conf_raw.0))
+						.as_str()
+						.unwrap_or_else(|| panic!("{}'s imap is not a valid string", conf_raw.0))
+						.to_string(),
+					env("EMAIL"),
+					env("EMAIL_PASS"),
 					filter,
-					table["remove"].as_bool().unwrap(),
-					Some(table["footer"].as_str().unwrap().to_string()),
+					table
+						.get("remove")
+						.unwrap_or_else(|| panic!("{} doesn't contain remove field", conf_raw.0))
+						.as_bool()
+						.unwrap_or_else(|| panic!("{}'s remove is not a valid bool", conf_raw.0)),
+					Some(
+						table
+							.get("footer")
+							.unwrap_or_else(|| {
+								panic!("{} doesn't contain footer field", conf_raw.0)
+							})
+							.as_str()
+							.unwrap_or_else(|| {
+								panic!("{}'s footer is not a valid string", conf_raw.0)
+							})
+							.to_string(),
+					),
 				)
 				.into();
 
 				Config { source, sink }
 			}
-			_ => return Err(anyhow!("Not a valid type")),
+			t => panic!("{} is not a valid type for {}", t, conf_raw.0),
 		};
 
 		confs.push(conf);
