@@ -109,3 +109,11 @@ impl Telegram {
 		}
 	}
 }
+
+impl std::fmt::Debug for Telegram {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Telegram")
+			.field("chat_id", &self.chat_id)
+			.finish_non_exhaustive()
+	}
+}

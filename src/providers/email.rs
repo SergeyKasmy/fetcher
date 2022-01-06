@@ -5,46 +5,56 @@ use crate::telegram::Message;
 
 const IMAP_PORT: u16 = 993;
 
+/*
+#[derive(Debug)]
 pub enum EmailFilter {
 	Subject(&'static str),
 	Sender(&'static str),
 }
+*/
 
+#[derive(Debug)]
+pub struct EmailFilter {
+	pub sender: Option<String>,
+	pub subject: Option<Vec<String>>,
+}
+
+#[derive(Debug)]
 pub struct Email {
-	name: &'static str,
-	imap: &'static str,
+	name: String,
+	imap: String,
 	email: String,
 	password: String,
-	filters: Option<&'static [EmailFilter]>,
-	archive: bool,
-	remove_after: Option<&'static str>, // NOTE: remove everything after this text, including itself, from the message
+	filter: EmailFilter,
+	remove: bool,
+	footer: Option<String>, // NOTE: remove everything after this text, including itself, from the message
 }
 
 impl Email {
 	pub fn new(
-		name: &'static str,
-		imap: &'static str,
+		name: String,
+		imap: String,
 		email: String,
 		password: String,
-		filters: Option<&'static [EmailFilter]>,
-		archive: bool,
-		remove_after: Option<&'static str>,
+		filter: EmailFilter,
+		remove: bool,
+		footer: Option<String>,
 	) -> Self {
 		Self {
 			name,
 			imap,
 			email,
 			password,
-			filters,
-			archive,
-			remove_after,
+			filter,
+			remove,
+			footer,
 		}
 	}
 
-	pub async fn get(&mut self) -> Result<Vec<Message>> {
+	pub fn get(&mut self) -> Result<Vec<Message>> {
 		let client = imap::connect(
-			(self.imap, IMAP_PORT),
-			self.imap,
+			(self.imap.as_str(), IMAP_PORT),
+			&self.imap,
 			&native_tls::TlsConnector::new().map_err(|e| Error::Get {
 				service: format!("Email: {}", self.name),
 				why: format!("Error initializing TLS: {}", e),
@@ -69,26 +79,19 @@ impl Email {
 		let search_string = {
 			let mut tmp = "UNSEEN ".to_string();
 
-			if let Some(filters) = self.filters {
-				for f in filters {
-					match f {
-						EmailFilter::Subject(s) => {
-							// TODO: mb use format!()?
-							tmp.push_str(r#"SUBJECT ""#);
-							tmp.push_str(s);
-							tmp.push_str(r#"" "#);
-						}
-						EmailFilter::Sender(s) => {
-							tmp.push_str(r#"FROM ""#);
-							tmp.push_str(s);
-							tmp.push_str(r#"" "#);
-						}
-					}
+			if let Some(sender) = &self.filter.sender {
+				tmp.push_str(&format!(r#"FROM "{}" "#, sender));
+			}
+
+			if let Some(subject) = &self.filter.subject {
+				for s in subject {
+					tmp.push_str(&format!(r#"SUBJECT "{}" "#, s));
 				}
 			}
 
 			tmp.trim_end().to_string()
 		};
+
 		let mail_ids = session
 			.uid_search(search_string)
 			.map_err(|e| Error::Get {
@@ -104,6 +107,7 @@ impl Email {
 			return Ok(Vec::new());
 		}
 
+		// TODO: reverse order
 		let mails = session
 			.uid_fetch(&mail_ids, "BODY[]")
 			.map_err(|e| Error::Get {
@@ -112,7 +116,7 @@ impl Email {
 			})?;
 
 		// TODO: don't archive if there were any errors while sending
-		if self.archive {
+		if self.remove {
 			session
 				.uid_store(&mail_ids, "+FLAGS.SILENT (\\Deleted)")
 				.map_err(|e| Error::Get {
@@ -140,13 +144,13 @@ impl Email {
 							service: format!("Email: {}", self.name),
 							why: e.to_string(),
 						})?,
-					self.remove_after,
+					self.footer.as_deref(),
 				)
 			})
 			.collect::<Result<Vec<Message>>>()
 	}
 
-	fn parse(mail: ParsedMail, remove_after: Option<&'static str>) -> Result<Message> {
+	fn parse(mail: ParsedMail, remove_after: Option<&str>) -> Result<Message> {
 		let (subject, body) = {
 			let subject = mail.headers.iter().find_map(|x| {
 				if x.get_key_ref() == "Subject" {

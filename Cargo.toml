@@ -25,3 +25,5 @@ signal-hook-tokio = { version = "0.3.0", features = ["futures-v0_3"] }
 teloxide = { version = "0.5.3", features = ["throttle"] }
 thiserror = "1.0.30"
 tokio = { version = "1.15.0", features = ["full"] }
+toml = "0.5.8"
+xdg = "2.4.0"
