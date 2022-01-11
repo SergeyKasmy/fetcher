@@ -4,3 +4,4 @@ last_read_guid/
 env.fish
 .gdbhistory
 /tests
+config.toml
