@@ -1,24 +1,18 @@
+pub mod config;
 pub mod error;
 pub(crate) mod guid;
 pub mod providers;
 pub mod telegram;
 
+use config::Config;
 use error::Error;
 use error::Result;
 use futures::future::select_all;
 use futures::StreamExt;
-use providers::Provider;
 use signal_hook::consts as SignalTypes;
 use signal_hook_tokio::Signals;
 use std::time::Duration;
-use telegram::Telegram;
 use tokio::{select, sync::broadcast, time::sleep};
-
-#[derive(Debug)]
-pub struct Config {
-	pub source: Provider,
-	pub sink: Telegram,
-}
 
 pub async fn run(configs: Vec<Config>) -> Result<()> {
 	let (shutdown_sig_tx, _) = broadcast::channel(1);
