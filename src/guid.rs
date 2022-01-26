@@ -24,7 +24,6 @@ impl Guid {
 	}
 
 	pub fn save(self) -> Result<()> {
-		let _ = fs::create_dir("last_read_guid");
 		fs::write(&self.path, self.guid).map_err(|e| Error::GuidSave { why: e.to_string() })
 	}
 }
