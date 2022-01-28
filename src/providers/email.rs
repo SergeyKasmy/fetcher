@@ -31,6 +31,7 @@ pub struct Email {
 }
 
 impl Email {
+	#[tracing::instrument]
 	pub fn new(
 		name: String,
 		imap: String,
@@ -40,6 +41,7 @@ impl Email {
 		remove: bool,
 		footer: Option<String>,
 	) -> Self {
+		tracing::info!("Creatng an Email provider");
 		Self {
 			name,
 			imap,
@@ -51,6 +53,7 @@ impl Email {
 		}
 	}
 
+	#[tracing::instrument]
 	pub fn get(&mut self) -> Result<Vec<Message>> {
 		let client = imap::connect(
 			(self.imap.as_str(), IMAP_PORT),
@@ -133,6 +136,8 @@ impl Email {
 			service: format!("Email: {}", self.name),
 			why: e.to_string(),
 		})?;
+
+		tracing::debug!("Got {amount} emails", amount = mails.len());
 
 		mails
 			.into_iter()
