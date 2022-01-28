@@ -13,6 +13,7 @@ type Sink = Telegram;
 
 #[derive(Debug)]
 pub struct Config {
+	pub name: String,
 	pub source: Provider,
 	pub sink: Sink,
 }
@@ -40,6 +41,7 @@ impl Config {
 		// NOTE: should be safe. AFAIK the root of a TOML is always a table
 		for entry in tbl.as_table().unwrap() {
 			let chat_id = format!("{}_CHAT_ID", entry.0.to_ascii_uppercase());
+			let name = entry.0.clone();
 			let sink = Telegram::new(bot.clone(), env(&chat_id));
 			let conf = match entry
 				.1
@@ -50,9 +52,9 @@ impl Config {
 				.as_str()
 				.unwrap_or_else(|| panic!("{}'s type field is not a valid string", entry.0))
 			{
-				"rss" => Self::parse_rss(entry, sink),
-				"twitter" => Self::parse_twitter(entry, sink).await,
-				"email" => Self::parse_email(entry, sink),
+				"rss" => Self::parse_rss(entry, name, sink),
+				"twitter" => Self::parse_twitter(entry, name, sink).await,
+				"email" => Self::parse_email(entry, name, sink),
 				t => panic!("{} is not a valid type for {}", t, entry.0),
 			};
 
@@ -62,7 +64,7 @@ impl Config {
 		Ok(confs)
 	}
 
-	fn parse_rss(c: (&String, &Value), sink: Sink) -> Self {
+	fn parse_rss(c: (&String, &Value), name: String, sink: Sink) -> Self {
 		let table =
 			c.1.as_table()
 				.unwrap_or_else(|| panic!("{} does not contain a table", c.0));
@@ -77,10 +79,10 @@ impl Config {
 		)
 		.into();
 
-		Self { source, sink }
+		Self { name, source, sink }
 	}
 
-	async fn parse_twitter(c: (&String, &Value), sink: Sink) -> Self {
+	async fn parse_twitter(c: (&String, &Value), name: String, sink: Sink) -> Self {
 		let table =
 			c.1.as_table()
 				.unwrap_or_else(|| panic!("{} does not contain a table", c.0));
@@ -119,10 +121,10 @@ impl Config {
 		.unwrap() // FIXME: use proper errors
 		.into();
 
-		Self { source, sink }
+		Self { name, source, sink }
 	}
 
-	fn parse_email(c: (&String, &Value), sink: Sink) -> Self {
+	fn parse_email(c: (&String, &Value), name: String, sink: Sink) -> Self {
 		let table =
 			c.1.as_table()
 				.unwrap_or_else(|| panic!("{} does not contain a table", c.0));
@@ -187,6 +189,6 @@ impl Config {
 		)
 		.into();
 
-		Self { source, sink }
+		Self { name, source, sink }
 	}
 }
