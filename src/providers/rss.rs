@@ -13,7 +13,9 @@ pub struct Rss {
 }
 
 impl Rss {
+	#[tracing::instrument]
 	pub fn new(name: String, rss: String) -> Self {
+		tracing::info!("Creatng an Rss provider");
 		Self {
 			name,
 			rss,
@@ -21,6 +23,7 @@ impl Rss {
 		}
 	}
 
+	#[tracing::instrument]
 	pub async fn get(&mut self) -> Result<Vec<Message>> {
 		let mut last_read_guid = Guid::new(&self.name)?;
 		let content = self
@@ -42,6 +45,7 @@ impl Rss {
 			service: format!("RSS: {}", self.name),
 			why: e.to_string(),
 		})?;
+		tracing::debug!("Got {amount} RSS articles", amount = feed.items.len());
 
 		if let Some(last_read_guid_pos) = feed
 			.items

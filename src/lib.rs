@@ -14,10 +14,12 @@ use signal_hook_tokio::Signals;
 use std::time::Duration;
 use tokio::{select, sync::broadcast, time::sleep};
 
+#[tracing::instrument]
 pub async fn run(configs: Vec<Config>) -> Result<()> {
 	let (shutdown_sig_tx, _) = broadcast::channel(1);
 	let mut tasks = Vec::new();
 
+	// TODO: add sleep time to configs
 	for mut c in configs {
 		let mut rx = shutdown_sig_tx.subscribe();
 		let task = tokio::spawn(async move {
@@ -26,7 +28,11 @@ pub async fn run(configs: Vec<Config>) -> Result<()> {
 					c.sink.send(m).await?;
 				}
 				select! {
-					_ = sleep(Duration::from_secs(60 * 30)) => (),
+					_ = async {
+						const SLEEP_TIME: u64 = 60 * 30;
+						tracing::info!("Sleeping {name} for {SLEEP_TIME}s", name = c.name);
+						sleep(Duration::from_secs(SLEEP_TIME)).await;
+					} => (),
 					_ = rx.recv() => break,
 				}
 			}
