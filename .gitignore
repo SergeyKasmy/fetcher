@@ -1,7 +1,7 @@
-/target
+.gdb_history
 /Cargo.lock
-last_read_guid/
-env.fish
-.gdbhistory
+/target
 /tests
 config.toml
+env.fish
+last_read_guid/

@@ -18,6 +18,7 @@ pub struct Twitter {
 
 impl Twitter {
 	#[allow(clippy::too_many_arguments)]
+	#[tracing::instrument]
 	pub async fn new(
 		name: String,
 		pretty_name: String,
@@ -26,6 +27,7 @@ impl Twitter {
 		api_key_secret: String,
 		filter: Vec<String>,
 	) -> Result<Self> {
+		tracing::info!("Creatng a Twitter provider");
 		Ok(Self {
 			name,
 			pretty_name,
@@ -40,6 +42,7 @@ impl Twitter {
 		})
 	}
 
+	#[tracing::instrument]
 	pub async fn get(&mut self) -> Result<Vec<Message>> {
 		let mut last_read_guid = Guid::new(&self.name)?;
 		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // FIXME: remove clone
@@ -49,6 +52,7 @@ impl Twitter {
 				service: "Twitter".to_string(),
 				why: e.to_string(),
 			})?;
+		tracing::debug!("Got {amount} tweets", amount = tweets.len());
 
 		let messages = tweets
 			.iter()

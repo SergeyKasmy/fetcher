@@ -1,6 +1,4 @@
 use std::time::Duration;
-
-use crate::error::{Error, Result};
 use teloxide::{
 	adaptors::{throttle::Limits, Throttle},
 	payloads::SendMessageSetters,
@@ -11,6 +9,8 @@ use teloxide::{
 	},
 	Bot, RequestError,
 };
+
+use crate::error::{Error, Result};
 
 pub enum Media {
 	Photo(String),
@@ -27,6 +27,13 @@ pub struct Telegram {
 	chat_id: ChatId,
 }
 
+
+impl std::fmt::Debug for Message {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Message").field("text", &self.text).field("media.is_some()", &self.media.is_some()).finish()
+    }
+}
+
 impl Telegram {
 	pub fn new(bot: Bot, chat_id: impl Into<ChatId>) -> Self {
 		Self {
@@ -35,10 +42,11 @@ impl Telegram {
 		}
 	}
 
+	#[tracing::instrument]
 	pub async fn send(&self, message: Message) -> Result<()> {
 		// NOTE: workaround for some kind of a bug that doesn't let access both text and media fields of the struct in the map closure at once
 		let text = if message.text.len() > 4096 {
-			// TODO: log warning that the message was too long
+			tracing::warn!("Message too long ({len})", len = message.text.len());
 			let (idx, _) = message.text.char_indices().nth(4096 - 3).unwrap(); // NOTE: safe unwrap, length already confirmed to be bigger
 			let mut m = message.text[..idx].to_string();
 			m.push_str("...");
@@ -73,8 +81,10 @@ impl Telegram {
 		Ok(())
 	}
 
+	#[tracing::instrument]
 	async fn send_text(&self, message: String) -> Result<TelMessage> {
 		loop {
+			tracing::info!("Sending text message");
 			match self
 				.bot
 				.send_message(self.chat_id.clone(), &message)
@@ -85,6 +95,7 @@ impl Telegram {
 			{
 				Ok(message) => return Ok(message),
 				Err(RequestError::RetryAfter(retry_after)) => {
+					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
 				Err(e) => return Err(Error::Send { why: e.to_string() }),
@@ -92,8 +103,10 @@ impl Telegram {
 		}
 	}
 
+	#[tracing::instrument]
 	async fn send_media(&self, media: Vec<InputMedia>) -> Result<Vec<TelMessage>> {
 		loop {
+			tracing::info!("Sending media message");
 			match self
 				.bot
 				.send_media_group(self.chat_id.clone(), media.clone())
@@ -102,6 +115,7 @@ impl Telegram {
 			{
 				Ok(messages) => return Ok(messages),
 				Err(RequestError::RetryAfter(retry_after)) => {
+					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
 				Err(e) => return Err(Error::Send { why: e.to_string() }),
@@ -115,5 +129,32 @@ impl std::fmt::Debug for Telegram {
 		f.debug_struct("Telegram")
 			.field("chat_id", &self.chat_id)
 			.finish_non_exhaustive()
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use std::env::var;
+	use super::*;
+
+	#[tokio::test]
+	async fn send_text_too_long() {
+		let tg = Telegram::new(Bot::new(var("BOT_TOKEN").unwrap()), var("DEBUG_CHAT_ID").unwrap());
+		let mut long_text = String::with_capacity(8392);
+
+		for _ in 0..4096 {
+			long_text.push('0');
+		}
+
+		for _ in 0..4096 {
+			long_text.push('1');
+		}
+
+		for _ in 0..200 {
+			long_text.push('2');
+		}
+
+		// tg.send_text(too_long_text).await.unwrap();
+		tg.send(Message { text: long_text, media: None }).await.unwrap();
 	}
 }
