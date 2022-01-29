@@ -131,3 +131,30 @@ impl std::fmt::Debug for Telegram {
 			.finish_non_exhaustive()
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use std::env::var;
+	use super::*;
+
+	#[tokio::test]
+	async fn send_text_too_long() {
+		let tg = Telegram::new(Bot::new(var("BOT_TOKEN").unwrap()), var("DEBUG_CHAT_ID").unwrap());
+		let mut long_text = String::with_capacity(8392);
+
+		for _ in 0..4096 {
+			long_text.push('0');
+		}
+
+		for _ in 0..4096 {
+			long_text.push('1');
+		}
+
+		for _ in 0..200 {
+			long_text.push('2');
+		}
+
+		// tg.send_text(too_long_text).await.unwrap();
+		tg.send(Message { text: long_text, media: None }).await.unwrap();
+	}
+}
