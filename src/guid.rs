@@ -10,7 +10,7 @@ pub struct Guid {
 
 impl Guid {
 	pub fn new(name: &str) -> Result<Self> {
-		let path = xdg::BaseDirectories::with_prefix("news-reader")
+		let path = xdg::BaseDirectories::with_prefix("fetcher")
 			.unwrap()
 			.place_data_file(format!("last_read_{}.txt", name))
 			.unwrap(); // FIXME
