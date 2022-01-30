@@ -6,10 +6,8 @@ use toml::{value::Map, Value};
 
 use crate::{
 	source::{email::EmailFilter, Email, Source, Rss, Twitter},
-	telegram::Telegram,
+	sink::{Telegram, Sink},
 };
-
-type Sink = Telegram;
 
 #[derive(Debug)]
 pub struct Config {
@@ -36,7 +34,7 @@ impl Config {
 				.unwrap_or_else(|| panic!("{name} does not contain a table"));
 
 			let chat_id = format!("{}_CHAT_ID", name.to_ascii_uppercase());
-			let sink = Telegram::new(bot.clone(), env(&chat_id));
+			let sink = Sink::Telegram(Telegram::new(bot.clone(), env(&chat_id)));
 			let source = match table
 				.get("type")
 				.unwrap_or_else(|| panic!("{name} doesn't contain type field"))

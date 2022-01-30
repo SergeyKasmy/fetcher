@@ -2,7 +2,7 @@ pub mod config;
 pub mod error;
 pub(crate) mod guid;
 pub mod source;
-pub mod telegram;
+pub mod sink;
 
 use config::Config;
 use error::Error;

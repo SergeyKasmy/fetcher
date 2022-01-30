@@ -1,7 +1,7 @@
 use crate::error::Error;
 use crate::error::Result;
 use crate::guid::Guid;
-use crate::telegram::Message;
+use crate::sink::Message;
 
 use rss::Channel;
 

@@ -1,7 +1,7 @@
 use mailparse::ParsedMail;
 
 use crate::error::{Error, Result};
-use crate::telegram::Message;
+use crate::sink::Message;
 
 const IMAP_PORT: u16 = 993;
 

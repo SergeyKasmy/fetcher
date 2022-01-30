@@ -7,7 +7,7 @@ pub use self::rss::Rss;
 pub use self::twitter::Twitter;
 
 use crate::error::Result;
-use crate::telegram::Message;
+use crate::sink::Message;
 
 #[derive(Debug)]
 pub enum Source {

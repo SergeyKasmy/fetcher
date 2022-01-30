@@ -1,8 +1,8 @@
 use crate::error::Error;
 use crate::error::Result;
 use crate::guid::Guid;
-use crate::telegram::Media;
-use crate::telegram::Message;
+use crate::sink::Media;
+use crate::sink::Message;
 
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
