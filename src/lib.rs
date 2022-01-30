@@ -1,7 +1,7 @@
 pub mod config;
 pub mod error;
 pub(crate) mod guid;
-pub mod providers;
+pub mod source;
 pub mod telegram;
 
 use config::Config;

@@ -5,7 +5,7 @@ use teloxide::Bot;
 use toml::{value::Map, Value};
 
 use crate::{
-	providers::{email::EmailFilter, Email, Provider, Rss, Twitter},
+	source::{email::EmailFilter, Email, Source, Rss, Twitter},
 	telegram::Telegram,
 };
 
@@ -14,20 +14,10 @@ type Sink = Telegram;
 #[derive(Debug)]
 pub struct Config {
 	pub name: String,
-	pub source: Provider,
+	pub source: Source,
 	pub sink: Sink,
 	pub refresh: u64,
 }
-
-/*
-impl FromStr for Vec<Config> {
-	type Err = String;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-
-	}
-}
-*/
 
 fn env(s: &str) -> String {
 	std::env::var(s).unwrap_or_else(|e| panic!("{s} env not found: {e}"))
@@ -76,7 +66,7 @@ impl Config {
 		Ok(confs)
 	}
 
-	fn parse_rss(name: &str, table: &Map<String, Value>) -> Provider {
+	fn parse_rss(name: &str, table: &Map<String, Value>) -> Source {
 		Rss::new(
 			name.to_string(),
 			table
@@ -89,7 +79,7 @@ impl Config {
 		.into()
 	}
 
-	async fn parse_twitter(name: &str, table: &Map<String, Value>) -> Provider {
+	async fn parse_twitter(name: &str, table: &Map<String, Value>) -> Source {
 		let filter = table
 			.get("filter")
 			.unwrap_or_else(|| panic!("{name} doesn't contain filter field"))
@@ -126,7 +116,7 @@ impl Config {
 		.into()
 	}
 
-	fn parse_email(name: &str, table: &Map<String, Value>) -> Provider {
+	fn parse_email(name: &str, table: &Map<String, Value>) -> Source {
 		let filter = {
 			let filter_table = table
 				.get("filter")
