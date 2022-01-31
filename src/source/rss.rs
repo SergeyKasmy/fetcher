@@ -3,8 +3,7 @@ use rss::Channel;
 use crate::error::Error;
 use crate::error::Result;
 use crate::sink::Message;
-use crate::settings::{save_last_read_id, last_read_id};
-
+use crate::source::Responce;
 
 #[derive(Debug)]
 pub struct Rss {
@@ -25,7 +24,7 @@ impl Rss {
 	}
 
 	#[tracing::instrument]
-	pub async fn get(&mut self) -> Result<Vec<Message>> {
+	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
 		let content = self
 			.http_client
 			.get(&self.rss)
@@ -47,7 +46,6 @@ impl Rss {
 		})?;
 		tracing::debug!("Got {amount} RSS articles", amount = feed.items.len());
 
-		let mut last_read_id = last_read_id(&self.name)?;
 		if let Some(id) = &last_read_id {
 			if let Some(id_pos) = feed
 				.items
@@ -70,14 +68,9 @@ impl Rss {
 					x.description.as_deref().unwrap()
 				); // NOTE: these fields are requred
 
-				last_read_id = Some(x.guid.as_ref().unwrap().value.clone()); // NOTE: crash if the feed item doesn't have a guid. That should never happen though
-				Message { text, media: None }
+				Responce { id: Some(x.guid.as_ref().unwrap().value.clone()), msg: Message { text, media: None }}
 			})
 			.collect();
-
-		if let Some(id) = last_read_id {
-			save_last_read_id(&self.name, id)?;
-		}
 
 		Ok(messages)
 	}
