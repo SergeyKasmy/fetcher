@@ -1,8 +1,8 @@
 pub mod config;
 pub mod error;
 pub(crate) mod guid;
-pub mod providers;
-pub mod telegram;
+pub mod source;
+pub mod sink;
 
 use config::Config;
 use error::Error;
@@ -29,9 +29,8 @@ pub async fn run(configs: Vec<Config>) -> Result<()> {
 				}
 				select! {
 					_ = async {
-						const SLEEP_TIME: u64 = 60 * 30;
-						tracing::info!("Sleeping {name} for {SLEEP_TIME}s", name = c.name);
-						sleep(Duration::from_secs(SLEEP_TIME)).await;
+						tracing::info!("Refreshing {name} in {refresh}m", name = c.name, refresh = c.refresh);
+						sleep(Duration::from_secs(c.refresh * 60 /* seconds in a minute */)).await;
 					} => (),
 					_ = rx.recv() => break,
 				}

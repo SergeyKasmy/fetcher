@@ -7,39 +7,39 @@ pub use self::rss::Rss;
 pub use self::twitter::Twitter;
 
 use crate::error::Result;
-use crate::telegram::Message;
+use crate::sink::Message;
 
 #[derive(Debug)]
-pub enum Provider {
+pub enum Source {
 	Email(Email),
 	Rss(Rss),
 	Twitter(Twitter),
 }
 
-impl Provider {
+impl Source {
 	pub async fn get(&mut self) -> Result<Vec<Message>> {
 		match self {
-			Provider::Email(x) => x.get(),
-			Provider::Rss(x) => x.get().await,
-			Provider::Twitter(x) => x.get().await,
+			Self::Email(x) => x.get(),
+			Self::Rss(x) => x.get().await,
+			Self::Twitter(x) => x.get().await,
 		}
 	}
 }
 
-impl From<Email> for Provider {
+impl From<Email> for Source {
 	fn from(e: Email) -> Self {
-		Provider::Email(e)
+		Self::Email(e)
 	}
 }
 
-impl From<Rss> for Provider {
+impl From<Rss> for Source {
 	fn from(r: Rss) -> Self {
-		Provider::Rss(r)
+		Self::Rss(r)
 	}
 }
 
-impl From<Twitter> for Provider {
+impl From<Twitter> for Source {
 	fn from(t: Twitter) -> Self {
-		Provider::Twitter(t)
+		Self::Twitter(t)
 	}
 }

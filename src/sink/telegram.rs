@@ -11,27 +11,12 @@ use teloxide::{
 };
 
 use crate::error::{Error, Result};
-
-pub enum Media {
-	Photo(String),
-	Video(String),
-}
-
-pub struct Message {
-	pub text: String,
-	pub media: Option<Vec<Media>>,
-}
+use crate::sink::Message;
+use crate::sink::Media;
 
 pub struct Telegram {
 	bot: Throttle<Bot>,
 	chat_id: ChatId,
-}
-
-
-impl std::fmt::Debug for Message {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Message").field("text", &self.text).field("media.is_some()", &self.media.is_some()).finish()
-    }
 }
 
 impl Telegram {
