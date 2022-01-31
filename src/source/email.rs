@@ -3,20 +3,14 @@ use mailparse::ParsedMail;
 use crate::error::{Error, Result};
 use crate::sink::Message;
 
+
 const IMAP_PORT: u16 = 993;
 
-/*
 #[derive(Debug)]
-pub enum EmailFilter {
-	Subject(&'static str),
-	Sender(&'static str),
-}
-*/
-
-#[derive(Debug)]
-pub struct EmailFilter {
+pub struct EmailFilters {
 	pub sender: Option<String>,
-	pub subject: Option<Vec<String>>,
+	pub subjects: Option<Vec<String>>,
+	pub exclude_subjects: Option<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -25,7 +19,7 @@ pub struct Email {
 	imap: String,
 	email: String,
 	password: String,
-	filter: EmailFilter,
+	filters: EmailFilters,
 	remove: bool,
 	footer: Option<String>, // NOTE: remove everything after this text, including itself, from the message
 }
@@ -37,7 +31,7 @@ impl Email {
 		imap: String,
 		email: String,
 		password: String,
-		filter: EmailFilter,
+		filters: EmailFilters,
 		remove: bool,
 		footer: Option<String>,
 	) -> Self {
@@ -47,7 +41,7 @@ impl Email {
 			imap,
 			email,
 			password,
-			filter,
+			filters,
 			remove,
 			footer,
 		}
@@ -82,13 +76,19 @@ impl Email {
 		let search_string = {
 			let mut tmp = "UNSEEN ".to_string();
 
-			if let Some(sender) = &self.filter.sender {
-				tmp.push_str(&format!(r#"FROM "{}" "#, sender));
+			if let Some(sender) = &self.filters.sender {
+				tmp.push_str(&format!(r#"FROM "{sender}" "#));
 			}
 
-			if let Some(subject) = &self.filter.subject {
-				for s in subject {
-					tmp.push_str(&format!(r#"SUBJECT "{}" "#, s));
+			if let Some(subjects) = &self.filters.subjects {
+				for s in subjects {
+					tmp.push_str(&format!(r#"SUBJECT "{s}" "#));
+				}
+			}
+
+			if let Some(ex_subjects) = &self.filters.exclude_subjects {
+				for exs in ex_subjects {
+					tmp.push_str(&format!(r#"NOT SUBJECT {exs}"#));
 				}
 			}
 
@@ -180,7 +180,7 @@ impl Email {
 			})?;
 
 			if let Some(remove_after) = remove_after {
-				body.drain(body.find(remove_after).unwrap_or(body.len())..);
+				body.drain(body.find(remove_after).unwrap_or_else(|| body.len())..);
 			}
 
 			// TODO: replace upticks ` with teloxide::utils::html::escape_code
