@@ -34,7 +34,7 @@ impl Twitter {
 			handle,
 			token: bearer_token(&KeyPair::new(api_key, api_key_secret))
 				.await
-				.map_err(|e| Error::Auth {
+				.map_err(|e| Error::SourceAuth {
 					service: "Twitter".to_string(),
 					why: e.to_string(),
 				})?,
@@ -46,9 +46,9 @@ impl Twitter {
 	pub async fn get(&mut self) -> Result<Vec<Message>> {
 		let mut last_read_id = get_last_read_id(&self.name)?;
 		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // FIXME: remove clone
-			.older(last_read_id.parse().ok())
+			.older(last_read_id.as_ref().and_then(|x| x.parse().ok()))
 			.await
-			.map_err(|e| Error::Fetch {
+			.map_err(|e| Error::SourceFetch {
 				service: "Twitter".to_string(),
 				why: e.to_string(),
 			})?;
@@ -69,7 +69,7 @@ impl Twitter {
 					self.pretty_name, tweet.text, self.handle, tweet.id
 				);
 
-				last_read_id = tweet.id.to_string();
+				last_read_id = Some(tweet.id.to_string());
 				Some(Message {
 					text,
 					media: tweet.entities.media.as_ref().and_then(|x| {
@@ -85,7 +85,9 @@ impl Twitter {
 			})
 			.collect::<Vec<Message>>();
 
-		save_last_read_id(&self.name, last_read_id)?;
+		if let Some(id) = last_read_id {
+			save_last_read_id(&self.name, id)?;
+		}
 		Ok(messages)
 	}
 

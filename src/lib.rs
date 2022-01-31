@@ -58,7 +58,7 @@ pub async fn run(configs: Vec<Config>) -> Result<()> {
 		let finished_task = select_all(tasks).await;
 		match finished_task.0.unwrap() {
 			// TODO: rerun the task after an error instead of ignoring it outright
-			Ok(_) | Err(Error::Fetch { .. }) => {
+			Ok(_) | Err(Error::SourceFetch { .. }) => {
 				if !finished_task.2.is_empty() {
 					tasks = finished_task.2;
 				} else {

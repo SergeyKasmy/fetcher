@@ -1,13 +1,15 @@
-use fetcher::config::Config;
-use fetcher::settings;
+use fetcher::{config::Config, settings};
+use anyhow::Result;
+use anyhow::Context;
 
-//TODO: gracefully end execution instead of unwrapping like a monkey
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
 	// tracing_log::LogTracer::init().unwrap();
 
-	let conf = settings::get_config().unwrap();
-	let parsed = Config::parse(&conf).await.unwrap();
-	fetcher::run(parsed).await.unwrap();
+	let conf = settings::get_config().context("unable to get config")?;
+	let parsed = Config::parse(&conf).await.context("unable to parse config")?;
+	fetcher::run(parsed).await?;
+
+	Ok(())
 }
