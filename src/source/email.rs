@@ -58,12 +58,12 @@ impl Email {
 		let client = imap::connect(
 			(self.imap.as_str(), IMAP_PORT),
 			&self.imap,
-			&native_tls::TlsConnector::new().map_err(|e| Error::Get {
+			&native_tls::TlsConnector::new().map_err(|e| Error::Fetch {
 				service: format!("Email: {}", self.name),
 				why: format!("Error initializing TLS: {}", e),
 			})?,
 		)
-		.map_err(|e| Error::Get {
+		.map_err(|e| Error::Fetch {
 			service: format!("Email: {}", self.name),
 			why: format!("Error connecting to IMAP: {}", e),
 		})?;
@@ -74,7 +74,7 @@ impl Email {
 				service: format!("Email: {}", self.name),
 				why: e.to_string(),
 			})?;
-		session.select("INBOX").map_err(|e| Error::Get {
+		session.select("INBOX").map_err(|e| Error::Fetch {
 			service: format!("Email: {}", self.name),
 			why: format!("Couldn't open INBOX: {}", e),
 		})?;
@@ -97,7 +97,7 @@ impl Email {
 
 		let mail_ids = session
 			.uid_search(search_string)
-			.map_err(|e| Error::Get {
+			.map_err(|e| Error::Fetch {
 				service: format!("Email: {}", self.name),
 				why: e.to_string(),
 			})?
@@ -113,7 +113,7 @@ impl Email {
 		// TODO: reverse order
 		let mails = session
 			.uid_fetch(&mail_ids, "BODY[]")
-			.map_err(|e| Error::Get {
+			.map_err(|e| Error::Fetch {
 				service: format!("Email: {}", self.name),
 				why: e.to_string(),
 			})?;
@@ -122,17 +122,17 @@ impl Email {
 		if self.remove {
 			session
 				.uid_store(&mail_ids, "+FLAGS.SILENT (\\Deleted)")
-				.map_err(|e| Error::Get {
+				.map_err(|e| Error::Fetch {
 					service: format!("Email: {}", self.name),
 					why: e.to_string(),
 				})?;
-			session.uid_expunge(&mail_ids).map_err(|e| Error::Get {
+			session.uid_expunge(&mail_ids).map_err(|e| Error::Fetch {
 				service: format!("Email: {}", self.name),
 				why: e.to_string(),
 			})?;
 		}
 
-		session.logout().map_err(|e| Error::Get {
+		session.logout().map_err(|e| Error::Fetch {
 			service: format!("Email: {}", self.name),
 			why: e.to_string(),
 		})?;

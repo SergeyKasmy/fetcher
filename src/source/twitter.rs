@@ -1,8 +1,8 @@
 use crate::error::Error;
 use crate::error::Result;
-use crate::guid::Guid;
 use crate::sink::Media;
 use crate::sink::Message;
+use crate::settings::{get_last_read_id, save_last_read_id};
 
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
@@ -44,11 +44,11 @@ impl Twitter {
 
 	#[tracing::instrument]
 	pub async fn get(&mut self) -> Result<Vec<Message>> {
-		let mut last_read_guid = Guid::new(&self.name)?;
+		let mut last_read_id = get_last_read_id(&self.name)?;
 		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // FIXME: remove clone
-			.older(last_read_guid.guid.parse().ok())
+			.older(last_read_id.parse().ok())
 			.await
-			.map_err(|e| Error::Get {
+			.map_err(|e| Error::Fetch {
 				service: "Twitter".to_string(),
 				why: e.to_string(),
 			})?;
@@ -69,7 +69,7 @@ impl Twitter {
 					self.pretty_name, tweet.text, self.handle, tweet.id
 				);
 
-				last_read_guid.guid = tweet.id.to_string();
+				last_read_id = tweet.id.to_string();
 				Some(Message {
 					text,
 					media: tweet.entities.media.as_ref().and_then(|x| {
@@ -85,8 +85,7 @@ impl Twitter {
 			})
 			.collect::<Vec<Message>>();
 
-		last_read_guid.save()?;
-
+		save_last_read_id(&self.name, last_read_id)?;
 		Ok(messages)
 	}
 

@@ -83,7 +83,7 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => return Err(Error::Send { why: e.to_string() }),
+				Err(e) => return Err(Error::Send(e.to_string())),
 			}
 		}
 	}
@@ -103,7 +103,7 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => return Err(Error::Send { why: e.to_string() }),
+				Err(e) => return Err(Error::Send(e.to_string())),
 			}
 		}
 	}

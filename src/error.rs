@@ -1,27 +1,17 @@
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+	#[error("error getting program data: {0}")]
+	GetData(String),
+	#[error("error saving program data: {0}")]
+	SaveData(String),
 	#[error("{service} authentication error: {why}")]
 	Auth { service: String, why: String },
 	#[error("error getting data from {service}: {why}")]
-	Get { service: String, why: String },
+	Fetch { service: String, why: String },
 	#[error("error parsing data from {service}: {why}")]
 	Parse { service: String, why: String },
-	#[error("error sending data to Telegram: {why}")]
-	r#Send { why: String },
-	#[error("error getting last read item's GUID from disk: {why}")]
-	GuidGet { why: String },
-	#[error("error saving last read item's GUID to disk: {why}")]
-	GuidSave { why: String },
-	//#[error(transparent)]
-	//Save(#[from] std::io::Error),
-	//#[error("error retrieving data from RSS feed {feed}: {why}")]
-	//RssGet { feed: &'static str, why: String },
-	//#[error("error parsing data from RSS feed {feed}: {why}")]
-	//RssParse { feed: &'static str, why: String },
-	//#[error("error retrieving data from Twitter {handle}: {why}")]
-	//Twitter { handle: &'static str, why: String },
-	//#[error("error sending news to Telegram: {0}")]
-	//Telegram(String),
+	#[error("error sending data to Telegram: {0}")]
+	r#Send(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
