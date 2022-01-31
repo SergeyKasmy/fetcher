@@ -5,7 +5,7 @@ use teloxide::Bot;
 use toml::{value::Map, Value};
 
 use crate::{
-	source::{email::EmailFilter, Email, Source, Rss, Twitter},
+	source::{email::EmailFilters, Email, Source, Rss, Twitter},
 	sink::{Telegram, Sink},
 };
 
@@ -115,51 +115,51 @@ impl Config {
 	}
 
 	fn parse_email(name: &str, table: &Map<String, Value>) -> Source {
-		let filter = {
-			let filter_table = table
-				.get("filter")
-				.unwrap_or_else(|| panic!("{name} doesn't contain filter field"))
+		let filters = {
+			let filters_table = table
+				.get("filters")
+				.unwrap_or_else(|| panic!("{name} doesn't contain filters field"))
 				.as_table()
-				.unwrap_or_else(|| panic!("{name}'s filter is not a valid table"));
+				.unwrap_or_else(|| panic!("{name}'s filters is not a valid table"));
 
-			let sender = filter_table
+			let sender = filters_table
 				.get("sender")
 				// TODO: move out to a separate local(?) fn
 				.map(|x| {
 					x.as_str()
 						.unwrap_or_else(|| {
-							panic!("{name}'s filter sender field is not a valid string")
+							panic!("{name}'s filters sender field is not a valid string")
 						})
 						.to_string()
 				});
-			let subjects = filter_table.get("subject").map(|a| {
+			let subjects = filters_table.get("subjects").map(|a| {
 				a.as_array()
-					.unwrap_or_else(|| panic!("{name}'s filter subject is not an valid array"))
+					.unwrap_or_else(|| panic!("{name}'s filters subject is not an valid array"))
 					.iter()
 					.map(|s| {
 						s.as_str()
 							.unwrap_or_else(|| {
-								panic!("{name}'s filter subject is not a valid string")
+								panic!("{name}'s filters subject is not a valid string")
 							})
 							.to_string()
 					})
 					.collect::<Vec<_>>()
 			});
-			let exclude_subjects = filter_table.get("exclude_subject").map(|a| {
+			let exclude_subjects = filters_table.get("exclude_subjects").map(|a| {
 				a.as_array()
-					.unwrap_or_else(|| panic!("{name}'s filter subject is not an valid array"))
+					.unwrap_or_else(|| panic!("{name}'s filters subject is not an valid array"))
 					.iter()
 					.map(|s| {
 						s.as_str()
 							.unwrap_or_else(|| {
-								panic!("{name}'s filter exclude_subject is not a valid string")
+								panic!("{name}'s filters exclude_subject is not a valid string")
 							})
 							.to_string()
 					})
 				.collect::<Vec<_>>()
 			});
 
-			EmailFilter { sender, subjects, exclude_subjects }
+			EmailFilters { sender, subjects, exclude_subjects }
 		};
 
 		Email::new(
@@ -172,7 +172,7 @@ impl Config {
 				.to_string(),
 			env("EMAIL"),
 			env("EMAIL_PASS"),
-			filter,
+			filters,
 			table
 				.get("remove")
 				.unwrap_or_else(|| panic!("{name} doesn't contain remove field"))
