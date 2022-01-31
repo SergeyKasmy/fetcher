@@ -3,7 +3,7 @@ use rss::Channel;
 use crate::error::Error;
 use crate::error::Result;
 use crate::sink::Message;
-use crate::settings::{save_last_read_id, get_last_read_id};
+use crate::settings::{save_last_read_id, last_read_id};
 
 
 #[derive(Debug)]
@@ -47,7 +47,7 @@ impl Rss {
 		})?;
 		tracing::debug!("Got {amount} RSS articles", amount = feed.items.len());
 
-		let mut last_read_id = get_last_read_id(&self.name)?;
+		let mut last_read_id = last_read_id(&self.name)?;
 		if let Some(id) = &last_read_id {
 			if let Some(id_pos) = feed
 				.items

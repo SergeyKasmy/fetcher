@@ -35,7 +35,12 @@ impl Config {
 				field: "table",
 			})?;
 
-			let chat_id = format!("{}_CHAT_ID", name.to_ascii_uppercase());
+			let chat_id = if !cfg!(debug_assertions) {
+				format!("{}_CHAT_ID", name.to_ascii_uppercase())
+			} else {
+				"DEBUG_CHAT_ID".to_string()
+			};
+
 			let sink = Sink::Telegram(Telegram::new(bot.clone(), env(&chat_id)?));
 			let source = match table
 				.get("type")

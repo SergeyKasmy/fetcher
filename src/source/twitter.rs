@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::sink::Media;
 use crate::sink::Message;
-use crate::settings::{get_last_read_id, save_last_read_id};
+use crate::settings::{last_read_id, save_last_read_id};
 
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
@@ -44,7 +44,7 @@ impl Twitter {
 
 	#[tracing::instrument]
 	pub async fn get(&mut self) -> Result<Vec<Message>> {
-		let mut last_read_id = get_last_read_id(&self.name)?;
+		let mut last_read_id = last_read_id(&self.name)?;
 		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // FIXME: remove clone
 			.older(last_read_id.as_ref().and_then(|x| x.parse().ok()))
 			.await
