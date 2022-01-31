@@ -132,12 +132,12 @@ impl Config {
 						})
 						.to_string()
 				});
-			let subject = filter_table.get("subject").map(|x| {
-				x.as_array()
+			let subjects = filter_table.get("subject").map(|a| {
+				a.as_array()
 					.unwrap_or_else(|| panic!("{name}'s filter subject is not an valid array"))
 					.iter()
-					.map(|x| {
-						x.as_str()
+					.map(|s| {
+						s.as_str()
 							.unwrap_or_else(|| {
 								panic!("{name}'s filter subject is not a valid string")
 							})
@@ -145,8 +145,21 @@ impl Config {
 					})
 					.collect::<Vec<_>>()
 			});
+			let exclude_subjects = filter_table.get("exclude_subject").map(|a| {
+				a.as_array()
+					.unwrap_or_else(|| panic!("{name}'s filter subject is not an valid array"))
+					.iter()
+					.map(|s| {
+						s.as_str()
+							.unwrap_or_else(|| {
+								panic!("{name}'s filter exclude_subject is not a valid string")
+							})
+							.to_string()
+					})
+				.collect::<Vec<_>>()
+			});
 
-			EmailFilter { sender, subject }
+			EmailFilter { sender, subjects, exclude_subjects }
 		};
 
 		Email::new(

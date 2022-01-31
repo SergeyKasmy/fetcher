@@ -3,20 +3,14 @@ use mailparse::ParsedMail;
 use crate::error::{Error, Result};
 use crate::sink::Message;
 
-const IMAP_PORT: u16 = 993;
 
-/*
-#[derive(Debug)]
-pub enum EmailFilter {
-	Subject(&'static str),
-	Sender(&'static str),
-}
-*/
+const IMAP_PORT: u16 = 993;
 
 #[derive(Debug)]
 pub struct EmailFilter {
 	pub sender: Option<String>,
-	pub subject: Option<Vec<String>>,
+	pub subjects: Option<Vec<String>>,
+	pub exclude_subjects: Option<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -83,12 +77,18 @@ impl Email {
 			let mut tmp = "UNSEEN ".to_string();
 
 			if let Some(sender) = &self.filter.sender {
-				tmp.push_str(&format!(r#"FROM "{}" "#, sender));
+				tmp.push_str(&format!(r#"FROM "{sender}" "#));
 			}
 
-			if let Some(subject) = &self.filter.subject {
-				for s in subject {
-					tmp.push_str(&format!(r#"SUBJECT "{}" "#, s));
+			if let Some(subjects) = &self.filter.subjects {
+				for s in subjects {
+					tmp.push_str(&format!(r#"SUBJECT "{s}" "#));
+				}
+			}
+
+			if let Some(ex_subjects) = &self.filter.exclude_subjects {
+				for exs in ex_subjects {
+					tmp.push_str(&format!(r#"NOT SUBJECT {exs}"#));
 				}
 			}
 
