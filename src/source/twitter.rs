@@ -9,7 +9,10 @@ use crate::source::Responce;
 
 #[derive(Debug)]
 pub struct Twitter {
+	// FIXME: why is it even here?
+	#[allow(dead_code)]
 	name: String,
+
 	pretty_name: String,
 	handle: String,
 	token: Token,

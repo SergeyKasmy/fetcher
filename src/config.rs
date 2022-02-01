@@ -247,24 +247,45 @@ impl Config {
 			name.to_string(),
 			table
 				.get("imap")
-				.ok_or(Error::ConfigMissingField { name: name.to_string(), field: "imap" })?
+				.ok_or(Error::ConfigMissingField {
+					name: name.to_string(),
+					field: "imap",
+				})?
 				.as_str()
-				.ok_or(Error::ConfigInvalidFieldType { name: name.to_string(), field: "imap", expected_type: "string" })?
+				.ok_or(Error::ConfigInvalidFieldType {
+					name: name.to_string(),
+					field: "imap",
+					expected_type: "string",
+				})?
 				.to_string(),
 			env("EMAIL")?,
 			env("EMAIL_PASS")?,
 			filters,
 			table
 				.get("remove")
-				.ok_or(Error::ConfigMissingField { name: name.to_string(), field: "remove" })?
+				.ok_or(Error::ConfigMissingField {
+					name: name.to_string(),
+					field: "remove",
+				})?
 				.as_bool()
-				.ok_or(Error::ConfigInvalidFieldType { name: name.to_string(), field: "remove", expected_type: "bool" })?,
+				.ok_or(Error::ConfigInvalidFieldType {
+					name: name.to_string(),
+					field: "remove",
+					expected_type: "bool",
+				})?,
 			Some(
 				table
 					.get("footer")
-					.ok_or(Error::ConfigMissingField { name: name.to_string(), field: "footer" })?
+					.ok_or(Error::ConfigMissingField {
+						name: name.to_string(),
+						field: "footer",
+					})?
 					.as_str()
-					.ok_or(Error::ConfigInvalidFieldType { name: name.to_string(), field: "footer", expected_type: "string" })?
+					.ok_or(Error::ConfigInvalidFieldType {
+						name: name.to_string(),
+						field: "footer",
+						expected_type: "string",
+					})?
 					.to_string(),
 			),
 		)

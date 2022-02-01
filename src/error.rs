@@ -13,7 +13,11 @@ pub enum Error {
 	#[error("{name} is missing {field} field")]
 	ConfigMissingField { name: String, field: &'static str },
 	#[error("{name}'s {field} field is not a valid {expected_type}")]
-	ConfigInvalidFieldType { name: String, field: &'static str, expected_type: &'static str },
+	ConfigInvalidFieldType {
+		name: String,
+		field: &'static str,
+		expected_type: &'static str,
+	},
 	#[error("{service} authentication error: {why}")]
 	SourceAuth { service: String, why: String },
 	#[error("can't fetch data from {service}: {why}")]

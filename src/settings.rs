@@ -21,13 +21,13 @@ pub fn get_config() -> Result<String> {
 
 fn last_read_id_path(name: &str) -> Result<PathBuf> {
 	Ok(if !cfg!(debug_assertions) {
-			xdg::BaseDirectories::with_profile(PREFIX, LAST_READ_DATA_DIR)
+		xdg::BaseDirectories::with_profile(PREFIX, LAST_READ_DATA_DIR)
 			.map_err(|e| Error::GetData(e.to_string()))?
 			.place_data_file(name)
 			.map_err(|e| Error::GetData(e.to_string()))?
-		} else {
-			PathBuf::from(format!("debug_data/last-read-id-{name}"))
-		})
+	} else {
+		PathBuf::from(format!("debug_data/last-read-id-{name}"))
+	})
 }
 
 pub fn last_read_id(name: &str) -> Result<Option<String>> {

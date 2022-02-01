@@ -11,8 +11,8 @@ use teloxide::{
 };
 
 use crate::error::{Error, Result};
-use crate::sink::Message;
 use crate::sink::Media;
+use crate::sink::Message;
 
 pub struct Telegram {
 	bot: Throttle<Bot>,
@@ -83,7 +83,12 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => return Err(Error::SinkSend { where_to: "Telegram".to_string(), why: e.to_string() }),
+				Err(e) => {
+					return Err(Error::SinkSend {
+						where_to: "Telegram".to_string(),
+						why: e.to_string(),
+					})
+				}
 			}
 		}
 	}
@@ -103,7 +108,12 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => return Err(Error::SinkSend { where_to: "Telegram".to_string(), why: e.to_string() }),
+				Err(e) => {
+					return Err(Error::SinkSend {
+						where_to: "Telegram".to_string(),
+						why: e.to_string(),
+					})
+				}
 			}
 		}
 	}
@@ -119,12 +129,15 @@ impl std::fmt::Debug for Telegram {
 
 #[cfg(test)]
 mod tests {
-	use std::env::var;
 	use super::*;
+	use std::env::var;
 
 	#[tokio::test]
 	async fn send_text_too_long() {
-		let tg = Telegram::new(Bot::new(var("BOT_TOKEN").unwrap()), var("DEBUG_CHAT_ID").unwrap());
+		let tg = Telegram::new(
+			Bot::new(var("BOT_TOKEN").unwrap()),
+			var("DEBUG_CHAT_ID").unwrap(),
+		);
 		let mut long_text = String::with_capacity(8392);
 
 		for _ in 0..4096 {
@@ -140,6 +153,11 @@ mod tests {
 		}
 
 		// tg.send_text(too_long_text).await.unwrap();
-		tg.send(Message { text: long_text, media: None }).await.unwrap();
+		tg.send(Message {
+			text: long_text,
+			media: None,
+		})
+		.await
+		.unwrap();
 	}
 }

@@ -68,7 +68,10 @@ impl Rss {
 					x.description.as_deref().unwrap()
 				); // NOTE: these fields are requred
 
-				Responce { id: Some(x.guid.as_ref().unwrap().value.clone()), msg: Message { text, media: None }}
+				Responce {
+					id: Some(x.guid.as_ref().unwrap().value.clone()),
+					msg: Message { text, media: None },
+				}
 			})
 			.collect();
 

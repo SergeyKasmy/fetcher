@@ -118,7 +118,8 @@ impl Email {
 				why: e.to_string(),
 			})?;
 
-		// TODO: don't archive if there were any errors while sending
+		// TODO: handle sent messages separately
+		// mb a callback with email UID after successful sending?
 		if self.remove {
 			session
 				.uid_store(&mail_ids, "+FLAGS.SILENT (\\Deleted)")

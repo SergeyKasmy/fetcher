@@ -4,16 +4,15 @@ pub mod settings;
 pub mod sink;
 pub mod source;
 
-
 // TODO: mb using anyhow in lib code isn't a good idea?
-use anyhow::Result;
 use anyhow::Context;
-use futures::StreamExt;
+use anyhow::Result;
 use futures::future::join_all;
+use futures::StreamExt;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::select;
 use tokio::sync::watch;
@@ -24,6 +23,8 @@ use crate::error::Error;
 use crate::settings::last_read_id;
 use crate::settings::save_last_read_id;
 
+// TODO: more tests
+// TODO: better tracing spans, don't rely just on that macro
 #[tracing::instrument]
 pub async fn run(configs: Vec<Config>) -> Result<()> {
 	let (shutdown_tx, shutdown_rx) = watch::channel(false);
@@ -35,15 +36,23 @@ pub async fn run(configs: Vec<Config>) -> Result<()> {
 	for s in TERM_SIGNALS {
 		use signal_hook::flag;
 
-		flag::register_conditional_shutdown(*s, 1 /* exit status */, Arc::clone(&sig_term_now)).context("Error registering signal handler")?;
-		flag::register(*s, Arc::clone(&sig_term_now)).context("Error registering signal handler")?;
+		flag::register_conditional_shutdown(
+			*s,
+			1, /* exit status */
+			Arc::clone(&sig_term_now),
+		)
+		.context("Error registering signal handler")?;
+		flag::register(*s, Arc::clone(&sig_term_now))
+			.context("Error registering signal handler")?;
 	}
 
 	let sig_task = tokio::spawn(async move {
 		let mut sig = sig.fuse();
 
 		while sig.next().await.is_some() {
-			shutdown_tx.send(true).context("Error broadcasting signal to tasks")?;
+			shutdown_tx
+				.send(true)
+				.context("Error broadcasting signal to tasks")?;
 		}
 
 		Ok::<(), anyhow::Error>(())
@@ -85,7 +94,9 @@ pub async fn run(configs: Vec<Config>) -> Result<()> {
 	// FIXME: handle non critical errors, e.g. SourceFetch error
 	join_all(tasks).await;
 
-	sig_handle.close();	// TODO: figure out wtf this is and why
-	sig_task.await.context("Error shutting down of signal handler")??;
+	sig_handle.close(); // TODO: figure out wtf this is and why
+	sig_task
+		.await
+		.context("Error shutting down of signal handler")??;
 	Ok(())
 }
