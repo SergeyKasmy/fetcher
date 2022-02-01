@@ -6,8 +6,14 @@ pub use self::email::Email;
 pub use self::rss::Rss;
 pub use self::twitter::Twitter;
 
+
 use crate::error::Result;
 use crate::sink::Message;
+
+pub struct Responce {
+	pub id: Option<String>,
+	pub msg: Message,
+}
 
 #[derive(Debug)]
 pub enum Source {
@@ -17,11 +23,11 @@ pub enum Source {
 }
 
 impl Source {
-	pub async fn get(&mut self) -> Result<Vec<Message>> {
+	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
 		match self {
 			Self::Email(x) => x.get(),
-			Self::Rss(x) => x.get().await,
-			Self::Twitter(x) => x.get().await,
+			Self::Rss(x) => x.get(last_read_id).await,
+			Self::Twitter(x) => x.get(last_read_id).await,
 		}
 	}
 }

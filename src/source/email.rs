@@ -2,7 +2,7 @@ use mailparse::ParsedMail;
 
 use crate::error::{Error, Result};
 use crate::sink::Message;
-
+use crate::source::Responce;
 
 const IMAP_PORT: u16 = 993;
 
@@ -48,7 +48,7 @@ impl Email {
 	}
 
 	#[tracing::instrument]
-	pub fn get(&mut self) -> Result<Vec<Message>> {
+	pub fn get(&mut self) -> Result<Vec<Responce>> {
 		let client = imap::connect(
 			(self.imap.as_str(), IMAP_PORT),
 			&self.imap,
@@ -126,10 +126,12 @@ impl Email {
 					service: format!("Email: {}", self.name),
 					why: e.to_string(),
 				})?;
-			session.uid_expunge(&mail_ids).map_err(|e| Error::SourceFetch {
-				service: format!("Email: {}", self.name),
-				why: e.to_string(),
-			})?;
+			session
+				.uid_expunge(&mail_ids)
+				.map_err(|e| Error::SourceFetch {
+					service: format!("Email: {}", self.name),
+					why: e.to_string(),
+				})?;
 		}
 
 		session.logout().map_err(|e| Error::SourceFetch {
@@ -143,16 +145,20 @@ impl Email {
 			.into_iter()
 			.filter(|x| x.body().is_some()) // TODO: properly handle error cases and don't just filter them out
 			.map(|x| {
-				Self::parse(
-					mailparse::parse_mail(x.body().unwrap()) // NOTE: safe unwrap because we just filtered out None bodies before
-						.map_err(|e| Error::SourceParse {
-							service: format!("Email: {}", self.name),
-							why: e.to_string(),
+				Ok(Responce {
+					id: None,
+					msg: Self::parse(
+						mailparse::parse_mail(x.body().unwrap()).map_err(|e| {
+							Error::SourceParse {
+								service: format!("Email: {}", self.name),
+								why: e.to_string(),
+							}
 						})?,
-					self.footer.as_deref(),
-				)
+						self.footer.as_deref(),
+					)?,
+				})
 			})
-			.collect::<Result<Vec<Message>>>()
+			.collect::<Result<Vec<Responce>>>()
 	}
 
 	fn parse(mail: ParsedMail, remove_after: Option<&str>) -> Result<Message> {

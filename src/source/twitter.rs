@@ -1,11 +1,11 @@
+use egg_mode::entities::MediaType;
+use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
+
 use crate::error::Error;
 use crate::error::Result;
 use crate::sink::Media;
 use crate::sink::Message;
-use crate::settings::{last_read_id, save_last_read_id};
-
-use egg_mode::entities::MediaType;
-use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
+use crate::source::Responce;
 
 #[derive(Debug)]
 pub struct Twitter {
@@ -43,8 +43,7 @@ impl Twitter {
 	}
 
 	#[tracing::instrument]
-	pub async fn get(&mut self) -> Result<Vec<Message>> {
-		let mut last_read_id = last_read_id(&self.name)?;
+	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
 		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // FIXME: remove clone
 			.older(last_read_id.as_ref().and_then(|x| x.parse().ok()))
 			.await
@@ -69,25 +68,24 @@ impl Twitter {
 					self.pretty_name, tweet.text, self.handle, tweet.id
 				);
 
-				last_read_id = Some(tweet.id.to_string());
-				Some(Message {
-					text,
-					media: tweet.entities.media.as_ref().and_then(|x| {
-						x.iter()
-							.map(|x| match x.media_type {
-								MediaType::Photo => Some(Media::Photo(x.media_url.clone())),
-								MediaType::Video => Some(Media::Video(x.media_url.clone())),
-								MediaType::Gif => None,
-							})
-							.collect::<Option<Vec<Media>>>()
-					}),
+				Some(Responce {
+					id: Some(tweet.id.to_string()),
+					msg: Message {
+						text,
+						media: tweet.entities.media.as_ref().and_then(|x| {
+							x.iter()
+								.map(|x| match x.media_type {
+									MediaType::Photo => Some(Media::Photo(x.media_url.clone())),
+									MediaType::Video => Some(Media::Video(x.media_url.clone())),
+									MediaType::Gif => None,
+								})
+								.collect::<Option<Vec<Media>>>()
+						}),
+					},
 				})
 			})
-			.collect::<Vec<Message>>();
+			.collect::<Vec<_>>();
 
-		if let Some(id) = last_read_id {
-			save_last_read_id(&self.name, id)?;
-		}
 		Ok(messages)
 	}
 
