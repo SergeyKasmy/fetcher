@@ -5,10 +5,15 @@ pub mod sink;
 pub mod source;
 
 
+// TODO: mb using anyhow in lib code isn't a good idea?
+use anyhow::Result;
+use anyhow::Context;
 use futures::StreamExt;
 use futures::future::join_all;
-use signal_hook::consts as SignalTypes;
+use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 use tokio::select;
 use tokio::sync::watch;
@@ -16,7 +21,6 @@ use tokio::time::sleep;
 
 use crate::config::Config;
 use crate::error::Error;
-use crate::error::Result;
 use crate::settings::last_read_id;
 use crate::settings::save_last_read_id;
 
@@ -24,16 +28,25 @@ use crate::settings::save_last_read_id;
 pub async fn run(configs: Vec<Config>) -> Result<()> {
 	let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
-	tokio::spawn(async move {
-		let signals = Signals::new(&[SignalTypes::SIGINT, SignalTypes::SIGTERM]).unwrap();
-		let signals_handle = signals.handle();
+	let sig = Signals::new(TERM_SIGNALS).context("Error registering signals")?;
+	let sig_handle = sig.handle();
 
-		let mut signals = signals.fuse();
+	let sig_term_now = Arc::new(AtomicBool::new(false));
+	for s in TERM_SIGNALS {
+		use signal_hook::flag;
 
-		while signals.next().await.is_some() {
-			shutdown_tx.send(true).unwrap();
-			signals_handle.close();	// TODO: figure out wtf this is and why
+		flag::register_conditional_shutdown(*s, 1 /* exit status */, Arc::clone(&sig_term_now)).context("Error registering signal handler")?;
+		flag::register(*s, Arc::clone(&sig_term_now)).context("Error registering signal handler")?;
+	}
+
+	let sig_task = tokio::spawn(async move {
+		let mut sig = sig.fuse();
+
+		while sig.next().await.is_some() {
+			shutdown_tx.send(true).context("Error broadcasting signal to tasks")?;
 		}
+
+		Ok::<(), anyhow::Error>(())
 	});
 
 	let mut tasks = Vec::new();
@@ -69,7 +82,10 @@ pub async fn run(configs: Vec<Config>) -> Result<()> {
 		tasks.push(task);
 	}
 
-	// TODO: handle non critical errors, e.g. SourceFetch error
+	// FIXME: handle non critical errors, e.g. SourceFetch error
 	join_all(tasks).await;
+
+	sig_handle.close();	// TODO: figure out wtf this is and why
+	sig_task.await.context("Error shutting down of signal handler")??;
 	Ok(())
 }
