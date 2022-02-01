@@ -1,15 +1,18 @@
-use crate::error::Error;
-use crate::error::Result;
-use crate::guid::Guid;
-use crate::sink::Media;
-use crate::sink::Message;
-
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 
+use crate::error::Error;
+use crate::error::Result;
+use crate::sink::Media;
+use crate::sink::Message;
+use crate::source::Responce;
+
 #[derive(Debug)]
 pub struct Twitter {
+	// FIXME: why is it even here?
+	#[allow(dead_code)]
 	name: String,
+
 	pretty_name: String,
 	handle: String,
 	token: Token,
@@ -34,7 +37,7 @@ impl Twitter {
 			handle,
 			token: bearer_token(&KeyPair::new(api_key, api_key_secret))
 				.await
-				.map_err(|e| Error::Auth {
+				.map_err(|e| Error::SourceAuth {
 					service: "Twitter".to_string(),
 					why: e.to_string(),
 				})?,
@@ -43,12 +46,11 @@ impl Twitter {
 	}
 
 	#[tracing::instrument]
-	pub async fn get(&mut self) -> Result<Vec<Message>> {
-		let mut last_read_guid = Guid::new(&self.name)?;
+	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
 		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // FIXME: remove clone
-			.older(last_read_guid.guid.parse().ok())
+			.older(last_read_id.as_ref().and_then(|x| x.parse().ok()))
 			.await
-			.map_err(|e| Error::Get {
+			.map_err(|e| Error::SourceFetch {
 				service: "Twitter".to_string(),
 				why: e.to_string(),
 			})?;
@@ -69,23 +71,23 @@ impl Twitter {
 					self.pretty_name, tweet.text, self.handle, tweet.id
 				);
 
-				last_read_guid.guid = tweet.id.to_string();
-				Some(Message {
-					text,
-					media: tweet.entities.media.as_ref().and_then(|x| {
-						x.iter()
-							.map(|x| match x.media_type {
-								MediaType::Photo => Some(Media::Photo(x.media_url.clone())),
-								MediaType::Video => Some(Media::Video(x.media_url.clone())),
-								MediaType::Gif => None,
-							})
-							.collect::<Option<Vec<Media>>>()
-					}),
+				Some(Responce {
+					id: Some(tweet.id.to_string()),
+					msg: Message {
+						text,
+						media: tweet.entities.media.as_ref().and_then(|x| {
+							x.iter()
+								.map(|x| match x.media_type {
+									MediaType::Photo => Some(Media::Photo(x.media_url.clone())),
+									MediaType::Video => Some(Media::Video(x.media_url.clone())),
+									MediaType::Gif => None,
+								})
+								.collect::<Option<Vec<Media>>>()
+						}),
+					},
 				})
 			})
-			.collect::<Vec<Message>>();
-
-		last_read_guid.save()?;
+			.collect::<Vec<_>>();
 
 		Ok(messages)
 	}

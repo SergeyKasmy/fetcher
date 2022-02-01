@@ -1,7 +1,6 @@
 .gdb_history
 /Cargo.lock
+/debug_data
 /target
 /tests
-config.toml
 env.fish
-last_read_guid/

@@ -2,21 +2,15 @@ use mailparse::ParsedMail;
 
 use crate::error::{Error, Result};
 use crate::sink::Message;
+use crate::source::Responce;
 
 const IMAP_PORT: u16 = 993;
 
-/*
 #[derive(Debug)]
-pub enum EmailFilter {
-	Subject(&'static str),
-	Sender(&'static str),
-}
-*/
-
-#[derive(Debug)]
-pub struct EmailFilter {
+pub struct EmailFilters {
 	pub sender: Option<String>,
-	pub subject: Option<Vec<String>>,
+	pub subjects: Option<Vec<String>>,
+	pub exclude_subjects: Option<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -25,7 +19,7 @@ pub struct Email {
 	imap: String,
 	email: String,
 	password: String,
-	filter: EmailFilter,
+	filters: EmailFilters,
 	remove: bool,
 	footer: Option<String>, // NOTE: remove everything after this text, including itself, from the message
 }
@@ -37,7 +31,7 @@ impl Email {
 		imap: String,
 		email: String,
 		password: String,
-		filter: EmailFilter,
+		filters: EmailFilters,
 		remove: bool,
 		footer: Option<String>,
 	) -> Self {
@@ -47,34 +41,34 @@ impl Email {
 			imap,
 			email,
 			password,
-			filter,
+			filters,
 			remove,
 			footer,
 		}
 	}
 
 	#[tracing::instrument]
-	pub fn get(&mut self) -> Result<Vec<Message>> {
+	pub fn get(&mut self) -> Result<Vec<Responce>> {
 		let client = imap::connect(
 			(self.imap.as_str(), IMAP_PORT),
 			&self.imap,
-			&native_tls::TlsConnector::new().map_err(|e| Error::Get {
+			&native_tls::TlsConnector::new().map_err(|e| Error::SourceFetch {
 				service: format!("Email: {}", self.name),
 				why: format!("Error initializing TLS: {}", e),
 			})?,
 		)
-		.map_err(|e| Error::Get {
+		.map_err(|e| Error::SourceFetch {
 			service: format!("Email: {}", self.name),
 			why: format!("Error connecting to IMAP: {}", e),
 		})?;
 
 		let mut session = client
 			.login(&self.email, &self.password)
-			.map_err(|(e, _)| Error::Auth {
+			.map_err(|(e, _)| Error::SourceAuth {
 				service: format!("Email: {}", self.name),
 				why: e.to_string(),
 			})?;
-		session.select("INBOX").map_err(|e| Error::Get {
+		session.select("INBOX").map_err(|e| Error::SourceFetch {
 			service: format!("Email: {}", self.name),
 			why: format!("Couldn't open INBOX: {}", e),
 		})?;
@@ -82,13 +76,19 @@ impl Email {
 		let search_string = {
 			let mut tmp = "UNSEEN ".to_string();
 
-			if let Some(sender) = &self.filter.sender {
-				tmp.push_str(&format!(r#"FROM "{}" "#, sender));
+			if let Some(sender) = &self.filters.sender {
+				tmp.push_str(&format!(r#"FROM "{sender}" "#));
 			}
 
-			if let Some(subject) = &self.filter.subject {
-				for s in subject {
-					tmp.push_str(&format!(r#"SUBJECT "{}" "#, s));
+			if let Some(subjects) = &self.filters.subjects {
+				for s in subjects {
+					tmp.push_str(&format!(r#"SUBJECT "{s}" "#));
+				}
+			}
+
+			if let Some(ex_subjects) = &self.filters.exclude_subjects {
+				for exs in ex_subjects {
+					tmp.push_str(&format!(r#"NOT SUBJECT {exs}"#));
 				}
 			}
 
@@ -97,7 +97,7 @@ impl Email {
 
 		let mail_ids = session
 			.uid_search(search_string)
-			.map_err(|e| Error::Get {
+			.map_err(|e| Error::SourceFetch {
 				service: format!("Email: {}", self.name),
 				why: e.to_string(),
 			})?
@@ -113,26 +113,29 @@ impl Email {
 		// TODO: reverse order
 		let mails = session
 			.uid_fetch(&mail_ids, "BODY[]")
-			.map_err(|e| Error::Get {
+			.map_err(|e| Error::SourceFetch {
 				service: format!("Email: {}", self.name),
 				why: e.to_string(),
 			})?;
 
-		// TODO: don't archive if there were any errors while sending
+		// TODO: handle sent messages separately
+		// mb a callback with email UID after successful sending?
 		if self.remove {
 			session
 				.uid_store(&mail_ids, "+FLAGS.SILENT (\\Deleted)")
-				.map_err(|e| Error::Get {
+				.map_err(|e| Error::SourceFetch {
 					service: format!("Email: {}", self.name),
 					why: e.to_string(),
 				})?;
-			session.uid_expunge(&mail_ids).map_err(|e| Error::Get {
-				service: format!("Email: {}", self.name),
-				why: e.to_string(),
-			})?;
+			session
+				.uid_expunge(&mail_ids)
+				.map_err(|e| Error::SourceFetch {
+					service: format!("Email: {}", self.name),
+					why: e.to_string(),
+				})?;
 		}
 
-		session.logout().map_err(|e| Error::Get {
+		session.logout().map_err(|e| Error::SourceFetch {
 			service: format!("Email: {}", self.name),
 			why: e.to_string(),
 		})?;
@@ -143,16 +146,20 @@ impl Email {
 			.into_iter()
 			.filter(|x| x.body().is_some()) // TODO: properly handle error cases and don't just filter them out
 			.map(|x| {
-				Self::parse(
-					mailparse::parse_mail(x.body().unwrap()) // NOTE: safe unwrap because we just filtered out None bodies before
-						.map_err(|e| Error::Parse {
-							service: format!("Email: {}", self.name),
-							why: e.to_string(),
+				Ok(Responce {
+					id: None,
+					msg: Self::parse(
+						mailparse::parse_mail(x.body().unwrap()).map_err(|e| {
+							Error::SourceParse {
+								service: format!("Email: {}", self.name),
+								why: e.to_string(),
+							}
 						})?,
-					self.footer.as_deref(),
-				)
+						self.footer.as_deref(),
+					)?,
+				})
 			})
-			.collect::<Result<Vec<Message>>>()
+			.collect::<Result<Vec<Responce>>>()
 	}
 
 	fn parse(mail: ParsedMail, remove_after: Option<&str>) -> Result<Message> {
@@ -174,13 +181,13 @@ impl Email {
 					.unwrap_or(&mail.subparts[0])
 			}
 			.get_body()
-			.map_err(|e| Error::Parse {
+			.map_err(|e| Error::SourceParse {
 				service: "Email".to_string(),
 				why: e.to_string(),
 			})?;
 
 			if let Some(remove_after) = remove_after {
-				body.drain(body.find(remove_after).unwrap_or(body.len())..);
+				body.drain(body.find(remove_after).unwrap_or_else(|| body.len())..);
 			}
 
 			// TODO: replace upticks ` with teloxide::utils::html::escape_code

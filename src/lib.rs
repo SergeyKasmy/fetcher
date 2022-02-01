@@ -1,73 +1,102 @@
 pub mod config;
 pub mod error;
-pub(crate) mod guid;
-pub mod source;
+pub mod settings;
 pub mod sink;
+pub mod source;
 
-use config::Config;
-use error::Error;
-use error::Result;
-use futures::future::select_all;
+// TODO: mb using anyhow in lib code isn't a good idea?
+use anyhow::Context;
+use anyhow::Result;
+use futures::future::join_all;
 use futures::StreamExt;
-use signal_hook::consts as SignalTypes;
+use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use std::time::Duration;
-use tokio::{select, sync::broadcast, time::sleep};
+use tokio::select;
+use tokio::sync::watch;
+use tokio::time::sleep;
 
+use crate::config::Config;
+use crate::error::Error;
+use crate::settings::last_read_id;
+use crate::settings::save_last_read_id;
+
+// TODO: more tests
+// TODO: better tracing spans, don't rely just on that macro
 #[tracing::instrument]
 pub async fn run(configs: Vec<Config>) -> Result<()> {
-	let (shutdown_sig_tx, _) = broadcast::channel(1);
+	let (shutdown_tx, shutdown_rx) = watch::channel(false);
+
+	let sig = Signals::new(TERM_SIGNALS).context("Error registering signals")?;
+	let sig_handle = sig.handle();
+
+	let sig_term_now = Arc::new(AtomicBool::new(false));
+	for s in TERM_SIGNALS {
+		use signal_hook::flag;
+
+		flag::register_conditional_shutdown(
+			*s,
+			1, /* exit status */
+			Arc::clone(&sig_term_now),
+		)
+		.context("Error registering signal handler")?;
+		flag::register(*s, Arc::clone(&sig_term_now))
+			.context("Error registering signal handler")?;
+	}
+
+	let sig_task = tokio::spawn(async move {
+		let mut sig = sig.fuse();
+
+		while sig.next().await.is_some() {
+			shutdown_tx
+				.send(true)
+				.context("Error broadcasting signal to tasks")?;
+		}
+
+		Ok::<(), anyhow::Error>(())
+	});
+
 	let mut tasks = Vec::new();
-
-	// TODO: add sleep time to configs
 	for mut c in configs {
-		let mut rx = shutdown_sig_tx.subscribe();
-		let task = tokio::spawn(async move {
-			loop {
-				for m in c.source.get().await?.into_iter() {
-					c.sink.send(m).await?;
-				}
-				select! {
-					_ = async {
-						tracing::info!("Refreshing {name} in {refresh}m", name = c.name, refresh = c.refresh);
-						sleep(Duration::from_secs(c.refresh * 60 /* seconds in a minute */)).await;
-					} => (),
-					_ = rx.recv() => break,
-				}
-			}
+		let mut shutdown_rx = shutdown_rx.clone();
 
-			Ok::<(), Error>(())
+		let task = tokio::spawn(async move {
+			select! {
+				_ = async {
+					loop {
+						let last_read_id = last_read_id(&c.name)?;
+
+						for r in c.source.get(last_read_id).await? {
+							c.sink.send(r.msg).await?;
+
+							if let Some(id) = r.id {
+								save_last_read_id(&c.name, id)?;
+							}
+						}
+
+						sleep(Duration::from_secs(c.refresh * 60 /* secs in a min */)).await;
+					}
+
+					#[allow(unreachable_code)]
+					Ok::<(), Error>(())
+				} => (),
+				_ = shutdown_rx.changed() => {
+					tracing::info!("Shutdown signal received");
+				},
+			}
 		});
+
 		tasks.push(task);
 	}
 
-	let signals = Signals::new(&[SignalTypes::SIGINT, SignalTypes::SIGTERM]).unwrap();
-	let signals_handle = signals.handle();
+	// FIXME: handle non critical errors, e.g. SourceFetch error
+	join_all(tasks).await;
 
-	tokio::spawn(async move {
-		let mut signals = signals.fuse();
-		while signals.next().await.is_some() {
-			shutdown_sig_tx.send(()).unwrap();
-		}
-
-		Ok::<(), error::Error>(())
-	});
-
-	loop {
-		let finished_task = select_all(tasks).await;
-		match finished_task.0.unwrap() {
-			// TODO: rerun the task after an error instead of ignoring it outright
-			Ok(_) | Err(Error::Get { .. }) => {
-				if !finished_task.2.is_empty() {
-					tasks = finished_task.2;
-				} else {
-					break;
-				}
-			}
-			Err(e) => return Err(e),
-		}
-	}
-
-	signals_handle.close();
+	sig_handle.close(); // TODO: figure out wtf this is and why
+	sig_task
+		.await
+		.context("Error shutting down of signal handler")??;
 	Ok(())
 }
