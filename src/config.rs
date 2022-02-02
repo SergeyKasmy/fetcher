@@ -6,8 +6,12 @@ use toml::{value::Map, Value};
 use crate::{
 	error::Error,
 	error::Result,
+	settings,
 	sink::{Sink, Telegram},
-	source::{email::EmailFilters, Email, Rss, Source, Twitter},
+	source::{
+		email::{google_oauth2::CodeType, EmailFilters},
+		Email, Rss, Source, Twitter,
+	},
 };
 
 fn env(s: &str) -> Result<String> {
@@ -322,7 +326,10 @@ impl Config {
 				)
 			}
 			Some("google_oauth2") => {
-				let token = env("EMAIL_GOOGLE_OAUTH2_TOKEN")?;
+				let token = match settings::token(name)? {
+					Some(token) => CodeType::RefreshToken(token),
+					None => CodeType::AccessCode(env("EMAIL_GOOGLE_OAUTH2_TOKEN")?),
+				};
 				let client_id = env("EMAIL_GOOGLE_OAUTH2_CLIENT_ID")?;
 				let client_secret = env("EMAIL_GOOGLE_OAUTH2_CLIENT_SECRET")?;
 
@@ -337,7 +344,7 @@ impl Config {
 					remove,
 					footer,
 				)
-				.await
+				.await?
 			}
 			_ => {
 				return Err(Error::ConfigInvalidFieldType {

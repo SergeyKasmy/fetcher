@@ -1,9 +1,10 @@
-mod google_oauth2;
+pub mod google_oauth2;
 
 use mailparse::ParsedMail;
 
 use crate::error::{Error, Result};
 use crate::sink::Message;
+use crate::source::email::google_oauth2::CodeType;
 use crate::source::email::google_oauth2::GoogleOAuth2;
 use crate::source::Responce;
 
@@ -66,29 +67,29 @@ impl Email {
 	}
 
 	#[allow(clippy::too_many_arguments)]
-	#[tracing::instrument(skip(client_id, client_secret, refresh_token))]
+	#[tracing::instrument(skip(client_id, client_secret, code))]
 	pub async fn with_google_oauth2(
 		name: String,
 		imap: String,
 		email: String,
 		client_id: String,
 		client_secret: String,
-		refresh_token: String,
+		code: CodeType,
 		filters: EmailFilters,
 		remove: bool,
 		footer: Option<String>,
-	) -> Self {
+	) -> Result<Self> {
 		tracing::info!("Creatng an Email provider");
-		Self {
+		let auth = GoogleOAuth2::new(&name, email, client_id, client_secret, code).await?;
+
+		Ok(Self {
 			name,
 			imap,
-			auth: Auth::GoogleOAuth2(
-				GoogleOAuth2::new(email, client_id, client_secret, refresh_token).await,
-			),
+			auth: Auth::GoogleOAuth2(auth),
 			filters,
 			remove,
 			footer,
-		}
+		})
 	}
 
 	/// Even though it's marked async, the fetching itself is not async yet
@@ -118,7 +119,7 @@ impl Email {
 					})?
 			}
 			Auth::GoogleOAuth2(auth) => {
-				auth.refresh_access_token().await;
+				auth.refresh_access_token(&self.name).await?;
 				client
 					.authenticate("XOAUTH2", auth)
 					.map_err(|(e, _)| Error::SourceAuth {
