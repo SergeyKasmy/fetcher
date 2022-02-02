@@ -1,7 +1,10 @@
+mod google_oauth2;
+
 use mailparse::ParsedMail;
 
 use crate::error::{Error, Result};
 use crate::sink::Message;
+use crate::source::email::google_oauth2::GoogleOAuth2;
 use crate::source::Responce;
 
 const IMAP_PORT: u16 = 993;
@@ -18,29 +21,16 @@ enum Auth {
 		email: String,
 		password: String, // TODO: use securestr or something of that sort
 	},
-	GoogleOAuth2(OAuth2),
+	GoogleOAuth2(GoogleOAuth2),
 }
 
 impl Auth {
 	fn email(&self) -> &str {
 		match self {
-			Auth::Password { email, .. } | Auth::GoogleOAuth2(OAuth2 { email, .. }) => {
+			Auth::Password { email, .. } | Auth::GoogleOAuth2(GoogleOAuth2 { email, .. }) => {
 				email.as_str()
 			}
 		}
-	}
-}
-
-struct OAuth2 {
-	email: String,
-	token: String,
-}
-
-impl imap::Authenticator for OAuth2 {
-	type Response = String;
-
-	fn process(&self, _challenge: &[u8]) -> Self::Response {
-		format!("user={}\x01auth=Bearer {}\x01\x01", self.email, self.token)
 	}
 }
 
@@ -75,12 +65,15 @@ impl Email {
 		}
 	}
 
-	#[tracing::instrument]
-	pub fn with_google_oauth2(
+	#[allow(clippy::too_many_arguments)]
+	#[tracing::instrument(skip(client_id, client_secret, refresh_token))]
+	pub async fn with_google_oauth2(
 		name: String,
 		imap: String,
 		email: String,
-		token: String,
+		client_id: String,
+		client_secret: String,
+		refresh_token: String,
 		filters: EmailFilters,
 		remove: bool,
 		footer: Option<String>,
@@ -89,15 +82,19 @@ impl Email {
 		Self {
 			name,
 			imap,
-			auth: Auth::GoogleOAuth2(OAuth2 { email, token }),
+			auth: Auth::GoogleOAuth2(
+				GoogleOAuth2::new(email, client_id, client_secret, refresh_token).await,
+			),
 			filters,
 			remove,
 			footer,
 		}
 	}
 
+	/// Even though it's marked async, the fetching itself is not async yet
+	/// It should be used with spawn_blocking probs
 	#[tracing::instrument]
-	pub fn get(&mut self) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self) -> Result<Vec<Responce>> {
 		let client = imap::connect(
 			(self.imap.as_str(), IMAP_PORT),
 			&self.imap,
@@ -111,7 +108,7 @@ impl Email {
 			why: format!("Error connecting to IMAP: {}", e),
 		})?;
 
-		let mut session = match &self.auth {
+		let mut session = match &mut self.auth {
 			Auth::Password { email, password } => {
 				client
 					.login(email, password)
@@ -120,9 +117,10 @@ impl Email {
 						why: e.to_string(),
 					})?
 			}
-			Auth::GoogleOAuth2(oauth) => {
+			Auth::GoogleOAuth2(auth) => {
+				auth.refresh_access_token().await;
 				client
-					.authenticate("XOAUTH2", oauth)
+					.authenticate("XOAUTH2", auth)
 					.map_err(|(e, _)| Error::SourceAuth {
 						service: format!("Email (OAuth2): {}", self.name),
 						why: e.to_string(),

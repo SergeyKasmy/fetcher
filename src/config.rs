@@ -56,7 +56,7 @@ impl Config {
 				})? {
 				"rss" => Self::parse_rss(name, table)?,
 				"twitter" => Self::parse_twitter(name, table).await?,
-				"email" => Self::parse_email(name, table)?,
+				"email" => Self::parse_email(name, table).await?,
 				t => panic!("{t} is not a valid type for {name}"),
 			};
 			let refresh = table
@@ -164,7 +164,7 @@ impl Config {
 		.into())
 	}
 
-	fn parse_email(name: &str, table: &Map<String, Value>) -> Result<Source> {
+	async fn parse_email(name: &str, table: &Map<String, Value>) -> Result<Source> {
 		let filters = {
 			let filters_table = table
 				.get("filters")
@@ -323,22 +323,27 @@ impl Config {
 			}
 			Some("google_oauth2") => {
 				let token = env("EMAIL_GOOGLE_OAUTH2_TOKEN")?;
+				let client_id = env("EMAIL_GOOGLE_OAUTH2_CLIENT_ID")?;
+				let client_secret = env("EMAIL_GOOGLE_OAUTH2_CLIENT_SECRET")?;
 
 				Email::with_google_oauth2(
 					name.to_string(),
 					imap,
 					email,
+					client_id,
+					client_secret,
 					token,
 					filters,
 					remove,
 					footer,
 				)
+				.await
 			}
 			_ => {
 				return Err(Error::ConfigInvalidFieldType {
 					name: name.to_string(),
 					field: "auth_type",
-					expected_type: "string (password | oauth2)",
+					expected_type: "string (password | google_oauth2)",
 				});
 			}
 		}
