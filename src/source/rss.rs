@@ -5,20 +5,19 @@ use crate::error::Result;
 use crate::sink::Message;
 use crate::source::Responce;
 
-#[derive(Debug)]
 pub struct Rss {
 	name: String,
-	rss: String,
+	link: String,
 	http_client: reqwest::Client,
 }
 
 impl Rss {
 	#[tracing::instrument]
-	pub fn new(name: String, rss: String) -> Self {
+	pub fn new(name: String, link: String) -> Self {
 		tracing::info!("Creatng an Rss provider");
 		Self {
 			name,
-			rss,
+			link,
 			http_client: reqwest::Client::new(),
 		}
 	}
@@ -27,7 +26,7 @@ impl Rss {
 	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
 		let content = self
 			.http_client
-			.get(&self.rss)
+			.get(&self.link)
 			.send()
 			.await
 			.map_err(|e| Error::SourceFetch {
@@ -44,7 +43,7 @@ impl Rss {
 			service: format!("RSS: {}", self.name),
 			why: e.to_string(),
 		})?;
-		tracing::debug!("Got {amount} RSS articles", amount = feed.items.len());
+		tracing::info!("Got {amount} RSS articles", amount = feed.items.len());
 
 		if let Some(id) = &last_read_id {
 			if let Some(id_pos) = feed
@@ -76,5 +75,14 @@ impl Rss {
 			.collect();
 
 		Ok(messages)
+	}
+}
+
+impl std::fmt::Debug for Rss {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Rss")
+			.field("name", &self.name)
+			.field("link", &self.link)
+			.finish_non_exhaustive()
 	}
 }

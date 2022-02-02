@@ -24,8 +24,7 @@ use crate::settings::last_read_id;
 use crate::settings::save_last_read_id;
 
 // TODO: more tests
-// TODO: better tracing spans, don't rely just on that macro
-#[tracing::instrument]
+#[tracing::instrument(skip_all)]
 pub async fn run(configs: Vec<Config>) -> Result<()> {
 	let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
@@ -42,6 +41,7 @@ pub async fn run(configs: Vec<Config>) -> Result<()> {
 			Arc::clone(&sig_term_now),
 		)
 		.context("Error registering signal handler")?;
+
 		flag::register(*s, Arc::clone(&sig_term_now))
 			.context("Error registering signal handler")?;
 	}

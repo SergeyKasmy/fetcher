@@ -4,7 +4,7 @@ use fetcher::{config::Config, settings};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	tracing_subscriber::fmt::init();
+	tracing_subscriber::fmt().without_time().init();
 	// tracing_log::LogTracer::init().unwrap();
 
 	let conf = settings::get_config().context("unable to get config")?;

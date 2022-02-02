@@ -7,7 +7,6 @@ use crate::sink::Media;
 use crate::sink::Message;
 use crate::source::Responce;
 
-#[derive(Debug)]
 pub struct Twitter {
 	// FIXME: why is it even here?
 	#[allow(dead_code)]
@@ -21,7 +20,7 @@ pub struct Twitter {
 
 impl Twitter {
 	#[allow(clippy::too_many_arguments)]
-	#[tracing::instrument]
+	#[tracing::instrument(skip(api_key, api_key_secret))]
 	pub async fn new(
 		name: String,
 		pretty_name: String,
@@ -54,7 +53,7 @@ impl Twitter {
 				service: "Twitter".to_string(),
 				why: e.to_string(),
 			})?;
-		tracing::debug!("Got {amount} tweets", amount = tweets.len());
+		tracing::info!("Got {amount} tweets", amount = tweets.len());
 
 		let messages = tweets
 			.iter()
@@ -100,5 +99,16 @@ impl Twitter {
 		}
 
 		true
+	}
+}
+
+impl std::fmt::Debug for Twitter {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Twitter")
+			.field("name", &self.name)
+			.field("pretty_name", &self.pretty_name)
+			.field("handle", &self.handle)
+			.field("filter", &self.filter)
+			.finish_non_exhaustive()
 	}
 }

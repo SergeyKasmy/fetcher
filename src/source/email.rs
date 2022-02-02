@@ -13,7 +13,6 @@ pub struct EmailFilters {
 	pub exclude_subjects: Option<Vec<String>>,
 }
 
-#[derive(Debug)]
 pub struct Email {
 	name: String,
 	imap: String,
@@ -88,7 +87,7 @@ impl Email {
 
 			if let Some(ex_subjects) = &self.filters.exclude_subjects {
 				for exs in ex_subjects {
-					tmp.push_str(&format!(r#"NOT SUBJECT {exs}"#));
+					tmp.push_str(&format!(r#"NOT SUBJECT "{exs}" "#));
 				}
 			}
 
@@ -140,7 +139,7 @@ impl Email {
 			why: e.to_string(),
 		})?;
 
-		tracing::debug!("Got {amount} emails", amount = mails.len());
+		tracing::info!("Got {amount} emails", amount = mails.len());
 
 		mails
 			.into_iter()
@@ -205,5 +204,18 @@ impl Email {
 		};
 
 		Ok(Message { text, media: None })
+	}
+}
+
+impl std::fmt::Debug for Email {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Email")
+			.field("name", &self.name)
+			.field("imap", &self.imap)
+			.field("email", &self.email)
+			.field("filters", &self.filters)
+			.field("remove", &self.remove)
+			.field("footer", &self.footer)
+			.finish()
 	}
 }
