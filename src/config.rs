@@ -243,52 +243,105 @@ impl Config {
 			}
 		};
 
-		Ok(Email::new(
-			name.to_string(),
+		let imap = table
+			.get("imap")
+			.ok_or(Error::ConfigMissingField {
+				name: name.to_string(),
+				field: "imap",
+			})?
+			.as_str()
+			.ok_or(Error::ConfigInvalidFieldType {
+				name: name.to_string(),
+				field: "imap",
+				expected_type: "string",
+			})?
+			.to_string();
+
+		let email = table
+			.get("email")
+			.ok_or(Error::ConfigMissingField {
+				name: name.to_string(),
+				field: "email",
+			})?
+			.as_str()
+			.ok_or(Error::ConfigInvalidFieldType {
+				name: name.to_string(),
+				field: "email",
+				expected_type: "string",
+			})?
+			.to_string();
+
+		let remove = table
+			.get("remove")
+			.ok_or(Error::ConfigMissingField {
+				name: name.to_string(),
+				field: "remove",
+			})?
+			.as_bool()
+			.ok_or(Error::ConfigInvalidFieldType {
+				name: name.to_string(),
+				field: "remove",
+				expected_type: "bool",
+			})?;
+
+		let footer = Some(
 			table
-				.get("imap")
+				.get("footer")
 				.ok_or(Error::ConfigMissingField {
 					name: name.to_string(),
-					field: "imap",
+					field: "footer",
 				})?
 				.as_str()
 				.ok_or(Error::ConfigInvalidFieldType {
 					name: name.to_string(),
-					field: "imap",
+					field: "footer",
 					expected_type: "string",
 				})?
 				.to_string(),
-			env("EMAIL")?,
-			env("EMAIL_PASS")?,
-			filters,
-			table
-				.get("remove")
-				.ok_or(Error::ConfigMissingField {
+		);
+
+		Ok(match table
+			.get("auth_type")
+			.ok_or(Error::ConfigMissingField {
+				name: name.to_string(),
+				field: "auth_type",
+			})?
+			.as_str()
+		{
+			Some("password") => {
+				let password = env("EMAIL_PASS")?;
+
+				Email::with_password(
+					name.to_string(),
+					imap,
+					email,
+					password,
+					filters,
+					remove,
+					footer,
+				)
+			}
+			Some("google_oauth2") => {
+				let token = env("EMAIL_GOOGLE_OAUTH2_TOKEN")?;
+
+				Email::with_google_oauth2(
+					name.to_string(),
+					imap,
+					email,
+					token,
+					filters,
+					remove,
+					footer,
+				)
+			}
+			_ => {
+				return Err(Error::ConfigInvalidFieldType {
 					name: name.to_string(),
-					field: "remove",
-				})?
-				.as_bool()
-				.ok_or(Error::ConfigInvalidFieldType {
-					name: name.to_string(),
-					field: "remove",
-					expected_type: "bool",
-				})?,
-			Some(
-				table
-					.get("footer")
-					.ok_or(Error::ConfigMissingField {
-						name: name.to_string(),
-						field: "footer",
-					})?
-					.as_str()
-					.ok_or(Error::ConfigInvalidFieldType {
-						name: name.to_string(),
-						field: "footer",
-						expected_type: "string",
-					})?
-					.to_string(),
-			),
-		)
+					field: "auth_type",
+					expected_type: "string (password | oauth2)",
+				});
+			}
+		}
 		.into())
 	}
 }

@@ -13,11 +13,41 @@ pub struct EmailFilters {
 	pub exclude_subjects: Option<Vec<String>>,
 }
 
+enum Auth {
+	Password {
+		email: String,
+		password: String, // TODO: use securestr or something of that sort
+	},
+	GoogleOAuth2(OAuth2),
+}
+
+impl Auth {
+	fn email(&self) -> &str {
+		match self {
+			Auth::Password { email, .. } | Auth::GoogleOAuth2(OAuth2 { email, .. }) => {
+				email.as_str()
+			}
+		}
+	}
+}
+
+struct OAuth2 {
+	email: String,
+	token: String,
+}
+
+impl imap::Authenticator for OAuth2 {
+	type Response = String;
+
+	fn process(&self, _challenge: &[u8]) -> Self::Response {
+		format!("user={}\x01auth=Bearer {}\x01\x01", self.email, self.token)
+	}
+}
+
 pub struct Email {
 	name: String,
 	imap: String,
-	email: String,
-	password: String,
+	auth: Auth,
 	filters: EmailFilters,
 	remove: bool,
 	footer: Option<String>, // NOTE: remove everything after this text, including itself, from the message
@@ -25,7 +55,7 @@ pub struct Email {
 
 impl Email {
 	#[tracing::instrument]
-	pub fn new(
+	pub fn with_password(
 		name: String,
 		imap: String,
 		email: String,
@@ -38,8 +68,28 @@ impl Email {
 		Self {
 			name,
 			imap,
-			email,
-			password,
+			auth: Auth::Password { email, password },
+			filters,
+			remove,
+			footer,
+		}
+	}
+
+	#[tracing::instrument]
+	pub fn with_google_oauth2(
+		name: String,
+		imap: String,
+		email: String,
+		token: String,
+		filters: EmailFilters,
+		remove: bool,
+		footer: Option<String>,
+	) -> Self {
+		tracing::info!("Creatng an Email provider");
+		Self {
+			name,
+			imap,
+			auth: Auth::GoogleOAuth2(OAuth2 { email, token }),
 			filters,
 			remove,
 			footer,
@@ -61,12 +111,26 @@ impl Email {
 			why: format!("Error connecting to IMAP: {}", e),
 		})?;
 
-		let mut session = client
-			.login(&self.email, &self.password)
-			.map_err(|(e, _)| Error::SourceAuth {
-				service: format!("Email: {}", self.name),
-				why: e.to_string(),
-			})?;
+		let mut session = match &self.auth {
+			Auth::Password { email, password } => {
+				client
+					.login(email, password)
+					.map_err(|(e, _)| Error::SourceAuth {
+						service: format!("Email (Password): {}", self.name),
+						why: e.to_string(),
+					})?
+			}
+			Auth::GoogleOAuth2(oauth) => {
+				client
+					.authenticate("XOAUTH2", oauth)
+					.map_err(|(e, _)| Error::SourceAuth {
+						service: format!("Email (OAuth2): {}", self.name),
+						why: e.to_string(),
+					})?
+			}
+		};
+
+		// session.examine("INBOX").map_err(|e| Error::SourceFetch {
 		session.select("INBOX").map_err(|e| Error::SourceFetch {
 			service: format!("Email: {}", self.name),
 			why: format!("Couldn't open INBOX: {}", e),
@@ -212,7 +276,14 @@ impl std::fmt::Debug for Email {
 		f.debug_struct("Email")
 			.field("name", &self.name)
 			.field("imap", &self.imap)
-			.field("email", &self.email)
+			.field(
+				"auth_type",
+				match self.auth {
+					Auth::Password { .. } => &"password",
+					Auth::GoogleOAuth2(_) => &"google_oauth2",
+				},
+			)
+			.field("email", &self.auth.email())
 			.field("filters", &self.filters)
 			.field("remove", &self.remove)
 			.field("footer", &self.footer)
