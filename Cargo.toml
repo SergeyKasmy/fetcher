@@ -2,6 +2,7 @@
 name = "fetcher"
 version = "0.2.1"
 edition = "2021"
+license = "GPL-3.0"
 
 [profile.release]
 lto = "thin"
