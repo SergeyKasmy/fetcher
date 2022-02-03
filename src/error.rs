@@ -8,6 +8,8 @@ pub enum Error {
 	SaveData(String),
 	#[error("env var not found: {0}")]
 	GetEnvVar(String),
+	#[error("Google OAuth2 token not found")]
+	GoogleOAuth2AccessCodeNotFound,
 	#[error("invalid config format")]
 	ConfigDeserialize(#[from] toml::de::Error),
 	#[error("{name} is missing {field} field")]

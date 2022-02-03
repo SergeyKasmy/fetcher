@@ -4,7 +4,6 @@ use mailparse::ParsedMail;
 
 use crate::error::{Error, Result};
 use crate::sink::Message;
-use crate::source::email::google_oauth2::CodeType;
 use crate::source::email::google_oauth2::GoogleOAuth2;
 use crate::source::Responce;
 
@@ -67,20 +66,20 @@ impl Email {
 	}
 
 	#[allow(clippy::too_many_arguments)]
-	#[tracing::instrument(skip(client_id, client_secret, code))]
+	#[tracing::instrument(skip(client_id, client_secret, refresh_token))]
 	pub async fn with_google_oauth2(
 		name: String,
 		imap: String,
 		email: String,
 		client_id: String,
 		client_secret: String,
-		code: CodeType,
+		refresh_token: String,
 		filters: EmailFilters,
 		remove: bool,
 		footer: Option<String>,
 	) -> Result<Self> {
 		tracing::info!("Creatng an Email provider");
-		let auth = GoogleOAuth2::new(&name, email, client_id, client_secret, code).await?;
+		let auth = GoogleOAuth2::new(email, client_id, client_secret, refresh_token).await?;
 
 		Ok(Self {
 			name,
@@ -119,7 +118,7 @@ impl Email {
 					})?
 			}
 			Auth::GoogleOAuth2(auth) => {
-				auth.refresh_access_token(&self.name).await?;
+				auth.refresh_access_token().await?;
 				client
 					.authenticate("XOAUTH2", auth)
 					.map_err(|(e, _)| Error::SourceAuth {
@@ -129,8 +128,8 @@ impl Email {
 			}
 		};
 
-		// session.examine("INBOX").map_err(|e| Error::SourceFetch {
-		session.select("INBOX").map_err(|e| Error::SourceFetch {
+		// session.select("INBOX").map_err(|e| Error::SourceFetch {
+		session.examine("INBOX").map_err(|e| Error::SourceFetch {
 			service: format!("Email: {}", self.name),
 			why: format!("Couldn't open INBOX: {}", e),
 		})?;

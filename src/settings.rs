@@ -58,3 +58,22 @@ pub fn token(name: &str) -> Result<Option<String>> {
 pub fn save_token(name: &str, token: &str) -> Result<()> {
 	fs::write(token_path(name)?, token).map_err(|e| Error::SaveData(e.to_string()))
 }
+
+pub async fn generate_google_oauth2_token(client_id: &str, client_secret: &str) -> Result<()> {
+	const SCOPE: &str = "https://mail.google.com/";
+	println!("Open the link below and paste the access code afterwards:");
+	println!("https://accounts.google.com/o/oauth2/auth?scope={SCOPE}&client_id={client_id}&response_type=code&redirect_uri=urn:ietf:wg:oauth:2.0:oob");
+
+	// FIXME: update the capacity after testing
+	let mut input = String::with_capacity(50);
+	std::io::stdin().read_line(&mut input).unwrap();
+	let token = crate::source::email::google_oauth2::generate_refresh_token(
+		client_id,
+		client_secret,
+		&input,
+	)
+	.await?;
+	dbg!(&token);
+
+	save_token("google_oauth2", &token)
+}

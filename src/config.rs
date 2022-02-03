@@ -8,10 +8,7 @@ use crate::{
 	error::Result,
 	settings,
 	sink::{Sink, Telegram},
-	source::{
-		email::{google_oauth2::CodeType, EmailFilters},
-		Email, Rss, Source, Twitter,
-	},
+	source::{email::EmailFilters, Email, Rss, Source, Twitter},
 };
 
 fn env(s: &str) -> Result<String> {
@@ -326,9 +323,9 @@ impl Config {
 				)
 			}
 			Some("google_oauth2") => {
-				let token = match settings::token(name)? {
-					Some(token) => CodeType::RefreshToken(token),
-					None => CodeType::AccessCode(env("EMAIL_GOOGLE_OAUTH2_TOKEN")?),
+				let token = match settings::token("google_oauth2")? {
+					Some(token) => token,
+					None => return Err(Error::GoogleOAuth2AccessCodeNotFound),
 				};
 				let client_id = env("EMAIL_GOOGLE_OAUTH2_CLIENT_ID")?;
 				let client_secret = env("EMAIL_GOOGLE_OAUTH2_CLIENT_SECRET")?;
