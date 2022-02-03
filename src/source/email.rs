@@ -1,13 +1,45 @@
-pub mod google_oauth2;
-
 use mailparse::ParsedMail;
 
+use crate::auth::google::GoogleAuth;
 use crate::error::{Error, Result};
 use crate::sink::Message;
-use crate::source::email::google_oauth2::GoogleOAuth2;
 use crate::source::Responce;
 
 const IMAP_PORT: u16 = 993;
+
+struct ImapOAuth2<'a> {
+	email: &'a str,
+	token: &'a str,
+}
+
+impl imap::Authenticator for ImapOAuth2<'_> {
+	type Response = String;
+
+	fn process(&self, _challenge: &[u8]) -> Self::Response {
+		format!("user={}\x01auth=Bearer {}\x01\x01", self.email, self.token)
+	}
+}
+
+#[async_trait::async_trait]
+trait GoogleAuthExt {
+	async fn to_imap_oauth2<'a>(&'a mut self, email: &'a str) -> Result<ImapOAuth2<'a>>;
+}
+
+#[async_trait::async_trait]
+impl GoogleAuthExt for GoogleAuth {
+	async fn to_imap_oauth2<'a>(&'a mut self, email: &'a str) -> Result<ImapOAuth2<'a>> {
+		Ok(ImapOAuth2 {
+			email,
+			token: self.access_token().await?,
+		})
+	}
+}
+
+enum Auth {
+	// TODO: use securestr or something of that sort
+	Password(String),
+	GoogleAuth(GoogleAuth),
+}
 
 #[derive(Debug)]
 pub struct EmailFilters {
@@ -16,35 +48,18 @@ pub struct EmailFilters {
 	pub exclude_subjects: Option<Vec<String>>,
 }
 
-enum Auth {
-	Password {
-		email: String,
-		password: String, // TODO: use securestr or something of that sort
-	},
-	GoogleOAuth2(GoogleOAuth2),
-}
-
-impl Auth {
-	fn email(&self) -> &str {
-		match self {
-			Auth::Password { email, .. } | Auth::GoogleOAuth2(GoogleOAuth2 { email, .. }) => {
-				email.as_str()
-			}
-		}
-	}
-}
-
 pub struct Email {
 	name: String,
 	imap: String,
+	email: String,
 	auth: Auth,
 	filters: EmailFilters,
 	remove: bool,
-	footer: Option<String>, // NOTE: remove everything after this text, including itself, from the message
+	footer: Option<String>, // remove everything after this text, including itself, from the message
 }
 
 impl Email {
-	#[tracing::instrument]
+	#[tracing::instrument(skip(password))]
 	pub fn with_password(
 		name: String,
 		imap: String,
@@ -58,7 +73,8 @@ impl Email {
 		Self {
 			name,
 			imap,
-			auth: Auth::Password { email, password },
+			email,
+			auth: Auth::Password(password),
 			filters,
 			remove,
 			footer,
@@ -79,12 +95,13 @@ impl Email {
 		footer: Option<String>,
 	) -> Result<Self> {
 		tracing::info!("Creatng an Email provider");
-		let auth = GoogleOAuth2::new(email, client_id, client_secret, refresh_token).await?;
+		let auth = GoogleAuth::new(client_id, client_secret, refresh_token).await?;
 
 		Ok(Self {
 			name,
 			imap,
-			auth: Auth::GoogleOAuth2(auth),
+			email,
+			auth: Auth::GoogleAuth(auth),
 			filters,
 			remove,
 			footer,
@@ -109,23 +126,20 @@ impl Email {
 		})?;
 
 		let mut session = match &mut self.auth {
-			Auth::Password { email, password } => {
+			Auth::Password(password) => {
 				client
-					.login(email, password)
+					.login(&self.email, password)
 					.map_err(|(e, _)| Error::SourceAuth {
 						service: format!("Email (Password): {}", self.name),
 						why: e.to_string(),
 					})?
 			}
-			Auth::GoogleOAuth2(auth) => {
-				auth.refresh_access_token().await?;
-				client
-					.authenticate("XOAUTH2", auth)
-					.map_err(|(e, _)| Error::SourceAuth {
-						service: format!("Email (OAuth2): {}", self.name),
-						why: e.to_string(),
-					})?
-			}
+			Auth::GoogleAuth(auth) => client
+				.authenticate("XOAUTH2", &auth.to_imap_oauth2(&self.email).await?)
+				.map_err(|(e, _)| Error::SourceAuth {
+					service: format!("Email (OAuth2): {}", self.name),
+					why: e.to_string(),
+				})?,
 		};
 
 		// session.select("INBOX").map_err(|e| Error::SourceFetch {
@@ -277,11 +291,11 @@ impl std::fmt::Debug for Email {
 			.field(
 				"auth_type",
 				match self.auth {
-					Auth::Password { .. } => &"password",
-					Auth::GoogleOAuth2(_) => &"google_oauth2",
+					Auth::Password(_) => &"password",
+					Auth::GoogleAuth(_) => &"google_auth",
 				},
 			)
-			.field("email", &self.auth.email())
+			.field("email", &self.email)
 			.field("filters", &self.filters)
 			.field("remove", &self.remove)
 			.field("footer", &self.footer)

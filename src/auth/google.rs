@@ -13,8 +13,7 @@ struct GoogleOAuth2Responce {
 }
 
 #[derive(Debug)]
-pub(super) struct GoogleOAuth2 {
-	pub email: String,
+pub(crate) struct GoogleAuth {
 	client_id: String,
 	client_secret: String,
 	refresh_token: String,
@@ -22,9 +21,8 @@ pub(super) struct GoogleOAuth2 {
 	expires_in: Instant,
 }
 
-impl GoogleOAuth2 {
-	pub(super) async fn new(
-		email: String,
+impl GoogleAuth {
+	pub(crate) async fn new(
 		client_id: String,
 		client_secret: String,
 		refresh_token: String,
@@ -35,13 +33,44 @@ impl GoogleOAuth2 {
 		} = Self::generate_access_token(&client_id, &client_secret, &refresh_token).await?;
 
 		Ok(Self {
-			email,
 			client_id,
 			client_secret,
 			refresh_token,
 			access_token,
 			expires_in: Instant::now() + Duration::from_secs(expires_in),
 		})
+	}
+
+	pub(crate) async fn generate_refresh_token(
+		client_id: &str,
+		client_secret: &str,
+		access_code: &str,
+	) -> Result<String> {
+		let body = [
+			("client_id", client_id),
+			("client_secret", client_secret),
+			("code", access_code),
+			("redirect_uri", "urn:ietf:wg:oauth:2.0:oob"),
+			("grant_type", "authorization_code"),
+		];
+
+		let response = reqwest::Client::new()
+			.post(GOOGLE_AUTH_URL)
+			.form(&body)
+			.send()
+			.await
+			.unwrap()
+			.text()
+			.await
+			.unwrap();
+
+		let response: Value = serde_json::from_str(&response).unwrap();
+		Ok(response
+			.get("refresh_token")
+			.unwrap()
+			.as_str()
+			.unwrap()
+			.to_string())
 	}
 
 	/// Returns (refresh_token, access_token, access_token_valid_till)
@@ -74,7 +103,7 @@ impl GoogleOAuth2 {
 		Ok(resp)
 	}
 
-	pub(super) async fn refresh_access_token(&mut self) -> Result<()> {
+	pub(crate) async fn access_token(&mut self) -> Result<&str> {
 		if Instant::now()
 			.checked_duration_since(self.expires_in)
 			.is_some()
@@ -90,49 +119,6 @@ impl GoogleOAuth2 {
 			self.expires_in = Instant::now() + Duration::from_secs(expires_in);
 		}
 
-		Ok(())
+		Ok(self.access_token.as_str())
 	}
-}
-
-impl imap::Authenticator for GoogleOAuth2 {
-	type Response = String;
-
-	fn process(&self, _challenge: &[u8]) -> Self::Response {
-		format!(
-			"user={}\x01auth=Bearer {}\x01\x01",
-			self.email, self.access_token
-		)
-	}
-}
-
-pub(crate) async fn generate_refresh_token(
-	client_id: &str,
-	client_secret: &str,
-	access_code: &str,
-) -> Result<String> {
-	let body = [
-		("client_id", client_id),
-		("client_secret", client_secret),
-		("code", access_code),
-		("redirect_uri", "urn:ietf:wg:oauth:2.0:oob"),
-		("grant_type", "authorization_code"),
-	];
-
-	let response = reqwest::Client::new()
-		.post(GOOGLE_AUTH_URL)
-		.form(&body)
-		.send()
-		.await
-		.unwrap()
-		.text()
-		.await
-		.unwrap();
-
-	let response: Value = serde_json::from_str(&response).unwrap();
-	Ok(response
-		.get("refresh_token")
-		.unwrap()
-		.as_str()
-		.unwrap()
-		.to_string())
 }

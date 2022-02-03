@@ -67,12 +67,10 @@ pub async fn generate_google_oauth2_token(client_id: &str, client_secret: &str) 
 	// FIXME: update the capacity after testing
 	let mut input = String::with_capacity(50);
 	std::io::stdin().read_line(&mut input).unwrap();
-	let token = crate::source::email::google_oauth2::generate_refresh_token(
-		client_id,
-		client_secret,
-		&input,
-	)
-	.await?;
+	// let token = crate::source::email::google_oauth2::generate_refresh_token(
+	let token =
+		crate::auth::google::GoogleAuth::generate_refresh_token(client_id, client_secret, &input)
+			.await?;
 	dbg!(&token);
 
 	save_token("google_oauth2", &token)
