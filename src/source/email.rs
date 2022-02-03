@@ -1,6 +1,6 @@
 use mailparse::ParsedMail;
 
-use crate::auth::google::GoogleAuth;
+use crate::auth::GoogleAuth;
 use crate::error::{Error, Result};
 use crate::sink::Message;
 use crate::source::Responce;
@@ -81,21 +81,17 @@ impl Email {
 		}
 	}
 
-	#[allow(clippy::too_many_arguments)]
-	#[tracing::instrument(skip(client_id, client_secret, refresh_token))]
+	#[tracing::instrument(skip(auth))]
 	pub async fn with_google_oauth2(
 		name: String,
 		imap: String,
 		email: String,
-		client_id: String,
-		client_secret: String,
-		refresh_token: String,
+		auth: GoogleAuth,
 		filters: EmailFilters,
 		remove: bool,
 		footer: Option<String>,
 	) -> Result<Self> {
 		tracing::info!("Creatng an Email provider");
-		let auth = GoogleAuth::new(client_id, client_secret, refresh_token).await?;
 
 		Ok(Self {
 			name,

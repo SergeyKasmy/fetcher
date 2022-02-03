@@ -1,9 +1,11 @@
+use serde::Deserialize;
 use std::env::var;
 use std::str::FromStr;
 use teloxide::Bot;
 use toml::{value::Map, Value};
 
 use crate::{
+	auth::GoogleAuth,
 	error::Error,
 	error::Result,
 	settings,
@@ -13,6 +15,19 @@ use crate::{
 
 fn env(s: &str) -> Result<String> {
 	var(s).map_err(|_| Error::GetEnvVar(s.to_string()))
+}
+
+#[derive(Deserialize)]
+struct GoogleAuthCfg {
+	client_id: String,
+	client_secret: String,
+	refresh_token: String,
+}
+
+impl GoogleAuthCfg {
+	async fn into_google_auth(self) -> Result<GoogleAuth> {
+		GoogleAuth::new(self.client_id, self.client_secret, self.refresh_token).await
+	}
 }
 
 #[derive(Debug)]
@@ -323,20 +338,15 @@ impl Config {
 				)
 			}
 			Some("google_oauth2") => {
-				let token = match settings::token("google_oauth2")? {
-					Some(token) => token,
-					None => return Err(Error::GoogleOAuth2AccessCodeNotFound),
-				};
-				let client_id = env("EMAIL_GOOGLE_OAUTH2_CLIENT_ID")?;
-				let client_secret = env("EMAIL_GOOGLE_OAUTH2_CLIENT_SECRET")?;
+				let auth_cfg: GoogleAuthCfg =
+					serde_json::from_str(&settings::data("google_oauth2.json")?.unwrap()).unwrap();
+				let auth = auth_cfg.into_google_auth().await?;
 
 				Email::with_google_oauth2(
 					name.to_string(),
 					imap,
 					email,
-					client_id,
-					client_secret,
-					token,
+					auth,
 					filters,
 					remove,
 					footer,

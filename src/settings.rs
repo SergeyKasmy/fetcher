@@ -1,11 +1,13 @@
 use std::{fs, path::PathBuf};
 
-use crate::error::{Error, Result};
+use crate::{
+	auth::GoogleAuth,
+	error::{Error, Result},
+};
 
 const PREFIX: &str = "fetcher";
 const CONFIG: &str = "config.toml";
 const LAST_READ_DATA_DIR: &str = "last-read";
-const TOKEN_DATA_DIR: &str = "token";
 
 pub fn get_config() -> Result<String> {
 	let path = if !cfg!(debug_assertions) {
@@ -40,38 +42,49 @@ pub fn save_last_read_id(name: &str, id: String) -> Result<()> {
 }
 
 // TODO: dedup with last_read_id_path
-fn token_path(name: &str) -> Result<PathBuf> {
+fn data_path(name: &str) -> Result<PathBuf> {
 	Ok(if cfg!(debug_assertions) {
-		PathBuf::from(format!("debug_data/token/{name}"))
+		PathBuf::from(format!("debug_data/{name}"))
 	} else {
-		xdg::BaseDirectories::with_profile(PREFIX, TOKEN_DATA_DIR)
+		xdg::BaseDirectories::with_prefix(PREFIX)
 			.map_err(|e| Error::GetData(e.to_string()))?
 			.place_data_file(name)
 			.map_err(|e| Error::GetData(e.to_string()))?
 	})
 }
 
-pub fn token(name: &str) -> Result<Option<String>> {
-	Ok(fs::read_to_string(token_path(name)?).ok())
+pub fn data(name: &str) -> Result<Option<String>> {
+	Ok(fs::read_to_string(data_path(name)?).ok())
 }
 
-pub fn save_token(name: &str, token: &str) -> Result<()> {
-	fs::write(token_path(name)?, token).map_err(|e| Error::SaveData(e.to_string()))
+pub fn save_data(name: &str, data: &str) -> Result<()> {
+	fs::write(data_path(name)?, data).map_err(|e| Error::SaveData(e.to_string()))
 }
 
-pub async fn generate_google_oauth2_token(client_id: &str, client_secret: &str) -> Result<()> {
+pub async fn generate_google_oauth2() -> Result<()> {
+	use std::io::stdin;
 	const SCOPE: &str = "https://mail.google.com/";
-	println!("Open the link below and paste the access code afterwards:");
-	println!("https://accounts.google.com/o/oauth2/auth?scope={SCOPE}&client_id={client_id}&response_type=code&redirect_uri=urn:ietf:wg:oauth:2.0:oob");
 
 	// FIXME: update the capacity after testing
-	let mut input = String::with_capacity(50);
-	std::io::stdin().read_line(&mut input).unwrap();
-	// let token = crate::source::email::google_oauth2::generate_refresh_token(
-	let token =
-		crate::auth::google::GoogleAuth::generate_refresh_token(client_id, client_secret, &input)
-			.await?;
-	dbg!(&token);
+	let mut client_id = String::with_capacity(50);
+	println!("Google OAuth2 client id: ");
+	stdin().read_line(&mut client_id).unwrap();
+	let client_id = client_id.trim().to_string();
 
-	save_token("google_oauth2", &token)
+	let mut client_secret = String::with_capacity(50);
+	println!("Google OAuth2 client secret: ");
+	stdin().read_line(&mut client_secret).unwrap();
+	let client_secret = client_secret.trim().to_string();
+
+	let mut access_code = String::with_capacity(50);
+	println!("Open the link below and paste the access code afterwards:");
+	println!("https://accounts.google.com/o/oauth2/auth?scope={SCOPE}&client_id={client_id}&response_type=code&redirect_uri=urn:ietf:wg:oauth:2.0:oob");
+	stdin().read_line(&mut access_code).unwrap();
+	let access_code = access_code.trim().to_string();
+	// let token = crate::source::email::google_oauth2::generate_refresh_token(
+	let refresh_token =
+		GoogleAuth::generate_refresh_token(&client_id, &client_secret, &access_code).await?;
+
+	let auth = GoogleAuth::new(client_id, client_secret, refresh_token).await?;
+	save_data("google_oauth2.json", &serde_json::to_string(&auth).unwrap())
 }

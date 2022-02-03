@@ -8,20 +8,25 @@ async fn main() -> Result<()> {
 	// tracing_log::LogTracer::init().unwrap();
 
 	match std::env::args().nth(1).as_deref() {
-		Some("--generate") => {
-			fetcher::settings::generate_google_oauth2_token(
-				std::env!("CLIENT_ID"),
-				std::env!("CLIENT_SECRET"),
-			)
-			.await?;
+		Some("--gen-secret-google") => {
+			fetcher::settings::generate_google_oauth2().await?;
 		}
-		Some(_) | None => {
+		Some("--gen-secret-telegram") => {
+			// fetcher::settings::generate_google_oauth2_token().await?;
+			todo!()
+		}
+		Some("--gen-secret-twitter") => {
+			// fetcher::settings::generate_google_oauth2_token().await?;
+			todo!()
+		}
+		None => {
 			let conf = settings::get_config().context("unable to get config")?;
 			let parsed = Config::parse(&conf)
 				.await
 				.context("unable to parse config")?;
 			fetcher::run(parsed).await?;
 		}
+		Some(_) => panic!("error"),
 	}
 
 	Ok(())

@@ -1,1 +1,3 @@
-pub mod google;
+mod google;
+
+pub use google::GoogleAuth;

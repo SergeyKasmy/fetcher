@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::{Duration, Instant};
 
@@ -12,17 +12,19 @@ struct GoogleOAuth2Responce {
 	expires_in: u64,
 }
 
-#[derive(Debug)]
-pub(crate) struct GoogleAuth {
+#[derive(Serialize, Debug)]
+pub struct GoogleAuth {
 	client_id: String,
 	client_secret: String,
 	refresh_token: String,
+	#[serde(skip)]
 	access_token: String,
+	#[serde(skip)]
 	expires_in: Instant,
 }
 
 impl GoogleAuth {
-	pub(crate) async fn new(
+	pub async fn new(
 		client_id: String,
 		client_secret: String,
 		refresh_token: String,
@@ -41,7 +43,7 @@ impl GoogleAuth {
 		})
 	}
 
-	pub(crate) async fn generate_refresh_token(
+	pub async fn generate_refresh_token(
 		client_id: &str,
 		client_secret: &str,
 		access_code: &str,
@@ -53,6 +55,7 @@ impl GoogleAuth {
 			("redirect_uri", "urn:ietf:wg:oauth:2.0:oob"),
 			("grant_type", "authorization_code"),
 		];
+		dbg!(&body);
 
 		let response = reqwest::Client::new()
 			.post(GOOGLE_AUTH_URL)
@@ -65,6 +68,7 @@ impl GoogleAuth {
 			.unwrap();
 
 		let response: Value = serde_json::from_str(&response).unwrap();
+		dbg!(&response);
 		Ok(response
 			.get("refresh_token")
 			.unwrap()
@@ -73,7 +77,6 @@ impl GoogleAuth {
 			.to_string())
 	}
 
-	/// Returns (refresh_token, access_token, access_token_valid_till)
 	async fn generate_access_token(
 		client_id: &str,
 		client_secret: &str,
@@ -103,20 +106,26 @@ impl GoogleAuth {
 		Ok(resp)
 	}
 
-	pub(crate) async fn access_token(&mut self) -> Result<&str> {
+	async fn validate_access_token(&mut self) -> Result<()> {
+		let GoogleOAuth2Responce {
+			access_token,
+			expires_in,
+		} = Self::generate_access_token(&self.client_id, &self.client_secret, &self.refresh_token)
+			.await?;
+
+		// self.code = CodeType::RefreshToken(refresh_token);
+		self.access_token = access_token;
+		self.expires_in = Instant::now() + Duration::from_secs(expires_in);
+
+		Ok(())
+	}
+
+	pub async fn access_token(&mut self) -> Result<&str> {
 		if Instant::now()
 			.checked_duration_since(self.expires_in)
 			.is_some()
 		{
-			let GoogleOAuth2Responce {
-				access_token,
-				expires_in,
-			} = Self::generate_access_token(&self.client_id, &self.client_secret, &self.refresh_token)
-				.await?;
-
-			// self.code = CodeType::RefreshToken(refresh_token);
-			self.access_token = access_token;
-			self.expires_in = Instant::now() + Duration::from_secs(expires_in);
+			self.validate_access_token().await?;
 		}
 
 		Ok(self.access_token.as_str())
