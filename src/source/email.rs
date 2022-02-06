@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use mailparse::ParsedMail;
 
 use crate::auth::GoogleAuth;
@@ -42,10 +44,36 @@ enum Auth {
 }
 
 #[derive(Debug)]
-pub struct EmailFilters {
+pub struct Filters {
 	pub sender: Option<String>,
 	pub subjects: Option<Vec<String>>,
 	pub exclude_subjects: Option<Vec<String>>,
+}
+
+#[derive(Debug)]
+pub enum ViewMode {
+	ReadOnly,
+	MarkAsRead,
+	Delete,
+}
+
+impl FromStr for ViewMode {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self> {
+		Ok(match s {
+			"read_only" => Self::ReadOnly,
+			"mark_as_read" => Self::MarkAsRead,
+			"delete" => Self::Delete,
+			_ => {
+				return Err(Error::ConfigInvalidFieldType {
+					name: "Email".to_string(),
+					field: "view_mode",
+					expected_type: "string (read_only | mark_as_read | delete)",
+				})
+			}
+		})
+	}
 }
 
 pub struct Email {
@@ -53,8 +81,8 @@ pub struct Email {
 	imap: String,
 	email: String,
 	auth: Auth,
-	filters: EmailFilters,
-	remove: bool,
+	filters: Filters,
+	view_mode: ViewMode,
 	footer: Option<String>, // remove everything after this text, including itself, from the message
 }
 
@@ -65,8 +93,8 @@ impl Email {
 		imap: String,
 		email: String,
 		password: String,
-		filters: EmailFilters,
-		remove: bool,
+		filters: Filters,
+		view_mode: ViewMode,
 		footer: Option<String>,
 	) -> Self {
 		tracing::info!("Creatng an Email provider");
@@ -76,7 +104,7 @@ impl Email {
 			email,
 			auth: Auth::Password(password),
 			filters,
-			remove,
+			view_mode,
 			footer,
 		}
 	}
@@ -87,8 +115,8 @@ impl Email {
 		imap: String,
 		email: String,
 		auth: GoogleAuth,
-		filters: EmailFilters,
-		remove: bool,
+		filters: Filters,
+		view_mode: ViewMode,
 		footer: Option<String>,
 	) -> Result<Self> {
 		tracing::info!("Creatng an Email provider");
@@ -99,7 +127,7 @@ impl Email {
 			email,
 			auth: Auth::GoogleAuth(auth),
 			filters,
-			remove,
+			view_mode,
 			footer,
 		})
 	}
@@ -138,8 +166,11 @@ impl Email {
 				})?,
 		};
 
-		// session.select("INBOX").map_err(|e| Error::SourceFetch {
-		session.examine("INBOX").map_err(|e| Error::SourceFetch {
+		match self.view_mode {
+			ViewMode::ReadOnly => session.examine("INBOX"),
+			ViewMode::MarkAsRead | ViewMode::Delete => session.select("INBOX"),
+		}
+		.map_err(|e| Error::SourceFetch {
 			service: format!("Email: {}", self.name),
 			why: format!("Couldn't open INBOX: {}", e),
 		})?;
@@ -191,7 +222,7 @@ impl Email {
 
 		// TODO: handle sent messages separately
 		// mb a callback with email UID after successful sending?
-		if self.remove {
+		if let ViewMode::Delete = self.view_mode {
 			session
 				.uid_store(&mail_ids, "+FLAGS.SILENT (\\Deleted)")
 				.map_err(|e| Error::SourceFetch {
@@ -211,7 +242,7 @@ impl Email {
 			why: e.to_string(),
 		})?;
 
-		tracing::info!("Got {amount} emails", amount = mails.len());
+		tracing::info!("Got {amount} unread emails", amount = mails.len());
 
 		mails
 			.into_iter()
@@ -293,7 +324,7 @@ impl std::fmt::Debug for Email {
 			)
 			.field("email", &self.email)
 			.field("filters", &self.filters)
-			.field("remove", &self.remove)
+			.field("view_mode", &self.view_mode)
 			.field("footer", &self.footer)
 			.finish()
 	}

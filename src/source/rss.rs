@@ -43,7 +43,6 @@ impl Rss {
 			service: format!("RSS: {}", self.name),
 			why: e.to_string(),
 		})?;
-		tracing::info!("Got {amount} RSS articles", amount = feed.items.len());
 
 		if let Some(id) = &last_read_id {
 			if let Some(id_pos) = feed
@@ -55,6 +54,10 @@ impl Rss {
 				feed.items.drain(id_pos..);
 			}
 		}
+		tracing::info!(
+			"Got {amount} unread RSS articles",
+			amount = feed.items.len()
+		);
 
 		let messages = feed
 			.items

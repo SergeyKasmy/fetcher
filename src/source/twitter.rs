@@ -53,7 +53,13 @@ impl Twitter {
 				service: "Twitter".to_string(),
 				why: e.to_string(),
 			})?;
-		tracing::info!("Got {amount} tweets", amount = tweets.len());
+
+		if !tweets.is_empty() {
+			tracing::info!(
+				"Got {amount} unread & unfiltered tweets",
+				amount = tweets.len()
+			);
+		}
 
 		let messages = tweets
 			.iter()

@@ -10,7 +10,10 @@ use crate::{
 	error::Result,
 	settings,
 	sink::{Sink, Telegram},
-	source::{email::EmailFilters, Email, Rss, Source, Twitter},
+	source::{
+		email::Filters as EmailFilters, email::ViewMode as EmailViewMode, Email, Rss, Source,
+		Twitter,
+	},
 };
 
 #[derive(Debug)]
@@ -290,18 +293,19 @@ impl Config {
 			})?
 			.to_string();
 
-		let remove = table
-			.get("remove")
+		let view_mode: EmailViewMode = table
+			.get("view_mode")
 			.ok_or(Error::ConfigMissingField {
 				name: name.to_string(),
-				field: "remove",
+				field: "view_mode",
 			})?
-			.as_bool()
+			.as_str()
 			.ok_or(Error::ConfigInvalidFieldType {
 				name: name.to_string(),
 				field: "remove",
-				expected_type: "bool",
-			})?;
+				expected_type: "string (read_only | mark_as_read | delete)",
+			})?
+			.parse()?;
 
 		let footer = Some(
 			table
@@ -331,7 +335,15 @@ impl Config {
 				let pass = settings::google_password()?
 					.ok_or_else(|| Error::GetData("Google password not found".to_string()))?;
 
-				Email::with_password(name.to_string(), imap, email, pass, filters, remove, footer)
+				Email::with_password(
+					name.to_string(),
+					imap,
+					email,
+					pass,
+					filters,
+					view_mode,
+					footer,
+				)
 			}
 			Some("google_oauth2") => {
 				Email::with_google_oauth2(
@@ -343,7 +355,7 @@ impl Config {
 						.into_google_auth()
 						.await?,
 					filters,
-					remove,
+					view_mode,
 					footer,
 				)
 				.await?
