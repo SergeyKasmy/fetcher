@@ -1,9 +1,13 @@
+// TODO: don't keep service name as a str, create separate enums for each instead
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error("can't read program config: {0}")]
 	GetConfig(String),
 	#[error("can't read program data: {0}")]
 	GetData(String),
+	#[error("can't parse program data: {0}")]
+	ParseData(#[from] serde_json::error::Error),
 	#[error("can't save program data: {0}")]
 	SaveData(String),
 	#[error("env var not found: {0}")]
@@ -20,6 +24,8 @@ pub enum Error {
 		field: &'static str,
 		expected_type: &'static str,
 	},
+	#[error("IO error: {0}")]
+	IoError(#[from] std::io::Error),
 	#[error("{service} authentication error: {why}")]
 	SourceAuth { service: String, why: String },
 	#[error("can't fetch data from {service}: {why}")]

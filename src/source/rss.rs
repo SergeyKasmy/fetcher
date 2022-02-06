@@ -49,6 +49,7 @@ impl Rss {
 			if let Some(id_pos) = feed
 				.items
 				.iter()
+				// NOTE: *should* be safe, rss without guid is useless
 				.position(|x| x.guid.as_ref().unwrap().value == id.as_str())
 			{
 				feed.items.drain(id_pos..);
@@ -62,6 +63,7 @@ impl Rss {
 			.map(|x| {
 				let text = format!(
 					"<a href=\"{}\">{}</a>\n{}",
+					// NOTE: "safe" unwrap, these are required fields
 					x.link.as_deref().unwrap(),
 					x.title.as_deref().unwrap(),
 					x.description.as_deref().unwrap()

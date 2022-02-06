@@ -24,7 +24,10 @@ pub struct Config {
 impl Config {
 	pub async fn parse(conf_raw: &str) -> Result<Vec<Self>> {
 		let tbl = Value::from_str(conf_raw)?;
-		let telegram: TelegramCfg = serde_json::from_str(&settings::telegram()?.unwrap()).unwrap();
+		let telegram: TelegramCfg = serde_json::from_str(
+			&settings::telegram()?
+				.ok_or_else(|| Error::GetData("Telegram data not found".to_string()))?,
+		)?;
 		let bot = Bot::new(telegram.bot_api_key);
 
 		let mut confs: Vec<Self> = Vec::new();
@@ -136,7 +139,8 @@ impl Config {
 			})
 			.collect::<Result<Vec<String>>>()?;
 
-		let TwitterCfg { key, secret } = settings::twitter()?.unwrap();
+		let TwitterCfg { key, secret } = settings::twitter()?
+			.ok_or_else(|| Error::GetData("Twitter data not found".to_string()))?;
 
 		Ok(Twitter::new(
 			name.to_string(),
@@ -320,6 +324,7 @@ impl Config {
 		{
 			#[allow(unreachable_code)]
 			Some("password") => {
+				// FIXME
 				todo!();
 
 				let password = "TODO".to_string();
@@ -340,7 +345,7 @@ impl Config {
 					imap,
 					email,
 					settings::google_oauth2()?
-						.unwrap()
+						.ok_or_else(|| Error::GetData("Google OAuth2 data not found".to_string()))?
 						.into_google_auth()
 						.await?,
 					filters,

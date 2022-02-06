@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::time::{Duration, Instant};
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
 
@@ -53,25 +53,38 @@ impl GoogleAuth {
 			("redirect_uri", "urn:ietf:wg:oauth:2.0:oob"),
 			("grant_type", "authorization_code"),
 		];
-		dbg!(&body);
 
 		let response = reqwest::Client::new()
 			.post(GOOGLE_AUTH_URL)
 			.form(&body)
 			.send()
 			.await
-			.unwrap()
+			.map_err(|e| Error::SourceAuth {
+				service: "Google".to_string(),
+				why: e.to_string(),
+			})?
 			.text()
 			.await
-			.unwrap();
+			.map_err(|e| Error::SourceAuth {
+				service: "Google".to_string(),
+				why: e.to_string(),
+			})?;
 
-		let response: Value = serde_json::from_str(&response).unwrap();
-		dbg!(&response);
+		let response: Value = serde_json::from_str(&response).map_err(|e| Error::SourceAuth {
+			service: "Google".to_string(),
+			why: e.to_string(),
+		})?;
 		Ok(response
 			.get("refresh_token")
-			.unwrap()
+			.ok_or_else(|| Error::SourceAuth {
+				service: "Google".to_string(),
+				why: "refresh_token field not found".to_string(),
+			})?
 			.as_str()
-			.unwrap()
+			.ok_or_else(|| Error::SourceAuth {
+				service: "Google".to_string(),
+				why: "refresh_token field is not a string".to_string(),
+			})?
 			.to_string())
 	}
 
@@ -94,12 +107,21 @@ impl GoogleAuth {
 				.form(&body)
 				.send()
 				.await
-				.unwrap()
+				.map_err(|e| Error::SourceAuth {
+					service: "Google".to_string(),
+					why: e.to_string(),
+				})?
 				.text()
 				.await
-				.unwrap(),
+				.map_err(|e| Error::SourceAuth {
+					service: "Google".to_string(),
+					why: e.to_string(),
+				})?,
 		)
-		.unwrap();
+		.map_err(|e| Error::SourceAuth {
+			service: "Google".to_string(),
+			why: e.to_string(),
+		})?;
 
 		Ok(resp)
 	}

@@ -29,10 +29,10 @@ fn data_path(name: &str) -> Result<PathBuf> {
 
 fn input(prompt: &str, expected_input_len: usize) -> Result<String> {
 	print!("{prompt}");
-	io::stdout().flush().unwrap();
+	io::stdout().flush()?;
 
 	let mut buf = String::with_capacity(expected_input_len);
-	stdin().read_line(&mut buf).unwrap();
+	stdin().read_line(&mut buf)?;
 
 	Ok(buf.trim().to_string())
 }
@@ -42,11 +42,15 @@ fn data(name: &str) -> Result<Option<String>> {
 }
 
 pub fn google_oauth2() -> Result<Option<GoogleAuthCfg>> {
-	Ok(serde_json::from_str(&data(GOOGLE_OAUTH2)?.unwrap()).unwrap())
+	Ok(serde_json::from_str(&data(GOOGLE_OAUTH2)?.ok_or_else(
+		|| Error::GetData("Google OAuth2 data not found".to_string()),
+	)?)?)
 }
 
 pub fn twitter() -> Result<Option<TwitterCfg>> {
-	Ok(serde_json::from_str(&data(TWITTER)?.unwrap()).unwrap())
+	Ok(serde_json::from_str(&data(TWITTER)?.ok_or_else(|| {
+		Error::GetData("Google OAuth2 data not found".to_string())
+	})?)?)
 }
 
 pub fn telegram() -> Result<Option<String>> {
@@ -72,8 +76,7 @@ pub async fn generate_google_oauth2() -> Result<()> {
 			client_id,
 			client_secret,
 			refresh_token,
-		})
-		.unwrap(),
+		})?,
 	)
 }
 
@@ -83,7 +86,7 @@ pub fn generate_twitter_auth() -> Result<()> {
 
 	save_data(
 		TWITTER,
-		&serde_json::to_string(&TwitterCfg { key, secret }).unwrap(),
+		&serde_json::to_string(&TwitterCfg { key, secret })?,
 	)
 }
 
