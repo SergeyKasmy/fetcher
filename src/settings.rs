@@ -10,7 +10,7 @@ const PREFIX: &str = "fetcher";
 const CONFIG: &str = "config.toml";
 const LAST_READ_DATA_DIR: &str = "last-read";
 
-pub fn get_config() -> Result<String> {
+pub fn config() -> Result<String> {
 	let path = if !cfg!(debug_assertions) {
 		xdg::BaseDirectories::with_prefix(PREFIX)
 			.map_err(|e| Error::GetConfig(e.to_string()))?
@@ -96,7 +96,7 @@ pub async fn generate_google_oauth2() -> Result<()> {
 	)
 }
 
-pub fn generate_twiiter_auth() -> Result<()> {
+pub fn generate_twitter_auth() -> Result<()> {
 	let mut key = String::with_capacity(50);
 	println!("Twitter API key: ");
 	stdin().read_line(&mut key).unwrap();
@@ -105,11 +105,19 @@ pub fn generate_twiiter_auth() -> Result<()> {
 	let mut key_secret = String::with_capacity(50);
 	println!("Twiiter API key secret: ");
 	stdin().read_line(&mut key_secret).unwrap();
-	let key_secret = key_secret.trim().to_string();
+	let secret = key_secret.trim().to_string();
 
 	save_data(
-		"twitter_auth.json",
-		&serde_json::to_string(&crate::config::formats::TwitterAuthCfg { key, key_secret })
-			.unwrap(),
+		"twitter.json",
+		&serde_json::to_string(&crate::config::formats::TwitterCfg { key, secret }).unwrap(),
 	)
+}
+
+pub fn generate_telegram() -> Result<()> {
+	let mut key = String::with_capacity(50);
+	println!("Telegram bot API key: ");
+	stdin().read_line(&mut key).unwrap();
+	let key = key.trim().to_string();
+
+	save_data("telegram.json", &key)
 }

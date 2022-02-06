@@ -12,14 +12,13 @@ async fn main() -> Result<()> {
 			fetcher::settings::generate_google_oauth2().await?;
 		}
 		Some("--gen-secret-twitter") => {
-			fetcher::settings::generate_twiiter_auth()?;
+			fetcher::settings::generate_twitter_auth()?;
 		}
 		Some("--gen-secret-telegram") => {
-			// fetcher::settings::generate_google_oauth2_token().await?;
-			todo!()
+			fetcher::settings::generate_telegram()?;
 		}
 		None => {
-			let conf = settings::get_config().context("unable to get config")?;
+			let conf = settings::config().context("unable to get config")?;
 			let parsed = Config::parse(&conf)
 				.await
 				.context("unable to parse config")?;

@@ -1,22 +1,17 @@
 pub(crate) mod formats;
 
-use std::env::var;
 use std::str::FromStr;
 use teloxide::Bot;
 use toml::{value::Map, Value};
 
 use crate::{
-	config::formats::{GoogleAuthCfg, TwitterAuthCfg},
+	config::formats::{GoogleAuthCfg, TelegramCfg, TwitterCfg},
 	error::Error,
 	error::Result,
 	settings,
 	sink::{Sink, Telegram},
 	source::{email::EmailFilters, Email, Rss, Source, Twitter},
 };
-
-fn env(s: &str) -> Result<String> {
-	var(s).map_err(|_| Error::GetEnvVar(s.to_string()))
-}
 
 #[derive(Debug)]
 pub struct Config {
@@ -29,7 +24,9 @@ pub struct Config {
 impl Config {
 	pub async fn parse(conf_raw: &str) -> Result<Vec<Self>> {
 		let tbl = Value::from_str(conf_raw)?;
-		let bot = Bot::new(env("BOT_TOKEN")?);
+		let telegram: TelegramCfg =
+			serde_json::from_str(&settings::data("telegram.json")?.unwrap()).unwrap();
+		let bot = Bot::new(telegram.bot_api_key);
 
 		let mut confs: Vec<Self> = Vec::new();
 		// NOTE: unwrapping should be safe. AFAIK the root of a TOML is always a table
@@ -39,13 +36,21 @@ impl Config {
 				field: "table",
 			})?;
 
-			let chat_id = if !cfg!(debug_assertions) {
-				format!("{}_CHAT_ID", name.to_ascii_uppercase())
-			} else {
-				"DEBUG_CHAT_ID".to_string()
-			};
-
-			let sink = Sink::Telegram(Telegram::new(bot.clone(), env(&chat_id)?));
+			let sink = Sink::Telegram(Telegram::new(
+				bot.clone(),
+				table
+					.get("chat_id")
+					.ok_or(Error::ConfigMissingField {
+						name: name.clone(),
+						field: "chat_id",
+					})?
+					.as_integer()
+					.ok_or(Error::ConfigInvalidFieldType {
+						name: name.clone(),
+						field: "chat_id",
+						expected_type: "integer",
+					})?,
+			));
 			let source = match table
 				.get("type")
 				.ok_or(Error::ConfigMissingField {
@@ -132,8 +137,8 @@ impl Config {
 			})
 			.collect::<Result<Vec<String>>>()?;
 
-		let TwitterAuthCfg { key, secret } =
-			serde_json::from_str(&settings::data("twitter_auth.json")?.unwrap()).unwrap();
+		let TwitterCfg { key, secret } =
+			serde_json::from_str(&settings::data("twitter.json")?.unwrap()).unwrap();
 
 		Ok(Twitter::new(
 			name.to_string(),
@@ -315,8 +320,11 @@ impl Config {
 			})?
 			.as_str()
 		{
+			#[allow(unreachable_code)]
 			Some("password") => {
-				let password = env("EMAIL_PASS")?;
+				todo!();
+
+				let password = "TODO".to_string();
 
 				Email::with_password(
 					name.to_string(),

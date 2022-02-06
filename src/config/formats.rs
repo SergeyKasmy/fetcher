@@ -17,7 +17,12 @@ impl GoogleAuthCfg {
 }
 
 #[derive(Serialize, Deserialize)]
-pub(crate) struct TwitterAuthCfg {
+pub(crate) struct TwitterCfg {
 	pub key: String,
 	pub secret: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct TelegramCfg {
+	pub bot_api_key: String,
 }
