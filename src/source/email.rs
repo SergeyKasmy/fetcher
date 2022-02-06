@@ -1,7 +1,12 @@
-use std::str::FromStr;
+mod auth;
+mod view_mode;
+
+pub use auth::Auth;
+pub use view_mode::ViewMode;
 
 use mailparse::ParsedMail;
 
+use self::auth::GoogleAuthExt;
 use crate::auth::GoogleAuth;
 use crate::error::{Error, Result};
 use crate::sink::Message;
@@ -9,71 +14,11 @@ use crate::source::Responce;
 
 const IMAP_PORT: u16 = 993;
 
-struct ImapOAuth2<'a> {
-	email: &'a str,
-	token: &'a str,
-}
-
-impl imap::Authenticator for ImapOAuth2<'_> {
-	type Response = String;
-
-	fn process(&self, _challenge: &[u8]) -> Self::Response {
-		format!("user={}\x01auth=Bearer {}\x01\x01", self.email, self.token)
-	}
-}
-
-#[async_trait::async_trait]
-trait GoogleAuthExt {
-	async fn to_imap_oauth2<'a>(&'a mut self, email: &'a str) -> Result<ImapOAuth2<'a>>;
-}
-
-#[async_trait::async_trait]
-impl GoogleAuthExt for GoogleAuth {
-	async fn to_imap_oauth2<'a>(&'a mut self, email: &'a str) -> Result<ImapOAuth2<'a>> {
-		Ok(ImapOAuth2 {
-			email,
-			token: self.access_token().await?,
-		})
-	}
-}
-
-enum Auth {
-	// TODO: use securestr or something of that sort
-	Password(String),
-	GoogleAuth(GoogleAuth),
-}
-
 #[derive(Debug)]
 pub struct Filters {
 	pub sender: Option<String>,
 	pub subjects: Option<Vec<String>>,
 	pub exclude_subjects: Option<Vec<String>>,
-}
-
-#[derive(Debug)]
-pub enum ViewMode {
-	ReadOnly,
-	MarkAsRead,
-	Delete,
-}
-
-impl FromStr for ViewMode {
-	type Err = Error;
-
-	fn from_str(s: &str) -> Result<Self> {
-		Ok(match s {
-			"read_only" => Self::ReadOnly,
-			"mark_as_read" => Self::MarkAsRead,
-			"delete" => Self::Delete,
-			_ => {
-				return Err(Error::ConfigInvalidFieldType {
-					name: "Email".to_string(),
-					field: "view_mode",
-					expected_type: "string (read_only | mark_as_read | delete)",
-				})
-			}
-		})
-	}
 }
 
 pub struct Email {
