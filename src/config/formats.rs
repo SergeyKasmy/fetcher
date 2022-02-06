@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::auth::GoogleAuth;
 use crate::error::Result;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct GoogleAuthCfg {
 	pub client_id: String,
 	pub client_secret: String,
@@ -16,13 +16,8 @@ impl GoogleAuthCfg {
 	}
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct TwitterCfg {
 	pub key: String,
 	pub secret: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct TelegramCfg {
-	pub bot_api_key: String,
 }

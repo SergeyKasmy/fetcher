@@ -49,7 +49,7 @@ pub fn google_oauth2() -> Result<Option<GoogleAuthCfg>> {
 
 pub fn twitter() -> Result<Option<TwitterCfg>> {
 	Ok(serde_json::from_str(&data(TWITTER)?.ok_or_else(|| {
-		Error::GetData("Google OAuth2 data not found".to_string())
+		Error::GetData("Twitter data not found".to_string())
 	})?)?)
 }
 
@@ -66,7 +66,7 @@ pub async fn generate_google_oauth2() -> Result<()> {
 
 	let client_id = input("Google OAuth2 client id: ", 100)?;
 	let client_secret = input("Google OAuth2 client secret: ", 40)?;
-	let access_code = input(&format!("Open the link below and paste the access code:\nhttps://accounts.google.com/o/oauth2/auth?scope={SCOPE}&client_id={client_id}&response_type=code&redirect_uri=urn:ietf:wg:oauth:2.0:oob\nAccess code: "), 0)?;
+	let access_code = input(&format!("Open the link below and paste the access code:\nhttps://accounts.google.com/o/oauth2/auth?scope={SCOPE}&client_id={client_id}&response_type=code&redirect_uri=urn:ietf:wg:oauth:2.0:oob\nAccess code: "), 75)?;
 	let refresh_token =
 		GoogleAuth::generate_refresh_token(&client_id, &client_secret, &access_code).await?;
 

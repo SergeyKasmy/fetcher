@@ -5,7 +5,7 @@ use teloxide::Bot;
 use toml::{value::Map, Value};
 
 use crate::{
-	config::formats::{TelegramCfg, TwitterCfg},
+	config::formats::TwitterCfg,
 	error::Error,
 	error::Result,
 	settings,
@@ -24,11 +24,10 @@ pub struct Config {
 impl Config {
 	pub async fn parse(conf_raw: &str) -> Result<Vec<Self>> {
 		let tbl = Value::from_str(conf_raw)?;
-		let telegram: TelegramCfg = serde_json::from_str(
-			&settings::telegram()?
+		let bot = Bot::new(
+			settings::telegram()?
 				.ok_or_else(|| Error::GetData("Telegram data not found".to_string()))?,
-		)?;
-		let bot = Bot::new(telegram.bot_api_key);
+		);
 
 		let mut confs: Vec<Self> = Vec::new();
 		// NOTE: unwrapping should be safe. AFAIK the root of a TOML is always a table
@@ -37,6 +36,12 @@ impl Config {
 				name: name.clone(),
 				field: "table",
 			})?;
+
+			if let Some(disabled) = table.get("disabled").and_then(|x| x.as_bool()) {
+				if disabled {
+					continue;
+				}
+			}
 
 			let sink = Sink::Telegram(Telegram::new(
 				bot.clone(),
