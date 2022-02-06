@@ -22,9 +22,10 @@ pub enum Source {
 }
 
 impl Source {
+	// TODO: try using streams instead of polling manually?
 	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
 		match self {
-			Self::Email(x) => x.get(),
+			Self::Email(x) => x.get().await,
 			Self::Rss(x) => x.get(last_read_id).await,
 			Self::Twitter(x) => x.get(last_read_id).await,
 		}

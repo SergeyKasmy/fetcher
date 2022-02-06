@@ -46,14 +46,20 @@ impl Twitter {
 
 	#[tracing::instrument]
 	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
-		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // FIXME: remove clone
+		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // TODO: remove clone
 			.older(last_read_id.as_ref().and_then(|x| x.parse().ok()))
 			.await
 			.map_err(|e| Error::SourceFetch {
 				service: "Twitter".to_string(),
 				why: e.to_string(),
 			})?;
-		tracing::info!("Got {amount} tweets", amount = tweets.len());
+
+		if !tweets.is_empty() {
+			tracing::info!(
+				"Got {amount} unread & unfiltered tweets",
+				amount = tweets.len()
+			);
+		}
 
 		let messages = tweets
 			.iter()

@@ -1,37 +1,100 @@
+use std::str::FromStr;
+
 use mailparse::ParsedMail;
 
+use crate::auth::GoogleAuth;
 use crate::error::{Error, Result};
 use crate::sink::Message;
 use crate::source::Responce;
 
 const IMAP_PORT: u16 = 993;
 
+struct ImapOAuth2<'a> {
+	email: &'a str,
+	token: &'a str,
+}
+
+impl imap::Authenticator for ImapOAuth2<'_> {
+	type Response = String;
+
+	fn process(&self, _challenge: &[u8]) -> Self::Response {
+		format!("user={}\x01auth=Bearer {}\x01\x01", self.email, self.token)
+	}
+}
+
+#[async_trait::async_trait]
+trait GoogleAuthExt {
+	async fn to_imap_oauth2<'a>(&'a mut self, email: &'a str) -> Result<ImapOAuth2<'a>>;
+}
+
+#[async_trait::async_trait]
+impl GoogleAuthExt for GoogleAuth {
+	async fn to_imap_oauth2<'a>(&'a mut self, email: &'a str) -> Result<ImapOAuth2<'a>> {
+		Ok(ImapOAuth2 {
+			email,
+			token: self.access_token().await?,
+		})
+	}
+}
+
+enum Auth {
+	// TODO: use securestr or something of that sort
+	Password(String),
+	GoogleAuth(GoogleAuth),
+}
+
 #[derive(Debug)]
-pub struct EmailFilters {
+pub struct Filters {
 	pub sender: Option<String>,
 	pub subjects: Option<Vec<String>>,
 	pub exclude_subjects: Option<Vec<String>>,
+}
+
+#[derive(Debug)]
+pub enum ViewMode {
+	ReadOnly,
+	MarkAsRead,
+	Delete,
+}
+
+impl FromStr for ViewMode {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self> {
+		Ok(match s {
+			"read_only" => Self::ReadOnly,
+			"mark_as_read" => Self::MarkAsRead,
+			"delete" => Self::Delete,
+			_ => {
+				return Err(Error::ConfigInvalidFieldType {
+					name: "Email".to_string(),
+					field: "view_mode",
+					expected_type: "string (read_only | mark_as_read | delete)",
+				})
+			}
+		})
+	}
 }
 
 pub struct Email {
 	name: String,
 	imap: String,
 	email: String,
-	password: String,
-	filters: EmailFilters,
-	remove: bool,
-	footer: Option<String>, // NOTE: remove everything after this text, including itself, from the message
+	auth: Auth,
+	filters: Filters,
+	view_mode: ViewMode,
+	footer: Option<String>, // remove everything after this text, including itself, from the message
 }
 
 impl Email {
-	#[tracing::instrument]
-	pub fn new(
+	#[tracing::instrument(skip(password))]
+	pub fn with_password(
 		name: String,
 		imap: String,
 		email: String,
 		password: String,
-		filters: EmailFilters,
-		remove: bool,
+		filters: Filters,
+		view_mode: ViewMode,
 		footer: Option<String>,
 	) -> Self {
 		tracing::info!("Creatng an Email provider");
@@ -39,15 +102,40 @@ impl Email {
 			name,
 			imap,
 			email,
-			password,
+			auth: Auth::Password(password),
 			filters,
-			remove,
+			view_mode,
 			footer,
 		}
 	}
 
+	#[tracing::instrument(skip(auth))]
+	pub async fn with_google_oauth2(
+		name: String,
+		imap: String,
+		email: String,
+		auth: GoogleAuth,
+		filters: Filters,
+		view_mode: ViewMode,
+		footer: Option<String>,
+	) -> Result<Self> {
+		tracing::info!("Creatng an Email provider");
+
+		Ok(Self {
+			name,
+			imap,
+			email,
+			auth: Auth::GoogleAuth(auth),
+			filters,
+			view_mode,
+			footer,
+		})
+	}
+
+	/// Even though it's marked async, the fetching itself is not async yet
+	/// It should be used with spawn_blocking probs
 	#[tracing::instrument]
-	pub fn get(&mut self) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self) -> Result<Vec<Responce>> {
 		let client = imap::connect(
 			(self.imap.as_str(), IMAP_PORT),
 			&self.imap,
@@ -61,13 +149,28 @@ impl Email {
 			why: format!("Error connecting to IMAP: {}", e),
 		})?;
 
-		let mut session = client
-			.login(&self.email, &self.password)
-			.map_err(|(e, _)| Error::SourceAuth {
-				service: format!("Email: {}", self.name),
-				why: e.to_string(),
-			})?;
-		session.select("INBOX").map_err(|e| Error::SourceFetch {
+		let mut session = match &mut self.auth {
+			Auth::Password(password) => {
+				client
+					.login(&self.email, password)
+					.map_err(|(e, _)| Error::SourceAuth {
+						service: format!("Email (Password): {}", self.name),
+						why: e.to_string(),
+					})?
+			}
+			Auth::GoogleAuth(auth) => client
+				.authenticate("XOAUTH2", &auth.to_imap_oauth2(&self.email).await?)
+				.map_err(|(e, _)| Error::SourceAuth {
+					service: format!("Email (OAuth2): {}", self.name),
+					why: e.to_string(),
+				})?,
+		};
+
+		match self.view_mode {
+			ViewMode::ReadOnly => session.examine("INBOX"),
+			ViewMode::MarkAsRead | ViewMode::Delete => session.select("INBOX"),
+		}
+		.map_err(|e| Error::SourceFetch {
 			service: format!("Email: {}", self.name),
 			why: format!("Couldn't open INBOX: {}", e),
 		})?;
@@ -119,7 +222,7 @@ impl Email {
 
 		// TODO: handle sent messages separately
 		// mb a callback with email UID after successful sending?
-		if self.remove {
+		if let ViewMode::Delete = self.view_mode {
 			session
 				.uid_store(&mail_ids, "+FLAGS.SILENT (\\Deleted)")
 				.map_err(|e| Error::SourceFetch {
@@ -139,7 +242,7 @@ impl Email {
 			why: e.to_string(),
 		})?;
 
-		tracing::info!("Got {amount} emails", amount = mails.len());
+		tracing::info!("Got {amount} unread emails", amount = mails.len());
 
 		mails
 			.into_iter()
@@ -212,9 +315,16 @@ impl std::fmt::Debug for Email {
 		f.debug_struct("Email")
 			.field("name", &self.name)
 			.field("imap", &self.imap)
+			.field(
+				"auth_type",
+				match self.auth {
+					Auth::Password(_) => &"password",
+					Auth::GoogleAuth(_) => &"google_auth",
+				},
+			)
 			.field("email", &self.email)
 			.field("filters", &self.filters)
-			.field("remove", &self.remove)
+			.field("view_mode", &self.view_mode)
 			.field("footer", &self.footer)
 			.finish()
 	}
