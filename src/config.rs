@@ -5,7 +5,7 @@ use teloxide::Bot;
 use toml::{value::Map, Value};
 
 use crate::{
-	config::formats::{GoogleAuthCfg, TelegramCfg, TwitterCfg},
+	config::formats::{TelegramCfg, TwitterCfg},
 	error::Error,
 	error::Result,
 	settings,
@@ -24,8 +24,7 @@ pub struct Config {
 impl Config {
 	pub async fn parse(conf_raw: &str) -> Result<Vec<Self>> {
 		let tbl = Value::from_str(conf_raw)?;
-		let telegram: TelegramCfg =
-			serde_json::from_str(&settings::data("telegram.json")?.unwrap()).unwrap();
+		let telegram: TelegramCfg = serde_json::from_str(&settings::telegram()?.unwrap()).unwrap();
 		let bot = Bot::new(telegram.bot_api_key);
 
 		let mut confs: Vec<Self> = Vec::new();
@@ -137,8 +136,7 @@ impl Config {
 			})
 			.collect::<Result<Vec<String>>>()?;
 
-		let TwitterCfg { key, secret } =
-			serde_json::from_str(&settings::data("twitter.json")?.unwrap()).unwrap();
+		let TwitterCfg { key, secret } = settings::twitter()?.unwrap();
 
 		Ok(Twitter::new(
 			name.to_string(),
@@ -337,15 +335,14 @@ impl Config {
 				)
 			}
 			Some("google_oauth2") => {
-				let auth_cfg: GoogleAuthCfg =
-					serde_json::from_str(&settings::data("google_oauth2.json")?.unwrap()).unwrap();
-				let auth = auth_cfg.into_google_auth().await?;
-
 				Email::with_google_oauth2(
 					name.to_string(),
 					imap,
 					email,
-					auth,
+					settings::google_oauth2()?
+						.unwrap()
+						.into_google_auth()
+						.await?,
 					filters,
 					remove,
 					footer,

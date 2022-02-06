@@ -1,3 +1,5 @@
+// TODO: more tests
+
 pub mod auth;
 pub mod config;
 pub mod error;
@@ -24,7 +26,6 @@ use crate::error::Error;
 use crate::settings::last_read_id;
 use crate::settings::save_last_read_id;
 
-// TODO: more tests
 #[tracing::instrument(skip_all)]
 pub async fn run() -> Result<()> {
 	let configs = Config::parse(&settings::config().context("unable to get config")?)
