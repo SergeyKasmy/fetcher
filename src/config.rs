@@ -1,11 +1,12 @@
-use serde::Deserialize;
+pub(crate) mod formats;
+
 use std::env::var;
 use std::str::FromStr;
 use teloxide::Bot;
 use toml::{value::Map, Value};
 
 use crate::{
-	auth::GoogleAuth,
+	config::formats::{GoogleAuthCfg, TwitterAuthCfg},
 	error::Error,
 	error::Result,
 	settings,
@@ -15,19 +16,6 @@ use crate::{
 
 fn env(s: &str) -> Result<String> {
 	var(s).map_err(|_| Error::GetEnvVar(s.to_string()))
-}
-
-#[derive(Deserialize)]
-struct GoogleAuthCfg {
-	client_id: String,
-	client_secret: String,
-	refresh_token: String,
-}
-
-impl GoogleAuthCfg {
-	async fn into_google_auth(self) -> Result<GoogleAuth> {
-		GoogleAuth::new(self.client_id, self.client_secret, self.refresh_token).await
-	}
 }
 
 #[derive(Debug)]
@@ -144,6 +132,9 @@ impl Config {
 			})
 			.collect::<Result<Vec<String>>>()?;
 
+		let TwitterAuthCfg { key, secret } =
+			serde_json::from_str(&settings::data("twitter_auth.json")?.unwrap()).unwrap();
+
 		Ok(Twitter::new(
 			name.to_string(),
 			table
@@ -172,8 +163,8 @@ impl Config {
 					expected_type: "string",
 				})?
 				.to_string(),
-			env("TWITTER_API_KEY")?,
-			env("TWITTER_API_KEY_SECRET")?,
+			key,
+			secret,
 			filter,
 		)
 		.await?

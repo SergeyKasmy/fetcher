@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::Value;
 use std::time::{Duration, Instant};
 
@@ -12,14 +12,12 @@ struct GoogleOAuth2Responce {
 	expires_in: u64,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Debug)]
 pub struct GoogleAuth {
 	client_id: String,
 	client_secret: String,
 	refresh_token: String,
-	#[serde(skip)]
 	access_token: String,
-	#[serde(skip)]
 	expires_in: Instant,
 }
 

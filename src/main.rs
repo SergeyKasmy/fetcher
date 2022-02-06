@@ -11,11 +11,10 @@ async fn main() -> Result<()> {
 		Some("--gen-secret-google") => {
 			fetcher::settings::generate_google_oauth2().await?;
 		}
-		Some("--gen-secret-telegram") => {
-			// fetcher::settings::generate_google_oauth2_token().await?;
-			todo!()
-		}
 		Some("--gen-secret-twitter") => {
+			fetcher::settings::generate_twiiter_auth()?;
+		}
+		Some("--gen-secret-telegram") => {
 			// fetcher::settings::generate_google_oauth2_token().await?;
 			todo!()
 		}

@@ -1,3 +1,4 @@
+use std::io::stdin;
 use std::{fs, path::PathBuf};
 
 use crate::{
@@ -62,7 +63,6 @@ pub fn save_data(name: &str, data: &str) -> Result<()> {
 }
 
 pub async fn generate_google_oauth2() -> Result<()> {
-	use std::io::stdin;
 	const SCOPE: &str = "https://mail.google.com/";
 
 	// FIXME: update the capacity after testing
@@ -85,6 +85,31 @@ pub async fn generate_google_oauth2() -> Result<()> {
 	let refresh_token =
 		GoogleAuth::generate_refresh_token(&client_id, &client_secret, &access_code).await?;
 
-	let auth = GoogleAuth::new(client_id, client_secret, refresh_token).await?;
-	save_data("google_oauth2.json", &serde_json::to_string(&auth).unwrap())
+	save_data(
+		"google_oauth2.json",
+		&serde_json::to_string(&crate::config::formats::GoogleAuthCfg {
+			client_id,
+			client_secret,
+			refresh_token,
+		})
+		.unwrap(),
+	)
+}
+
+pub fn generate_twiiter_auth() -> Result<()> {
+	let mut key = String::with_capacity(50);
+	println!("Twitter API key: ");
+	stdin().read_line(&mut key).unwrap();
+	let key = key.trim().to_string();
+
+	let mut key_secret = String::with_capacity(50);
+	println!("Twiiter API key secret: ");
+	stdin().read_line(&mut key_secret).unwrap();
+	let key_secret = key_secret.trim().to_string();
+
+	save_data(
+		"twitter_auth.json",
+		&serde_json::to_string(&crate::config::formats::TwitterAuthCfg { key, key_secret })
+			.unwrap(),
+	)
 }
