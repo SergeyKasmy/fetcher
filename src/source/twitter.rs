@@ -46,7 +46,7 @@ impl Twitter {
 
 	#[tracing::instrument]
 	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
-		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // FIXME: remove clone
+		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // TODO: remove clone
 			.older(last_read_id.as_ref().and_then(|x| x.parse().ok()))
 			.await
 			.map_err(|e| Error::SourceFetch {

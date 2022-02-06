@@ -97,7 +97,7 @@ pub async fn run() -> Result<()> {
 		tasks.push(task);
 	}
 
-	// FIXME: handle non critical errors, e.g. SourceFetch error
+	// TODO: handle non critical errors, e.g. SourceFetch error
 	join_all(tasks).await;
 
 	sig_handle.close(); // TODO: figure out wtf this is and why

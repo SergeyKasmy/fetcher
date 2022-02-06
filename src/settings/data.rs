@@ -12,6 +12,7 @@ use crate::{
 };
 
 const GOOGLE_OAUTH2: &str = "google_oauth2.json";
+const GOOGLE_PASS: &str = "google_pass.txt";
 const TWITTER: &str = "twitter.json";
 const TELEGRAM: &str = "telegram.txt";
 
@@ -47,6 +48,10 @@ pub fn google_oauth2() -> Result<Option<GoogleAuthCfg>> {
 	)?)?)
 }
 
+pub fn google_password() -> Result<Option<String>> {
+	data(GOOGLE_PASS)
+}
+
 pub fn twitter() -> Result<Option<TwitterCfg>> {
 	Ok(serde_json::from_str(&data(TWITTER)?.ok_or_else(|| {
 		Error::GetData("Twitter data not found".to_string())
@@ -78,6 +83,13 @@ pub async fn generate_google_oauth2() -> Result<()> {
 			refresh_token,
 		})?,
 	)
+}
+
+// TODO: maybe "generate" isn't the best word?
+pub fn generate_google_password() -> Result<()> {
+	let pass = input("Google app password", 25)?;
+
+	save_data(GOOGLE_PASS, &pass)
 }
 
 pub fn generate_twitter_auth() -> Result<()> {

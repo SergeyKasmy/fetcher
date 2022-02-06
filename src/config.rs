@@ -86,7 +86,7 @@ impl Config {
 					name: name.clone(),
 					field: "refresh",
 					expected_type: "integer",
-				})? as u64; // FIXME: figure out if casting with as can cause problems
+				})? as u64; // TODO: handle wrong (negative) numbers better
 
 			confs.push(Config {
 				name: name.clone(),
@@ -327,22 +327,11 @@ impl Config {
 			})?
 			.as_str()
 		{
-			#[allow(unreachable_code)]
 			Some("password") => {
-				// FIXME
-				todo!();
+				let pass = settings::google_password()?
+					.ok_or_else(|| Error::GetData("Google password not found".to_string()))?;
 
-				let password = "TODO".to_string();
-
-				Email::with_password(
-					name.to_string(),
-					imap,
-					email,
-					password,
-					filters,
-					remove,
-					footer,
-				)
+				Email::with_password(name.to_string(), imap, email, pass, filters, remove, footer)
 			}
 			Some("google_oauth2") => {
 				Email::with_google_oauth2(
