@@ -1,6 +1,4 @@
-use anyhow::Context;
 use anyhow::Result;
-use fetcher::{config::Config, settings};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -18,11 +16,7 @@ async fn main() -> Result<()> {
 			fetcher::settings::generate_telegram()?;
 		}
 		None => {
-			let conf = settings::config().context("unable to get config")?;
-			let parsed = Config::parse(&conf)
-				.await
-				.context("unable to parse config")?;
-			fetcher::run(parsed).await?;
+			fetcher::run().await?;
 		}
 		Some(_) => panic!("error"),
 	}

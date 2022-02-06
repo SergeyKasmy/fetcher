@@ -26,7 +26,11 @@ use crate::settings::save_last_read_id;
 
 // TODO: more tests
 #[tracing::instrument(skip_all)]
-pub async fn run(configs: Vec<Config>) -> Result<()> {
+pub async fn run() -> Result<()> {
+	let configs = Config::parse(&settings::config().context("unable to get config")?)
+		.await
+		.context("unable to parse config")?;
+
 	let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
 	let sig = Signals::new(TERM_SIGNALS).context("Error registering signals")?;
