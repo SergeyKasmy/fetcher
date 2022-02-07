@@ -1,3 +1,11 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
+ */
+
 use rss::Channel;
 
 use crate::error::Result;
@@ -37,16 +45,19 @@ impl Rss {
 			if let Some(id_pos) = feed
 				.items
 				.iter()
-				// NOTE: *should* be safe, rss without guid is useless
+				// unwrap NOTE: *should* be safe, rss without guid is kinda useless
 				.position(|x| x.guid.as_ref().unwrap().value == id.as_str())
 			{
 				feed.items.drain(id_pos..);
 			}
 		}
-		tracing::info!(
-			"Got {amount} unread RSS articles",
-			amount = feed.items.len()
-		);
+
+		if !feed.items.is_empty() {
+			tracing::info!(
+				"Got {amount} unread RSS articles",
+				amount = feed.items.len()
+			);
+		}
 
 		let messages = feed
 			.items
@@ -55,14 +66,14 @@ impl Rss {
 			.map(|x| {
 				let text = format!(
 					"<a href=\"{}\">{}</a>\n{}",
-					// NOTE: "safe" unwrap, these are required fields
+					// unwrap NOTE: "safe", these are required fields
 					x.link.as_deref().unwrap(),
 					x.title.as_deref().unwrap(),
 					x.description.as_deref().unwrap()
-				); // NOTE: these fields are requred
+				);
 
 				Responce {
-					id: Some(x.guid.as_ref().unwrap().value.clone()),
+					id: Some(x.guid.as_ref().unwrap().value.clone()), // unwrap NOTE: same as above
 					msg: Message { text, media: None },
 				}
 			})

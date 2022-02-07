@@ -1,3 +1,11 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
+ */
+
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 
@@ -7,11 +15,7 @@ use crate::sink::Message;
 use crate::source::Responce;
 
 pub struct Twitter {
-	// FIXME: why is it even here?
-	#[allow(dead_code)]
-	name: String,
-
-	pretty_name: String,
+	pretty_name: String, // used for hashtags
 	handle: String,
 	token: Token,
 	filter: Vec<String>,
@@ -21,7 +25,6 @@ impl Twitter {
 	#[allow(clippy::too_many_arguments)]
 	#[tracing::instrument(skip(api_key, api_key_secret))]
 	pub async fn new(
-		name: String,
 		pretty_name: String,
 		handle: String,
 		api_key: String,
@@ -30,7 +33,6 @@ impl Twitter {
 	) -> Result<Self> {
 		tracing::info!("Creatng a Twitter provider");
 		Ok(Self {
-			name,
 			pretty_name,
 			handle,
 			token: bearer_token(&KeyPair::new(api_key, api_key_secret))
@@ -75,8 +77,12 @@ impl Twitter {
 						media: tweet.entities.media.as_ref().and_then(|x| {
 							x.iter()
 								.map(|x| match x.media_type {
-									MediaType::Photo => Some(Media::Photo(x.media_url.clone())),
-									MediaType::Video => Some(Media::Video(x.media_url.clone())),
+									MediaType::Photo => {
+										Some(Media::Photo(x.media_url.as_str().try_into().unwrap())) // unwrap NOTE: should be safe. If the string provided by tweeter is not an actual url, we should probably crash anyways
+									}
+									MediaType::Video => {
+										Some(Media::Video(x.media_url.as_str().try_into().unwrap()))
+									}
 									MediaType::Gif => None,
 								})
 								.collect::<Option<Vec<Media>>>()
@@ -103,7 +109,6 @@ impl Twitter {
 impl std::fmt::Debug for Twitter {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Twitter")
-			.field("name", &self.name)
 			.field("pretty_name", &self.pretty_name)
 			.field("handle", &self.handle)
 			.field("filter", &self.filter)
