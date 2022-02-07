@@ -154,7 +154,7 @@ impl Email {
 				Ok(Responce {
 					id: None,
 					msg: Self::parse(
-						mailparse::parse_mail(x.body().unwrap())?,
+						mailparse::parse_mail(x.body().unwrap())?, // unwrap NOTE: temporary but it's safe for now because of the check above
 						self.footer.as_deref(),
 					)?,
 				})

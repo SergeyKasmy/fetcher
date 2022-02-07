@@ -46,10 +46,11 @@ impl Telegram {
 
 	#[tracing::instrument(skip(message), fields(len = message.text.len(), text = fmt_comment_msg(&message.text).as_str(), media.is_some = message.media.is_some()))]
 	pub async fn send(&self, message: Message) -> Result<()> {
-		// NOTE: workaround for some kind of a bug that doesn't let access both text and media fields of the struct in the map closure at once
+		// workaround for some kind of a bug that doesn't let access both text and media fields of the struct in the map closure at once
 		let text = if message.text.len() > 4096 {
+			// TODO: split the message properly instead of just throwing the rest away
 			tracing::warn!("Message too long ({len})", len = message.text.len());
-			let (idx, _) = message.text.char_indices().nth(4096 - 3).unwrap(); // NOTE: safe unwrap, length already confirmed to be bigger
+			let (idx, _) = message.text.char_indices().nth(4096 - 3).unwrap(); // unwrap NOTE: safe, length already confirmed to be bigger
 			let mut m = message.text[..idx].to_string();
 			m.push_str("...");
 			m
@@ -100,8 +101,7 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				// TODO: looks ugly
-				Err(e) => Err(e)?,
+				Err(e) => return Err(e.into()),
 			}
 		}
 	}
@@ -120,8 +120,7 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				// TODO: looks ugly
-				Err(e) => Err(e)?,
+				Err(e) => return Err(e.into()),
 			}
 		}
 	}

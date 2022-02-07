@@ -1,6 +1,8 @@
+use url::Url;
+
 pub enum Media {
-	Photo(String),
-	Video(String),
+	Photo(Url),
+	Video(Url),
 }
 
 pub struct Message {

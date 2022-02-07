@@ -30,7 +30,7 @@ impl Config {
 		let bot = Bot::new(settings::telegram()?);
 
 		let mut confs: Vec<Self> = Vec::new();
-		// NOTE: unwrapping should be safe. AFAIK the root of a TOML is always a table
+		// unwrap NOTE: should be safe. AFAIK the root of a TOML is always a table
 		for (name, table) in tbl.as_table().unwrap() {
 			let table = table.as_table().ok_or(Error::ConfigMissingField {
 				name: name.clone(),
@@ -147,7 +147,6 @@ impl Config {
 		let TwitterCfg { key, secret } = settings::twitter()?;
 
 		Ok(Twitter::new(
-			name.to_string(),
 			table
 				.get("pretty_name")
 				.ok_or(Error::ConfigMissingField {
