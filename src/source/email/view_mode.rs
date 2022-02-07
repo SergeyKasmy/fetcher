@@ -8,9 +8,12 @@
 
 use std::str::FromStr;
 
+use serde::Deserialize;
+
 use crate::error::{Error, Result};
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "snake_case")]
 pub enum ViewMode {
 	ReadOnly,
 	MarkAsRead,

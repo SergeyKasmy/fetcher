@@ -24,9 +24,9 @@ pub struct Responce {
 
 #[derive(Debug)]
 pub enum Source {
-	Email(Email),
 	Rss(Rss),
 	Twitter(Twitter),
+	Email(Email),
 }
 
 impl Source {
