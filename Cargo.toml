@@ -1,6 +1,6 @@
 [package]
 name = "fetcher"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 license = "GPL-3.0"
 
@@ -33,5 +33,3 @@ tracing-futures = "0.2.5"
 tracing-log = "0.1.2"
 tracing-subscriber = "0.3.7"
 xdg = "2.4.0"
-
-[features]
