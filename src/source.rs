@@ -10,6 +10,8 @@ pub mod email;
 pub mod rss;
 pub mod twitter;
 
+use serde::Deserialize;
+
 pub use self::email::Email;
 pub use self::rss::Rss;
 pub use self::twitter::Twitter;
@@ -22,7 +24,8 @@ pub struct Responce {
 	pub msg: Message,
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Source {
 	Rss(Rss),
 	Twitter(Twitter),

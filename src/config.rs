@@ -48,29 +48,29 @@ pub struct Entry {
 	refresh: u64,
 	chat_id: i64,
 	#[serde(flatten)]
-	value: Value,
+	source: Source,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum Value {
-	Rss {
-		url: String,
-	},
-	Twitter {
-		filter: Vec<String>,
-		pretty_name: String,
-		handle: String,
-	},
-	Email {
-		pretty_name: String,
-		email: String,
-		imap: String,
-		auth_type: EmailAuthType,
-		view_mode: EmailViewMode,
-		footer: String,
-	},
-}
+// #[derive(Deserialize, Debug)]
+// #[serde(tag = "type", rename_all = "snake_case")]
+// pub enum Value {
+// 	Rss {
+// 		url: String,
+// 	},
+// 	Twitter {
+// 		filter: Vec<String>,
+// 		pretty_name: String,
+// 		handle: String,
+// 	},
+// 	Email {
+// 		pretty_name: String,
+// 		email: String,
+// 		imap: String,
+// 		auth_type: EmailAuthType,
+// 		view_mode: EmailViewMode,
+// 		footer: String,
+// 	},
+// }
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "snake_case")]
