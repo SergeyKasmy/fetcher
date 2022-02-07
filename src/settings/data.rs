@@ -12,6 +12,8 @@ use std::{
 	path::PathBuf,
 };
 
+use teloxide::Bot;
+
 use super::PREFIX;
 use crate::{
 	auth::GoogleAuth,
@@ -63,8 +65,8 @@ pub fn twitter() -> Result<TwitterCfg> {
 	serde_json::from_str(&data(TWITTER)?).map_err(|e| Error::CorruptedData(e, TWITTER.into()))
 }
 
-pub fn telegram() -> Result<String> {
-	data(TELEGRAM)
+pub fn telegram() -> Result<Bot> {
+	Ok(Bot::new(data(TELEGRAM)?))
 }
 
 fn save_data(name: &str, data: &str) -> Result<()> {

@@ -45,18 +45,11 @@ pub struct Entries(HashMap<String, Entry>);
 #[derive(Deserialize, Debug)]
 pub struct Entry {
 	disabled: Option<bool>,
-	refresh: u64,
-	chat_id: i64,
+	#[serde(flatten)]
+	sink: Sink,
 	#[serde(flatten)]
 	source: Source,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum EmailAuthType {
-	#[serde(alias = "google_oauth2")]
-	GoogleOAuth2,
-	Password,
+	refresh: u64,
 }
 
 impl Config {

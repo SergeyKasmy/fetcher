@@ -6,6 +6,7 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+use serde::Deserialize;
 use std::time::Duration;
 use teloxide::{
 	adaptors::{throttle::Limits, Throttle},
@@ -18,10 +19,27 @@ use teloxide::{
 	Bot, RequestError,
 };
 
-use crate::error::Result;
-use crate::sink::Media;
-use crate::sink::Message;
+use crate::{
+	error::{Error, Result},
+	settings,
+	sink::{Media, Message},
+};
 
+#[derive(Deserialize, Debug)]
+struct TelegramIntermediate {
+	chat_id: ChatId,
+}
+
+impl TryFrom<TelegramIntermediate> for Telegram {
+	type Error = Error;
+
+	fn try_from(v: TelegramIntermediate) -> Result<Self> {
+		Ok(Telegram::new(settings::telegram()?, v.chat_id))
+	}
+}
+
+#[derive(Deserialize)]
+#[serde(try_from = "TelegramIntermediate")]
 pub struct Telegram {
 	bot: Throttle<Bot>,
 	chat_id: ChatId,

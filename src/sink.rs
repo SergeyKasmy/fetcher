@@ -10,11 +10,12 @@ mod message;
 mod telegram;
 
 pub use message::{Media, Message};
+use serde::Deserialize;
 pub use telegram::Telegram;
 
 use crate::error::Result;
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug)]
 pub enum Sink {
 	Telegram(Telegram),
 }
