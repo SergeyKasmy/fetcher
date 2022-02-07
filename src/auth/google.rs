@@ -6,7 +6,7 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 
 use crate::error::{Error, Result};
@@ -19,12 +19,34 @@ struct GoogleOAuth2Responce {
 	expires_in: u64,
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug)]
+struct GoogleAuthIntermediate {
+	client_id: String,
+	client_secret: String,
+	refresh_token: String,
+}
+
+impl TryFrom<GoogleAuthIntermediate> for GoogleAuth {
+	type Error = Error;
+
+	fn try_from(v: GoogleAuthIntermediate) -> Result<Self> {
+		futures::executor::block_on(GoogleAuth::new(
+			v.client_id,
+			v.client_secret,
+			v.refresh_token,
+		))
+	}
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(try_from = "GoogleAuthIntermediate")]
 pub struct GoogleAuth {
 	client_id: String,
 	client_secret: String,
 	refresh_token: String,
+	#[serde(skip)]
 	access_token: String,
+	#[serde(skip)]
 	expires_in: Instant,
 }
 

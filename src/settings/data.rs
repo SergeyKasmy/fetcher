@@ -15,7 +15,7 @@ use std::{
 use super::PREFIX;
 use crate::{
 	auth::GoogleAuth,
-	config::formats::{GoogleAuthCfg, TwitterCfg},
+	config::formats::TwitterCfg,
 	error::{Error, Result},
 };
 
@@ -50,7 +50,7 @@ fn data(name: &str) -> Result<String> {
 	fs::read_to_string(&f).map_err(|e| Error::InaccessibleData(e, f))
 }
 
-pub fn google_oauth2() -> Result<GoogleAuthCfg> {
+pub fn google_oauth2() -> Result<GoogleAuth> {
 	serde_json::from_str(&data(GOOGLE_OAUTH2)?)
 		.map_err(|e| Error::CorruptedData(e, GOOGLE_OAUTH2.into()))
 }
@@ -83,12 +83,8 @@ pub async fn generate_google_oauth2() -> Result<()> {
 
 	save_data(
 		GOOGLE_OAUTH2,
-		&serde_json::to_string(&GoogleAuthCfg {
-			client_id,
-			client_secret,
-			refresh_token,
-		})
-		.unwrap(), // NOTE: shouldn't fail, these are just strings
+		&serde_json::to_string(&GoogleAuth::new(client_id, client_secret, refresh_token).await?)
+			.unwrap(), // NOTE: shouldn't fail, these are just strings
 	)
 }
 

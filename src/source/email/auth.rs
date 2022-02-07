@@ -6,13 +6,15 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+use serde::Deserialize;
+
 use crate::auth::GoogleAuth;
 use crate::error::Result;
 
+#[derive(Deserialize)]
 pub enum Auth {
-	// TODO: use securestr or something of that sort
-	Password(String),
 	GoogleAuth(GoogleAuth),
+	Password(String),
 }
 
 pub(super) struct ImapOAuth2<'a> {
@@ -30,12 +32,12 @@ impl imap::Authenticator for ImapOAuth2<'_> {
 
 #[async_trait::async_trait]
 pub(super) trait GoogleAuthExt {
-	async fn to_imap_oauth2<'a>(&'a mut self, email: &'a str) -> Result<ImapOAuth2<'a>>;
+	async fn as_imap_oauth2<'a>(&'a mut self, email: &'a str) -> Result<ImapOAuth2<'a>>;
 }
 
 #[async_trait::async_trait]
 impl GoogleAuthExt for GoogleAuth {
-	async fn to_imap_oauth2<'a>(&'a mut self, email: &'a str) -> Result<ImapOAuth2<'a>> {
+	async fn as_imap_oauth2<'a>(&'a mut self, email: &'a str) -> Result<ImapOAuth2<'a>> {
 		Ok(ImapOAuth2 {
 			email,
 			token: self.access_token().await?,

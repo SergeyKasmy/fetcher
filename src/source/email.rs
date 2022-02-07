@@ -10,6 +10,7 @@ mod auth;
 mod view_mode;
 
 pub use auth::Auth;
+use serde::Deserialize;
 pub use view_mode::ViewMode;
 
 use mailparse::ParsedMail;
@@ -22,13 +23,14 @@ use crate::source::Responce;
 
 const IMAP_PORT: u16 = 993;
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Filters {
 	pub sender: Option<String>,
 	pub subjects: Option<Vec<String>>,
 	pub exclude_subjects: Option<Vec<String>>,
 }
 
+#[derive(Deserialize)]
 pub struct Email {
 	name: String,
 	imap: String,
@@ -100,7 +102,7 @@ impl Email {
 				.login(&self.email, password)
 				.map_err(|(e, _)| Error::EmailAuth(e))?,
 			Auth::GoogleAuth(auth) => client
-				.authenticate("XOAUTH2", &auth.to_imap_oauth2(&self.email).await?)
+				.authenticate("XOAUTH2", &auth.as_imap_oauth2(&self.email).await?)
 				.map_err(|(e, _)| Error::EmailAuth(e))?,
 		};
 
