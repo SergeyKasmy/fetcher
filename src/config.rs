@@ -6,54 +6,21 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-// FIXME
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-#![allow(dead_code)]
+use serde::Deserialize;
+use std::collections::HashMap;
 
-pub(crate) mod formats;
+use crate::{sink::Sink, source::Source};
 
-use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, str::FromStr};
-use teloxide::Bot;
-// use toml::{value::Map, Value};
-
-use crate::{
-	config::formats::TwitterCfg,
-	error::Error,
-	error::Result,
-	settings,
-	sink::{Sink, Telegram},
-	source::{
-		email::Filters as EmailFilters, email::ViewMode as EmailViewMode, Email, Rss, Source,
-		Twitter,
-	},
-};
-
-#[derive(Debug)]
-pub struct Config {
-	pub name: String,
-	pub source: Source,
-	pub sink: Sink,
-	pub refresh: u64,
-}
-
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 #[serde(transparent)]
-pub struct Entries(HashMap<String, Entry>);
+pub struct Configs(pub HashMap<String, Config>);
 
 #[derive(Deserialize, Debug)]
-pub struct Entry {
-	disabled: Option<bool>,
+pub struct Config {
+	pub disabled: Option<bool>,
 	#[serde(flatten)]
-	sink: Sink,
+	pub sink: Sink,
 	#[serde(flatten)]
-	source: Source,
-	refresh: u64,
-}
-
-impl Config {
-	pub async fn parse(conf_raw: &str) -> Result<Vec<Self>> {
-		todo!()
-	}
+	pub source: Source,
+	pub refresh: u64,
 }

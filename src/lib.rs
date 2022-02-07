@@ -18,6 +18,7 @@ pub mod source;
 // TODO: mb using anyhow in lib code isn't a good idea?
 use anyhow::Context;
 use anyhow::Result;
+use config::Configs;
 use futures::future::join_all;
 use futures::StreamExt;
 use signal_hook::consts::TERM_SIGNALS;
@@ -29,16 +30,14 @@ use tokio::select;
 use tokio::sync::watch;
 use tokio::time::sleep;
 
-use crate::config::Config;
 use crate::error::Error;
 use crate::settings::last_read_id;
 use crate::settings::save_last_read_id;
 
 #[tracing::instrument(skip_all)]
 pub async fn run() -> Result<()> {
-	let configs = Config::parse(&settings::config().context("unable to get config")?)
-		.await
-		.context("unable to parse config")?;
+	let configs: Configs =
+		toml::from_str(&settings::config().unwrap()).map_err(Error::InvalidConfig)?;
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
@@ -73,20 +72,20 @@ pub async fn run() -> Result<()> {
 	});
 
 	let mut tasks = Vec::new();
-	for mut c in configs {
+	for (name, mut c) in configs.0 {
 		let mut shutdown_rx = shutdown_rx.clone();
 
 		let task = tokio::spawn(async move {
 			select! {
 				_ = async {
 					loop {
-						let last_read_id = last_read_id(&c.name)?;
+						let last_read_id = last_read_id(&name)?;
 
 						for r in c.source.get(last_read_id).await? {
 							c.sink.send(r.msg).await?;
 
 							if let Some(id) = r.id {
-								save_last_read_id(&c.name, id)?;
+								save_last_read_id(&name, id)?;
 							}
 						}
 
