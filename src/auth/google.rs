@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use serde_json::Value;
 use std::time::{Duration, Instant};
 
 use crate::error::{Error, Result};
@@ -54,38 +53,23 @@ impl GoogleAuth {
 			("grant_type", "authorization_code"),
 		];
 
-		let response = reqwest::Client::new()
+		let resp = reqwest::Client::new()
 			.post(GOOGLE_AUTH_URL)
 			.form(&body)
 			.send()
-			.await
-			.map_err(|e| Error::SourceAuth {
-				service: "Google".to_string(),
-				why: e.to_string(),
-			})?
+			.await?
 			.text()
-			.await
-			.map_err(|e| Error::SourceAuth {
-				service: "Google".to_string(),
-				why: e.to_string(),
-			})?;
+			.await?;
 
-		let response: Value = serde_json::from_str(&response).map_err(|e| Error::SourceAuth {
-			service: "Google".to_string(),
-			why: e.to_string(),
-		})?;
-		Ok(response
-			.get("refresh_token")
-			.ok_or_else(|| Error::SourceAuth {
-				service: "Google".to_string(),
-				why: "refresh_token field not found".to_string(),
-			})?
-			.as_str()
-			.ok_or_else(|| Error::SourceAuth {
-				service: "Google".to_string(),
-				why: "refresh_token field is not a string".to_string(),
-			})?
-			.to_string())
+		// TODO: find a better way to get a string without a temporary struct or a million of ok_or()'s
+		#[derive(Deserialize)]
+		struct Response {
+			refresh_token: String,
+		}
+
+		let Response { refresh_token } =
+			serde_json::from_str(&resp).map_err(|_| Error::GoogleAuth(resp))?;
+		Ok(refresh_token)
 	}
 
 	async fn generate_access_token(
@@ -101,29 +85,15 @@ impl GoogleAuth {
 			("grant_type", "refresh_token"),
 		];
 
-		let resp: GoogleOAuth2Responce = serde_json::from_str(
-			&reqwest::Client::new()
-				.post(GOOGLE_AUTH_URL)
-				.form(&body)
-				.send()
-				.await
-				.map_err(|e| Error::SourceAuth {
-					service: "Google".to_string(),
-					why: e.to_string(),
-				})?
-				.text()
-				.await
-				.map_err(|e| Error::SourceAuth {
-					service: "Google".to_string(),
-					why: e.to_string(),
-				})?,
-		)
-		.map_err(|e| Error::SourceAuth {
-			service: "Google".to_string(),
-			why: e.to_string(),
-		})?;
+		let resp = reqwest::Client::new()
+			.post(GOOGLE_AUTH_URL)
+			.form(&body)
+			.send()
+			.await?
+			.text()
+			.await?;
 
-		Ok(resp)
+		Ok(serde_json::from_str(&resp).map_err(|_| Error::GoogleAuth(resp))?)
 	}
 
 	async fn validate_access_token(&mut self) -> Result<()> {

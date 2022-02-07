@@ -26,11 +26,8 @@ pub struct Config {
 
 impl Config {
 	pub async fn parse(conf_raw: &str) -> Result<Vec<Self>> {
-		let tbl = Value::from_str(conf_raw)?;
-		let bot = Bot::new(
-			settings::telegram()?
-				.ok_or_else(|| Error::GetData("Telegram data not found".to_string()))?,
-		);
+		let tbl = Value::from_str(conf_raw).map_err(Error::InvalidConfig)?;
+		let bot = Bot::new(settings::telegram()?);
 
 		let mut confs: Vec<Self> = Vec::new();
 		// NOTE: unwrapping should be safe. AFAIK the root of a TOML is always a table
@@ -147,8 +144,7 @@ impl Config {
 			})
 			.collect::<Result<Vec<String>>>()?;
 
-		let TwitterCfg { key, secret } = settings::twitter()?
-			.ok_or_else(|| Error::GetData("Twitter data not found".to_string()))?;
+		let TwitterCfg { key, secret } = settings::twitter()?;
 
 		Ok(Twitter::new(
 			name.to_string(),
@@ -332,8 +328,7 @@ impl Config {
 			.as_str()
 		{
 			Some("password") => {
-				let pass = settings::google_password()?
-					.ok_or_else(|| Error::GetData("Google password not found".to_string()))?;
+				let pass = settings::google_password()?;
 
 				Email::with_password(
 					name.to_string(),
@@ -350,10 +345,7 @@ impl Config {
 					name.to_string(),
 					imap,
 					email,
-					settings::google_oauth2()?
-						.ok_or_else(|| Error::GetData("Google OAuth2 data not found".to_string()))?
-						.into_google_auth()
-						.await?,
+					settings::google_oauth2()?.into_google_auth().await?,
 					filters,
 					view_mode,
 					footer,

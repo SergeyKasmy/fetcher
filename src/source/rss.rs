@@ -1,6 +1,5 @@
 use rss::Channel;
 
-use crate::error::Error;
 use crate::error::Result;
 use crate::sink::Message;
 use crate::source::Responce;
@@ -28,21 +27,11 @@ impl Rss {
 			.http_client
 			.get(&self.link)
 			.send()
-			.await
-			.map_err(|e| Error::SourceFetch {
-				service: format!("RSS: {}", self.name),
-				why: e.to_string(),
-			})?
+			.await?
 			.bytes()
-			.await
-			.map_err(|e| Error::SourceFetch {
-				service: format!("RSS: {}", self.name),
-				why: e.to_string(),
-			})?;
-		let mut feed = Channel::read_from(&content[..]).map_err(|e| Error::SourceParse {
-			service: format!("RSS: {}", self.name),
-			why: e.to_string(),
-		})?;
+			.await?;
+
+		let mut feed = Channel::read_from(&content[..])?;
 
 		if let Some(id) = &last_read_id {
 			if let Some(id_pos) = feed

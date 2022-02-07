@@ -1,8 +1,7 @@
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 
-use crate::error::Error;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::sink::Media;
 use crate::sink::Message;
 use crate::source::Responce;
@@ -36,10 +35,7 @@ impl Twitter {
 			handle,
 			token: bearer_token(&KeyPair::new(api_key, api_key_secret))
 				.await
-				.map_err(|e| Error::SourceAuth {
-					service: "Twitter".to_string(),
-					why: e.to_string(),
-				})?,
+				.map_err(Error::TwitterAuth)?,
 			filter,
 		})
 	}
@@ -48,11 +44,7 @@ impl Twitter {
 	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
 		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // TODO: remove clone
 			.older(last_read_id.as_ref().and_then(|x| x.parse().ok()))
-			.await
-			.map_err(|e| Error::SourceFetch {
-				service: "Twitter".to_string(),
-				why: e.to_string(),
-			})?;
+			.await?;
 
 		if !tweets.is_empty() {
 			tracing::info!(

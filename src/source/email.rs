@@ -84,41 +84,22 @@ impl Email {
 		let client = imap::connect(
 			(self.imap.as_str(), IMAP_PORT),
 			&self.imap,
-			&native_tls::TlsConnector::new().map_err(|e| Error::SourceFetch {
-				service: format!("Email: {}", self.name),
-				why: format!("Error initializing TLS: {}", e),
-			})?,
-		)
-		.map_err(|e| Error::SourceFetch {
-			service: format!("Email: {}", self.name),
-			why: format!("Error connecting to IMAP: {}", e),
-		})?;
+			&native_tls::TlsConnector::new().map_err(Error::Tls)?,
+		)?;
 
 		let mut session = match &mut self.auth {
-			Auth::Password(password) => {
-				client
-					.login(&self.email, password)
-					.map_err(|(e, _)| Error::SourceAuth {
-						service: format!("Email (Password): {}", self.name),
-						why: e.to_string(),
-					})?
-			}
+			Auth::Password(password) => client
+				.login(&self.email, password)
+				.map_err(|(e, _)| Error::EmailAuth(e))?,
 			Auth::GoogleAuth(auth) => client
 				.authenticate("XOAUTH2", &auth.to_imap_oauth2(&self.email).await?)
-				.map_err(|(e, _)| Error::SourceAuth {
-					service: format!("Email (OAuth2): {}", self.name),
-					why: e.to_string(),
-				})?,
+				.map_err(|(e, _)| Error::EmailAuth(e))?,
 		};
 
 		match self.view_mode {
 			ViewMode::ReadOnly => session.examine("INBOX"),
 			ViewMode::MarkAsRead | ViewMode::Delete => session.select("INBOX"),
-		}
-		.map_err(|e| Error::SourceFetch {
-			service: format!("Email: {}", self.name),
-			why: format!("Couldn't open INBOX: {}", e),
-		})?;
+		}?;
 
 		let search_string = {
 			let mut tmp = "UNSEEN ".to_string();
@@ -143,11 +124,7 @@ impl Email {
 		};
 
 		let mail_ids = session
-			.uid_search(search_string)
-			.map_err(|e| Error::SourceFetch {
-				service: format!("Email: {}", self.name),
-				why: e.to_string(),
-			})?
+			.uid_search(search_string)?
 			.into_iter()
 			.map(|x| x.to_string())
 			.collect::<Vec<_>>()
@@ -158,35 +135,16 @@ impl Email {
 		}
 
 		// TODO: reverse order
-		let mails = session
-			.uid_fetch(&mail_ids, "BODY[]")
-			.map_err(|e| Error::SourceFetch {
-				service: format!("Email: {}", self.name),
-				why: e.to_string(),
-			})?;
+		let mails = session.uid_fetch(&mail_ids, "BODY[]")?;
 
 		// TODO: handle sent messages separately
 		// mb a callback with email UID after successful sending?
 		if let ViewMode::Delete = self.view_mode {
-			session
-				.uid_store(&mail_ids, "+FLAGS.SILENT (\\Deleted)")
-				.map_err(|e| Error::SourceFetch {
-					service: format!("Email: {}", self.name),
-					why: e.to_string(),
-				})?;
-			session
-				.uid_expunge(&mail_ids)
-				.map_err(|e| Error::SourceFetch {
-					service: format!("Email: {}", self.name),
-					why: e.to_string(),
-				})?;
+			session.uid_store(&mail_ids, "+FLAGS.SILENT (\\Deleted)")?;
+			session.uid_expunge(&mail_ids)?;
 		}
 
-		session.logout().map_err(|e| Error::SourceFetch {
-			service: format!("Email: {}", self.name),
-			why: e.to_string(),
-		})?;
-
+		session.logout()?;
 		tracing::info!("Got {amount} unread emails", amount = mails.len());
 
 		mails
@@ -196,12 +154,7 @@ impl Email {
 				Ok(Responce {
 					id: None,
 					msg: Self::parse(
-						mailparse::parse_mail(x.body().unwrap()).map_err(|e| {
-							Error::SourceParse {
-								service: format!("Email: {}", self.name),
-								why: e.to_string(),
-							}
-						})?,
+						mailparse::parse_mail(x.body().unwrap())?,
 						self.footer.as_deref(),
 					)?,
 				})
@@ -227,11 +180,7 @@ impl Email {
 					.find(|x| x.ctype.mimetype == "text/plain")
 					.unwrap_or(&mail.subparts[0])
 			}
-			.get_body()
-			.map_err(|e| Error::SourceParse {
-				service: "Email".to_string(),
-				why: e.to_string(),
-			})?;
+			.get_body()?;
 
 			if let Some(remove_after) = remove_after {
 				body.drain(body.find(remove_after).unwrap_or_else(|| body.len())..);

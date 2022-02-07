@@ -21,49 +21,47 @@ fn data_path(name: &str) -> Result<PathBuf> {
 	Ok(if cfg!(debug_assertions) {
 		PathBuf::from(format!("debug_data/{name}"))
 	} else {
-		xdg::BaseDirectories::with_prefix(PREFIX)
-			.map_err(|e| Error::GetData(e.to_string()))?
+		xdg::BaseDirectories::with_prefix(PREFIX)?
 			.place_data_file(name)
-			.map_err(|e| Error::GetData(e.to_string()))?
+			.map_err(|e| Error::InaccessibleData(e, name.into()))?
 	})
 }
 
 fn input(prompt: &str, expected_input_len: usize) -> Result<String> {
 	print!("{prompt}");
-	io::stdout().flush()?;
+	io::stdout().flush().map_err(Error::Stdout)?;
 
 	let mut buf = String::with_capacity(expected_input_len);
-	stdin().read_line(&mut buf)?;
+	stdin().read_line(&mut buf).map_err(Error::Stdin)?;
 
 	Ok(buf.trim().to_string())
 }
 
-fn data(name: &str) -> Result<Option<String>> {
-	Ok(fs::read_to_string(data_path(name)?).ok())
+fn data(name: &str) -> Result<String> {
+	let f = data_path(name)?;
+	fs::read_to_string(&f).map_err(|e| Error::InaccessibleData(e, f))
 }
 
-pub fn google_oauth2() -> Result<Option<GoogleAuthCfg>> {
-	Ok(serde_json::from_str(&data(GOOGLE_OAUTH2)?.ok_or_else(
-		|| Error::GetData("Google OAuth2 data not found".to_string()),
-	)?)?)
+pub fn google_oauth2() -> Result<GoogleAuthCfg> {
+	serde_json::from_str(&data(GOOGLE_OAUTH2)?)
+		.map_err(|e| Error::CorruptedData(e, GOOGLE_OAUTH2.into()))
 }
 
-pub fn google_password() -> Result<Option<String>> {
+pub fn google_password() -> Result<String> {
 	data(GOOGLE_PASS)
 }
 
-pub fn twitter() -> Result<Option<TwitterCfg>> {
-	Ok(serde_json::from_str(&data(TWITTER)?.ok_or_else(|| {
-		Error::GetData("Twitter data not found".to_string())
-	})?)?)
+pub fn twitter() -> Result<TwitterCfg> {
+	serde_json::from_str(&data(TWITTER)?).map_err(|e| Error::CorruptedData(e, TWITTER.into()))
 }
 
-pub fn telegram() -> Result<Option<String>> {
+pub fn telegram() -> Result<String> {
 	data(TELEGRAM)
 }
 
 fn save_data(name: &str, data: &str) -> Result<()> {
-	fs::write(data_path(name)?, data).map_err(|e| Error::SaveData(e.to_string()))
+	let p = data_path(name)?;
+	fs::write(&p, data).map_err(|e| Error::Write(e, p))
 }
 
 pub async fn generate_google_oauth2() -> Result<()> {
@@ -81,7 +79,8 @@ pub async fn generate_google_oauth2() -> Result<()> {
 			client_id,
 			client_secret,
 			refresh_token,
-		})?,
+		})
+		.unwrap(), // NOTE: shouldn't fail, these are just strings
 	)
 }
 
@@ -98,7 +97,7 @@ pub fn generate_twitter_auth() -> Result<()> {
 
 	save_data(
 		TWITTER,
-		&serde_json::to_string(&TwitterCfg { key, secret })?,
+		&serde_json::to_string(&TwitterCfg { key, secret }).unwrap(), // NOTE: shouldn't fail, these are just strings
 	)
 }
 

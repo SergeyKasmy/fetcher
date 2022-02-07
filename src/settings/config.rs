@@ -7,13 +7,12 @@ const CONFIG: &str = "config.toml";
 
 pub fn config() -> Result<String> {
 	let path = if !cfg!(debug_assertions) {
-		xdg::BaseDirectories::with_prefix(PREFIX)
-			.map_err(|e| Error::GetConfig(e.to_string()))?
+		xdg::BaseDirectories::with_prefix(PREFIX)?
 			.place_config_file(CONFIG)
-			.map_err(|e| Error::GetConfig(e.to_string()))?
+			.map_err(Error::InaccessibleConfig)?
 	} else {
 		PathBuf::from(format!("debug_data/{CONFIG}"))
 	};
 
-	fs::read_to_string(&path).map_err(|e| Error::GetConfig(e.to_string()))
+	fs::read_to_string(&path).map_err(Error::InaccessibleConfig)
 }

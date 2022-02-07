@@ -10,7 +10,7 @@ use teloxide::{
 	Bot, RequestError,
 };
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::sink::Media;
 use crate::sink::Message;
 
@@ -100,12 +100,8 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => {
-					return Err(Error::SinkSend {
-						where_to: "Telegram".to_string(),
-						why: e.to_string(),
-					})
-				}
+				// TODO: looks ugly
+				Err(e) => Err(e)?,
 			}
 		}
 	}
@@ -124,12 +120,8 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => {
-					return Err(Error::SinkSend {
-						where_to: "Telegram".to_string(),
-						why: e.to_string(),
-					})
-				}
+				// TODO: looks ugly
+				Err(e) => Err(e)?,
 			}
 		}
 	}
