@@ -10,13 +10,30 @@ use teloxide::{
 	Bot, RequestError,
 };
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::sink::Media;
 use crate::sink::Message;
 
 pub struct Telegram {
 	bot: Throttle<Bot>,
 	chat_id: ChatId,
+}
+
+/// Make the message text more logging friendly:
+/// 1. Remove the opening html tag if it begins with one
+/// 2. Shorten the message to 150 chars
+fn fmt_comment_msg(s: &str) -> String {
+	let s = if s.starts_with('<') {
+		if let Some(tag_end) = s.find('>') {
+			&s[tag_end..]
+		} else {
+			s
+		}
+	} else {
+		s
+	};
+
+	s.chars().take(/* shorten to */ 150 /* chars */).collect()
 }
 
 impl Telegram {
@@ -27,7 +44,7 @@ impl Telegram {
 		}
 	}
 
-	#[tracing::instrument]
+	#[tracing::instrument(skip(message), fields(len = message.text.len(), text = fmt_comment_msg(&message.text).as_str(), media.is_some = message.media.is_some()))]
 	pub async fn send(&self, message: Message) -> Result<()> {
 		// NOTE: workaround for some kind of a bug that doesn't let access both text and media fields of the struct in the map closure at once
 		let text = if message.text.len() > 4096 {
@@ -66,7 +83,7 @@ impl Telegram {
 		Ok(())
 	}
 
-	#[tracing::instrument]
+	// TODO: move error handling out to dedup send_text & send_media
 	async fn send_text(&self, message: String) -> Result<TelMessage> {
 		loop {
 			tracing::info!("Sending text message");
@@ -83,17 +100,12 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => {
-					return Err(Error::SinkSend {
-						where_to: "Telegram".to_string(),
-						why: e.to_string(),
-					})
-				}
+				// TODO: looks ugly
+				Err(e) => Err(e)?,
 			}
 		}
 	}
 
-	#[tracing::instrument]
 	async fn send_media(&self, media: Vec<InputMedia>) -> Result<Vec<TelMessage>> {
 		loop {
 			tracing::info!("Sending media message");
@@ -108,12 +120,8 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => {
-					return Err(Error::SinkSend {
-						where_to: "Telegram".to_string(),
-						why: e.to_string(),
-					})
-				}
+				// TODO: looks ugly
+				Err(e) => Err(e)?,
 			}
 		}
 	}

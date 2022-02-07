@@ -1,13 +1,11 @@
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 
-use crate::error::Error;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::sink::Media;
 use crate::sink::Message;
 use crate::source::Responce;
 
-#[derive(Debug)]
 pub struct Twitter {
 	// FIXME: why is it even here?
 	#[allow(dead_code)]
@@ -21,7 +19,7 @@ pub struct Twitter {
 
 impl Twitter {
 	#[allow(clippy::too_many_arguments)]
-	#[tracing::instrument]
+	#[tracing::instrument(skip(api_key, api_key_secret))]
 	pub async fn new(
 		name: String,
 		pretty_name: String,
@@ -37,24 +35,23 @@ impl Twitter {
 			handle,
 			token: bearer_token(&KeyPair::new(api_key, api_key_secret))
 				.await
-				.map_err(|e| Error::SourceAuth {
-					service: "Twitter".to_string(),
-					why: e.to_string(),
-				})?,
+				.map_err(Error::TwitterAuth)?,
 			filter,
 		})
 	}
 
 	#[tracing::instrument]
 	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
-		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // FIXME: remove clone
+		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // TODO: remove clone
 			.older(last_read_id.as_ref().and_then(|x| x.parse().ok()))
-			.await
-			.map_err(|e| Error::SourceFetch {
-				service: "Twitter".to_string(),
-				why: e.to_string(),
-			})?;
-		tracing::debug!("Got {amount} tweets", amount = tweets.len());
+			.await?;
+
+		if !tweets.is_empty() {
+			tracing::info!(
+				"Got {amount} unread & unfiltered tweets",
+				amount = tweets.len()
+			);
+		}
 
 		let messages = tweets
 			.iter()
@@ -100,5 +97,16 @@ impl Twitter {
 		}
 
 		true
+	}
+}
+
+impl std::fmt::Debug for Twitter {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Twitter")
+			.field("name", &self.name)
+			.field("pretty_name", &self.pretty_name)
+			.field("handle", &self.handle)
+			.field("filter", &self.filter)
+			.finish_non_exhaustive()
 	}
 }

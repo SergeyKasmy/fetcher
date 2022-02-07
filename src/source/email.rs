@@ -1,5 +1,13 @@
+mod auth;
+mod view_mode;
+
+pub use auth::Auth;
+pub use view_mode::ViewMode;
+
 use mailparse::ParsedMail;
 
+use self::auth::GoogleAuthExt;
+use crate::auth::GoogleAuth;
 use crate::error::{Error, Result};
 use crate::sink::Message;
 use crate::source::Responce;
@@ -7,32 +15,31 @@ use crate::source::Responce;
 const IMAP_PORT: u16 = 993;
 
 #[derive(Debug)]
-pub struct EmailFilters {
+pub struct Filters {
 	pub sender: Option<String>,
 	pub subjects: Option<Vec<String>>,
 	pub exclude_subjects: Option<Vec<String>>,
 }
 
-#[derive(Debug)]
 pub struct Email {
 	name: String,
 	imap: String,
 	email: String,
-	password: String,
-	filters: EmailFilters,
-	remove: bool,
-	footer: Option<String>, // NOTE: remove everything after this text, including itself, from the message
+	auth: Auth,
+	filters: Filters,
+	view_mode: ViewMode,
+	footer: Option<String>, // remove everything after this text, including itself, from the message
 }
 
 impl Email {
-	#[tracing::instrument]
-	pub fn new(
+	#[tracing::instrument(skip(password))]
+	pub fn with_password(
 		name: String,
 		imap: String,
 		email: String,
 		password: String,
-		filters: EmailFilters,
-		remove: bool,
+		filters: Filters,
+		view_mode: ViewMode,
 		footer: Option<String>,
 	) -> Self {
 		tracing::info!("Creatng an Email provider");
@@ -40,38 +47,59 @@ impl Email {
 			name,
 			imap,
 			email,
-			password,
+			auth: Auth::Password(password),
 			filters,
-			remove,
+			view_mode,
 			footer,
 		}
 	}
 
+	#[tracing::instrument(skip(auth))]
+	pub async fn with_google_oauth2(
+		name: String,
+		imap: String,
+		email: String,
+		auth: GoogleAuth,
+		filters: Filters,
+		view_mode: ViewMode,
+		footer: Option<String>,
+	) -> Result<Self> {
+		tracing::info!("Creatng an Email provider");
+
+		Ok(Self {
+			name,
+			imap,
+			email,
+			auth: Auth::GoogleAuth(auth),
+			filters,
+			view_mode,
+			footer,
+		})
+	}
+
+	/// Even though it's marked async, the fetching itself is not async yet
+	/// It should be used with spawn_blocking probs
 	#[tracing::instrument]
-	pub fn get(&mut self) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self) -> Result<Vec<Responce>> {
 		let client = imap::connect(
 			(self.imap.as_str(), IMAP_PORT),
 			&self.imap,
-			&native_tls::TlsConnector::new().map_err(|e| Error::SourceFetch {
-				service: format!("Email: {}", self.name),
-				why: format!("Error initializing TLS: {}", e),
-			})?,
-		)
-		.map_err(|e| Error::SourceFetch {
-			service: format!("Email: {}", self.name),
-			why: format!("Error connecting to IMAP: {}", e),
-		})?;
+			&native_tls::TlsConnector::new().map_err(Error::Tls)?,
+		)?;
 
-		let mut session = client
-			.login(&self.email, &self.password)
-			.map_err(|(e, _)| Error::SourceAuth {
-				service: format!("Email: {}", self.name),
-				why: e.to_string(),
-			})?;
-		session.select("INBOX").map_err(|e| Error::SourceFetch {
-			service: format!("Email: {}", self.name),
-			why: format!("Couldn't open INBOX: {}", e),
-		})?;
+		let mut session = match &mut self.auth {
+			Auth::Password(password) => client
+				.login(&self.email, password)
+				.map_err(|(e, _)| Error::EmailAuth(e))?,
+			Auth::GoogleAuth(auth) => client
+				.authenticate("XOAUTH2", &auth.to_imap_oauth2(&self.email).await?)
+				.map_err(|(e, _)| Error::EmailAuth(e))?,
+		};
+
+		match self.view_mode {
+			ViewMode::ReadOnly => session.examine("INBOX"),
+			ViewMode::MarkAsRead | ViewMode::Delete => session.select("INBOX"),
+		}?;
 
 		let search_string = {
 			let mut tmp = "UNSEEN ".to_string();
@@ -88,7 +116,7 @@ impl Email {
 
 			if let Some(ex_subjects) = &self.filters.exclude_subjects {
 				for exs in ex_subjects {
-					tmp.push_str(&format!(r#"NOT SUBJECT {exs}"#));
+					tmp.push_str(&format!(r#"NOT SUBJECT "{exs}" "#));
 				}
 			}
 
@@ -96,11 +124,7 @@ impl Email {
 		};
 
 		let mail_ids = session
-			.uid_search(search_string)
-			.map_err(|e| Error::SourceFetch {
-				service: format!("Email: {}", self.name),
-				why: e.to_string(),
-			})?
+			.uid_search(search_string)?
 			.into_iter()
 			.map(|x| x.to_string())
 			.collect::<Vec<_>>()
@@ -111,36 +135,17 @@ impl Email {
 		}
 
 		// TODO: reverse order
-		let mails = session
-			.uid_fetch(&mail_ids, "BODY[]")
-			.map_err(|e| Error::SourceFetch {
-				service: format!("Email: {}", self.name),
-				why: e.to_string(),
-			})?;
+		let mails = session.uid_fetch(&mail_ids, "BODY[]")?;
 
 		// TODO: handle sent messages separately
 		// mb a callback with email UID after successful sending?
-		if self.remove {
-			session
-				.uid_store(&mail_ids, "+FLAGS.SILENT (\\Deleted)")
-				.map_err(|e| Error::SourceFetch {
-					service: format!("Email: {}", self.name),
-					why: e.to_string(),
-				})?;
-			session
-				.uid_expunge(&mail_ids)
-				.map_err(|e| Error::SourceFetch {
-					service: format!("Email: {}", self.name),
-					why: e.to_string(),
-				})?;
+		if let ViewMode::Delete = self.view_mode {
+			session.uid_store(&mail_ids, "+FLAGS.SILENT (\\Deleted)")?;
+			session.uid_expunge(&mail_ids)?;
 		}
 
-		session.logout().map_err(|e| Error::SourceFetch {
-			service: format!("Email: {}", self.name),
-			why: e.to_string(),
-		})?;
-
-		tracing::debug!("Got {amount} emails", amount = mails.len());
+		session.logout()?;
+		tracing::info!("Got {amount} unread emails", amount = mails.len());
 
 		mails
 			.into_iter()
@@ -149,12 +154,7 @@ impl Email {
 				Ok(Responce {
 					id: None,
 					msg: Self::parse(
-						mailparse::parse_mail(x.body().unwrap()).map_err(|e| {
-							Error::SourceParse {
-								service: format!("Email: {}", self.name),
-								why: e.to_string(),
-							}
-						})?,
+						mailparse::parse_mail(x.body().unwrap())?,
 						self.footer.as_deref(),
 					)?,
 				})
@@ -180,11 +180,7 @@ impl Email {
 					.find(|x| x.ctype.mimetype == "text/plain")
 					.unwrap_or(&mail.subparts[0])
 			}
-			.get_body()
-			.map_err(|e| Error::SourceParse {
-				service: "Email".to_string(),
-				why: e.to_string(),
-			})?;
+			.get_body()?;
 
 			if let Some(remove_after) = remove_after {
 				body.drain(body.find(remove_after).unwrap_or_else(|| body.len())..);
@@ -205,5 +201,25 @@ impl Email {
 		};
 
 		Ok(Message { text, media: None })
+	}
+}
+
+impl std::fmt::Debug for Email {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Email")
+			.field("name", &self.name)
+			.field("imap", &self.imap)
+			.field(
+				"auth_type",
+				match self.auth {
+					Auth::Password(_) => &"password",
+					Auth::GoogleAuth(_) => &"google_auth",
+				},
+			)
+			.field("email", &self.email)
+			.field("filters", &self.filters)
+			.field("view_mode", &self.view_mode)
+			.field("footer", &self.footer)
+			.finish()
 	}
 }

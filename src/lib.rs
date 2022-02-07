@@ -1,3 +1,6 @@
+// TODO: more tests
+
+pub mod auth;
 pub mod config;
 pub mod error;
 pub mod settings;
@@ -23,10 +26,12 @@ use crate::error::Error;
 use crate::settings::last_read_id;
 use crate::settings::save_last_read_id;
 
-// TODO: more tests
-// TODO: better tracing spans, don't rely just on that macro
-#[tracing::instrument]
-pub async fn run(configs: Vec<Config>) -> Result<()> {
+#[tracing::instrument(skip_all)]
+pub async fn run() -> Result<()> {
+	let configs = Config::parse(&settings::config().context("unable to get config")?)
+		.await
+		.context("unable to parse config")?;
+
 	let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
 	let sig = Signals::new(TERM_SIGNALS).context("Error registering signals")?;
@@ -42,6 +47,7 @@ pub async fn run(configs: Vec<Config>) -> Result<()> {
 			Arc::clone(&sig_term_now),
 		)
 		.context("Error registering signal handler")?;
+
 		flag::register(*s, Arc::clone(&sig_term_now))
 			.context("Error registering signal handler")?;
 	}
@@ -91,7 +97,7 @@ pub async fn run(configs: Vec<Config>) -> Result<()> {
 		tasks.push(task);
 	}
 
-	// FIXME: handle non critical errors, e.g. SourceFetch error
+	// TODO: handle non critical errors, e.g. SourceFetch error
 	join_all(tasks).await;
 
 	sig_handle.close(); // TODO: figure out wtf this is and why

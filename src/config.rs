@@ -1,18 +1,20 @@
-use std::env::var;
+pub(crate) mod formats;
+
 use std::str::FromStr;
 use teloxide::Bot;
 use toml::{value::Map, Value};
 
 use crate::{
+	config::formats::TwitterCfg,
 	error::Error,
 	error::Result,
+	settings,
 	sink::{Sink, Telegram},
-	source::{email::EmailFilters, Email, Rss, Source, Twitter},
+	source::{
+		email::Filters as EmailFilters, email::ViewMode as EmailViewMode, Email, Rss, Source,
+		Twitter,
+	},
 };
-
-fn env(s: &str) -> Result<String> {
-	var(s).map_err(|_| Error::GetEnvVar(s.to_string()))
-}
 
 #[derive(Debug)]
 pub struct Config {
@@ -24,8 +26,8 @@ pub struct Config {
 
 impl Config {
 	pub async fn parse(conf_raw: &str) -> Result<Vec<Self>> {
-		let tbl = Value::from_str(conf_raw)?;
-		let bot = Bot::new(env("BOT_TOKEN")?);
+		let tbl = Value::from_str(conf_raw).map_err(Error::InvalidConfig)?;
+		let bot = Bot::new(settings::telegram()?);
 
 		let mut confs: Vec<Self> = Vec::new();
 		// NOTE: unwrapping should be safe. AFAIK the root of a TOML is always a table
@@ -35,13 +37,27 @@ impl Config {
 				field: "table",
 			})?;
 
-			let chat_id = if !cfg!(debug_assertions) {
-				format!("{}_CHAT_ID", name.to_ascii_uppercase())
-			} else {
-				"DEBUG_CHAT_ID".to_string()
-			};
+			if let Some(disabled) = table.get("disabled").and_then(|x| x.as_bool()) {
+				if disabled {
+					continue;
+				}
+			}
 
-			let sink = Sink::Telegram(Telegram::new(bot.clone(), env(&chat_id)?));
+			let sink = Sink::Telegram(Telegram::new(
+				bot.clone(),
+				table
+					.get("chat_id")
+					.ok_or(Error::ConfigMissingField {
+						name: name.clone(),
+						field: "chat_id",
+					})?
+					.as_integer()
+					.ok_or(Error::ConfigInvalidFieldType {
+						name: name.clone(),
+						field: "chat_id",
+						expected_type: "integer",
+					})?,
+			));
 			let source = match table
 				.get("type")
 				.ok_or(Error::ConfigMissingField {
@@ -56,7 +72,7 @@ impl Config {
 				})? {
 				"rss" => Self::parse_rss(name, table)?,
 				"twitter" => Self::parse_twitter(name, table).await?,
-				"email" => Self::parse_email(name, table)?,
+				"email" => Self::parse_email(name, table).await?,
 				t => panic!("{t} is not a valid type for {name}"),
 			};
 			let refresh = table
@@ -70,7 +86,7 @@ impl Config {
 					name: name.clone(),
 					field: "refresh",
 					expected_type: "integer",
-				})? as u64; // FIXME: figure out if casting with as can cause problems
+				})? as u64; // TODO: handle wrong (negative) numbers better
 
 			confs.push(Config {
 				name: name.clone(),
@@ -128,6 +144,8 @@ impl Config {
 			})
 			.collect::<Result<Vec<String>>>()?;
 
+		let TwitterCfg { key, secret } = settings::twitter()?;
+
 		Ok(Twitter::new(
 			name.to_string(),
 			table
@@ -156,15 +174,15 @@ impl Config {
 					expected_type: "string",
 				})?
 				.to_string(),
-			env("TWITTER_API_KEY")?,
-			env("TWITTER_API_KEY_SECRET")?,
+			key,
+			secret,
 			filter,
 		)
 		.await?
 		.into())
 	}
 
-	fn parse_email(name: &str, table: &Map<String, Value>) -> Result<Source> {
+	async fn parse_email(name: &str, table: &Map<String, Value>) -> Result<Source> {
 		let filters = {
 			let filters_table = table
 				.get("filters")
@@ -243,52 +261,105 @@ impl Config {
 			}
 		};
 
-		Ok(Email::new(
-			name.to_string(),
+		let imap = table
+			.get("imap")
+			.ok_or(Error::ConfigMissingField {
+				name: name.to_string(),
+				field: "imap",
+			})?
+			.as_str()
+			.ok_or(Error::ConfigInvalidFieldType {
+				name: name.to_string(),
+				field: "imap",
+				expected_type: "string",
+			})?
+			.to_string();
+
+		let email = table
+			.get("email")
+			.ok_or(Error::ConfigMissingField {
+				name: name.to_string(),
+				field: "email",
+			})?
+			.as_str()
+			.ok_or(Error::ConfigInvalidFieldType {
+				name: name.to_string(),
+				field: "email",
+				expected_type: "string",
+			})?
+			.to_string();
+
+		let view_mode: EmailViewMode = table
+			.get("view_mode")
+			.ok_or(Error::ConfigMissingField {
+				name: name.to_string(),
+				field: "view_mode",
+			})?
+			.as_str()
+			.ok_or(Error::ConfigInvalidFieldType {
+				name: name.to_string(),
+				field: "remove",
+				expected_type: "string (read_only | mark_as_read | delete)",
+			})?
+			.parse()?;
+
+		let footer = Some(
 			table
-				.get("imap")
+				.get("footer")
 				.ok_or(Error::ConfigMissingField {
 					name: name.to_string(),
-					field: "imap",
+					field: "footer",
 				})?
 				.as_str()
 				.ok_or(Error::ConfigInvalidFieldType {
 					name: name.to_string(),
-					field: "imap",
+					field: "footer",
 					expected_type: "string",
 				})?
 				.to_string(),
-			env("EMAIL")?,
-			env("EMAIL_PASS")?,
-			filters,
-			table
-				.get("remove")
-				.ok_or(Error::ConfigMissingField {
+		);
+
+		Ok(match table
+			.get("auth_type")
+			.ok_or(Error::ConfigMissingField {
+				name: name.to_string(),
+				field: "auth_type",
+			})?
+			.as_str()
+		{
+			Some("password") => {
+				let pass = settings::google_password()?;
+
+				Email::with_password(
+					name.to_string(),
+					imap,
+					email,
+					pass,
+					filters,
+					view_mode,
+					footer,
+				)
+			}
+			Some("google_oauth2") => {
+				Email::with_google_oauth2(
+					name.to_string(),
+					imap,
+					email,
+					settings::google_oauth2()?.into_google_auth().await?,
+					filters,
+					view_mode,
+					footer,
+				)
+				.await?
+			}
+			_ => {
+				return Err(Error::ConfigInvalidFieldType {
 					name: name.to_string(),
-					field: "remove",
-				})?
-				.as_bool()
-				.ok_or(Error::ConfigInvalidFieldType {
-					name: name.to_string(),
-					field: "remove",
-					expected_type: "bool",
-				})?,
-			Some(
-				table
-					.get("footer")
-					.ok_or(Error::ConfigMissingField {
-						name: name.to_string(),
-						field: "footer",
-					})?
-					.as_str()
-					.ok_or(Error::ConfigInvalidFieldType {
-						name: name.to_string(),
-						field: "footer",
-						expected_type: "string",
-					})?
-					.to_string(),
-			),
-		)
+					field: "auth_type",
+					expected_type: "string (password | google_oauth2)",
+				});
+			}
+		}
 		.into())
 	}
 }

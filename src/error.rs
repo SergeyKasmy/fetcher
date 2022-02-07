@@ -1,31 +1,76 @@
+use std::{io, path::PathBuf};
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-	#[error("can't read program config: {0}")]
-	GetConfig(String),
-	#[error("can't read program data: {0}")]
-	GetData(String),
-	#[error("can't save program data: {0}")]
-	SaveData(String),
-	#[error("env var not found: {0}")]
-	GetEnvVar(String),
-	#[error("invalid config format")]
-	ConfigDeserialize(#[from] toml::de::Error),
-	#[error("{name} is missing {field} field")]
-	ConfigMissingField { name: String, field: &'static str },
-	#[error("{name}'s {field} field is not a valid {expected_type}")]
+	// disk io stuff
+	#[error("xdg error: {0}")]
+	Xdg(#[from] xdg::BaseDirectoriesError),
+
+	#[error("inaccessible config file: {0}")]
+	InaccessibleConfig(io::Error),
+
+	#[error("inaccessible data file ({1}): {0}")]
+	InaccessibleData(io::Error, PathBuf),
+
+	#[error("corrupted data file ({1}): {0}")]
+	CorruptedData(serde_json::error::Error, PathBuf),
+
+	#[error("error writing into {1}: {0}")]
+	Write(io::Error, PathBuf),
+
+	// config stuff
+	#[error("Invalid config: {0}")]
+	InvalidConfig(toml::de::Error),
+
+	#[error("Config entry {name} is missing {field} field")]
+	ConfigMissingField {
+		/* config */ name: String,
+		field: &'static str,
+	},
+
+	#[error("Config entry's {name}'s {field} field is not a valid {expected_type}")]
 	ConfigInvalidFieldType {
 		name: String,
 		field: &'static str,
 		expected_type: &'static str,
 	},
-	#[error("{service} authentication error: {why}")]
-	SourceAuth { service: String, why: String },
-	#[error("can't fetch data from {service}: {why}")]
-	SourceFetch { service: String, why: String },
-	#[error("can't parse data from {service}: {why}")]
-	SourceParse { service: String, why: String },
-	#[error("can't send data to {where_to}: {why}")]
-	SinkSend { where_to: String, why: String },
+
+	// stdin & stdout stuff
+	#[error("stdin error: {0}")]
+	Stdin(io::Error),
+	#[error("stdout error: {0}")]
+	Stdout(io::Error),
+
+	// network stuff
+	#[error("Network IO error: {0}")]
+	Network(#[from] reqwest::Error),
+
+	#[error("TLS error: {0}")]
+	Tls(native_tls::Error),
+
+	#[error("Google auth: {0}")]
+	GoogleAuth(String),
+
+	#[error("Email auth error: {0}")]
+	EmailAuth(imap::Error),
+
+	#[error("Email parse error: {0}")]
+	EmailParse(#[from] mailparse::MailParseError),
+
+	#[error("IMAP error: {0}")]
+	Email(#[from] imap::Error),
+
+	#[error("Twitter auth error: {0}")]
+	TwitterAuth(egg_mode::error::Error),
+
+	#[error("Twitter error: {0}")]
+	Twitter(#[from] egg_mode::error::Error),
+
+	#[error("RSS error: {0}")]
+	Rss(#[from] rss::Error),
+
+	#[error("Telegram request error: {0}")]
+	Telegram(#[from] teloxide::RequestError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
