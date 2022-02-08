@@ -11,6 +11,7 @@ use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 use serde::Deserialize;
 
 use crate::error::{Error, Result};
+use crate::settings;
 use crate::sink::Media;
 use crate::sink::Message;
 use crate::source::Responce;
@@ -19,8 +20,6 @@ use crate::source::Responce;
 struct TwitterIntermediate {
 	pretty_name: String,
 	handle: String,
-	api_key: String,
-	api_secret: String,
 	filter: Vec<String>,
 }
 
@@ -28,11 +27,13 @@ impl TryFrom<TwitterIntermediate> for Twitter {
 	type Error = Error;
 
 	fn try_from(v: TwitterIntermediate) -> Result<Self> {
+		let (api_key, api_secret) = settings::twitter()?;
+
 		futures::executor::block_on(Twitter::new(
 			v.pretty_name,
 			v.handle,
-			v.api_key,
-			v.api_secret,
+			api_key,
+			api_secret,
 			v.filter,
 		))
 	}
