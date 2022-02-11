@@ -10,47 +10,26 @@ use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 use serde::Deserialize;
 
+use crate::config;
 use crate::error::{Error, Result};
-use crate::settings;
 use crate::sink::Media;
 use crate::sink::Message;
 use crate::source::Responce;
 
 #[derive(Deserialize)]
-struct TwitterIntermediate {
-	pretty_name: String,
-	handle: String,
-	filter: Vec<String>,
-}
-
-impl TryFrom<TwitterIntermediate> for Twitter {
-	type Error = Error;
-
-	fn try_from(v: TwitterIntermediate) -> Result<Self> {
-		let (api_key, api_secret) = settings::twitter()?;
-
-		futures::executor::block_on(Twitter::new(
-			v.pretty_name,
-			v.handle,
-			api_key,
-			api_secret,
-			v.filter,
-		))
-	}
-}
-
-#[derive(Deserialize)]
-#[serde(try_from = "TwitterIntermediate")]
+#[serde(try_from = "config::Twitter")]
 pub struct Twitter {
 	pretty_name: String, // used for hashtags
 	handle: String,
-	token: Token,
+	api_key: String,
+	api_secret: String,
+	token: Option<Token>,
 	filter: Vec<String>,
 }
 
 impl Twitter {
 	#[tracing::instrument(skip(api_key, api_secret))]
-	pub async fn new(
+	pub fn new(
 		pretty_name: String,
 		handle: String,
 		api_key: String,
@@ -61,16 +40,26 @@ impl Twitter {
 		Ok(Self {
 			pretty_name,
 			handle,
-			token: bearer_token(&KeyPair::new(api_key, api_secret))
-				.await
-				.map_err(Error::TwitterAuth)?,
+			api_key,
+			api_secret,
+			token: None,
 			filter,
 		})
 	}
 
 	#[tracing::instrument]
 	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
-		let (_, tweets) = user_timeline(self.handle.clone(), false, true, &self.token) // TODO: remove clone
+		if self.token.is_none() {
+			self.token = Some(
+				bearer_token(&KeyPair::new(self.api_key.clone(), self.api_secret.clone()))
+					.await
+					.map_err(Error::TwitterAuth)?,
+			);
+		}
+		// unwrap NOTE: initialized just above, should be safe
+		let token = self.token.as_ref().unwrap();
+
+		let (_, tweets) = user_timeline(self.handle.clone(), false, true, token) // TODO: remove clone
 			.older(last_read_id.as_ref().and_then(|x| x.parse().ok()))
 			.await?;
 

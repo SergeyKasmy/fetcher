@@ -25,7 +25,7 @@ pub struct Responce {
 }
 
 #[derive(Deserialize, Debug)]
-#[serde(tag = "source_type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Source {
 	Rss(Rss),
 	Twitter(Twitter),

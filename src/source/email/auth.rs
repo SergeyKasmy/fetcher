@@ -6,12 +6,9 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use serde::Deserialize;
-
 use crate::auth::GoogleAuth;
 use crate::error::Result;
 
-#[derive(Deserialize)]
 pub enum Auth {
 	GoogleAuth(GoogleAuth),
 	Password(String),

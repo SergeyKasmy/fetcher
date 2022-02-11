@@ -96,8 +96,7 @@ pub async fn generate_google_oauth2() -> Result<()> {
 
 	save_data(
 		GOOGLE_OAUTH2,
-		&serde_json::to_string(&GoogleAuth::new(client_id, client_secret, refresh_token).await?)
-			.unwrap(), // NOTE: shouldn't fail, these are just strings
+		&serde_json::to_string(&GoogleAuth::new(client_id, client_secret, refresh_token)).unwrap(), // NOTE: shouldn't fail, these are just strings
 	)
 }
 

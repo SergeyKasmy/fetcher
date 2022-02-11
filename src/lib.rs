@@ -14,11 +14,11 @@ pub mod error;
 pub mod settings;
 pub mod sink;
 pub mod source;
+pub mod task;
 
 // TODO: mb using anyhow in lib code isn't a good idea?
 use anyhow::Context;
 use anyhow::Result;
-use config::Configs;
 use futures::future::join_all;
 use futures::StreamExt;
 use signal_hook::consts::TERM_SIGNALS;
@@ -26,6 +26,7 @@ use signal_hook_tokio::Signals;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
+use task::Tasks;
 use tokio::select;
 use tokio::sync::watch;
 use tokio::time::sleep;
@@ -36,7 +37,7 @@ use crate::settings::save_last_read_id;
 
 #[tracing::instrument(skip_all)]
 pub async fn run() -> Result<()> {
-	let configs: Configs =
+	let tasks: Tasks =
 		toml::from_str(&settings::config().unwrap()).map_err(Error::InvalidConfig)?;
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(false);
@@ -71,25 +72,25 @@ pub async fn run() -> Result<()> {
 		Ok::<(), anyhow::Error>(())
 	});
 
-	let mut tasks = Vec::new();
-	for (name, mut c) in configs.0 {
+	let mut futs = Vec::new();
+	for (name, mut t) in tasks.0 {
 		let mut shutdown_rx = shutdown_rx.clone();
 
-		let task = tokio::spawn(async move {
+		let fut = tokio::spawn(async move {
 			select! {
 				_ = async {
 					loop {
 						let last_read_id = last_read_id(&name)?;
 
-						for r in c.source.get(last_read_id).await? {
-							c.sink.send(r.msg).await?;
+						for r in t.source.get(last_read_id).await? {
+							t.sink.send(r.msg).await?;
 
 							if let Some(id) = r.id {
 								save_last_read_id(&name, id)?;
 							}
 						}
 
-						sleep(Duration::from_secs(c.refresh * 60 /* secs in a min */)).await;
+						sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
 					}
 
 					#[allow(unreachable_code)]
@@ -101,11 +102,11 @@ pub async fn run() -> Result<()> {
 			}
 		});
 
-		tasks.push(task);
+		futs.push(fut);
 	}
 
 	// TODO: handle non critical errors, e.g. SourceFetch error
-	join_all(tasks).await;
+	join_all(futs).await;
 
 	sig_handle.close(); // TODO: figure out wtf this is and why
 	sig_task
