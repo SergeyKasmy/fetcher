@@ -7,19 +7,23 @@
  */
 
 use serde::Deserialize;
-use std::collections::HashMap;
+use teloxide::types::ChatId;
 
-use crate::{sink::Sink, source::Source};
+use crate::{
+	error::{Error, Result},
+	settings, sink,
+};
 
 #[derive(Deserialize)]
-#[serde(transparent, deny_unknown_fields)]
-pub struct Tasks(pub HashMap<String, Task>);
-
-#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct Task {
-	pub disabled: Option<bool>,
-	pub sink: Sink,
-	pub source: Source,
-	pub refresh: u64,
+pub struct Telegram {
+	chat_id: ChatId,
+}
+
+impl TryFrom<Telegram> for sink::Telegram {
+	type Error = Error;
+
+	fn try_from(v: Telegram) -> Result<Self> {
+		Ok(sink::Telegram::new(settings::telegram()?, v.chat_id))
+	}
 }

@@ -25,6 +25,7 @@ use crate::source::Responce;
 const IMAP_PORT: u16 = 993;
 
 #[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Filters {
 	pub sender: Option<String>,
 	pub subjects: Option<Vec<String>>,
