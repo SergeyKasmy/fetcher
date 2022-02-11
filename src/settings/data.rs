@@ -12,10 +12,12 @@ use std::{
 	path::PathBuf,
 };
 
+use serde::{Deserialize, Serialize};
+use teloxide::Bot;
+
 use super::PREFIX;
 use crate::{
 	auth::GoogleAuth,
-	config::formats::{GoogleAuthCfg, TwitterCfg},
 	error::{Error, Result},
 };
 
@@ -23,6 +25,12 @@ const GOOGLE_OAUTH2: &str = "google_oauth2.json";
 const GOOGLE_PASS: &str = "google_pass.txt";
 const TWITTER: &str = "twitter.json";
 const TELEGRAM: &str = "telegram.txt";
+
+#[derive(Serialize, Deserialize)]
+struct TwitterAuthSaveFormat {
+	api_key: String,
+	api_secret: String,
+}
 
 // TODO: dedup with last_read_id_path
 fn data_path(name: &str) -> Result<PathBuf> {
@@ -50,7 +58,7 @@ fn data(name: &str) -> Result<String> {
 	fs::read_to_string(&f).map_err(|e| Error::InaccessibleData(e, f))
 }
 
-pub fn google_oauth2() -> Result<GoogleAuthCfg> {
+pub fn google_oauth2() -> Result<GoogleAuth> {
 	serde_json::from_str(&data(GOOGLE_OAUTH2)?)
 		.map_err(|e| Error::CorruptedData(e, GOOGLE_OAUTH2.into()))
 }
@@ -59,12 +67,17 @@ pub fn google_password() -> Result<String> {
 	data(GOOGLE_PASS)
 }
 
-pub fn twitter() -> Result<TwitterCfg> {
-	serde_json::from_str(&data(TWITTER)?).map_err(|e| Error::CorruptedData(e, TWITTER.into()))
+pub fn twitter() -> Result<(String, String)> {
+	let TwitterAuthSaveFormat {
+		api_key,
+		api_secret,
+	} = serde_json::from_str(&data(TWITTER)?).map_err(|e| Error::CorruptedData(e, TWITTER.into()))?;
+
+	Ok((api_key, api_secret))
 }
 
-pub fn telegram() -> Result<String> {
-	data(TELEGRAM)
+pub fn telegram() -> Result<Bot> {
+	Ok(Bot::new(data(TELEGRAM)?))
 }
 
 fn save_data(name: &str, data: &str) -> Result<()> {
@@ -83,12 +96,7 @@ pub async fn generate_google_oauth2() -> Result<()> {
 
 	save_data(
 		GOOGLE_OAUTH2,
-		&serde_json::to_string(&GoogleAuthCfg {
-			client_id,
-			client_secret,
-			refresh_token,
-		})
-		.unwrap(), // NOTE: shouldn't fail, these are just strings
+		&serde_json::to_string(&GoogleAuth::new(client_id, client_secret, refresh_token)).unwrap(), // NOTE: shouldn't fail, these are just strings
 	)
 }
 
@@ -100,12 +108,16 @@ pub fn generate_google_password() -> Result<()> {
 }
 
 pub fn generate_twitter_auth() -> Result<()> {
-	let key = input("Twitter API key: ", 25)?;
-	let secret = input("Twitter API secret: ", 50)?;
+	let api_key = input("Twitter API key: ", 25)?;
+	let api_secret = input("Twitter API secret: ", 50)?;
 
 	save_data(
 		TWITTER,
-		&serde_json::to_string(&TwitterCfg { key, secret }).unwrap(), // NOTE: shouldn't fail, these are just strings
+		&serde_json::to_string(&TwitterAuthSaveFormat {
+			api_key,
+			api_secret,
+		})
+		.unwrap(), // NOTE: shouldn't fail, these are just strings
 	)
 }
 

@@ -10,27 +10,31 @@ mod auth;
 mod view_mode;
 
 pub use auth::Auth;
+use serde::Deserialize;
 pub use view_mode::ViewMode;
 
 use mailparse::ParsedMail;
 
 use self::auth::GoogleAuthExt;
 use crate::auth::GoogleAuth;
+use crate::config;
 use crate::error::{Error, Result};
 use crate::sink::Message;
 use crate::source::Responce;
 
 const IMAP_PORT: u16 = 993;
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Filters {
 	pub sender: Option<String>,
 	pub subjects: Option<Vec<String>>,
 	pub exclude_subjects: Option<Vec<String>>,
 }
 
+#[derive(Deserialize)]
+#[serde(try_from = "config::Email")]
 pub struct Email {
-	name: String,
 	imap: String,
 	email: String,
 	auth: Auth,
@@ -42,7 +46,6 @@ pub struct Email {
 impl Email {
 	#[tracing::instrument(skip(password))]
 	pub fn with_password(
-		name: String,
 		imap: String,
 		email: String,
 		password: String,
@@ -52,7 +55,6 @@ impl Email {
 	) -> Self {
 		tracing::info!("Creatng an Email provider");
 		Self {
-			name,
 			imap,
 			email,
 			auth: Auth::Password(password),
@@ -63,8 +65,7 @@ impl Email {
 	}
 
 	#[tracing::instrument(skip(auth))]
-	pub async fn with_google_oauth2(
-		name: String,
+	pub fn with_google_oauth2(
 		imap: String,
 		email: String,
 		auth: GoogleAuth,
@@ -75,7 +76,6 @@ impl Email {
 		tracing::info!("Creatng an Email provider");
 
 		Ok(Self {
-			name,
 			imap,
 			email,
 			auth: Auth::GoogleAuth(auth),
@@ -100,7 +100,7 @@ impl Email {
 				.login(&self.email, password)
 				.map_err(|(e, _)| Error::EmailAuth(e))?,
 			Auth::GoogleAuth(auth) => client
-				.authenticate("XOAUTH2", &auth.to_imap_oauth2(&self.email).await?)
+				.authenticate("XOAUTH2", &auth.as_imap_oauth2(&self.email).await?)
 				.map_err(|(e, _)| Error::EmailAuth(e))?,
 		};
 
@@ -215,7 +215,7 @@ impl Email {
 impl std::fmt::Debug for Email {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Email")
-			.field("name", &self.name)
+			// .field("name", &self.name)
 			.field("imap", &self.imap)
 			.field(
 				"auth_type",

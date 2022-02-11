@@ -6,24 +6,31 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+use serde::Deserialize;
 use std::time::Duration;
 use teloxide::{
-	adaptors::{throttle::Limits, Throttle},
+	// adaptors::{throttle::Limits, Throttle},
 	payloads::SendMessageSetters,
-	requests::{Request, Requester, RequesterExt},
+	requests::{Request, Requester},
 	types::{
 		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, Message as TelMessage,
 		ParseMode,
 	},
-	Bot, RequestError,
+	Bot,
+	RequestError,
 };
 
-use crate::error::Result;
-use crate::sink::Media;
-use crate::sink::Message;
+use crate::{
+	config,
+	error::Result,
+	sink::{Media, Message},
+};
 
+#[derive(Deserialize)]
+#[serde(try_from = "config::Telegram")]
 pub struct Telegram {
-	bot: Throttle<Bot>,
+	// bot: Throttle<Bot>,
+	bot: Bot,
 	chat_id: ChatId,
 }
 
@@ -47,7 +54,10 @@ fn fmt_comment_msg(s: &str) -> String {
 impl Telegram {
 	pub fn new(bot: Bot, chat_id: impl Into<ChatId>) -> Self {
 		Self {
-			bot: bot.throttle(Limits::default()),
+			// TODO: THIS BLOCKS. WHY??????
+			// #2 throttle() spawns a tokio task but we are in sync. Maybe that causes the hangup?
+			// bot: bot.throttle(Limits::default()),
+			bot,
 			chat_id: chat_id.into(),
 		}
 	}

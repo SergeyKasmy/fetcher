@@ -7,24 +7,29 @@
  */
 
 use rss::Channel;
+use serde::Deserialize;
 
+use crate::config;
 use crate::error::Result;
 use crate::sink::Message;
 use crate::source::Responce;
 
+#[derive(Deserialize)]
+#[serde(from = "config::Rss")]
 pub struct Rss {
-	name: String,
-	link: String,
+	// name: String,
+	// TODO: use url
+	url: String,
 	http_client: reqwest::Client,
 }
 
 impl Rss {
 	#[tracing::instrument]
-	pub fn new(name: String, link: String) -> Self {
+	pub fn new(/* name: String, */ url: String) -> Self {
 		tracing::info!("Creatng an Rss provider");
 		Self {
-			name,
-			link,
+			// name,
+			url,
 			http_client: reqwest::Client::new(),
 		}
 	}
@@ -33,7 +38,7 @@ impl Rss {
 	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
 		let content = self
 			.http_client
-			.get(&self.link)
+			.get(&self.url)
 			.send()
 			.await?
 			.bytes()
@@ -86,8 +91,8 @@ impl Rss {
 impl std::fmt::Debug for Rss {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Rss")
-			.field("name", &self.name)
-			.field("link", &self.link)
+			// .field("name", &self.name)
+			.field("url", &self.url)
 			.finish_non_exhaustive()
 	}
 }

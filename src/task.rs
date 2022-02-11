@@ -7,11 +7,19 @@
  */
 
 use serde::Deserialize;
+use std::collections::HashMap;
+
+use crate::{sink::Sink, source::Source};
+
+#[derive(Deserialize)]
+#[serde(transparent, deny_unknown_fields)]
+pub struct Tasks(pub HashMap<String, Task>);
 
 #[derive(Deserialize, Debug)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub enum ViewMode {
-	ReadOnly,
-	MarkAsRead,
-	Delete,
+#[serde(deny_unknown_fields)]
+pub struct Task {
+	pub disabled: Option<bool>,
+	pub sink: Sink,
+	pub source: Source,
+	pub refresh: u64,
 }
