@@ -10,11 +10,13 @@ mod message;
 mod telegram;
 
 pub use message::{Media, Message};
+use serde::Deserialize;
 pub use telegram::Telegram;
 
 use crate::error::Result;
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Sink {
 	Telegram(Telegram),
 }

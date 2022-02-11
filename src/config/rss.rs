@@ -7,11 +7,18 @@
  */
 
 use serde::Deserialize;
+use url::Url;
 
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub enum ViewMode {
-	ReadOnly,
-	MarkAsRead,
-	Delete,
+use crate::source;
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Rss {
+	url: Url,
+}
+
+impl From<Rss> for source::Rss {
+	fn from(v: Rss) -> Self {
+		source::Rss::new(v.url.to_string())
+	}
 }

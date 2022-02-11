@@ -26,22 +26,8 @@ pub enum Error {
 	#[error("error writing into {1}: {0}")]
 	Write(io::Error, PathBuf),
 
-	// config stuff
 	#[error("Invalid config: {0}")]
 	InvalidConfig(toml::de::Error),
-
-	#[error("Config entry {name} is missing {field} field")]
-	ConfigMissingField {
-		/* config */ name: String,
-		field: &'static str,
-	},
-
-	#[error("Config entry's {name}'s {field} field is not a valid {expected_type}")]
-	ConfigInvalidFieldType {
-		name: String,
-		field: &'static str,
-		expected_type: &'static str,
-	},
 
 	// stdin & stdout stuff
 	#[error("stdin error: {0}")]

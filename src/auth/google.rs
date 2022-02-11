@@ -6,13 +6,14 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 
 use crate::error::{Error, Result};
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
 
+// TODO: merge with
 #[derive(Deserialize)]
 struct GoogleOAuth2Responce {
 	access_token: String,
@@ -20,32 +21,29 @@ struct GoogleOAuth2Responce {
 }
 
 #[derive(Debug)]
+struct AccessToken {
+	token: String,
+	expires: Instant,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct GoogleAuth {
 	client_id: String,
 	client_secret: String,
 	refresh_token: String,
-	access_token: String,
-	expires_in: Instant,
+
+	#[serde(skip)]
+	access_token: Option<AccessToken>,
 }
 
 impl GoogleAuth {
-	pub async fn new(
-		client_id: String,
-		client_secret: String,
-		refresh_token: String,
-	) -> Result<Self> {
-		let GoogleOAuth2Responce {
-			access_token,
-			expires_in,
-		} = Self::generate_access_token(&client_id, &client_secret, &refresh_token).await?;
-
-		Ok(Self {
+	pub fn new(client_id: String, client_secret: String, refresh_token: String) -> Self {
+		Self {
 			client_id,
 			client_secret,
 			refresh_token,
-			access_token,
-			expires_in: Instant::now() + Duration::from_secs(expires_in),
-		})
+			access_token: None,
+		}
 	}
 
 	pub async fn generate_refresh_token(
@@ -111,21 +109,33 @@ impl GoogleAuth {
 		} = Self::generate_access_token(&self.client_id, &self.client_secret, &self.refresh_token)
 			.await?;
 
-		// self.code = CodeType::RefreshToken(refresh_token);
-		self.access_token = access_token;
-		self.expires_in = Instant::now() + Duration::from_secs(expires_in);
+		self.access_token = Some(AccessToken {
+			token: access_token,
+			expires: Instant::now() + Duration::from_secs(expires_in),
+		});
 
 		Ok(())
 	}
 
 	pub async fn access_token(&mut self) -> Result<&str> {
-		if Instant::now()
-			.checked_duration_since(self.expires_in)
-			.is_some()
+		// Update the token if:
+		// we haven't done that yet
+		if self.access_token.is_none()
+			// or if if it has expired
+			|| self
+				.access_token
+				.as_ref()
+				.and_then(|x| Instant::now().checked_duration_since(x.expires))
+				.is_some()
 		{
 			self.validate_access_token().await?;
 		}
 
-		Ok(self.access_token.as_str())
+		// unwrap NOTE: should be safe, we just validated it up above
+		Ok(self
+			.access_token
+			.as_ref()
+			.map(|x| x.token.as_str())
+			.unwrap())
 	}
 }
