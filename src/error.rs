@@ -39,9 +39,6 @@ pub enum Error {
 	#[error("Network IO error: {0}")]
 	Network(#[from] reqwest::Error),
 
-	#[error("TLS error: {0}")]
-	Tls(native_tls::Error),
-
 	#[error("Google auth: {0}")]
 	GoogleAuth(String),
 
