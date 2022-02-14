@@ -37,8 +37,10 @@ use crate::settings::save_last_read_id;
 
 #[tracing::instrument(skip_all)]
 pub async fn run() -> Result<()> {
-	let tasks: Tasks =
-		toml::from_str(&settings::config().unwrap()).map_err(Error::InvalidConfig)?;
+	let tasks: Tasks = toml::from_str(
+		&settings::config().unwrap(), // FIXME: may crash when config.toml doesn't exist
+	)
+	.map_err(Error::InvalidConfig)?;
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(false);
 

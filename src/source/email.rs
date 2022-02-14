@@ -89,11 +89,13 @@ impl Email {
 	/// It should be used with spawn_blocking probs
 	#[tracing::instrument]
 	pub async fn get(&mut self) -> Result<Vec<Responce>> {
-		let client = imap::connect(
-			(self.imap.as_str(), IMAP_PORT),
-			&self.imap,
-			&native_tls::TlsConnector::new().map_err(Error::Tls)?,
-		)?;
+		// let client = imap::connect(
+		// 	(self.imap.as_str(), IMAP_PORT),
+		// 	&self.imap,
+		// 	&native_tls::TlsConnector::new().map_err(Error::Tls)?,
+		// )?;
+
+		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT).rustls()?;
 
 		let mut session = match &mut self.auth {
 			Auth::Password(password) => client
