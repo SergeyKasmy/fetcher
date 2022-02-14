@@ -3,7 +3,7 @@
 name = "fetcher"
 description = "Fetch stuff and send stuff"
 # don't forget to bump major version to better follow semver, dummy
-version = "0.2.5"
+version = "0.2.6"
 license = "MPL-2.0"
 repository = "https://github.com/SergeyKasmy/fetcher"
 edition = "2021"
