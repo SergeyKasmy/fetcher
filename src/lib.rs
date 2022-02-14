@@ -80,6 +80,7 @@ pub async fn run() -> Result<()> {
 			select! {
 				_ = async {
 					loop {
+						tracing::debug!("Re-fetching {name}");
 						let last_read_id = last_read_id(&name)?;
 
 						for r in t.source.get(last_read_id).await? {
