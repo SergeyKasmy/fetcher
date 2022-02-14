@@ -63,12 +63,12 @@ impl Twitter {
 			.older(last_read_id.as_ref().and_then(|x| x.parse().ok()))
 			.await?;
 
-		if !tweets.is_empty() {
-			tracing::info!(
-				"Got {amount} unread & unfiltered tweets",
-				amount = tweets.len()
-			);
-		}
+		// if !tweets.is_empty() {
+		// 	tracing::info!(
+		// 		"Got {amount} unread & unfiltered tweets",
+		// 		amount = tweets.len()
+		// 	);
+		// }
 
 		let messages = tweets
 			.iter()
