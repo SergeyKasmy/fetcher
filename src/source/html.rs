@@ -40,12 +40,21 @@ pub struct Query {
 }
 
 #[derive(Deserialize, Debug)]
+pub struct LinkQuery {
+	// TODO: make sure it's always Amount::First
+	prepend: Option<String>,
+	#[serde(flatten)]
+	query: Query,
+}
+
+#[derive(Deserialize, Debug)]
 // TODO: use #[serde(try_from)]
 pub struct Html {
 	url: Url,
 	item_query: Vec<QueryKind>,
 	text_query: Vec<Query>,
 	id_query: Query,
+	link_query: LinkQuery,
 }
 
 impl Html {
@@ -63,12 +72,30 @@ impl Html {
 		let responces = items
 			.into_iter()
 			.map(|hndl| {
-				let text = self
-					.text_query
-					.iter()
-					.map(|x| Self::extract_data(&mut Self::find_chain(&hndl, &x.kind), x))
-					.collect::<Vec<_>>()
-					.join("\n\n");
+				let link = {
+					let mut link = Self::extract_data(
+						&mut Self::find_chain(&hndl, &self.link_query.query.kind),
+						&self.link_query.query,
+					);
+					if let Some(s) = &self.link_query.prepend {
+						link.insert_str(0, s);
+					}
+
+					link
+				};
+
+				let text = {
+					let mut text = self
+						.text_query
+						.iter()
+						.map(|x| Self::extract_data(&mut Self::find_chain(&hndl, &x.kind), x))
+						.collect::<Vec<_>>()
+						.join("\n\n");
+
+					text.push_str(&format!("\n\n<a href=\"{link}\">Link</a>"));
+
+					text
+				};
 
 				let id = Self::extract_data(
 					&mut Self::find_chain(&hndl, &self.id_query.kind),
