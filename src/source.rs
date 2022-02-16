@@ -21,6 +21,7 @@ use serde::Deserialize;
 use crate::error::Result;
 use crate::sink::Message;
 
+// TODO: add message history via responce id -> message id hashmap
 #[derive(Debug)]
 pub struct Responce {
 	pub id: Option<String>,

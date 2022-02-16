@@ -34,9 +34,22 @@ pub enum DataLocation {
 
 #[derive(Deserialize, Debug)]
 pub struct Query {
-	amount: Amount,
+	// amount: Amount,
 	kind: Vec<QueryKind>,
 	data_location: DataLocation,
+}
+
+#[derive(Deserialize, Debug)]
+pub enum IdQueryKind {
+	String,
+	Date,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct IdQuery {
+	// kind: IdQueryKind,
+	#[serde(flatten)]
+	inner: Query,
 }
 
 #[derive(Deserialize, Debug)]
@@ -44,17 +57,17 @@ pub struct LinkQuery {
 	// TODO: make sure it's always Amount::First
 	prepend: Option<String>,
 	#[serde(flatten)]
-	query: Query,
+	inner: Query,
 }
 
 #[derive(Deserialize, Debug)]
 // TODO: use #[serde(try_from)]
 pub struct Html {
 	url: Url,
-	item_query: Vec<QueryKind>,
-	text_query: Vec<Query>,
-	id_query: Query,
-	link_query: LinkQuery,
+	itemq: Vec<QueryKind>,
+	textq: Vec<Query>,
+	idq: IdQuery,
+	linkq: LinkQuery,
 }
 
 impl Html {
@@ -67,26 +80,26 @@ impl Html {
 			.unwrap();
 
 		let soup = Soup::new(page.as_str());
-		let items = Self::find_chain(&soup, &self.item_query);
+		let items = Self::find_chain(&soup, &self.itemq);
 
 		let responces = items
 			.into_iter()
+			// TODO: filter read items by id
 			.map(|hndl| {
 				let link = {
 					let mut link = Self::extract_data(
-						&mut Self::find_chain(&hndl, &self.link_query.query.kind),
-						&self.link_query.query,
+						&mut Self::find_chain(&hndl, &self.linkq.inner.kind),
+						&self.linkq.inner,
 					);
-					if let Some(s) = &self.link_query.prepend {
+					if let Some(s) = &self.linkq.prepend {
 						link.insert_str(0, s);
 					}
-
 					link
 				};
 
 				let text = {
 					let mut text = self
-						.text_query
+						.textq
 						.iter()
 						.map(|x| Self::extract_data(&mut Self::find_chain(&hndl, &x.kind), x))
 						.collect::<Vec<_>>()
@@ -98,8 +111,8 @@ impl Html {
 				};
 
 				let id = Self::extract_data(
-					&mut Self::find_chain(&hndl, &self.id_query.kind),
-					&self.id_query,
+					&mut Self::find_chain(&hndl, &self.idq.inner.kind),
+					&self.idq.inner,
 				);
 
 				Responce {
@@ -140,16 +153,23 @@ impl Html {
 	}
 
 	fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &Query) -> String {
-		let mut data = h
+		let data = h
 			.map(|x| match &q.data_location {
 				DataLocation::Text => x.text(),
 				DataLocation::Attr { value } => x.get(value).unwrap(),
 			})
 			.collect::<Vec<_>>();
 
-		match q.amount {
-			Amount::First => data.remove(0),
-			Amount::All => data.join("\n\n"),
-		}
+		// match q.amount {
+		// 	Amount::First => data.remove(0),
+		// 	Amount::All => data.join("\n\n"),
+		// }
+		data.join("\n\n")
 	}
+
+	// fn parse_pretty_date(date: &str) {
+	// 	// TODO: properly parse different languages
+	// 	const TODAY_WORDS: &[&str] = &["Today", "Heute", "Сегодня"];
+	// 	const YESTERDAY_WORDS: &[&str] = &["Yesterday", "Gestern", "Вчера"];
+	// }
 }
