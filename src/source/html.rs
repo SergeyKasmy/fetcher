@@ -68,12 +68,12 @@ impl Html {
 				// let id = Self::find_chain(&x, &self.id_query)[0].text();
 
 				let text = Self::extract_data(
-					Self::find_chain(&hndl, &self.text_query.kind),
+					&mut Self::find_chain(&hndl, &self.text_query.kind),
 					&self.text_query,
 				);
 
 				let id = Self::extract_data(
-					Self::find_chain(&hndl, &self.id_query.kind),
+					&mut Self::find_chain(&hndl, &self.id_query.kind),
 					&self.id_query,
 				);
 
@@ -87,32 +87,35 @@ impl Html {
 		Ok(responces)
 	}
 
-	fn find(qb: &impl QueryBuilderExt, q: &QueryKind) -> Vec<Handle> {
+	fn find<'a>(
+		qb: &impl QueryBuilderExt,
+		q: &'a QueryKind,
+	) -> Box<dyn Iterator<Item = Handle> + 'a> {
 		match q {
-			QueryKind::Tag { value } => qb.tag(value.as_str()).find_all().collect(),
-			QueryKind::Class { value } => qb.class(value.as_str()).find_all().collect(),
-			QueryKind::Attr { name, value } => {
-				qb.attr(name.as_str(), value.as_str()).find_all().collect()
-			}
+			QueryKind::Tag { value } => qb.tag(value.as_str()).find_all(),
+			QueryKind::Class { value } => qb.class(value.as_str()).find_all(),
+			QueryKind::Attr { name, value } => qb.attr(name.as_str(), value.as_str()).find_all(),
 		}
 	}
 
-	fn find_chain(qb: &impl QueryBuilderExt, qs: &[QueryKind]) -> Vec<Handle> {
-		let mut handles: Option<Vec<Handle>> = None;
+	fn find_chain<'a>(
+		qb: &impl QueryBuilderExt,
+		qs: &'a [QueryKind],
+	) -> Box<dyn Iterator<Item = Handle> + 'a> {
+		let mut handles: Option<Box<dyn Iterator<Item = Handle>>> = None;
 
 		for q in qs {
-			handles = Some(match &handles {
+			handles = Some(match handles {
 				None => Self::find(qb, q),
-				Some(handles) => handles.iter().map(|x| Self::find(x, q)).flatten().collect(),
+				Some(handles) => Box::new(handles.map(|x| Self::find(&x, q)).flatten()),
 			});
 		}
 
 		handles.unwrap()
 	}
 
-	fn extract_data(h: Vec<Handle>, q: &Query) -> String {
+	fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &Query) -> String {
 		let mut data = h
-			.into_iter()
 			.map(|x| match &q.data_location {
 				DataLocation::Text => x.text(),
 				DataLocation::Attr { value } => x.get(value).unwrap(),
