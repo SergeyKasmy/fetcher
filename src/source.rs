@@ -7,14 +7,16 @@
  */
 
 pub mod email;
+pub mod html;
 pub mod rss;
 pub mod twitter;
 
-use serde::Deserialize;
-
 pub use self::email::Email;
+pub use self::html::Html;
 pub use self::rss::Rss;
 pub use self::twitter::Twitter;
+
+use serde::Deserialize;
 
 use crate::error::Result;
 use crate::sink::Message;
@@ -27,9 +29,10 @@ pub struct Responce {
 #[derive(Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Source {
+	Email(Email),
+	Html(Html),
 	Rss(Rss),
 	Twitter(Twitter),
-	Email(Email),
 }
 
 impl Source {
@@ -37,6 +40,7 @@ impl Source {
 	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
 		match self {
 			Self::Email(x) => x.get().await,
+			Self::Html(x) => x.get().await,
 			Self::Rss(x) => x.get(last_read_id).await,
 			Self::Twitter(x) => x.get(last_read_id).await,
 		}

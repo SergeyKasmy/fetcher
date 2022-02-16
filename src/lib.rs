@@ -42,6 +42,7 @@ pub async fn run() -> Result<()> {
 	)
 	.map_err(Error::InvalidConfig)?;
 
+	// TODO: move signal handling to main. Maybe even refactor them somewhat
 	let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
 	let sig = Signals::new(TERM_SIGNALS).context("Error registering signals")?;
