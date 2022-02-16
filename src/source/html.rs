@@ -17,19 +17,19 @@ pub enum Amount {
 	All,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum DataLocation {
-	Text,
-	Attr { value: String },
-}
-
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum QueryKind {
 	Tag { value: String },
 	Class { value: String },
 	Attr { name: String, value: String },
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum DataLocation {
+	Text,
+	Attr { value: String },
 }
 
 #[derive(Deserialize, Debug)]
@@ -44,7 +44,7 @@ pub struct Query {
 pub struct Html {
 	url: Url,
 	item_query: Vec<QueryKind>,
-	text_query: Query,
+	text_query: Vec<Query>,
 	id_query: Query,
 }
 
@@ -56,21 +56,19 @@ impl Html {
 			.text()
 			.await
 			.unwrap();
-		// let page = include_str!("../../debug_data/page.html");
 
 		let soup = Soup::new(page.as_str());
-
 		let items = Self::find_chain(&soup, &self.item_query);
 
 		let responces = items
 			.into_iter()
 			.map(|hndl| {
-				// let id = Self::find_chain(&x, &self.id_query)[0].text();
-
-				let text = Self::extract_data(
-					&mut Self::find_chain(&hndl, &self.text_query.kind),
-					&self.text_query,
-				);
+				let text = self
+					.text_query
+					.iter()
+					.map(|x| Self::extract_data(&mut Self::find_chain(&hndl, &x.kind), x))
+					.collect::<Vec<_>>()
+					.join("\n\n");
 
 				let id = Self::extract_data(
 					&mut Self::find_chain(&hndl, &self.id_query.kind),
@@ -107,7 +105,7 @@ impl Html {
 		for q in qs {
 			handles = Some(match handles {
 				None => Self::find(qb, q),
-				Some(handles) => Box::new(handles.map(|x| Self::find(&x, q)).flatten()),
+				Some(handles) => Box::new(handles.map(|hndl| Self::find(&hndl, q)).flatten()),
 			});
 		}
 
