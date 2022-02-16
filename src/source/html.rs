@@ -2,7 +2,6 @@ use html5ever::rcdom::Handle;
 use serde::Deserialize;
 use serde::Serialize;
 use soup::NodeExt;
-use soup::QueryBuilder;
 use soup::QueryBuilderExt;
 use soup::Soup;
 use url::Url;
@@ -18,14 +17,14 @@ pub enum Amount {
 	All,
 }
 
-// #[derive(Serialize, Deserialize, Debug)]
-// #[serde(tag = "type", rename_all = "snake_case")]
-// pub enum DataLocation {
-// 	Text,
-// 	Attr { value: String },
-// }
+#[derive(Deserialize, Debug)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum DataLocation {
+	Text,
+	Attr { value: String },
+}
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum QueryKind {
 	Tag { value: String },
@@ -33,11 +32,11 @@ pub enum QueryKind {
 	Attr { name: String, value: String },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Query {
 	amount: Amount,
 	kind: Vec<QueryKind>,
-	// data_location: DataLocation,
+	data_location: DataLocation,
 }
 
 #[derive(Deserialize, Debug)]
@@ -65,21 +64,21 @@ impl Html {
 
 		let responces = items
 			.into_iter()
-			.map(|x| {
+			.map(|hndl| {
 				// let id = Self::find_chain(&x, &self.id_query)[0].text();
 
-				let mut text = Self::find_chain(&x, &self.text_query.kind)
-					.into_iter()
-					.map(|x| x.text())
-					.collect::<Vec<_>>();
+				let text = Self::extract_data(
+					Self::find_chain(&hndl, &self.text_query.kind),
+					&self.text_query,
+				);
 
-				let text = match &self.text_query.amount {
-					Amount::First => text.remove(0),
-					Amount::All => text.join("\n\n"),
-				};
+				let id = Self::extract_data(
+					Self::find_chain(&hndl, &self.id_query.kind),
+					&self.id_query,
+				);
 
 				Responce {
-					id: None,
+					id: Some(id),
 					msg: Message { text, media: None },
 				}
 			})
@@ -110,26 +109,19 @@ impl Html {
 
 		handles.unwrap()
 	}
-}
 
-#[cfg(test)]
-mod tests {
-	use super::*;
+	fn extract_data(h: Vec<Handle>, q: &Query) -> String {
+		let mut data = h
+			.into_iter()
+			.map(|x| match &q.data_location {
+				DataLocation::Text => x.text(),
+				DataLocation::Attr { value } => x.get(value).unwrap(),
+			})
+			.collect::<Vec<_>>();
 
-	#[test]
-	fn ser() {
-		let q = Query {
-			amount: Amount::All,
-			kind: vec![
-				QueryKind::Tag {
-					value: "TagText".to_owned(),
-				},
-				QueryKind::Class {
-					value: "ClassText".to_owned(),
-				},
-			],
-		};
-
-		println!("{}", toml::to_string_pretty(&q).unwrap());
+		match q.amount {
+			Amount::First => data.remove(0),
+			Amount::All => data.join("\n\n"),
+		}
 	}
 }

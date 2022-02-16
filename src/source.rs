@@ -21,6 +21,7 @@ use serde::Deserialize;
 use crate::error::Result;
 use crate::sink::Message;
 
+#[derive(Debug)]
 pub struct Responce {
 	pub id: Option<String>,
 	pub msg: Message,
