@@ -1,9 +1,7 @@
+use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use html5ever::rcdom::Handle;
-use serde::Deserialize;
-use serde::Serialize;
-use soup::NodeExt;
-use soup::QueryBuilderExt;
-use soup::Soup;
+use serde::{Deserialize, Serialize};
+use soup::{NodeExt, QueryBuilderExt, Soup};
 use url::Url;
 
 use crate::error::Result;
@@ -40,6 +38,7 @@ pub struct Query {
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(rename_all = "snake_case")]
 pub enum IdQueryKind {
 	String,
 	Date,
@@ -47,8 +46,8 @@ pub enum IdQueryKind {
 
 #[derive(Deserialize, Debug)]
 pub struct IdQuery {
-	// kind: IdQueryKind,
-	#[serde(flatten)]
+	kind: IdQueryKind,
+	#[serde(rename = "query")]
 	inner: Query,
 }
 
@@ -64,9 +63,13 @@ pub struct LinkQuery {
 // TODO: use #[serde(try_from)]
 pub struct Html {
 	url: Url,
+	#[serde(alias = "item_query")]
 	itemq: Vec<QueryKind>,
+	#[serde(alias = "text_query")]
 	textq: Vec<Query>,
+	#[serde(alias = "id_query")]
 	idq: IdQuery,
+	#[serde(alias = "link_query")]
 	linkq: LinkQuery,
 }
 
@@ -110,15 +113,25 @@ impl Html {
 					text
 				};
 
-				let id = Self::extract_data(
-					&mut Self::find_chain(&hndl, &self.idq.inner.kind),
-					&self.idq.inner,
-				);
+				let id = {
+					let id_str = Self::extract_data(
+						&mut Self::find_chain(&hndl, &self.idq.inner.kind),
+						&self.idq.inner,
+					);
+
+					match &self.idq.kind {
+						IdQueryKind::String => id_str,
+						IdQueryKind::Date => Self::parse_pretty_date(&id_str).to_string(),
+					}
+				};
 
 				Responce {
 					id: Some(id),
 					msg: Message { text, media: None },
 				}
+			})
+			.inspect(|x| {
+				dbg!(x);
 			})
 			.collect();
 
@@ -167,9 +180,57 @@ impl Html {
 		data.join("\n\n")
 	}
 
-	// fn parse_pretty_date(date: &str) {
-	// 	// TODO: properly parse different languages
-	// 	const TODAY_WORDS: &[&str] = &["Today", "Heute", "Сегодня"];
-	// 	const YESTERDAY_WORDS: &[&str] = &["Yesterday", "Gestern", "Вчера"];
-	// }
+	fn parse_pretty_date(mut date_str: &str) -> DateTime<Utc> {
+		enum DateTimeKind {
+			Today,
+			Yesterday,
+			Other,
+		}
+
+		// TODO: properly parse different languages
+		const YESTERDAY_WORDS: &[&str] = &["Yesterday", "Gestern", "Вчера"];
+		const TODAY_WORDS: &[&str] = &["Today", "Heute", "Сегодня"];
+
+		date_str = date_str.trim();
+
+		let mut datetime_kind = DateTimeKind::Other;
+		for w in YESTERDAY_WORDS {
+			if date_str.starts_with(w) {
+				date_str = &date_str[w.len()..];
+				datetime_kind = DateTimeKind::Yesterday;
+			}
+		}
+
+		for w in TODAY_WORDS {
+			if date_str.starts_with(w) {
+				date_str = &date_str[w.len()..];
+				datetime_kind = DateTimeKind::Today;
+			}
+		}
+
+		if date_str.starts_with(',') {
+			date_str = &date_str[1..];
+		}
+
+		date_str = date_str.trim();
+
+		match datetime_kind {
+			DateTimeKind::Yesterday => {
+				let time = NaiveTime::parse_from_str(date_str, "%H:%M").unwrap();
+				// date.date().pred().and_time(date.time()).unwrap(); // TODO: why does .and_time() return an option????
+				Local::today().pred().and_time(time).unwrap().into()
+			}
+			DateTimeKind::Today => {
+				let time = NaiveTime::parse_from_str(date_str, "%H:%M").unwrap();
+				Local::today().and_time(time).unwrap().into()
+			}
+			DateTimeKind::Other => Utc
+				.from_local_datetime(
+					&NaiveDate::parse_from_str(date_str, "%d.%m.%Y")
+						.unwrap()
+						.and_hms(0, 0, 0),
+				)
+				.unwrap(),
+		}
+	}
 }
