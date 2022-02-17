@@ -76,6 +76,12 @@ pub async fn run() -> Result<()> {
 
 	let mut futs = Vec::new();
 	for (name, mut t) in tasks.0 {
+		if let Some(disabled) = t.disabled {
+			if disabled {
+				continue;
+			}
+		}
+
 		let mut shutdown_rx = shutdown_rx.clone();
 
 		let fut = tokio::spawn(async move {
