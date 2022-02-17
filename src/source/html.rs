@@ -1,6 +1,6 @@
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use html5ever::rcdom::Handle;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use soup::{NodeExt, QueryBuilderExt, Soup};
 use url::Url;
 
@@ -8,12 +8,12 @@ use crate::error::Result;
 use crate::sink::Message;
 use crate::source::Responce;
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum Amount {
-	First,
-	All,
-}
+// #[derive(Serialize, Deserialize, Debug)]
+// #[serde(rename_all = "snake_case")]
+// pub enum Amount {
+// 	First,
+// 	All,
+// }
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -75,12 +75,7 @@ pub struct Html {
 
 impl Html {
 	pub async fn get(&self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
-		let page = reqwest::get(self.url.as_str())
-			.await
-			.unwrap()
-			.text()
-			.await
-			.unwrap();
+		let page = reqwest::get(self.url.as_str()).await?.text().await?;
 
 		let soup = Soup::new(page.as_str());
 		let items = Self::find_chain(&soup, &self.itemq);
@@ -134,21 +129,19 @@ impl Html {
 
 					match &self.idq.kind {
 						IdQueryKind::String => Id::String(id_str),
-						IdQueryKind::Date => Id::Date(Self::parse_pretty_date(&id_str)),
+						IdQueryKind::Date => Id::Date(Self::parse_pretty_date(&id_str)?),
 					}
 				};
 
-				Article { id, text }
+				Ok(Article { id, text })
 			})
-			.inspect(|x| {
-				dbg!(x);
-			})
-			.collect::<Vec<_>>();
+			.collect::<Result<Vec<_>>>()?;
 
 		if let Some(last_read_id) = last_read_id {
 			if let Some(pos) = articles.iter().position(|x| match &x.id {
 				Id::String(s) => s == &last_read_id,
-				Id::Date(d) => d <= &last_read_id.parse::<DateTime<Utc>>().unwrap(),
+				Id::Date(d) => d <= &last_read_id.parse::<DateTime<Utc>>().unwrap(), // unwrap NOTE: should be safe, we parse in the same format we save
+				                                                                     // TODO: add last_read_id format error for a nicer output
 			}) {
 				articles.drain(pos..);
 			}
@@ -194,14 +187,14 @@ impl Html {
 			});
 		}
 
-		handles.unwrap()
+		handles.unwrap() // unwrap NOTE: safe *if* there are more than 0 query kinds which should be always... hopefully... // TODO: make sure there are more than 0 qks
 	}
 
 	fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &Query) -> String {
 		let data = h
-			.map(|x| match &q.data_location {
-				DataLocation::Text => x.text(),
-				DataLocation::Attr { value } => x.get(value).unwrap(),
+			.map(|hndl| match &q.data_location {
+				DataLocation::Text => hndl.text(),
+				DataLocation::Attr { value } => hndl.get(value).expect("attr doesnt exist"), // FIXME
 			})
 			.collect::<Vec<_>>();
 
@@ -212,7 +205,8 @@ impl Html {
 		data.join("\n\n")
 	}
 
-	fn parse_pretty_date(mut date_str: &str) -> DateTime<Utc> {
+	// TODO: rewrite the entire fn to use today/Yesterday words and date formats from the config per source and not global
+	fn parse_pretty_date(mut date_str: &str) -> Result<DateTime<Utc>> {
 		enum DateTimeKind {
 			Today,
 			Yesterday,
@@ -243,22 +237,22 @@ impl Html {
 		date_str = date_str.trim_matches(',');
 		date_str = date_str.trim();
 
-		match datetime_kind {
+		Ok(match datetime_kind {
 			DateTimeKind::Today => {
-				let time = NaiveTime::parse_from_str(date_str, "%H:%M").unwrap();
-				Local::today().and_time(time).unwrap().into()
+				let time = NaiveTime::parse_from_str(date_str, "%H:%M")?;
+				Local::today().and_time(time).unwrap().into() // unwrap NOTE: no idea why it returns an option so I'll just assume it's safe and hope for the best
 			}
 			DateTimeKind::Yesterday => {
-				let time = NaiveTime::parse_from_str(date_str, "%H:%M").unwrap();
-				Local::today().pred().and_time(time).unwrap().into()
+				let time = NaiveTime::parse_from_str(date_str, "%H:%M")?;
+				Local::today().pred().and_time(time).unwrap().into() // unwrap NOTE: same as above
 			}
 			DateTimeKind::Other => Utc
 				.from_local_datetime(
 					&NaiveDate::parse_from_str(date_str, "%d.%m.%Y")
-						.unwrap()
+						.expect("HTML Date not in dd.mm.yyyy format") // FIXME
 						.and_hms(0, 0, 0),
 				)
-				.unwrap(),
-		}
+				.unwrap(), // unwrap NOTE: same as above
+		})
 	}
 }
