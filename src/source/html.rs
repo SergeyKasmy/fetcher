@@ -74,7 +74,7 @@ pub struct Html {
 }
 
 impl Html {
-	pub async fn get(&self) -> Result<Vec<Responce>> {
+	pub async fn get(&self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
 		let page = reqwest::get(self.url.as_str())
 			.await
 			.unwrap()
@@ -85,7 +85,20 @@ impl Html {
 		let soup = Soup::new(page.as_str());
 		let items = Self::find_chain(&soup, &self.itemq);
 
-		let responces = items
+		// TODO: mb move to source and make it generic for every source?
+		#[derive(Debug)]
+		enum Id {
+			String(String),
+			Date(DateTime<Utc>),
+		}
+
+		#[derive(Debug)]
+		struct Article {
+			id: Id,
+			text: String,
+		}
+
+		let mut articles = items
 			.into_iter()
 			// TODO: filter read items by id
 			.map(|hndl| {
@@ -120,22 +133,41 @@ impl Html {
 					);
 
 					match &self.idq.kind {
-						IdQueryKind::String => id_str,
-						IdQueryKind::Date => Self::parse_pretty_date(&id_str).to_string(),
+						IdQueryKind::String => Id::String(id_str),
+						IdQueryKind::Date => Id::Date(Self::parse_pretty_date(&id_str)),
 					}
 				};
 
-				Responce {
-					id: Some(id),
-					msg: Message { text, media: None },
-				}
+				Article { id, text }
 			})
 			.inspect(|x| {
 				dbg!(x);
 			})
-			.collect();
+			.collect::<Vec<_>>();
 
-		Ok(responces)
+		if let Some(last_read_id) = last_read_id {
+			if let Some(pos) = articles.iter().position(|x| match &x.id {
+				Id::String(s) => s == &last_read_id,
+				Id::Date(d) => d <= &last_read_id.parse::<DateTime<Utc>>().unwrap(),
+			}) {
+				articles.drain(pos..);
+			}
+		}
+
+		Ok(articles
+			.into_iter()
+			.rev()
+			.map(|a| Responce {
+				id: Some(match a.id {
+					Id::String(s) => s,
+					Id::Date(d) => d.to_string(),
+				}),
+				msg: Message {
+					text: a.text,
+					media: None,
+				},
+			})
+			.collect())
 	}
 
 	fn find<'a>(
@@ -188,18 +220,11 @@ impl Html {
 		}
 
 		// TODO: properly parse different languages
-		const YESTERDAY_WORDS: &[&str] = &["Yesterday", "Gestern", "Вчера"];
 		const TODAY_WORDS: &[&str] = &["Today", "Heute", "Сегодня"];
+		const YESTERDAY_WORDS: &[&str] = &["Yesterday", "Gestern", "Вчера"];
 
 		date_str = date_str.trim();
-
 		let mut datetime_kind = DateTimeKind::Other;
-		for w in YESTERDAY_WORDS {
-			if date_str.starts_with(w) {
-				date_str = &date_str[w.len()..];
-				datetime_kind = DateTimeKind::Yesterday;
-			}
-		}
 
 		for w in TODAY_WORDS {
 			if date_str.starts_with(w) {
@@ -208,21 +233,24 @@ impl Html {
 			}
 		}
 
-		if date_str.starts_with(',') {
-			date_str = &date_str[1..];
+		for w in YESTERDAY_WORDS {
+			if date_str.starts_with(w) {
+				date_str = &date_str[w.len()..];
+				datetime_kind = DateTimeKind::Yesterday;
+			}
 		}
 
+		date_str = date_str.trim_matches(',');
 		date_str = date_str.trim();
 
 		match datetime_kind {
-			DateTimeKind::Yesterday => {
-				let time = NaiveTime::parse_from_str(date_str, "%H:%M").unwrap();
-				// date.date().pred().and_time(date.time()).unwrap(); // TODO: why does .and_time() return an option????
-				Local::today().pred().and_time(time).unwrap().into()
-			}
 			DateTimeKind::Today => {
 				let time = NaiveTime::parse_from_str(date_str, "%H:%M").unwrap();
 				Local::today().and_time(time).unwrap().into()
+			}
+			DateTimeKind::Yesterday => {
+				let time = NaiveTime::parse_from_str(date_str, "%H:%M").unwrap();
+				Local::today().pred().and_time(time).unwrap().into()
 			}
 			DateTimeKind::Other => Utc
 				.from_local_datetime(
