@@ -22,12 +22,14 @@ use crate::error::Result;
 use crate::sink::Message;
 
 // TODO: add message history via responce id -> message id hashmap
+// TODO: add pretty name/hashtag and link here instead of doing it manually
 #[derive(Debug)]
 pub struct Responce {
 	pub id: Option<String>,
 	pub msg: Message,
 }
 
+// TODO: add google calendar source. Google OAuth2 is already implemented :)
 #[derive(Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Source {

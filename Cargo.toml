@@ -19,7 +19,8 @@ chrono = "0.4.19"
 egg-mode = { version = "0.16.0", features = ["rustls"], default-features = false }
 futures = "0.3.21"
 html5ever = "0.22"
-imap = { version = "3.0.0-alpha.4", features = [ "rustls-tls" ], default-features = false }
+# imap = { version = "3.0.0-alpha.4", features = [ "rustls-tls" ], default-features = false }
+imap = { version = "3.0.0-alpha.6", features = [ "rustls-tls" ], default-features = false }
 mailparse = "0.13.8"
 reqwest = { version = "0.11.9", features = ["rustls-tls"], default-features = false }
 rss = "2.0.0"
@@ -35,7 +36,7 @@ toml = "0.5.8"
 tracing = "0.1.30"
 tracing-futures = "0.2.5"
 tracing-log = "0.1.2"
-tracing-subscriber = "0.3.8"
+tracing-subscriber = { version = "0.3.8", features = ["env-filter", "tracing-log"] }
 url = "2.2.2"
 xdg = "2.4.0"
 

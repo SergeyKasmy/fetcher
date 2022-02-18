@@ -16,9 +16,13 @@ use fetcher::{
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	tracing_subscriber::fmt().without_time().init();
-	// tracing_log::LogTracer::init().unwrap();
+	tracing_subscriber::fmt()
+		// FIXME: properly set INFO as default log level
+		.with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+		.without_time()
+		.init();
 
+	// TODO: add option to send to optional global debug chat to test first
 	match std::env::args().nth(1).as_deref() {
 		Some("--gen-secret-google-oauth2") => generate_google_oauth2().await?,
 		Some("--gen-secret-google-password") => generate_google_password()?,

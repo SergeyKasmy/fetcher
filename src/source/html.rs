@@ -74,7 +74,9 @@ pub struct Html {
 }
 
 impl Html {
+	#[tracing::instrument(name = "Html::get", skip(self), fields(url = self.url.as_str()))]
 	pub async fn get(&self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
+		tracing::debug!("Fetching HTML source");
 		let page = reqwest::get(self.url.as_str()).await?.text().await?;
 
 		let soup = Soup::new(page.as_str());
@@ -94,8 +96,6 @@ impl Html {
 		}
 
 		let mut articles = items
-			.into_iter()
-			// TODO: filter read items by id
 			.map(|hndl| {
 				let link = {
 					let mut link = Self::extract_data(
@@ -137,15 +137,23 @@ impl Html {
 			})
 			.collect::<Result<Vec<_>>>()?;
 
+		tracing::debug!("Found {num} HTML articles total", num = articles.len());
+
 		if let Some(last_read_id) = last_read_id {
 			if let Some(pos) = articles.iter().position(|x| match &x.id {
 				Id::String(s) => s == &last_read_id,
 				Id::Date(d) => d <= &last_read_id.parse::<DateTime<Utc>>().unwrap(), // unwrap NOTE: should be safe, we parse in the same format we save
 				                                                                     // TODO: add last_read_id format error for a nicer output
 			}) {
+				tracing::debug!(
+					"Removing {num} already read HTML articles",
+					num = articles.len() - pos
+				);
 				articles.drain(pos..);
 			}
 		}
+
+		tracing::debug!("{num} unread HTML articles remaining", num = articles.len());
 
 		Ok(articles
 			.into_iter()

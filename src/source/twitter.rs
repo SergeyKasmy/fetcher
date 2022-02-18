@@ -28,7 +28,7 @@ pub struct Twitter {
 }
 
 impl Twitter {
-	#[tracing::instrument(skip(api_key, api_secret))]
+	#[tracing::instrument(name = "Twitter::new", skip(api_key, api_secret))]
 	pub fn new(
 		pretty_name: String,
 		handle: String,
@@ -47,8 +47,9 @@ impl Twitter {
 		})
 	}
 
-	#[tracing::instrument]
+	#[tracing::instrument(name = "Twitter::get")]
 	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
+		tracing::debug!("Getting tweets");
 		if self.token.is_none() {
 			self.token = Some(
 				bearer_token(&KeyPair::new(self.api_key.clone(), self.api_secret.clone()))
@@ -63,12 +64,10 @@ impl Twitter {
 			.older(last_read_id.as_ref().and_then(|x| x.parse().ok()))
 			.await?;
 
-		// if !tweets.is_empty() {
-		// 	tracing::info!(
-		// 		"Got {amount} unread & unfiltered tweets",
-		// 		amount = tweets.len()
-		// 	);
-		// }
+		tracing::debug!(
+			"Got {num} tweets older than the last read one",
+			num = tweets.len()
+		);
 
 		let messages = tweets
 			.iter()
@@ -106,6 +105,11 @@ impl Twitter {
 				})
 			})
 			.collect::<Vec<_>>();
+
+		tracing::debug!(
+			"{num} tweets remaining after filtering",
+			num = messages.len()
+		);
 
 		Ok(messages)
 	}

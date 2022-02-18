@@ -44,7 +44,7 @@ pub struct Email {
 }
 
 impl Email {
-	#[tracing::instrument(skip(password))]
+	#[tracing::instrument(name = "Email::with_password", skip(password))]
 	pub fn with_password(
 		imap: String,
 		email: String,
@@ -64,7 +64,7 @@ impl Email {
 		}
 	}
 
-	#[tracing::instrument(skip(auth))]
+	#[tracing::instrument(name = "Email::with_google_oauth2", skip(auth))]
 	pub fn with_google_oauth2(
 		imap: String,
 		email: String,
@@ -87,29 +87,41 @@ impl Email {
 
 	/// Even though it's marked async, the fetching itself is not async yet
 	/// It should be used with spawn_blocking probs
-	#[tracing::instrument]
+	/// TODO: make it async lol
+	#[tracing::instrument(name = "Email::get")]
 	pub async fn get(&mut self) -> Result<Vec<Responce>> {
-		// let client = imap::connect(
-		// 	(self.imap.as_str(), IMAP_PORT),
-		// 	&self.imap,
-		// 	&native_tls::TlsConnector::new().map_err(Error::Tls)?,
-		// )?;
-
+		tracing::debug!("Fetching emails");
 		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT).rustls()?;
 
 		let mut session = match &mut self.auth {
-			Auth::Password(password) => client
-				.login(&self.email, password)
-				.map_err(|(e, _)| Error::EmailAuth(e))?,
-			Auth::GoogleAuth(auth) => client
-				.authenticate("XOAUTH2", &auth.as_imap_oauth2(&self.email).await?)
-				.map_err(|(e, _)| Error::EmailAuth(e))?,
+			Auth::GoogleAuth(auth) => {
+				tracing::debug!("Logging in to IMAP with Google OAuth2");
+
+				client
+					.authenticate("XOAUTH2", &auth.as_imap_oauth2(&self.email).await?)
+					.map_err(|(e, _)| Error::EmailAuth(e))?
+			}
+			Auth::Password(password) => {
+				tracing::debug!("Logging in to IMAP with a password");
+
+				client
+					.login(&self.email, password)
+					.map_err(|(e, _)| Error::EmailAuth(e))?
+			}
 		};
 
 		match self.view_mode {
-			ViewMode::ReadOnly => session.examine("INBOX"),
-			ViewMode::MarkAsRead | ViewMode::Delete => session.select("INBOX"),
-		}?;
+			ViewMode::ReadOnly => {
+				tracing::debug!("Using INBOX in ro mode");
+
+				session.examine("INBOX")?;
+			}
+			ViewMode::MarkAsRead | ViewMode::Delete => {
+				tracing::debug!("Using INBOX in rw mode");
+
+				session.select("INBOX")?;
+			}
+		};
 
 		let search_string = {
 			let mut tmp = "UNSEEN ".to_string();
@@ -134,11 +146,16 @@ impl Email {
 		};
 
 		let mail_ids = session
-			.uid_search(search_string)?
+			.uid_search(&search_string)?
 			.into_iter()
 			.map(|x| x.to_string())
 			.collect::<Vec<_>>()
 			.join(",");
+
+		tracing::debug!(
+			"Got {num} unread mails for \"{search_string}\"",
+			num = mail_ids.len()
+		);
 
 		if mail_ids.is_empty() {
 			return Ok(Vec::new());
@@ -155,7 +172,6 @@ impl Email {
 		}
 
 		session.logout()?;
-		tracing::info!("Got {amount} unread emails", amount = mails.len());
 
 		mails
 			.into_iter()

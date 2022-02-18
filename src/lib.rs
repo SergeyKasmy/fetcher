@@ -85,11 +85,12 @@ pub async fn run() -> Result<()> {
 
 		let mut shutdown_rx = shutdown_rx.clone();
 
+		// TODO: create a tracing span for each task with task name param
 		let fut = tokio::spawn(async move {
 			select! {
 				_ = async {
 					loop {
-						tracing::debug!("Re-fetching {name}");
+						tracing::debug!("{name}: fetching");
 						let last_read_id = last_read_id(&name)?;
 
 						for r in t.source.get(last_read_id).await? {
@@ -100,6 +101,7 @@ pub async fn run() -> Result<()> {
 							}
 						}
 
+						tracing::debug!("{name}: sleeping for {time}", time = t.refresh);
 						sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
 					}
 
@@ -107,7 +109,7 @@ pub async fn run() -> Result<()> {
 					Ok::<(), Error>(())
 				} => (),
 				_ = shutdown_rx.changed() => {
-					tracing::info!("Shutdown signal received");
+					tracing::info!("{name}: shutting down...");
 				},
 			}
 		});
