@@ -19,7 +19,7 @@ pub mod task;
 // TODO: mb using anyhow in lib code isn't a good idea?
 use anyhow::Context;
 use anyhow::Result;
-use futures::future::join_all;
+use futures::future::try_join_all;
 use futures::StreamExt;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
@@ -29,6 +29,7 @@ use std::time::Duration;
 use task::Tasks;
 use tokio::select;
 use tokio::sync::watch;
+use tokio::task::JoinHandle;
 use tokio::time::sleep;
 
 use crate::error::Error;
@@ -88,7 +89,7 @@ pub async fn run() -> Result<()> {
 		// TODO: create a tracing span for each task with task name param
 		let fut = tokio::spawn(async move {
 			select! {
-				_ = async {
+				res = async {
 					loop {
 						tracing::debug!("{name}: fetching");
 						let last_read_id = last_read_id(&name)?;
@@ -101,28 +102,39 @@ pub async fn run() -> Result<()> {
 							}
 						}
 
-						tracing::debug!("{name}: sleeping for {time}", time = t.refresh);
+						tracing::debug!("{name}: sleeping for {time}m", time = t.refresh);
 						sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
 					}
 
 					#[allow(unreachable_code)]
 					Ok::<(), Error>(())
-				} => (),
+				} => { res?; }
 				_ = shutdown_rx.changed() => {
 					tracing::info!("{name}: shutting down...");
 				},
 			}
+
+			#[allow(unreachable_code)]
+			Ok::<(), Error>(())
 		});
 
-		futs.push(fut);
+		futs.push(flatten_task(fut));
 	}
 
-	// TODO: handle non critical errors, e.g. SourceFetch error
-	join_all(futs).await;
+	// TODO: handle non critical errors
+	try_join_all(futs).await?;
 
 	sig_handle.close(); // TODO: figure out wtf this is and why
 	sig_task
 		.await
 		.context("Error shutting down of signal handler")??;
 	Ok(())
+}
+
+async fn flatten_task<T>(h: JoinHandle<error::Result<T>>) -> error::Result<T> {
+	match h.await {
+		Ok(Ok(res)) => Ok(res),
+		Ok(Err(err)) => Err(err),
+		e => e.unwrap(), // unwrap NOTE: crash (for now) if there was an error joining the thread
+	}
 }

@@ -1,3 +1,11 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
+ */
+
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use html5ever::rcdom::Handle;
 use serde::Deserialize;
@@ -7,13 +15,6 @@ use url::Url;
 use crate::error::Result;
 use crate::sink::Message;
 use crate::source::Responce;
-
-// #[derive(Serialize, Deserialize, Debug)]
-// #[serde(rename_all = "snake_case")]
-// pub enum Amount {
-// 	First,
-// 	All,
-// }
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -32,7 +33,6 @@ pub enum DataLocation {
 
 #[derive(Deserialize, Debug)]
 pub struct Query {
-	// amount: Amount,
 	kind: Vec<QueryKind>,
 	data_location: DataLocation,
 }
@@ -53,7 +53,6 @@ pub struct IdQuery {
 
 #[derive(Deserialize, Debug)]
 pub struct LinkQuery {
-	// TODO: make sure it's always Amount::First
 	prepend: Option<String>,
 	#[serde(flatten)]
 	inner: Query,
@@ -206,10 +205,6 @@ impl Html {
 			})
 			.collect::<Vec<_>>();
 
-		// match q.amount {
-		// 	Amount::First => data.remove(0),
-		// 	Amount::All => data.join("\n\n"),
-		// }
 		data.join("\n\n")
 	}
 

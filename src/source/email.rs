@@ -174,7 +174,7 @@ impl Email {
 		session.logout()?;
 
 		mails
-			.into_iter()
+			.iter()
 			.filter(|x| x.body().is_some()) // TODO: properly handle error cases and don't just filter them out
 			.map(|x| {
 				Ok(Responce {
