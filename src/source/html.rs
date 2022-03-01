@@ -73,7 +73,7 @@ pub struct Html {
 	#[serde(alias = "link_query")]
 	linkq: LinkQuery,
 	#[serde(alias = "img_query")]
-	imgq: LinkQuery,
+	imgq: Option<LinkQuery>,
 }
 
 impl Html {
@@ -96,7 +96,7 @@ impl Html {
 		struct Article {
 			id: Id,
 			text: String,
-			img: Url,
+			img: Option<Url>,
 		}
 
 		let mut articles = items
@@ -141,18 +141,18 @@ impl Html {
 					text
 				};
 
-				let img: Url = {
+				let img: Option<Url> = self.imgq.as_ref().map(|img_query| {
 					let mut img_url = Self::extract_data(
-						&mut Self::find_chain(&item, &self.imgq.inner.kind), // TODO: check iterator not empty
-						&self.imgq.inner,
+						&mut Self::find_chain(&item, &img_query.inner.kind), // TODO: check iterator not empty
+						&img_query.inner,
 					);
 
-					if let Some(s) = &self.imgq.prepend {
+					if let Some(s) = &img_query.prepend {
 						img_url.insert_str(0, s);
 					}
 
 					img_url.as_str().try_into().unwrap()
-				};
+				});
 				Some(Ok(Article { id, text, img }))
 			})
 			.collect::<Result<Vec<_>>>()?;
@@ -185,7 +185,7 @@ impl Html {
 				}),
 				msg: Message {
 					text: a.text,
-					media: Some(vec![Media::Photo(a.img)]),
+					media: a.img.map(|u| vec![Media::Photo(u)]),
 				},
 			})
 			.collect())
