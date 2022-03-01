@@ -6,14 +6,16 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+// TODO: better handle invalid config values
+
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use html5ever::rcdom::Handle;
 use serde::Deserialize;
 use soup::{NodeExt, QueryBuilderExt, Soup};
 use url::Url;
 
-use crate::error::Result;
-use crate::sink::Message;
+use crate::error::{Error, Result};
+use crate::sink::{Media, Message};
 use crate::source::Responce;
 
 #[derive(Deserialize, Clone, Debug)]
@@ -70,6 +72,8 @@ pub struct Html {
 	idq: IdQuery,
 	#[serde(alias = "link_query")]
 	linkq: LinkQuery,
+	#[serde(alias = "img_query")]
+	imgq: LinkQuery,
 }
 
 impl Html {
@@ -92,13 +96,14 @@ impl Html {
 		struct Article {
 			id: Id,
 			text: String,
+			img: Url,
 		}
 
 		let mut articles = items
-			.map(|hndl| {
+			.filter_map(|item| {
 				let link = {
 					let mut link = Self::extract_data(
-						&mut Self::find_chain(&hndl, &self.linkq.inner.kind),
+						&mut Self::find_chain(&item, &self.linkq.inner.kind),
 						&self.linkq.inner,
 					);
 					if let Some(s) = &self.linkq.prepend {
@@ -107,11 +112,27 @@ impl Html {
 					link
 				};
 
+				let id = {
+					let id_str = Self::extract_data(
+						&mut Self::find_chain(&item, &self.idq.inner.kind),
+						&self.idq.inner,
+					);
+
+					match &self.idq.kind {
+						IdQueryKind::String => Id::String(id_str),
+						IdQueryKind::Date => Id::Date(match Self::parse_pretty_date(&id_str) {
+							Ok(d) => d,
+							Err(e) if matches!(e, Error::InvalidDateTimeFormat(_)) => return None,
+							Err(e) => return Some(Err(e)),
+						}),
+					}
+				};
+
 				let text = {
 					let mut text = self
 						.textq
 						.iter()
-						.map(|x| Self::extract_data(&mut Self::find_chain(&hndl, &x.kind), x))
+						.map(|x| Self::extract_data(&mut Self::find_chain(&item, &x.kind), x))
 						.collect::<Vec<_>>()
 						.join("\n\n");
 
@@ -120,19 +141,19 @@ impl Html {
 					text
 				};
 
-				let id = {
-					let id_str = Self::extract_data(
-						&mut Self::find_chain(&hndl, &self.idq.inner.kind),
-						&self.idq.inner,
+				let img: Url = {
+					let mut img_url = Self::extract_data(
+						&mut Self::find_chain(&item, &self.imgq.inner.kind), // TODO: check iterator not empty
+						&self.imgq.inner,
 					);
 
-					match &self.idq.kind {
-						IdQueryKind::String => Id::String(id_str),
-						IdQueryKind::Date => Id::Date(Self::parse_pretty_date(&id_str)?),
+					if let Some(s) = &self.imgq.prepend {
+						img_url.insert_str(0, s);
 					}
-				};
 
-				Ok(Article { id, text })
+					img_url.as_str().try_into().unwrap()
+				};
+				Some(Ok(Article { id, text, img }))
 			})
 			.collect::<Result<Vec<_>>>()?;
 
@@ -164,12 +185,13 @@ impl Html {
 				}),
 				msg: Message {
 					text: a.text,
-					media: None,
+					media: Some(vec![Media::Photo(a.img)]),
 				},
 			})
 			.collect())
 	}
 
+	/// Find items matching the query in the provided HTML part
 	fn find<'a>(
 		qb: &impl QueryBuilderExt,
 		q: &'a QueryKind,
@@ -181,23 +203,31 @@ impl Html {
 		}
 	}
 
+	/// Find all items matching the query in all the provided HTML parts
 	fn find_chain<'a>(
 		qb: &impl QueryBuilderExt,
 		qs: &'a [QueryKind],
 	) -> Box<dyn Iterator<Item = Handle> + 'a> {
+		// debug_assert!(!qs.is_empty());
 		let mut handles: Option<Box<dyn Iterator<Item = Handle>>> = None;
 
 		for q in qs {
 			handles = Some(match handles {
 				None => Self::find(qb, q),
-				Some(handles) => Box::new(handles.map(|hndl| Self::find(&hndl, q)).flatten()),
+				Some(handles) => Box::new(handles.flat_map(|hndl| Self::find(&hndl, q))),
 			});
 		}
 
 		handles.unwrap() // unwrap NOTE: safe *if* there are more than 0 query kinds which should be always... hopefully... // TODO: make sure there are more than 0 qks
 	}
 
+	/// Extract data from the provided HTML tags and join them
 	fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &Query) -> String {
+		// debug_assert!(
+		// 	h.peekable().peek().is_some(),
+		// 	"No HTML tags to extract data from"
+		// );
+
 		let data = h
 			.map(|hndl| match &q.data_location {
 				DataLocation::Text => hndl.text(),
@@ -251,9 +281,7 @@ impl Html {
 			}
 			DateTimeKind::Other => Utc
 				.from_local_datetime(
-					&NaiveDate::parse_from_str(date_str, "%d.%m.%Y")
-						.expect("HTML Date not in dd.mm.yyyy format") // FIXME
-						.and_hms(0, 0, 0),
+					&NaiveDate::parse_from_str(date_str, "%d.%m.%Y")?.and_hms(0, 0, 0),
 				)
 				.unwrap(), // unwrap NOTE: same as above
 		})
