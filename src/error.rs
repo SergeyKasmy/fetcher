@@ -11,19 +11,19 @@ use std::{io, path::PathBuf};
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	// disk io stuff
-	#[error("xdg error: {0}")]
+	#[error("XDG error: {0}")]
 	Xdg(#[from] xdg::BaseDirectoriesError),
 
-	#[error("inaccessible config file: {0}")]
+	#[error("Inaccessible config file: {0}")]
 	InaccessibleConfig(io::Error),
 
-	#[error("inaccessible data file ({1}): {0}")]
+	#[error("Inaccessible data file ({1}): {0}")]
 	InaccessibleData(io::Error, PathBuf),
 
-	#[error("corrupted data file ({1}): {0}")]
+	#[error("Corrupted data file ({1}): {0}")]
 	CorruptedData(serde_json::error::Error, PathBuf),
 
-	#[error("error writing into {1}: {0}")]
+	#[error("Error writing into {1}: {0}")]
 	Write(io::Error, PathBuf),
 
 	#[error("Invalid config: {0}")]
@@ -62,6 +62,9 @@ pub enum Error {
 
 	#[error("Telegram request error: {0}")]
 	Telegram(#[from] teloxide::RequestError),
+
+	#[error("Invalid DateTime format: {0}")]
+	InvalidDateTimeFormat(#[from] chrono::format::ParseError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

@@ -24,7 +24,7 @@ pub struct Rss {
 }
 
 impl Rss {
-	#[tracing::instrument]
+	#[tracing::instrument(name = "Rss::new")]
 	pub fn new(/* name: String, */ url: String) -> Self {
 		tracing::info!("Creatng an Rss provider");
 		Self {
@@ -34,8 +34,9 @@ impl Rss {
 		}
 	}
 
-	#[tracing::instrument]
+	#[tracing::instrument(name = "Rss::get")]
 	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
+		tracing::debug!("Getting RSS articles");
 		let content = self
 			.http_client
 			.get(&self.url)
@@ -46,23 +47,24 @@ impl Rss {
 
 		let mut feed = Channel::read_from(&content[..])?;
 
+		tracing::debug!("Got {num} RSS articles total", num = feed.items.len());
+
 		if let Some(id) = &last_read_id {
-			if let Some(id_pos) = feed
+			if let Some(pos) = feed
 				.items
 				.iter()
 				// unwrap NOTE: *should* be safe, rss without guid is kinda useless
 				.position(|x| x.guid.as_ref().unwrap().value == id.as_str())
 			{
-				feed.items.drain(id_pos..);
+				tracing::debug!(
+					"Removing {num} already read RSS articles",
+					num = feed.items.len() - pos
+				);
+				feed.items.drain(pos..);
 			}
 		}
 
-		if !feed.items.is_empty() {
-			tracing::info!(
-				"Got {amount} unread RSS articles",
-				amount = feed.items.len()
-			);
-		}
+		tracing::debug!("{num} unread RSS articles remaning", num = feed.items.len());
 
 		let messages = feed
 			.items
