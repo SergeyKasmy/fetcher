@@ -99,7 +99,8 @@ impl GoogleAuth {
 			.text()
 			.await?;
 
-		Ok(serde_json::from_str(&resp).map_err(|_| Error::GoogleAuth(resp))?)
+		// TODO: maybe use the result from serde instead of the responce itself?
+		serde_json::from_str(&resp).map_err(|_| Error::GoogleAuth(resp))
 	}
 
 	async fn validate_access_token(&mut self) -> Result<()> {

@@ -50,7 +50,7 @@ pub enum Error {
 	EmailParse(#[from] mailparse::MailParseError),
 
 	#[error("IMAP error")]
-	Email(imap::Error),
+	Email(Box<imap::Error>), // box to avoid big uneven enum size
 
 	#[error("Twitter error: {0}")]
 	Twitter(egg_mode::error::Error),
@@ -75,7 +75,7 @@ impl From<imap::Error> for Error {
 	fn from(e: imap::Error) -> Self {
 		match e {
 			imap::Error::Io(io_err) => Error::Network(Box::new(io_err)),
-			e => Self::Email(e),
+			e => Self::Email(Box::new(e)),
 		}
 	}
 }

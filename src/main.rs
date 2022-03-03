@@ -6,13 +6,25 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use anyhow::Result;
 use fetcher::{
-	run,
+	error::Error,
+	error::Result,
+	run_task,
 	settings::{
-		generate_google_oauth2, generate_google_password, generate_telegram, generate_twitter_auth,
+		self, generate_google_oauth2, generate_google_password, generate_telegram,
+		generate_twitter_auth,
 	},
+	task::Tasks,
 };
+use futures::future::try_join_all;
+use futures::StreamExt;
+use signal_hook::consts::TERM_SIGNALS;
+use signal_hook_tokio::Signals;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+use tokio::sync::watch;
+use tokio::task::JoinHandle;
+use tokio::{select, sync::watch::Receiver};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -33,4 +45,90 @@ async fn main() -> Result<()> {
 	};
 
 	Ok(())
+}
+
+async fn run() -> Result<()> {
+	let tasks: Tasks = toml::from_str(
+		&settings::config().unwrap(), // FIXME: may crash when config.toml doesn't exist
+	)
+	.map_err(Error::InvalidConfig)?;
+
+	// TODO: move signal handling to main. Maybe even refactor them somewhat
+	let (shutdown_tx, shutdown_rx) = watch::channel(());
+
+	let sig = Signals::new(TERM_SIGNALS).expect("Error registering signals");
+	let sig_handle = sig.handle();
+
+	let sig_term_now = Arc::new(AtomicBool::new(false));
+	for s in TERM_SIGNALS {
+		use signal_hook::flag;
+
+		flag::register_conditional_shutdown(
+			*s,
+			1, /* exit status */
+			Arc::clone(&sig_term_now),
+		)
+		.expect("Error registering signal handler");
+
+		flag::register(*s, Arc::clone(&sig_term_now)).expect("Error registering signal handler");
+	}
+
+	let sig_task = tokio::spawn(async move {
+		let mut sig = sig.fuse();
+
+		while sig.next().await.is_some() {
+			shutdown_tx
+				.send(())
+				.expect("Error broadcasting signal to tasks");
+		}
+
+		Ok::<(), Error>(())
+	});
+
+	run_tasks(tasks, shutdown_rx).await?;
+
+	sig_handle.close(); // TODO: figure out wtf this is and why
+	sig_task
+		.await
+		.expect("Error shutting down of signal handler")?;
+	Ok(())
+}
+
+async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
+	let mut futs = Vec::new();
+	for (name, mut t) in tasks.0 {
+		if let Some(disabled) = t.disabled {
+			if disabled {
+				continue;
+			}
+		}
+
+		let mut shutdown_rx = shutdown_rx.clone();
+
+		// TODO: create a tracing span for each task with task name param
+		let fut = tokio::spawn(async move {
+			select! {
+				r = run_task(&name, &mut t) => r?,
+				_ = shutdown_rx.changed() => {
+					tracing::info!("{name}: shutting down...");
+				},
+			}
+
+			#[allow(unreachable_code)]
+			Ok::<(), Error>(())
+		});
+
+		futs.push(flatten_task(fut));
+	}
+
+	try_join_all(futs).await?;
+	Ok(())
+}
+
+async fn flatten_task<T>(h: JoinHandle<Result<T>>) -> Result<T> {
+	match h.await {
+		Ok(Ok(res)) => Ok(res),
+		Ok(Err(err)) => Err(err),
+		e => e.unwrap(), // unwrap NOTE: crash (for now) if there was an error joining the thread
+	}
 }

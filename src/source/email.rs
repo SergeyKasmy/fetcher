@@ -211,7 +211,7 @@ impl Email {
 			.get_body()?;
 
 			if let Some(remove_after) = remove_after {
-				body.drain(body.find(remove_after).unwrap_or_else(|| body.len())..);
+				body.drain(body.find(remove_after).unwrap_or(body.len())..);
 			}
 
 			// TODO: replace upticks ` with teloxide::utils::html::escape_code

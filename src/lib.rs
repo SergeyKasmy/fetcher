@@ -16,132 +16,37 @@ pub mod sink;
 pub mod source;
 pub mod task;
 
-// TODO: mb using anyhow in lib code isn't a good idea?
-use anyhow::Context;
-use anyhow::Result;
-use futures::future::try_join_all;
-use futures::StreamExt;
-use signal_hook::consts::TERM_SIGNALS;
-use signal_hook_tokio::Signals;
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
 use std::time::Duration;
-use task::Tasks;
-use tokio::select;
-use tokio::sync::watch;
-use tokio::task::JoinHandle;
 use tokio::time::sleep;
 
 use crate::error::Error;
+use crate::error::Result;
 use crate::settings::last_read_id;
 use crate::settings::save_last_read_id;
+use crate::task::Task;
 
 #[tracing::instrument(skip_all)]
-pub async fn run() -> Result<()> {
-	let tasks: Tasks = toml::from_str(
-		&settings::config().unwrap(), // FIXME: may crash when config.toml doesn't exist
-	)
-	.map_err(Error::InvalidConfig)?;
+pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
+	loop {
+		tracing::debug!("{name}: fetching");
+		let last_read_id = last_read_id(name)?;
 
-	// TODO: move signal handling to main. Maybe even refactor them somewhat
-	let (shutdown_tx, shutdown_rx) = watch::channel(false);
+		match t.source.get(last_read_id).await {
+			Ok(rspns) => {
+				for rspn in rspns {
+					t.sink.send(rspn.msg).await?;
 
-	let sig = Signals::new(TERM_SIGNALS).context("Error registering signals")?;
-	let sig_handle = sig.handle();
-
-	let sig_term_now = Arc::new(AtomicBool::new(false));
-	for s in TERM_SIGNALS {
-		use signal_hook::flag;
-
-		flag::register_conditional_shutdown(
-			*s,
-			1, /* exit status */
-			Arc::clone(&sig_term_now),
-		)
-		.context("Error registering signal handler")?;
-
-		flag::register(*s, Arc::clone(&sig_term_now))
-			.context("Error registering signal handler")?;
-	}
-
-	let sig_task = tokio::spawn(async move {
-		let mut sig = sig.fuse();
-
-		while sig.next().await.is_some() {
-			shutdown_tx
-				.send(true)
-				.context("Error broadcasting signal to tasks")?;
-		}
-
-		Ok::<(), anyhow::Error>(())
-	});
-
-	let mut futs = Vec::new();
-	for (name, mut t) in tasks.0 {
-		if let Some(disabled) = t.disabled {
-			if disabled {
-				continue;
-			}
-		}
-
-		let mut shutdown_rx = shutdown_rx.clone();
-
-		// TODO: create a tracing span for each task with task name param
-		let fut = tokio::spawn(async move {
-			select! {
-				res = async {
-					loop {
-						tracing::debug!("{name}: fetching");
-						let last_read_id = last_read_id(&name)?;
-
-						match t.source.get(last_read_id).await {
-							Ok(rspns) => {
-								for rspn in rspns {
-									t.sink.send(rspn.msg).await?;
-
-									if let Some(id) = rspn.id {
-										save_last_read_id(&name, id)?;
-									}
-								}
-							}
-							Err(Error::Network(e)) => tracing::warn!("Network error: {e}"),
-						Err(e) => return Err(e),
-						};
-
-
-						tracing::debug!("{name}: sleeping for {time}m", time = t.refresh);
-						sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
+					if let Some(id) = rspn.id {
+						save_last_read_id(name, id)?;
 					}
-
-					#[allow(unreachable_code)]
-					Ok::<(), Error>(())
-				} => { res?; }
-				_ = shutdown_rx.changed() => {
-					tracing::info!("{name}: shutting down...");
-				},
+				}
 			}
+			// mb use e if matches(e, Error::Network(_)) instead?
+			Err(Error::Network(e)) => tracing::warn!("Network error: {e}"),
+			Err(e) => return Err(e),
+		};
 
-			#[allow(unreachable_code)]
-			Ok::<(), Error>(())
-		});
-
-		futs.push(flatten_task(fut));
-	}
-
-	// TODO: handle non critical errors
-	try_join_all(futs).await?;
-
-	sig_handle.close(); // TODO: figure out wtf this is and why
-	sig_task
-		.await
-		.context("Error shutting down of signal handler")??;
-	Ok(())
-}
-
-async fn flatten_task<T>(h: JoinHandle<error::Result<T>>) -> error::Result<T> {
-	match h.await {
-		Ok(Ok(res)) => Ok(res),
-		Ok(Err(err)) => Err(err),
-		e => e.unwrap(), // unwrap NOTE: crash (for now) if there was an error joining the thread
+		tracing::debug!("{name}: sleeping for {time}m", time = t.refresh);
+		sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
 	}
 }
