@@ -52,9 +52,9 @@ impl Twitter {
 		tracing::debug!("Getting tweets");
 		if self.token.is_none() {
 			self.token = Some(
-				bearer_token(&KeyPair::new(self.api_key.clone(), self.api_secret.clone()))
-					.await
-					.map_err(Error::TwitterAuth)?,
+				bearer_token(&KeyPair::new(self.api_key.clone(), self.api_secret.clone())).await?
+					// .await
+					// .map_err(Error::TwitterAuth)?,
 			);
 		}
 		// unwrap NOTE: initialized just above, should be safe

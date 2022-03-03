@@ -99,14 +99,16 @@ impl Email {
 
 				client
 					.authenticate("XOAUTH2", &auth.as_imap_oauth2(&self.email).await?)
-					.map_err(|(e, _)| Error::EmailAuth(e))?
+					// .map_err(|(e, _)| Error::EmailAuth(e))?
+					.map_err(|(e, _)| Error::from(e))?
 			}
 			Auth::Password(password) => {
 				tracing::debug!("Logging in to IMAP with a password");
 
 				client
 					.login(&self.email, password)
-					.map_err(|(e, _)| Error::EmailAuth(e))?
+					// .map_err(|(e, _)| Error::EmailAuth(e))?
+					.map_err(|(e, _)| Error::from(e))?
 			}
 		};
 
