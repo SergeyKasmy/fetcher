@@ -6,62 +6,85 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use std::{io, path::PathBuf};
+use std::{error::Error as StdError, io, path::PathBuf};
+
+type BoxError = Box<dyn StdError + Send + Sync>;
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	// disk io stuff
-	#[error("xdg error: {0}")]
+	#[error("XDG error")]
 	Xdg(#[from] xdg::BaseDirectoriesError),
 
-	#[error("inaccessible config file: {0}")]
+	#[error("Inaccessible config file")]
 	InaccessibleConfig(io::Error),
 
-	#[error("inaccessible data file ({1}): {0}")]
+	#[error("Inaccessible data file ({1})")]
 	InaccessibleData(io::Error, PathBuf),
 
-	#[error("corrupted data file ({1}): {0}")]
+	#[error("Corrupted data file ({1})")]
 	CorruptedData(serde_json::error::Error, PathBuf),
 
-	#[error("error writing into {1}: {0}")]
+	#[error("Error writing into {1}")]
 	Write(io::Error, PathBuf),
 
-	#[error("Invalid config: {0}")]
+	#[error("Invalid config")]
 	InvalidConfig(toml::de::Error),
 
 	// stdin & stdout stuff
-	#[error("stdin error: {0}")]
+	#[error("stdin error")]
 	Stdin(io::Error),
-	#[error("stdout error: {0}")]
+	#[error("stdout error")]
 	Stdout(io::Error),
 
 	// network stuff
-	#[error("Network IO error: {0}")]
-	Network(#[from] reqwest::Error),
+	#[error("Network error")]
+	Network(BoxError),
 
 	#[error("Google auth: {0}")]
 	GoogleAuth(String),
 
-	#[error("Email auth error: {0}")]
-	EmailAuth(imap::Error),
-
-	#[error("Email parse error: {0}")]
+	#[error("Email parse error")]
 	EmailParse(#[from] mailparse::MailParseError),
 
-	#[error("IMAP error: {0}")]
-	Email(#[from] imap::Error),
-
-	#[error("Twitter auth error: {0}")]
-	TwitterAuth(egg_mode::error::Error),
+	#[error("IMAP error")]
+	Email(imap::Error),
 
 	#[error("Twitter error: {0}")]
-	Twitter(#[from] egg_mode::error::Error),
+	Twitter(egg_mode::error::Error),
 
-	#[error("RSS error: {0}")]
+	#[error("RSS error")]
 	Rss(#[from] rss::Error),
 
-	#[error("Telegram request error: {0}")]
+	#[error("Telegram request error")]
 	Telegram(#[from] teloxide::RequestError),
+
+	#[error("Invalid DateTime format")]
+	InvalidDateTimeFormat(#[from] chrono::format::ParseError),
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+impl From<reqwest::Error> for Error {
+	fn from(e: reqwest::Error) -> Self {
+		Self::Network(Box::new(e))
+	}
+}
+
+impl From<imap::Error> for Error {
+	fn from(e: imap::Error) -> Self {
+		match e {
+			imap::Error::Io(io_err) => Error::Network(Box::new(io_err)),
+			e => Self::Email(e),
+		}
+	}
+}
+
+impl From<egg_mode::error::Error> for Error {
+	fn from(e: egg_mode::error::Error) -> Self {
+		match e {
+			egg_mode::error::Error::NetError(e) => Self::Network(Box::new(e)),
+			e => Self::Twitter(e),
+		}
+	}
+}

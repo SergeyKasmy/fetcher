@@ -48,7 +48,7 @@ fn fmt_comment_msg(s: &str) -> String {
 		s
 	};
 
-	s.chars().take(/* shorten to */ 150 /* chars */).collect()
+	s.chars().take(/* shorten to */ 100 /* chars */).collect()
 }
 
 impl Telegram {
