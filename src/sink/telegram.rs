@@ -15,12 +15,13 @@ use teloxide::{
 		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, Message as TelMessage,
 		ParseMode,
 	},
+	ApiError,
 	Bot,
 	RequestError,
 };
 
 use crate::{
-	error::Result,
+	error::{Error, Result},
 	sink::{Media, Message},
 };
 
@@ -33,7 +34,7 @@ pub struct Telegram {
 /// Make the message text more logging friendly:
 /// 1. Remove the opening html tag if it begins with one
 /// 2. Shorten the message to 150 chars
-fn fmt_comment_msg(s: &str) -> String {
+fn fmt_comment_msg_text(s: &str) -> String {
 	let s = if s.starts_with('<') {
 		if let Some(tag_end) = s.find('>') {
 			&s[tag_end..]
@@ -44,7 +45,19 @@ fn fmt_comment_msg(s: &str) -> String {
 		s
 	};
 
-	s.chars().take(/* shorten to */ 100 /* chars */).collect()
+	s.chars().take(/* shorten to */ 50 /* chars */).collect()
+}
+
+fn fmt_comment_msg_media(m: Option<&[Media]>) -> Option<String> {
+	m.map(|v| {
+		v.iter()
+			.map(|m| match m {
+				Media::Photo(url) => format!("Media::Photo({})", url.as_str()),
+				Media::Video(url) => format!("Media::Video({})", url.as_str()),
+			})
+			.collect::<Vec<_>>()
+			.join("\n")
+	})
 }
 
 impl Telegram {
@@ -58,7 +71,13 @@ impl Telegram {
 		}
 	}
 
-	#[tracing::instrument(skip(message), fields(len = message.text.len(), text = fmt_comment_msg(&message.text).as_str(), media.is_some = message.media.is_some()))]
+	#[tracing::instrument(skip(message),
+	fields(
+		len = message.text.len(),
+		text = fmt_comment_msg_text(&message.text).as_str(),
+		media = fmt_comment_msg_media(message.media.as_deref()).as_deref()
+		)
+	)]
 	pub async fn send(&self, message: Message) -> Result<()> {
 		// workaround for some kind of a bug that doesn't let access both text and media fields of the struct in the map closure at once
 		let text = if message.text.len() > 4096 {
@@ -73,24 +92,35 @@ impl Telegram {
 		};
 
 		if let Some(media) = message.media {
-			self.send_media(
-				media
-					.into_iter()
-					.map(|x| match x {
-						Media::Photo(url) => InputMedia::Photo(
-							InputMediaPhoto::new(InputFile::url(url))
-								.caption(text.clone())
-								.parse_mode(ParseMode::Html),
-						),
-						Media::Video(url) => InputMedia::Video(
-							InputMediaVideo::new(InputFile::url(url))
-								.caption(text.clone())
-								.parse_mode(ParseMode::Html),
-						),
-					})
-					.collect::<Vec<InputMedia>>(),
-			)
-			.await?;
+			match self
+				.send_media(
+					media
+						.into_iter()
+						.map(|x| match x {
+							Media::Photo(url) => InputMedia::Photo(
+								InputMediaPhoto::new(InputFile::url(url))
+									.caption(text.clone())
+									.parse_mode(ParseMode::Html),
+							),
+							Media::Video(url) => InputMedia::Video(
+								InputMediaVideo::new(InputFile::url(url))
+									.caption(text.clone())
+									.parse_mode(ParseMode::Html),
+							),
+						})
+						.collect::<Vec<InputMedia>>(),
+				)
+				.await
+			{
+				Err(Error::Telegram(RequestError::Api(ApiError::Unknown(e)), _))
+					if e == "Bad Request: wrong file identifier/HTTP URL specified" =>
+				{
+					tracing::error!("Telegram disapproved of the media URL ({e}), sending the message as pure text");
+					self.send_text(text).await?;
+				}
+				Ok(_) => (),
+				Err(e) => return Err(e),
+			}
 		} else {
 			self.send_text(text).await?;
 		}
@@ -115,7 +145,7 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => return Err(e.into()),
+				Err(e) => return Err(Error::Telegram(e, Box::new(message))),
 			}
 		}
 	}
@@ -134,7 +164,7 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => return Err(e.into()),
+				Err(e) => return Err(Error::Telegram(e, Box::new(media))),
 			}
 		}
 	}

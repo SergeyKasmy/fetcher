@@ -58,8 +58,8 @@ pub enum Error {
 	#[error("RSS error")]
 	Rss(#[from] rss::Error),
 
-	#[error("Telegram request error")]
-	Telegram(#[from] teloxide::RequestError),
+	#[error("Telegram request error: {0}\nMessage: {1:?}")]
+	Telegram(teloxide::RequestError, Box<dyn std::fmt::Debug + Send>),
 
 	#[error("Invalid DateTime format")]
 	InvalidDateTimeFormat(#[from] chrono::format::ParseError),
