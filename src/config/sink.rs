@@ -6,23 +6,25 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-mod message;
 mod telegram;
 
-pub use message::{Media, Message};
-pub use telegram::Telegram;
+use serde::Deserialize;
 
 use crate::error::Result;
+use crate::sink;
 
-#[derive(Debug)]
-pub enum Sink {
+use self::telegram::Telegram;
+
+#[derive(Deserialize, Debug)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) enum Sink {
 	Telegram(Telegram),
 }
 
 impl Sink {
-	pub async fn send(&self, message: Message) -> Result<()> {
-		match self {
-			Self::Telegram(t) => t.send(message).await,
-		}
+	pub(crate) fn parse(self) -> Result<sink::Sink> {
+		Ok(match self {
+			Sink::Telegram(x) => sink::Sink::Telegram(x.parse()?),
+		})
 	}
 }

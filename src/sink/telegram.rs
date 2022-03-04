@@ -6,7 +6,6 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use serde::Deserialize;
 use std::time::Duration;
 use teloxide::{
 	// adaptors::{throttle::Limits, Throttle},
@@ -21,13 +20,10 @@ use teloxide::{
 };
 
 use crate::{
-	config,
 	error::Result,
 	sink::{Media, Message},
 };
 
-#[derive(Deserialize)]
-#[serde(try_from = "config::Telegram")]
 pub struct Telegram {
 	// bot: Throttle<Bot>,
 	bot: Bot,

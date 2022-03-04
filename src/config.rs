@@ -6,14 +6,42 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-// TODO: maybe use a specialized crate for configs instead of serde?
+// TODO: (04.03.22) CONTINUE:
+// 1. Separate each task into their own .conf files. Make Tasks into struct Tasks(HashMap<file_name, Task>)
+// 2. Recursively find all .conf files in the config dir and merge them all into one
+// to allow the user to structure their tasks however they want.
 
-pub mod email;
-pub mod rss;
-pub mod telegram;
-pub mod twitter;
+// TODO: add deny_unknown_fields annotations to every config struct
+// TODO: mb rename .parse() into .into() or something of that sort? .into() is already used by From/Into traits though. Naming is hard, man...
 
-pub use self::email::Email;
-pub use self::rss::Rss;
-pub use self::telegram::Telegram;
-pub use self::twitter::Twitter;
+pub(crate) mod auth;
+mod sink;
+mod source;
+
+use serde::Deserialize;
+
+use crate::error::Result;
+use crate::task;
+
+use self::sink::Sink;
+use self::source::Source;
+
+#[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct Task {
+	disabled: Option<bool>,
+	source: Source,
+	sink: Sink,
+	refresh: u64,
+}
+
+impl Task {
+	pub fn parse(self) -> Result<task::Task> {
+		Ok(task::Task {
+			disabled: self.disabled,
+			sink: self.sink.parse()?,
+			source: self.source.parse()?,
+			refresh: self.refresh,
+		})
+	}
+}

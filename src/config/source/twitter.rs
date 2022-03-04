@@ -8,25 +8,26 @@
 
 use serde::Deserialize;
 
-use crate::{
-	error::{Error, Result},
-	settings, source,
-};
+use crate::{error::Result, settings, source};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct Twitter {
+pub(crate) struct Twitter {
 	pretty_name: String,
 	handle: String,
 	filter: Vec<String>,
 }
 
-impl TryFrom<Twitter> for source::Twitter {
-	type Error = Error;
-
-	fn try_from(v: Twitter) -> Result<Self> {
+impl Twitter {
+	pub(crate) fn parse(self) -> Result<source::Twitter> {
 		let (api_key, api_secret) = settings::twitter()?;
 
-		source::Twitter::new(v.pretty_name, v.handle, api_key, api_secret, v.filter)
+		source::Twitter::new(
+			self.pretty_name,
+			self.handle,
+			api_key,
+			api_secret,
+			self.filter,
+		)
 	}
 }

@@ -10,30 +10,25 @@ mod auth;
 mod view_mode;
 
 pub use auth::Auth;
-use serde::Deserialize;
 pub use view_mode::ViewMode;
 
 use mailparse::ParsedMail;
 
 use self::auth::GoogleAuthExt;
 use crate::auth::GoogleAuth;
-use crate::config;
 use crate::error::{Error, Result};
 use crate::sink::Message;
 use crate::source::Responce;
 
 const IMAP_PORT: u16 = 993;
 
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug)]
 pub struct Filters {
 	pub sender: Option<String>,
 	pub subjects: Option<Vec<String>>,
 	pub exclude_subjects: Option<Vec<String>>,
 }
 
-#[derive(Deserialize)]
-#[serde(try_from = "config::Email")]
 pub struct Email {
 	imap: String,
 	email: String,

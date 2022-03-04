@@ -7,15 +7,11 @@
  */
 
 use rss::Channel;
-use serde::Deserialize;
 
-use crate::config;
 use crate::error::Result;
 use crate::sink::Message;
 use crate::source::Responce;
 
-#[derive(Deserialize)]
-#[serde(from = "config::Rss")]
 pub struct Rss {
 	// name: String,
 	// TODO: use url
