@@ -19,7 +19,6 @@ mod sink;
 mod source;
 
 use serde::Deserialize;
-use std::collections::HashMap;
 
 use crate::error::Result;
 use crate::task;
@@ -28,29 +27,16 @@ use self::sink::Sink;
 use self::source::Source;
 
 #[derive(Deserialize, Debug)]
-#[serde(transparent, deny_unknown_fields)]
-pub struct Tasks(HashMap<String, Task>);
-
-impl Tasks {
-	pub fn parse(self) -> Result<task::Tasks> {
-		self.0
-			.into_iter()
-			.map(|(name, t)| Ok((name, t.parse()?)))
-			.collect()
-	}
-}
-
-#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-struct Task {
-	pub disabled: Option<bool>,
-	pub source: Source,
-	pub sink: Sink,
-	pub refresh: u64,
+pub struct Task {
+	disabled: Option<bool>,
+	source: Source,
+	sink: Sink,
+	refresh: u64,
 }
 
 impl Task {
-	pub(crate) fn parse(self) -> Result<task::Task> {
+	pub fn parse(self) -> Result<task::Task> {
 		Ok(task::Task {
 			disabled: self.disabled,
 			sink: self.sink.parse()?,

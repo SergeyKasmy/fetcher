@@ -48,14 +48,22 @@ async fn main() -> Result<()> {
 }
 
 async fn run() -> Result<()> {
-	let tasks: Tasks = {
-		let conf: fetcher::config::Tasks = toml::from_str(
-			&settings::config().unwrap(), // FIXME: may crash when config.toml doesn't exist
-		)
-		.map_err(Error::InvalidConfig)?;
+	let tasks = settings::config()?
+		.into_iter()
+		.map(|(contents, path)| {
+			let conf: fetcher::config::Task =
+				toml::from_str(&contents).map_err(Error::InvalidConfig)?; // TODO: add config path to InvalidConfig
 
-		conf.parse()?
-	};
+			Ok((
+				path.file_stem()
+					.expect("Somehow the config file found before wasn't an actual config file after all...")
+					.to_str()
+					.expect("Config file name isn't a valid unicode")
+					.to_string(),
+				conf.parse()?,
+			))
+		})
+		.collect::<Result<Tasks>>()?;
 
 	// TODO: move signal handling to main. Maybe even refactor them somewhat
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
