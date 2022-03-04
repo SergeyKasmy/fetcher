@@ -32,7 +32,8 @@ pub fn config() -> Result<Vec<(String, PathBuf)>> {
 	};
 
 	let mut cfgs = Vec::new();
-	for cfg_dir in dbg!(cfg_dirs) {
+	// TODO: add trace logging, e.g. all config dirs, all config files, stuff like that
+	for cfg_dir in cfg_dirs {
 		if !cfgs.is_empty() {
 			// stop if we have already founds configs in the previous dir
 			break;
@@ -46,7 +47,7 @@ pub fn config() -> Result<Vec<(String, PathBuf)>> {
 		.unwrap(); // unwrap NOTE: should be safe if the glob pattern is correct
 
 		for cfg_file in cfg_files {
-			match dbg!(cfg_file) {
+			match cfg_file {
 				Ok(cfg_file) => cfgs.push(cfg_file),
 				// just log the error here because there may be other valid config files in the directory
 				Err(e) => tracing::warn!(

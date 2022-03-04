@@ -113,6 +113,22 @@ impl LinkQuery {
 }
 
 #[derive(Deserialize, Debug)]
+pub(crate) struct ImageQuery {
+	optional: Option<bool>,
+	#[serde(flatten)]
+	inner: LinkQuery,
+}
+
+impl ImageQuery {
+	fn parse(self) -> source::html::ImageQuery {
+		source::html::ImageQuery {
+			optional: self.optional.unwrap_or(false),
+			inner: self.inner.parse(),
+		}
+	}
+}
+
+#[derive(Deserialize, Debug)]
 pub(crate) struct Html {
 	url: Url,
 	#[serde(rename = "item_query")]
@@ -128,7 +144,7 @@ pub(crate) struct Html {
 	linkq: LinkQuery,
 
 	#[serde(rename = "img_query")]
-	imgq: Option<LinkQuery>,
+	imgq: Option<ImageQuery>,
 }
 
 impl Html {
