@@ -18,6 +18,7 @@ use teloxide::Bot;
 use super::PREFIX;
 use crate::{
 	auth::GoogleAuth,
+	config,
 	error::{Error, Result},
 };
 
@@ -59,8 +60,10 @@ fn data(name: &str) -> Result<String> {
 }
 
 pub fn google_oauth2() -> Result<GoogleAuth> {
-	serde_json::from_str(&data(GOOGLE_OAUTH2)?)
-		.map_err(|e| Error::CorruptedData(e, GOOGLE_OAUTH2.into()))
+	let conf: config::auth::GoogleAuth = serde_json::from_str(&data(GOOGLE_OAUTH2)?)
+		.map_err(|e| Error::CorruptedData(e, GOOGLE_OAUTH2.into()))?;
+
+	Ok(conf.parse())
 }
 
 pub fn google_password() -> Result<String> {
@@ -96,7 +99,12 @@ pub async fn generate_google_oauth2() -> Result<()> {
 
 	save_data(
 		GOOGLE_OAUTH2,
-		&serde_json::to_string(&GoogleAuth::new(client_id, client_secret, refresh_token)).unwrap(), // NOTE: shouldn't fail, these are just strings
+		&serde_json::to_string(&config::auth::GoogleAuth {
+			client_id,
+			client_secret,
+			refresh_token,
+		})
+		.unwrap(), // NOTE: shouldn't fail, these are just strings
 	)
 }
 

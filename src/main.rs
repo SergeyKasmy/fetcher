@@ -48,10 +48,14 @@ async fn main() -> Result<()> {
 }
 
 async fn run() -> Result<()> {
-	let tasks: Tasks = toml::from_str(
-		&settings::config().unwrap(), // FIXME: may crash when config.toml doesn't exist
-	)
-	.map_err(Error::InvalidConfig)?;
+	let tasks: Tasks = {
+		let conf: fetcher::config::Tasks = toml::from_str(
+			&settings::config().unwrap(), // FIXME: may crash when config.toml doesn't exist
+		)
+		.map_err(Error::InvalidConfig)?;
+
+		conf.parse()?
+	};
 
 	// TODO: move signal handling to main. Maybe even refactor them somewhat
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
@@ -96,7 +100,7 @@ async fn run() -> Result<()> {
 
 async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 	let mut futs = Vec::new();
-	for (name, mut t) in tasks.0 {
+	for (name, mut t) in tasks {
 		if let Some(disabled) = t.disabled {
 			if disabled {
 				continue;

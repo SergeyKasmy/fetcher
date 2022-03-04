@@ -6,19 +6,6 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use serde::Deserialize;
-use url::Url;
+pub(crate) mod google;
 
-use crate::source;
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Rss {
-	url: Url,
-}
-
-impl From<Rss> for source::Rss {
-	fn from(v: Rss) -> Self {
-		source::Rss::new(v.url.to_string())
-	}
-}
+pub(crate) use google::GoogleAuth;

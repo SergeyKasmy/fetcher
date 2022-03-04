@@ -6,10 +6,7 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use serde::Deserialize;
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
+#[derive(Debug)]
 pub enum ViewMode {
 	ReadOnly,
 	MarkAsRead,

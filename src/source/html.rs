@@ -10,7 +10,6 @@
 
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use html5ever::rcdom::Handle;
-use serde::Deserialize;
 use soup::{NodeExt, QueryBuilderExt, Soup};
 use url::Url;
 
@@ -18,62 +17,51 @@ use crate::error::{Error, Result};
 use crate::sink::{Media, Message};
 use crate::source::Responce;
 
-#[derive(Deserialize, Clone, Debug)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[derive(Clone, Debug)]
 pub enum QueryKind {
 	Tag { value: String },
 	Class { value: String },
 	Attr { name: String, value: String },
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[derive(Debug)]
 pub enum DataLocation {
 	Text,
 	Attr { value: String },
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub struct Query {
-	kind: Vec<QueryKind>,
-	data_location: DataLocation,
+	pub(crate) kind: Vec<QueryKind>,
+	pub(crate) data_location: DataLocation,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug)]
 pub enum IdQueryKind {
 	String,
 	Date,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub struct IdQuery {
-	kind: IdQueryKind,
-	#[serde(rename = "query")]
-	inner: Query,
+	pub(crate) kind: IdQueryKind,
+	pub(crate) inner: Query,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub struct LinkQuery {
-	prepend: Option<String>,
-	#[serde(flatten)]
-	inner: Query,
+	pub(crate) prepend: Option<String>,
+	pub(crate) inner: Query,
 }
 
-#[derive(Deserialize, Debug)]
-// TODO: use #[serde(try_from)]
+#[derive(Debug)]
 pub struct Html {
-	url: Url,
-	#[serde(alias = "item_query")]
-	itemq: Vec<QueryKind>,
-	#[serde(alias = "text_query")]
-	textq: Vec<Query>,
-	#[serde(alias = "id_query")]
-	idq: IdQuery,
-	#[serde(alias = "link_query")]
-	linkq: LinkQuery,
-	#[serde(alias = "img_query")]
-	imgq: Option<LinkQuery>,
+	pub(crate) url: Url,
+	pub(crate) itemq: Vec<QueryKind>,
+	pub(crate) textq: Vec<Query>,
+	pub(crate) idq: IdQuery,
+	pub(crate) linkq: LinkQuery,
+	pub(crate) imgq: Option<LinkQuery>,
 }
 
 impl Html {

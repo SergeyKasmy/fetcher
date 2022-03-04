@@ -8,16 +8,12 @@
 
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
-use serde::Deserialize;
 
-use crate::config;
 use crate::error::Result;
 use crate::sink::Media;
 use crate::sink::Message;
 use crate::source::Responce;
 
-#[derive(Deserialize)]
-#[serde(try_from = "config::Twitter")]
 pub struct Twitter {
 	pretty_name: String, // used for hashtags
 	handle: String,

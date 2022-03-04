@@ -6,16 +6,12 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use std::collections::HashMap;
+use serde::Deserialize;
 
-use crate::{sink::Sink, source::Source};
-
-pub type Tasks = HashMap<String, Task>;
-
-#[derive(Debug)]
-pub struct Task {
-	pub disabled: Option<bool>,
-	pub sink: Sink,
-	pub source: Source,
-	pub refresh: u64,
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) enum Auth {
+	#[serde(rename = "google_oauth2")]
+	GoogleOAuth2,
+	Password,
 }

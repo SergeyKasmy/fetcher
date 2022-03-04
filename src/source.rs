@@ -16,8 +16,6 @@ pub use self::html::Html;
 pub use self::rss::Rss;
 pub use self::twitter::Twitter;
 
-use serde::Deserialize;
-
 use crate::error::Result;
 use crate::sink::Message;
 
@@ -30,8 +28,7 @@ pub struct Responce {
 }
 
 // TODO: add google calendar source. Google OAuth2 is already implemented :)
-#[derive(Deserialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+#[derive(Debug)]
 pub enum Source {
 	Email(Email),
 	Html(Html),
