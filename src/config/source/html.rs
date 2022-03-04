@@ -65,6 +65,22 @@ impl Query {
 }
 
 #[derive(Deserialize, Debug)]
+pub(crate) struct TextQuery {
+	prepend: Option<String>,
+	#[serde(flatten)]
+	inner: Query,
+}
+
+impl TextQuery {
+	fn parse(self) -> source::html::TextQuery {
+		source::html::TextQuery {
+			prepend: self.prepend,
+			inner: self.inner.parse(),
+		}
+	}
+}
+
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum IdQueryKind {
 	String,
@@ -135,7 +151,7 @@ pub(crate) struct Html {
 	itemq: Vec<QueryKind>,
 
 	#[serde(rename = "text_query")]
-	textq: Vec<Query>,
+	textq: Vec<TextQuery>,
 
 	#[serde(rename = "id_query")]
 	idq: IdQuery,

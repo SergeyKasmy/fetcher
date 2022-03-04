@@ -37,6 +37,12 @@ pub struct Query {
 }
 
 #[derive(Debug)]
+pub struct TextQuery {
+	pub(crate) prepend: Option<String>,
+	pub(crate) inner: Query,
+}
+
+#[derive(Debug)]
 pub enum IdQueryKind {
 	String,
 	Date,
@@ -64,7 +70,7 @@ pub struct ImageQuery {
 pub struct Html {
 	pub(crate) url: Url,
 	pub(crate) itemq: Vec<QueryKind>,
-	pub(crate) textq: Vec<Query>,
+	pub(crate) textq: Vec<TextQuery>,
 	pub(crate) idq: IdQuery,
 	pub(crate) linkq: LinkQuery,
 	pub(crate) imgq: Option<ImageQuery>,
@@ -131,10 +137,22 @@ impl Html {
 						.textq
 						.iter()
 						.filter_map(|x| {
-							Self::extract_data(&mut Self::find_chain(&item, &x.kind), x)
+							Self::extract_data(
+								&mut Self::find_chain(&item, &x.inner.kind),
+								&x.inner,
+							)
+							.map(|s| {
+								let mut s = s.trim().to_string();
+								if let Some(prepend) = x.prepend.as_deref() {
+									s.insert_str(0, prepend);
+								}
+
+								s
+							})
 						})
 						.collect::<Vec<_>>()
 						.join("\n\n");
+
 					text.push_str(&format!("\n\n<a href=\"{link}\">Link</a>"));
 
 					text
