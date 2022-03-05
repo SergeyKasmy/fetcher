@@ -77,7 +77,7 @@ impl Rss {
 						body: x.description.unwrap(),
 						link: Some(Link {
 							url: x.link.unwrap().as_str().try_into().unwrap(),
-							loc: LinkLocation::Title,
+							loc: LinkLocation::PreferTitle,
 						}), // unwrap FIXME: may be an invalid url
 						media: None,
 					},

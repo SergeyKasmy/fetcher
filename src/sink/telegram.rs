@@ -102,7 +102,7 @@ impl Telegram {
 
 		let text = match (&title, &link) {
 			(Some(title), Some(link)) => match link.loc {
-				LinkLocation::Title => {
+				LinkLocation::PreferTitle => {
 					format!(r#"<a href="{url}">{title}</a>\n{body}"#, url = link.url,)
 				}
 				LinkLocation::Bottom => {
