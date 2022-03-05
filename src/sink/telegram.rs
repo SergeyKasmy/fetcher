@@ -103,11 +103,11 @@ impl Telegram {
 		let text = match (&title, &link) {
 			(Some(title), Some(link)) => match link.loc {
 				LinkLocation::PreferTitle => {
-					format!(r#"<a href="{url}">{title}</a>\n{body}"#, url = link.url,)
+					format!("<a href=\"{url}\">{title}</a>\n{body}", url = link.url,)
 				}
 				LinkLocation::Bottom => {
 					format!(
-						r#"{title}\n{body}\n<a href="{url}">Link</a>"#,
+						"{title}\n{body}\n<a href=\"{url}\">Link</a>",
 						url = link.url
 					)
 				}
@@ -116,7 +116,7 @@ impl Telegram {
 				format!("{title}\n{body}")
 			}
 			(None, Some(link)) => {
-				format!(r#"{body}\n<a href="{url}">Link</a>"#, url = link.url)
+				format!("{body}\n<a href=\"{url}\">Link</a>", url = link.url)
 			}
 			(None, None) => body,
 		};
@@ -208,37 +208,37 @@ impl std::fmt::Debug for Telegram {
 	}
 }
 
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use std::env::var;
+// #[cfg(test)]
+// mod tests {
+// 	use super::*;
+// 	use std::env::var;
 
-	#[tokio::test]
-	async fn send_text_too_long() {
-		let tg = Telegram::new(
-			Bot::new(var("BOT_TOKEN").unwrap()),
-			var("DEBUG_CHAT_ID").unwrap(),
-		);
-		let mut long_text = String::with_capacity(8392);
+// 	#[tokio::test]
+// 	async fn send_text_too_long() {
+// 		let tg = Telegram::new(
+// 			Bot::new(var("BOT_TOKEN").unwrap()),
+// 			var("DEBUG_CHAT_ID").unwrap(),
+// 		);
+// 		let mut long_text = String::with_capacity(8392);
 
-		for _ in 0..4096 {
-			long_text.push('0');
-		}
+// 		for _ in 0..4096 {
+// 			long_text.push('0');
+// 		}
 
-		for _ in 0..4096 {
-			long_text.push('1');
-		}
+// 		for _ in 0..4096 {
+// 			long_text.push('1');
+// 		}
 
-		for _ in 0..200 {
-			long_text.push('2');
-		}
+// 		for _ in 0..200 {
+// 			long_text.push('2');
+// 		}
 
-		// tg.send_text(too_long_text).await.unwrap();
-		tg.send(Message {
-			text: long_text,
-			media: None,
-		})
-		.await
-		.unwrap();
-	}
-}
+// 		// tg.send_text(too_long_text).await.unwrap();
+// 		tg.send(Message {
+// 			text: long_text,
+// 			media: None,
+// 		})
+// 		.await
+// 		.unwrap();
+// 	}
+// }
