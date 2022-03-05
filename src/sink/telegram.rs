@@ -22,7 +22,7 @@ use teloxide::{
 
 use crate::{
 	error::{Error, Result},
-	sink::{Media, Message},
+	sink::{message::LinkLocation, Media, Message},
 };
 
 pub struct Telegram {
@@ -73,25 +73,55 @@ impl Telegram {
 
 	#[tracing::instrument(skip(message),
 	fields(
-		len = message.text.len(),
-		text = fmt_comment_msg_text(&message.text).as_str(),
+		len = message.body.len(),
+		body = fmt_comment_msg_text(&message.body).as_str(),
 		media = fmt_comment_msg_media(message.media.as_deref()).as_deref()
 		)
 	)]
 	pub async fn send(&self, message: Message) -> Result<()> {
-		// workaround for some kind of a bug that doesn't let access both text and media fields of the struct in the map closure at once
-		let text = if message.text.len() > 4096 {
+		let Message {
+			title,
+			body,
+			link,
+			media,
+		} = message;
+
+		// TODO: move to a function
+		const PADDING: usize = 10; // how much free space to reserve for new lines and "Link" buttons. 10 should be enough
+		let approx_msg_len = title.as_ref().map(|t| t.len()).unwrap_or(0) + body.len();
+		let body = if approx_msg_len + PADDING > 4096 {
 			// TODO: split the message properly instead of just throwing the rest away
-			tracing::warn!("Message too long ({len})", len = message.text.len());
-			let (idx, _) = message.text.char_indices().nth(4096 - 3).unwrap(); // unwrap NOTE: safe, length already confirmed to be bigger
-			let mut m = message.text[..idx].to_string();
+			tracing::warn!("Message too long ({approx_msg_len})");
+			let (idx, _) = body.char_indices().nth(4096 - PADDING).unwrap(); // unwrap NOTE: safe, length already confirmed to be bigger
+			let mut m = body[..idx].to_string();
 			m.push_str("...");
 			m
 		} else {
-			message.text
+			body
 		};
 
-		if let Some(media) = message.media {
+		let text = match (&title, &link) {
+			(Some(title), Some(link)) => match link.loc {
+				LinkLocation::Title => {
+					format!(r#"<a href="{url}">{title}</a>\n{body}"#, url = link.url,)
+				}
+				LinkLocation::Bottom => {
+					format!(
+						r#"{title}\n{body}\n<a href="{url}">Link</a>"#,
+						url = link.url
+					)
+				}
+			},
+			(Some(title), None) => {
+				format!("{title}\n{body}")
+			}
+			(None, Some(link)) => {
+				format!(r#"{body}\n<a href="{url}">Link</a>"#, url = link.url)
+			}
+			(None, None) => body,
+		};
+
+		if let Some(media) = media {
 			match self
 				.send_media(
 					media

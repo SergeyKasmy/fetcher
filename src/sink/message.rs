@@ -10,8 +10,24 @@ use url::Url;
 
 #[derive(Debug)]
 pub struct Message {
-	pub text: String,
+	pub title: Option<String>,
+	pub body: String,
+	pub link: Option<Link>,
 	pub media: Option<Vec<Media>>,
+}
+
+#[derive(Debug)]
+pub struct Link {
+	pub url: Url,
+	pub loc: LinkLocation,
+}
+
+/// Either embed the link into the title or put it as a separate "Link" button at the botton of the message.
+/// Title falls back to Bottom if Message.title is None
+#[derive(Debug)]
+pub enum LinkLocation {
+	Title,
+	Bottom,
 }
 
 #[derive(Debug)]

@@ -14,6 +14,7 @@ use soup::{NodeExt, QueryBuilderExt, Soup};
 use url::Url;
 
 use crate::error::{Error, Result};
+use crate::sink::message::{Link, LinkLocation};
 use crate::sink::{Media, Message};
 use crate::source::Responce;
 
@@ -70,6 +71,7 @@ pub struct ImageQuery {
 pub struct Html {
 	pub(crate) url: Url,
 	pub(crate) itemq: Vec<QueryKind>,
+	// TODO: make a separate title_query: Option<TextQuery> and allow to put a link into it
 	pub(crate) textq: Vec<TextQuery>,
 	pub(crate) idq: IdQuery,
 	pub(crate) linkq: LinkQuery,
@@ -95,20 +97,21 @@ impl Html {
 		#[derive(Debug)]
 		struct Article {
 			id: Id,
-			text: String,
+			body: String,
+			link: Url,
 			img: Option<Url>,
 		}
 
 		let mut articles = items
 			.filter_map(|item| {
-				let link = {
+				let link: Url = {
 					let mut link = match Self::extract_data(
 						&mut Self::find_chain(&item, &self.linkq.inner.kind),
 						&self.linkq.inner,
 					)
 					.ok_or(Error::Html("link not found"))
 					{
-						Ok(s) => s,
+						Ok(s) => s.trim().to_string(),
 						Err(e) => return Some(Err(e)),
 					};
 
@@ -116,7 +119,7 @@ impl Html {
 						link.insert_str(0, prepend);
 					}
 
-					link
+					link.as_str().try_into().unwrap() // unwrap FIXME: pretty print if the found field isn't a valid url
 				};
 
 				let id = {
@@ -126,7 +129,7 @@ impl Html {
 					)
 					.ok_or(Error::Html("id not found"))
 					{
-						Ok(s) => s,
+						Ok(s) => s.trim().to_string(),
 						Err(e) => return Some(Err(e)),
 					};
 
@@ -140,15 +143,11 @@ impl Html {
 					}
 				};
 
-				let text = {
-					let mut text = self
-						.textq
-						.iter()
-						.filter_map(|x| {
-							Self::extract_data(
-								&mut Self::find_chain(&item, &x.inner.kind),
-								&x.inner,
-							)
+				let body = self
+					.textq
+					.iter()
+					.filter_map(|x| {
+						Self::extract_data(&mut Self::find_chain(&item, &x.inner.kind), &x.inner)
 							.map(|s| {
 								let mut s = s.trim().to_string();
 								if let Some(prepend) = x.prepend.as_deref() {
@@ -157,14 +156,9 @@ impl Html {
 
 								s
 							})
-						})
-						.collect::<Vec<_>>()
-						.join("\n\n");
-
-					text.push_str(&format!("\n\n<a href=\"{link}\">Link</a>"));
-
-					text
-				};
+					})
+					.collect::<Vec<_>>()
+					.join("\n\n");
 
 				let img: Option<Url> = match self.imgq.as_ref() {
 					Some(img_query) => {
@@ -172,7 +166,7 @@ impl Html {
 							&mut Self::find_chain(&item, &img_query.inner.inner.kind), // TODO: check iterator not empty
 							&img_query.inner.inner,                                    // TODO: make less fugly
 						) {
-							Some(s) => s,
+							Some(s) => s.trim().to_string(),
 							None => {
 								if img_query.optional {
 									tracing::debug!("Found no image for the provided query but it's optional, skipping...");
@@ -200,7 +194,12 @@ impl Html {
 					}
 					None => None,
 				};
-				Some(Ok(Article { id, text, img }))
+				Some(Ok(Article {
+					id,
+					body,
+					link,
+					img,
+				}))
 			})
 			.collect::<Result<Vec<_>>>()?;
 
@@ -231,7 +230,12 @@ impl Html {
 					Id::Date(d) => d.to_string(),
 				}),
 				msg: Message {
-					text: a.text,
+					title: None,
+					body: a.body,
+					link: Some(Link {
+						url: a.link,
+						loc: LinkLocation::Bottom,
+					}),
 					media: a.img.map(|u| vec![Media::Photo(u)]),
 				},
 			})

@@ -10,6 +10,7 @@ use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 
 use crate::error::Result;
+use crate::sink::message::{Link, LinkLocation};
 use crate::sink::Media;
 use crate::sink::Message;
 use crate::source::Responce;
@@ -75,15 +76,27 @@ impl Twitter {
 					return None;
 				}
 
-				let text = format!(
-					"#{}\n\n{}\n<a href=\"https://twitter.com/{}/status/{}\">Link</a>",
-					self.pretty_name, tweet.text, self.handle, tweet.id
-				);
+				// let text = format!(
+				// 	"#{}\n\n{}\n<a href=\"\">Link</a>",
+				// 	self.pretty_name, tweet.text, self.handle, tweet.id
+				// );
 
 				Some(Responce {
 					id: Some(tweet.id.to_string()),
 					msg: Message {
-						text,
+						title: None,
+						body: tweet.text.clone(),
+						link: Some(Link {
+							url: format!(
+								"https://twitter.com/{handle}/status/{id}",
+								handle = self.handle,
+								id = tweet.id
+							)
+							.as_str()
+							.try_into()
+							.unwrap(),
+							loc: LinkLocation::Bottom,
+						}),
 						media: tweet.entities.media.as_ref().and_then(|x| {
 							x.iter()
 								.map(|x| match x.media_type {

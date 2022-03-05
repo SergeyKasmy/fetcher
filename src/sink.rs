@@ -6,7 +6,7 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-mod message;
+pub mod message;
 mod telegram;
 
 pub use message::{Media, Message};

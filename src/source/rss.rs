@@ -9,6 +9,8 @@
 use rss::Channel;
 
 use crate::error::Result;
+use crate::sink::message::Link;
+use crate::sink::message::LinkLocation;
 use crate::sink::Message;
 use crate::source::Responce;
 
@@ -67,17 +69,18 @@ impl Rss {
 			.into_iter()
 			.rev()
 			.map(|x| {
-				let text = format!(
-					"<a href=\"{}\">{}</a>\n{}",
-					// unwrap NOTE: "safe", these are required fields
-					x.link.as_deref().unwrap(),
-					x.title.as_deref().unwrap(),
-					x.description.as_deref().unwrap()
-				);
-
 				Responce {
 					id: Some(x.guid.as_ref().unwrap().value.clone()), // unwrap NOTE: same as above
-					msg: Message { text, media: None },
+					msg: Message {
+						// unwrap NOTE: "safe", these are required fields
+						title: Some(x.title.unwrap()),
+						body: x.description.unwrap(),
+						link: Some(Link {
+							url: x.link.unwrap().as_str().try_into().unwrap(),
+							loc: LinkLocation::Title,
+						}), // unwrap FIXME: may be an invalid url
+						media: None,
+					},
 				}
 			})
 			.collect();

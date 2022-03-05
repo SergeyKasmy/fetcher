@@ -6,11 +6,6 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-// TODO: (04.03.22) CONTINUE:
-// 1. Separate each task into their own .conf files. Make Tasks into struct Tasks(HashMap<file_name, Task>)
-// 2. Recursively find all .conf files in the config dir and merge them all into one
-// to allow the user to structure their tasks however they want.
-
 // TODO: add deny_unknown_fields annotations to every config struct
 // TODO: mb rename .parse() into .into() or something of that sort? .into() is already used by From/Into traits though. Naming is hard, man...
 

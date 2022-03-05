@@ -218,12 +218,12 @@ impl Email {
 			(subject, ammonia::clean(&body))
 		};
 
-		let text = match subject {
-			Some(subject) => format!("{}\n\n{}", subject, body),
-			None => body,
-		};
-
-		Ok(Message { text, media: None })
+		Ok(Message {
+			title: subject,
+			body,
+			link: None,
+			media: None,
+		})
 	}
 }
 
