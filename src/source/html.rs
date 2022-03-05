@@ -102,11 +102,15 @@ impl Html {
 		let mut articles = items
 			.filter_map(|item| {
 				let link = {
-					let mut link = Self::extract_data(
+					let mut link = match Self::extract_data(
 						&mut Self::find_chain(&item, &self.linkq.inner.kind),
 						&self.linkq.inner,
 					)
-					.expect("HTML link not found"); // FIXME
+					.ok_or(Error::Html("link not found"))
+					{
+						Ok(s) => s,
+						Err(e) => return Some(Err(e)),
+					};
 
 					if let Some(prepend) = &self.linkq.prepend {
 						link.insert_str(0, prepend);
@@ -116,11 +120,15 @@ impl Html {
 				};
 
 				let id = {
-					let id_str = Self::extract_data(
+					let id_str = match Self::extract_data(
 						&mut Self::find_chain(&item, &self.idq.inner.kind),
 						&self.idq.inner,
 					)
-					.expect("HTML id not found"); // FIXME return proper error
+					.ok_or(Error::Html("id not found"))
+					{
+						Ok(s) => s,
+						Err(e) => return Some(Err(e)),
+					};
 
 					match &self.idq.kind {
 						IdQueryKind::String => Id::String(id_str),
@@ -158,33 +166,40 @@ impl Html {
 					text
 				};
 
-				let img: Option<Url> = self.imgq.as_ref().and_then(|img_query| {
-					let mut img_url = match Self::extract_data(
-						&mut Self::find_chain(&item, &img_query.inner.inner.kind), // TODO: check iterator not empty
-						&img_query.inner.inner,                                    // TODO: make less fugly
-					) {
-						Some(s) => s,
-						None => {
-							if img_query.optional {
-								tracing::debug!("Found no image for the provided query but it's optional, skipping...");
-								return None;
-							} else {
-								panic!("HTML image not found but it's not optional");
+				let img: Option<Url> = match self.imgq.as_ref() {
+					Some(img_query) => {
+						let mut img_url = match Self::extract_data(
+							&mut Self::find_chain(&item, &img_query.inner.inner.kind), // TODO: check iterator not empty
+							&img_query.inner.inner,                                    // TODO: make less fugly
+						) {
+							Some(s) => s,
+							None => {
+								if img_query.optional {
+									tracing::debug!("Found no image for the provided query but it's optional, skipping...");
+									return None;
+								} else {
+									return Some(Err(Error::Html(
+										"image not found but it's not optional",
+									)));
+								}
 							}
+						};
+
+						if let Some(s) = &img_query.inner.prepend {
+							img_url.insert_str(0, s);
 						}
-					};
 
-					if let Some(s) = &img_query.inner.prepend {
-						img_url.insert_str(0, s);
-					}
-
-					Some(
-						img_url
+						match img_url
 							.as_str()
 							.try_into()
-							.expect("The found HTML url isn't an actual url!"),
-					)
-				});
+							.map_err(|_| Error::Html("The found url isn't an actual url!"))	// FiXME
+						{
+							Ok(v) => Some(v),
+							Err(e) => return Some(Err(e)),
+						}
+					}
+					None => None,
+				};
 				Some(Ok(Article { id, text, img }))
 			})
 			.collect::<Result<Vec<_>>>()?;

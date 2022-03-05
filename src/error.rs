@@ -6,6 +6,8 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+// TODO: create a type that wraps the Error enum with the name of the task at the task level
+
 use std::{error::Error as StdError, io, path::PathBuf};
 
 type BoxError = Box<dyn StdError + Send + Sync>;
@@ -58,8 +60,14 @@ pub enum Error {
 	#[error("RSS error")]
 	Rss(#[from] rss::Error),
 
+	#[error("HTML error")]
+	Html(&'static str), // TODO: add more context
+
 	#[error("Telegram request error: {0}\nMessage: {1:?}")]
-	Telegram(teloxide::RequestError, Box<dyn std::fmt::Debug + Send>),
+	Telegram(
+		teloxide::RequestError,
+		Box<dyn std::fmt::Debug + Send + Sync>,
+	),
 
 	#[error("Invalid DateTime format")]
 	InvalidDateTimeFormat(#[from] chrono::format::ParseError),

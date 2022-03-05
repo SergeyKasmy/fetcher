@@ -27,7 +27,7 @@ use tokio::task::JoinHandle;
 use tokio::{select, sync::watch::Receiver};
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
 	tracing_subscriber::fmt()
 		// FIXME: properly set INFO as default log level
 		.with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
