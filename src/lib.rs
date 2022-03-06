@@ -27,26 +27,27 @@ use crate::task::Task;
 
 #[tracing::instrument(skip(t))]
 pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
-	// let mut read_filter = ReadFilterNewer {
-	// 	last_read_id: last_read_id(name)?,
-	// };
 	let mut read_filter = ReadFilter::read_from_fs(name)?;
 	loop {
 		tracing::debug!("Fetching");
 
-		match t.source.get(&read_filter).await {
-			Ok(rspns) => {
-				for rspn in rspns {
-					t.sink.send(rspn.msg).await?;
+		let fetch = async {
+			for rspn in t.source.get(&read_filter).await? {
+				t.sink.send(rspn.msg).await?;
 
-					if let Some(id) = rspn.id {
-						read_filter.mark_as_read(&id);
-					}
+				if let Some(id) = rspn.id {
+					read_filter.mark_as_read(&id);
 				}
 			}
-			Err(e) if matches!(e, Error::Network(_)) => tracing::warn!("{e}"),
-			Err(e) => return Err(e),
+
+			Ok::<(), Error>(())
 		};
+
+		match fetch.await {
+			Ok(_) => (),
+			Err(e @ Error::Network(_)) => tracing::warn!("{e:?}"),
+			Err(e) => return Err(e),
+		}
 
 		tracing::debug!("Sleeping for {time}m", time = t.refresh);
 		sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;

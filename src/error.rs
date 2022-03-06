@@ -21,51 +21,51 @@ pub enum Error {
 	Xdg(#[from] xdg::BaseDirectoriesError),
 
 	#[error("Inaccessible config file")]
-	InaccessibleConfig(io::Error),
+	InaccessibleConfig(#[source] io::Error),
 
 	#[error("Inaccessible data file ({1})")]
-	InaccessibleData(io::Error, PathBuf),
+	InaccessibleData(#[source] io::Error, PathBuf),
 
 	#[error("Corrupted data file ({1})")]
-	CorruptedData(serde_json::error::Error, PathBuf),
+	CorruptedData(#[source] serde_json::error::Error, PathBuf),
 
 	#[error("Error writing into {1}")]
-	Write(io::Error, PathBuf),
+	Write(#[source] io::Error, PathBuf),
 
 	#[error("Invalid config")]
-	InvalidConfig(toml::de::Error),
+	InvalidConfig(#[source] toml::de::Error),
 
 	// stdin & stdout stuff
 	#[error("stdin error")]
-	Stdin(io::Error),
+	Stdin(#[source] io::Error),
 	#[error("stdout error")]
-	Stdout(io::Error),
+	Stdout(#[source] io::Error),
 
 	// network stuff
 	#[error("Network error")]
-	Network(BoxError),
+	Network(#[source] BoxError),
 
-	#[error("Google auth: {0}")]
+	#[error("Google auth error: {0}")]
 	GoogleAuth(String),
 
 	#[error("Email parse error")]
 	EmailParse(#[from] mailparse::MailParseError),
 
 	#[error("IMAP error")]
-	Email(Box<imap::Error>), // box to avoid big uneven enum size
+	Email(#[source] Box<imap::Error>), // box to avoid big uneven enum size
 
-	#[error("Twitter error: {0}")]
-	Twitter(egg_mode::error::Error),
+	#[error("Twitter error")]
+	Twitter(#[source] egg_mode::error::Error),
 
 	#[error("RSS error")]
 	Rss(#[from] rss::Error),
 
-	#[error("HTML error")]
+	#[error("HTML error: {0}")]
 	Html(&'static str), // TODO: add more context
 
-	#[error("Telegram request error: {0}\nMessage: {1:?}")]
+	#[error("Telegram request error\nMessage: {1:?}")]
 	Telegram(
-		teloxide::RequestError,
+		#[source] teloxide::RequestError,
 		Box<dyn std::fmt::Debug + Send + Sync>,
 	),
 
