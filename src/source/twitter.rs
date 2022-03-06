@@ -10,6 +10,7 @@ use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 
 use crate::error::Result;
+use crate::read_filter::ReadFilter;
 use crate::sink::message::{Link, LinkLocation};
 use crate::sink::Media;
 use crate::sink::Message;
@@ -45,7 +46,7 @@ impl Twitter {
 	}
 
 	#[tracing::instrument(name = "Twitter::get")]
-	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
 		tracing::debug!("Getting tweets");
 		if self.token.is_none() {
 			self.token = Some(
@@ -57,8 +58,9 @@ impl Twitter {
 		// unwrap NOTE: initialized just above, should be safe
 		let token = self.token.as_ref().unwrap();
 
+		// TODO: keep a tweet id -> message id hashmap and handle enable with_replies from below
 		let (_, tweets) = user_timeline(self.handle.clone(), false, true, token) // TODO: remove clone
-			.older(last_read_id.as_ref().and_then(|x| x.parse().ok()))
+			.older(read_filter.last_read().and_then(|x| x.parse().ok()))
 			.await?;
 
 		tracing::debug!(

@@ -14,6 +14,7 @@ use soup::{NodeExt, QueryBuilderExt, Soup};
 use url::Url;
 
 use crate::error::{Error, Result};
+use crate::read_filter::ReadFilter;
 use crate::sink::message::{Link, LinkLocation};
 use crate::sink::{Media, Message};
 use crate::source::Responce;
@@ -80,7 +81,7 @@ pub struct Html {
 
 impl Html {
 	#[tracing::instrument(name = "Html::get", skip(self), fields(url = self.url.as_str()))]
-	pub async fn get(&self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
+	pub async fn get(&self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
 		tracing::debug!("Fetching HTML source");
 		let page = reqwest::get(self.url.as_str()).await?.text().await?;
 
@@ -205,9 +206,9 @@ impl Html {
 
 		tracing::debug!("Found {num} HTML articles total", num = articles.len());
 
-		if let Some(last_read_id) = last_read_id {
+		if let Some(last_read_id) = read_filter.last_read() {
 			if let Some(pos) = articles.iter().position(|x| match &x.id {
-				Id::String(s) => s == &last_read_id,
+				Id::String(s) => s == last_read_id,
 				Id::Date(d) => d <= &last_read_id.parse::<DateTime<Utc>>().unwrap(), // unwrap NOTE: should be safe, we parse in the same format we save
 				                                                                     // TODO: add last_read_id format error for a nicer output
 			}) {

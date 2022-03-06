@@ -10,7 +10,8 @@ use rss::Channel;
 
 use crate::error::Result;
 use crate::read_filter::Id;
-use crate::read_filter::ReadFilterNewer;
+use crate::read_filter::Identifiable;
+use crate::read_filter::ReadFilter;
 use crate::sink::message::Link;
 use crate::sink::message::LinkLocation;
 use crate::sink::Message;
@@ -35,7 +36,7 @@ impl Rss {
 	}
 
 	#[tracing::instrument(name = "Rss::get")]
-	pub async fn get(&mut self, read_filter: &ReadFilterNewer) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
 		tracing::debug!("Getting RSS articles");
 		let content = self
 			.http_client
@@ -87,8 +88,8 @@ impl std::fmt::Debug for Rss {
 	}
 }
 
-impl Id for rss::Item {
-	fn id(&self) -> &str {
+impl Identifiable for rss::Item {
+	fn id(&self) -> Id {
 		self.guid().unwrap().value()
 	}
 }

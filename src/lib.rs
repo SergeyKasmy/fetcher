@@ -22,16 +22,15 @@ use tokio::time::sleep;
 
 use crate::error::Error;
 use crate::error::Result;
-use crate::read_filter::ReadFilterNewer;
-use crate::settings::last_read_id;
-use crate::settings::save_last_read_id;
+use crate::read_filter::ReadFilter;
 use crate::task::Task;
 
 #[tracing::instrument(skip(t))]
 pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
-	let mut read_filter = ReadFilterNewer {
-		last_read_id: last_read_id(name)?,
-	};
+	// let mut read_filter = ReadFilterNewer {
+	// 	last_read_id: last_read_id(name)?,
+	// };
+	let mut read_filter = ReadFilter::read_from_fs(name)?;
 	loop {
 		tracing::debug!("Fetching");
 
@@ -41,12 +40,8 @@ pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
 					t.sink.send(rspn.msg).await?;
 
 					if let Some(id) = rspn.id {
-						// save_last_read_id(name, id)?;
-						read_filter.set_last_read_id(id.clone());
-						save_last_read_id(name, id)?;
+						read_filter.mark_as_read(&id);
 					}
-
-					dbg!(&read_filter.last_read_id);
 				}
 			}
 			Err(e) if matches!(e, Error::Network(_)) => tracing::warn!("{e}"),
