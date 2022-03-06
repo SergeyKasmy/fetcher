@@ -96,3 +96,22 @@ impl From<egg_mode::error::Error> for Error {
 		}
 	}
 }
+
+impl
+	From<(
+		teloxide::RequestError,
+		Box<dyn std::fmt::Debug + Send + Sync>,
+	)> for Error
+{
+	fn from(
+		(e, msg): (
+			teloxide::RequestError,
+			Box<dyn std::fmt::Debug + Send + Sync>,
+		),
+	) -> Self {
+		match e {
+			teloxide::RequestError::Network(net_err) => net_err.into(),
+			other_err => Error::Telegram(other_err, msg),
+		}
+	}
+}

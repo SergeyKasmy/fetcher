@@ -25,10 +25,10 @@ use crate::settings::last_read_id;
 use crate::settings::save_last_read_id;
 use crate::task::Task;
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip(t))]
 pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
 	loop {
-		tracing::debug!("{name}: fetching");
+		tracing::debug!("Fetching");
 		let last_read_id = last_read_id(name)?;
 
 		match t.source.get(last_read_id).await {
@@ -41,12 +41,11 @@ pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
 					}
 				}
 			}
-			// mb use e if matches(e, Error::Network(_)) instead?
-			Err(Error::Network(e)) => tracing::warn!("Network error: {e}"),
+			Err(e) if matches!(e, Error::Network(_)) => tracing::warn!("{e}"),
 			Err(e) => return Err(e),
 		};
 
-		tracing::debug!("{name}: sleeping for {time}m", time = t.refresh);
+		tracing::debug!("Sleeping for {time}m", time = t.refresh);
 		sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
 	}
 }

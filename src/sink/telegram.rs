@@ -175,7 +175,13 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => return Err(Error::Telegram(e, Box::new(message))),
+				Err(e) => {
+					return Err((
+						e,
+						Box::new(message) as Box<dyn std::fmt::Debug + Send + Sync>,
+					)
+						.into())
+				}
 			}
 		}
 	}
@@ -194,7 +200,11 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
-				Err(e) => return Err(Error::Telegram(e, Box::new(media))),
+				Err(e) => {
+					return Err(
+						(e, Box::new(media) as Box<dyn std::fmt::Debug + Send + Sync>).into(),
+					)
+				}
 			}
 		}
 	}
