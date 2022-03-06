@@ -9,6 +9,8 @@
 use rss::Channel;
 
 use crate::error::Result;
+use crate::read_filter::Id;
+use crate::read_filter::ReadFilterNewer;
 use crate::sink::message::Link;
 use crate::sink::message::LinkLocation;
 use crate::sink::Message;
@@ -33,7 +35,7 @@ impl Rss {
 	}
 
 	#[tracing::instrument(name = "Rss::get")]
-	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self, read_filter: &ReadFilterNewer) -> Result<Vec<Responce>> {
 		tracing::debug!("Getting RSS articles");
 		let content = self
 			.http_client
@@ -43,29 +45,16 @@ impl Rss {
 			.bytes()
 			.await?;
 
-		let mut feed = Channel::read_from(&content[..])?;
+		let feed = Channel::read_from(&content[..])?;
 
 		tracing::debug!("Got {num} RSS articles total", num = feed.items.len());
 
-		if let Some(id) = &last_read_id {
-			if let Some(pos) = feed
-				.items
-				.iter()
-				// unwrap NOTE: *should* be safe, rss without guid is kinda useless
-				.position(|x| x.guid.as_ref().unwrap().value == id.as_str())
-			{
-				tracing::debug!(
-					"Removing {num} already read RSS articles",
-					num = feed.items.len() - pos
-				);
-				feed.items.drain(pos..);
-			}
-		}
+		let mut articles = feed.items;
+		read_filter.remove_read_from(&mut articles);
 
-		tracing::debug!("{num} unread RSS articles remaning", num = feed.items.len());
+		tracing::debug!("{num} unread RSS articles remaning", num = articles.len());
 
-		let messages = feed
-			.items
+		let messages = articles
 			.into_iter()
 			.rev()
 			.map(|x| {
@@ -95,5 +84,11 @@ impl std::fmt::Debug for Rss {
 			// .field("name", &self.name)
 			.field("url", &self.url)
 			.finish_non_exhaustive()
+	}
+}
+
+impl Id for rss::Item {
+	fn id(&self) -> &str {
+		self.guid().unwrap().value()
 	}
 }

@@ -11,6 +11,7 @@
 pub mod auth;
 pub mod config;
 pub mod error;
+pub mod read_filter;
 pub mod settings;
 pub mod sink;
 pub mod source;
@@ -21,24 +22,31 @@ use tokio::time::sleep;
 
 use crate::error::Error;
 use crate::error::Result;
+use crate::read_filter::ReadFilterNewer;
 use crate::settings::last_read_id;
 use crate::settings::save_last_read_id;
 use crate::task::Task;
 
 #[tracing::instrument(skip(t))]
 pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
+	let mut read_filter = ReadFilterNewer {
+		last_read_id: last_read_id(name)?,
+	};
 	loop {
 		tracing::debug!("Fetching");
-		let last_read_id = last_read_id(name)?;
 
-		match t.source.get(last_read_id).await {
+		match t.source.get(&read_filter).await {
 			Ok(rspns) => {
 				for rspn in rspns {
 					t.sink.send(rspn.msg).await?;
 
 					if let Some(id) = rspn.id {
+						// save_last_read_id(name, id)?;
+						read_filter.set_last_read_id(id.clone());
 						save_last_read_id(name, id)?;
 					}
+
+					dbg!(&read_filter.last_read_id);
 				}
 			}
 			Err(e) if matches!(e, Error::Network(_)) => tracing::warn!("{e}"),
