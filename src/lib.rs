@@ -31,19 +31,23 @@ pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
 		tracing::debug!("Fetching");
 		let last_read_id = last_read_id(name)?;
 
-		match t.source.get(last_read_id).await {
-			Ok(rspns) => {
-				for rspn in rspns {
-					t.sink.send(rspn.msg).await?;
+		let fetch = async {
+			for rspn in t.source.get(last_read_id).await? {
+				t.sink.send(rspn.msg).await?;
 
-					if let Some(id) = rspn.id {
-						save_last_read_id(name, id)?;
-					}
+				if let Some(id) = rspn.id {
+					save_last_read_id(name, id)?;
 				}
 			}
-			Err(e) if matches!(e, Error::Network(_)) => tracing::warn!("{e}"),
-			Err(e) => return Err(e),
+
+			Ok::<(), Error>(())
 		};
+
+		match fetch.await {
+			Ok(_) => (),
+			Err(e @ Error::Network(_)) => tracing::warn!("{e:?}"),
+			Err(e) => return Err(e),
+		}
 
 		tracing::debug!("Sleeping for {time}m", time = t.refresh);
 		sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;

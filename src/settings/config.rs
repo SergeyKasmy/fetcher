@@ -28,6 +28,7 @@ pub fn config() -> Result<Vec<(String, PathBuf)>> {
 
 		cfg_dirs
 	} else {
+		// TODO: get that dir from env var
 		vec![PathBuf::from("debug_data/cfg".to_string())]
 	};
 
