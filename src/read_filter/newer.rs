@@ -8,15 +8,15 @@
 
 use super::{Id, Identifiable};
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct ReadFilterNewer {
-	last_read_id: Option<String>,
+	pub(crate) last_read_id: Option<String>,
 }
 
 impl ReadFilterNewer {
-	pub fn new(last_read_id: Option<String>) -> Self {
-		Self { last_read_id }
-	}
+	// pub fn new(last_read_id: Option<String>) -> Self {
+	// 	Self { last_read_id }
+	// }
 
 	pub fn last_read(&self) -> Option<Id> {
 		self.last_read_id.as_deref()
@@ -62,6 +62,6 @@ impl ReadFilterNewer {
 	}
 
 	pub fn mark_as_read(&mut self, id: Id) {
-		self.last_read_id = Some(id.to_string())
+		self.last_read_id = Some(id.to_owned())
 	}
 }

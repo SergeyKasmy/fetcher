@@ -27,7 +27,7 @@ use crate::task::Task;
 
 #[tracing::instrument(skip(t))]
 pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
-	let mut read_filter = ReadFilter::read_from_fs(name)?;
+	let mut read_filter = ReadFilter::read_from_fs(name, t.read_filter_kind)?;
 	loop {
 		tracing::debug!("Fetching");
 

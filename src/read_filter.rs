@@ -6,13 +6,13 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-// 06.03.22 CONTINUE: finish NotPresentInReadList read filter and migrate html
-
-mod newer;
+pub(crate) mod newer;
+pub(crate) mod not_present;
 
 use self::newer::ReadFilterNewer;
+use self::not_present::ReadFilterNotPresent;
 use crate::error::Result;
-use crate::settings::last_read_id;
+use crate::settings;
 
 pub type Id<'a> = &'a str;
 
@@ -22,35 +22,49 @@ pub trait Identifiable {
 
 #[derive(Debug)]
 pub enum ReadFilter {
-	NewerThanRead(ReadFilterNewer),
+	NewerThanLastRead(ReadFilterNewer),
+	NotPresentInReadList(ReadFilterNotPresent),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ReadFilterKind {
+	NewerThanLastRead,
 	NotPresentInReadList,
 }
 
 impl ReadFilter {
-	pub(crate) fn read_from_fs(name: &str) -> Result<Self> {
-		use ReadFilter::*;
-
-		Ok(NewerThanRead(ReadFilterNewer::new(last_read_id(name)?)))
+	// TODO: properly migrate types if the one on the disk is of one type and the provided one is of different type
+	pub(crate) fn read_from_fs(name: &str, default_type: ReadFilterKind) -> Result<Self> {
+		settings::read_filter(name).map(|x| {
+			x.unwrap_or_else(|| match default_type {
+				ReadFilterKind::NewerThanLastRead => {
+					ReadFilter::NewerThanLastRead(ReadFilterNewer::default())
+				}
+				ReadFilterKind::NotPresentInReadList => {
+					ReadFilter::NotPresentInReadList(ReadFilterNotPresent::default())
+				}
+			})
+		})
 	}
 
 	pub(crate) fn last_read(&self) -> Option<Id> {
 		match self {
-			ReadFilter::NewerThanRead(x) => x.last_read(),
-			ReadFilter::NotPresentInReadList => todo!(),
+			ReadFilter::NewerThanLastRead(x) => x.last_read(),
+			ReadFilter::NotPresentInReadList(x) => x.last_read(),
 		}
 	}
 
 	pub(crate) fn remove_read_from<T: Identifiable>(&self, list: &mut Vec<T>) {
 		match self {
-			ReadFilter::NewerThanRead(x) => x.remove_read_from(list),
-			ReadFilter::NotPresentInReadList => todo!(),
+			ReadFilter::NewerThanLastRead(x) => x.remove_read_from(list),
+			ReadFilter::NotPresentInReadList(x) => x.remove_read_from(list),
 		}
 	}
 
 	pub(crate) fn mark_as_read(&mut self, id: Id) {
 		match self {
-			ReadFilter::NewerThanRead(x) => x.mark_as_read(id),
-			ReadFilter::NotPresentInReadList => todo!(),
+			ReadFilter::NewerThanLastRead(x) => x.mark_as_read(id),
+			ReadFilter::NotPresentInReadList(x) => x.mark_as_read(id),
 		}
 	}
 }

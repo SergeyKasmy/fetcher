@@ -32,8 +32,8 @@ pub enum Error {
 	#[error("Error writing into {1}")]
 	Write(#[source] io::Error, PathBuf),
 
-	#[error("Invalid config")]
-	InvalidConfig(#[source] toml::de::Error),
+	#[error("Invalid config {1}")]
+	InvalidConfig(#[source] toml::de::Error, PathBuf),
 
 	// stdin & stdout stuff
 	#[error("stdin error")]

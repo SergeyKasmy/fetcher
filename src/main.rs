@@ -52,7 +52,7 @@ async fn run() -> Result<()> {
 		.into_iter()
 		.map(|(contents, path)| {
 			let task: fetcher::config::Task =
-				toml::from_str(&contents).map_err(Error::InvalidConfig)?; // TODO: add config path to InvalidConfig
+				toml::from_str(&contents).map_err(|e| Error::InvalidConfig(e, path.clone()))?; // TODO: add config path to InvalidConfig
 
 			Ok((
 				path.file_stem()
