@@ -6,9 +6,12 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-#[derive(Debug)]
-pub enum ViewMode {
-	ReadOnly,
-	MarkAsRead,
-	Delete,
+use serde::Deserialize;
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) enum Auth {
+	#[serde(rename = "google_oauth2")]
+	GoogleOAuth2,
+	Password,
 }

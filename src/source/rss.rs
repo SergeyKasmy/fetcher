@@ -7,15 +7,16 @@
  */
 
 use rss::Channel;
-use serde::Deserialize;
 
-use crate::config;
 use crate::error::Result;
+use crate::read_filter::Id;
+use crate::read_filter::Identifiable;
+use crate::read_filter::ReadFilter;
+use crate::sink::message::Link;
+use crate::sink::message::LinkLocation;
 use crate::sink::Message;
 use crate::source::Responce;
 
-#[derive(Deserialize)]
-#[serde(from = "config::Rss")]
 pub struct Rss {
 	// name: String,
 	// TODO: use url
@@ -35,7 +36,7 @@ impl Rss {
 	}
 
 	#[tracing::instrument(name = "Rss::get")]
-	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
 		tracing::debug!("Getting RSS articles");
 		let content = self
 			.http_client
@@ -45,43 +46,31 @@ impl Rss {
 			.bytes()
 			.await?;
 
-		let mut feed = Channel::read_from(&content[..])?;
+		let feed = Channel::read_from(&content[..])?;
 
 		tracing::debug!("Got {num} RSS articles total", num = feed.items.len());
 
-		if let Some(id) = &last_read_id {
-			if let Some(pos) = feed
-				.items
-				.iter()
-				// unwrap NOTE: *should* be safe, rss without guid is kinda useless
-				.position(|x| x.guid.as_ref().unwrap().value == id.as_str())
-			{
-				tracing::debug!(
-					"Removing {num} already read RSS articles",
-					num = feed.items.len() - pos
-				);
-				feed.items.drain(pos..);
-			}
-		}
+		let mut articles = feed.items;
+		read_filter.remove_read_from(&mut articles);
 
-		tracing::debug!("{num} unread RSS articles remaning", num = feed.items.len());
+		tracing::debug!("{num} unread RSS articles remaning", num = articles.len());
 
-		let messages = feed
-			.items
+		let messages = articles
 			.into_iter()
 			.rev()
 			.map(|x| {
-				let text = format!(
-					"<a href=\"{}\">{}</a>\n{}",
-					// unwrap NOTE: "safe", these are required fields
-					x.link.as_deref().unwrap(),
-					x.title.as_deref().unwrap(),
-					x.description.as_deref().unwrap()
-				);
-
 				Responce {
 					id: Some(x.guid.as_ref().unwrap().value.clone()), // unwrap NOTE: same as above
-					msg: Message { text, media: None },
+					msg: Message {
+						// unwrap NOTE: "safe", these are required fields
+						title: Some(x.title.unwrap()),
+						body: x.description.unwrap(),
+						link: Some(Link {
+							url: x.link.unwrap().as_str().try_into().unwrap(),
+							loc: LinkLocation::PreferTitle,
+						}), // unwrap FIXME: may be an invalid url
+						media: None,
+					},
 				}
 			})
 			.collect();
@@ -96,5 +85,11 @@ impl std::fmt::Debug for Rss {
 			// .field("name", &self.name)
 			.field("url", &self.url)
 			.finish_non_exhaustive()
+	}
+}
+
+impl Identifiable for rss::Item {
+	fn id(&self) -> Id {
+		self.guid().unwrap().value()
 	}
 }

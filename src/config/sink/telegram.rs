@@ -9,21 +9,16 @@
 use serde::Deserialize;
 use teloxide::types::ChatId;
 
-use crate::{
-	error::{Error, Result},
-	settings, sink,
-};
+use crate::{error::Result, settings, sink};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct Telegram {
+pub(crate) struct Telegram {
 	chat_id: ChatId,
 }
 
-impl TryFrom<Telegram> for sink::Telegram {
-	type Error = Error;
-
-	fn try_from(v: Telegram) -> Result<Self> {
-		Ok(sink::Telegram::new(settings::telegram()?, v.chat_id))
+impl Telegram {
+	pub(crate) fn parse(self) -> Result<sink::Telegram> {
+		Ok(sink::Telegram::new(settings::telegram()?, self.chat_id))
 	}
 }

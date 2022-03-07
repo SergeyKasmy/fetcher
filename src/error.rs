@@ -6,6 +6,8 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+// TODO: create a type that wraps the Error enum with the name of the task at the task level
+
 use std::{error::Error as StdError, io, path::PathBuf};
 
 type BoxError = Box<dyn StdError + Send + Sync>;
@@ -19,47 +21,53 @@ pub enum Error {
 	Xdg(#[from] xdg::BaseDirectoriesError),
 
 	#[error("Inaccessible config file")]
-	InaccessibleConfig(io::Error),
+	InaccessibleConfig(#[source] io::Error),
 
 	#[error("Inaccessible data file ({1})")]
-	InaccessibleData(io::Error, PathBuf),
+	InaccessibleData(#[source] io::Error, PathBuf),
 
 	#[error("Corrupted data file ({1})")]
-	CorruptedData(serde_json::error::Error, PathBuf),
+	CorruptedData(#[source] serde_json::error::Error, PathBuf),
 
 	#[error("Error writing into {1}")]
-	Write(io::Error, PathBuf),
+	Write(#[source] io::Error, PathBuf),
 
-	#[error("Invalid config")]
-	InvalidConfig(toml::de::Error),
+	#[error("Invalid config {1}")]
+	InvalidConfig(#[source] toml::de::Error, PathBuf),
 
 	// stdin & stdout stuff
 	#[error("stdin error")]
-	Stdin(io::Error),
+	Stdin(#[source] io::Error),
 	#[error("stdout error")]
-	Stdout(io::Error),
+	Stdout(#[source] io::Error),
 
 	// network stuff
 	#[error("Network error")]
-	Network(BoxError),
+	Network(#[source] BoxError),
 
-	#[error("Google auth: {0}")]
+	#[error("Google auth error: {0}")]
 	GoogleAuth(String),
 
 	#[error("Email parse error")]
 	EmailParse(#[from] mailparse::MailParseError),
 
 	#[error("IMAP error")]
-	Email(imap::Error),
+	Email(#[source] Box<imap::Error>), // box to avoid big uneven enum size
 
-	#[error("Twitter error: {0}")]
-	Twitter(egg_mode::error::Error),
+	#[error("Twitter error")]
+	Twitter(#[source] egg_mode::error::Error),
 
 	#[error("RSS error")]
 	Rss(#[from] rss::Error),
 
-	#[error("Telegram request error")]
-	Telegram(#[from] teloxide::RequestError),
+	#[error("HTML error: {0}")]
+	Html(&'static str), // TODO: add more context
+
+	#[error("Telegram request error\nMessage: {1:?}")]
+	Telegram(
+		#[source] teloxide::RequestError,
+		Box<dyn std::fmt::Debug + Send + Sync>,
+	),
 
 	#[error("Invalid DateTime format")]
 	InvalidDateTimeFormat(#[from] chrono::format::ParseError),
@@ -75,7 +83,7 @@ impl From<imap::Error> for Error {
 	fn from(e: imap::Error) -> Self {
 		match e {
 			imap::Error::Io(io_err) => Error::Network(Box::new(io_err)),
-			e => Self::Email(e),
+			e => Self::Email(Box::new(e)),
 		}
 	}
 }
@@ -85,6 +93,25 @@ impl From<egg_mode::error::Error> for Error {
 		match e {
 			egg_mode::error::Error::NetError(e) => Self::Network(Box::new(e)),
 			e => Self::Twitter(e),
+		}
+	}
+}
+
+impl
+	From<(
+		teloxide::RequestError,
+		Box<dyn std::fmt::Debug + Send + Sync>,
+	)> for Error
+{
+	fn from(
+		(e, msg): (
+			teloxide::RequestError,
+			Box<dyn std::fmt::Debug + Send + Sync>,
+		),
+	) -> Self {
+		match e {
+			teloxide::RequestError::Network(net_err) => net_err.into(),
+			other_err => Error::Telegram(other_err, msg),
 		}
 	}
 }

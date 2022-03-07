@@ -7,78 +7,82 @@
  */
 
 // TODO: better handle invalid config values
+// TODO: make sure read_filter_type not_present_in_read_list only works with id_query.kind = id
 
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use html5ever::rcdom::Handle;
-use serde::Deserialize;
 use soup::{NodeExt, QueryBuilderExt, Soup};
 use url::Url;
 
 use crate::error::{Error, Result};
+use crate::read_filter::ReadFilter;
+use crate::sink::message::{Link, LinkLocation};
 use crate::sink::{Media, Message};
 use crate::source::Responce;
 
-#[derive(Deserialize, Clone, Debug)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[derive(Clone, Debug)]
 pub enum QueryKind {
 	Tag { value: String },
 	Class { value: String },
 	Attr { name: String, value: String },
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[derive(Debug)]
 pub enum DataLocation {
 	Text,
 	Attr { value: String },
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub struct Query {
-	kind: Vec<QueryKind>,
-	data_location: DataLocation,
+	pub(crate) kind: Vec<QueryKind>,
+	pub(crate) data_location: DataLocation,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug)]
+pub struct TextQuery {
+	pub(crate) prepend: Option<String>,
+	pub(crate) inner: Query,
+}
+
+#[derive(Debug)]
 pub enum IdQueryKind {
 	String,
 	Date,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub struct IdQuery {
-	kind: IdQueryKind,
-	#[serde(rename = "query")]
-	inner: Query,
+	pub(crate) kind: IdQueryKind,
+	pub(crate) inner: Query,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub struct LinkQuery {
-	prepend: Option<String>,
-	#[serde(flatten)]
-	inner: Query,
+	pub(crate) prepend: Option<String>,
+	pub(crate) inner: Query,
 }
 
-#[derive(Deserialize, Debug)]
-// TODO: use #[serde(try_from)]
+#[derive(Debug)]
+pub struct ImageQuery {
+	pub(crate) optional: bool,
+	pub(crate) inner: LinkQuery,
+}
+
+#[derive(Debug)]
 pub struct Html {
-	url: Url,
-	#[serde(alias = "item_query")]
-	itemq: Vec<QueryKind>,
-	#[serde(alias = "text_query")]
-	textq: Vec<Query>,
-	#[serde(alias = "id_query")]
-	idq: IdQuery,
-	#[serde(alias = "link_query")]
-	linkq: LinkQuery,
-	#[serde(alias = "img_query")]
-	imgq: Option<LinkQuery>,
+	pub(crate) url: Url,
+	pub(crate) itemq: Vec<QueryKind>,
+	// TODO: make a separate title_query: Option<TextQuery> and allow to put a link into it
+	pub(crate) textq: Vec<TextQuery>,
+	pub(crate) idq: IdQuery,
+	pub(crate) linkq: LinkQuery,
+	pub(crate) imgq: Option<ImageQuery>,
 }
 
 impl Html {
 	#[tracing::instrument(name = "Html::get", skip(self), fields(url = self.url.as_str()))]
-	pub async fn get(&self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
+	pub async fn get(&self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
 		tracing::debug!("Fetching HTML source");
 		let page = reqwest::get(self.url.as_str()).await?.text().await?;
 
@@ -95,28 +99,41 @@ impl Html {
 		#[derive(Debug)]
 		struct Article {
 			id: Id,
-			text: String,
+			body: String,
+			link: Url,
 			img: Option<Url>,
 		}
 
 		let mut articles = items
 			.filter_map(|item| {
-				let link = {
-					let mut link = Self::extract_data(
+				let link: Url = {
+					let mut link = match Self::extract_data(
 						&mut Self::find_chain(&item, &self.linkq.inner.kind),
 						&self.linkq.inner,
-					);
-					if let Some(s) = &self.linkq.prepend {
-						link.insert_str(0, s);
+					)
+					.ok_or(Error::Html("link not found"))
+					{
+						Ok(s) => s.trim().to_string(),
+						Err(e) => return Some(Err(e)),
+					};
+
+					if let Some(prepend) = &self.linkq.prepend {
+						link.insert_str(0, prepend);
 					}
-					link
+
+					link.as_str().try_into().unwrap() // unwrap FIXME: pretty print if the found field isn't a valid url
 				};
 
 				let id = {
-					let id_str = Self::extract_data(
+					let id_str = match Self::extract_data(
 						&mut Self::find_chain(&item, &self.idq.inner.kind),
 						&self.idq.inner,
-					);
+					)
+					.ok_or(Error::Html("id not found"))
+					{
+						Ok(s) => s.trim().to_string(),
+						Err(e) => return Some(Err(e)),
+					};
 
 					match &self.idq.kind {
 						IdQueryKind::String => Id::String(id_str),
@@ -128,40 +145,71 @@ impl Html {
 					}
 				};
 
-				let text = {
-					let mut text = self
-						.textq
-						.iter()
-						.map(|x| Self::extract_data(&mut Self::find_chain(&item, &x.kind), x))
-						.collect::<Vec<_>>()
-						.join("\n\n");
+				let body = self
+					.textq
+					.iter()
+					.filter_map(|x| {
+						Self::extract_data(&mut Self::find_chain(&item, &x.inner.kind), &x.inner)
+							.map(|s| {
+								let mut s = s.trim().to_string();
+								if let Some(prepend) = x.prepend.as_deref() {
+									s.insert_str(0, prepend);
+								}
 
-					text.push_str(&format!("\n\n<a href=\"{link}\">Link</a>"));
+								s
+							})
+					})
+					.collect::<Vec<_>>()
+					.join("\n\n");
 
-					text
-				};
+				let img: Option<Url> = match self.imgq.as_ref() {
+					Some(img_query) => {
+						let mut img_url = match Self::extract_data(
+							&mut Self::find_chain(&item, &img_query.inner.inner.kind), // TODO: check iterator not empty
+							&img_query.inner.inner,                                    // TODO: make less fugly
+						) {
+							Some(s) => s.trim().to_string(),
+							None => {
+								if img_query.optional {
+									tracing::debug!("Found no image for the provided query but it's optional, skipping...");
+									return None;
+								} else {
+									return Some(Err(Error::Html(
+										"image not found but it's not optional",
+									)));
+								}
+							}
+						};
 
-				let img: Option<Url> = self.imgq.as_ref().map(|img_query| {
-					let mut img_url = Self::extract_data(
-						&mut Self::find_chain(&item, &img_query.inner.kind), // TODO: check iterator not empty
-						&img_query.inner,
-					);
+						if let Some(s) = &img_query.inner.prepend {
+							img_url.insert_str(0, s);
+						}
 
-					if let Some(s) = &img_query.prepend {
-						img_url.insert_str(0, s);
+						match img_url
+							.as_str()
+							.try_into()
+							.map_err(|_| Error::Html("The found url isn't an actual url!"))	// FiXME
+						{
+							Ok(v) => Some(v),
+							Err(e) => return Some(Err(e)),
+						}
 					}
-
-					img_url.as_str().try_into().unwrap()
-				});
-				Some(Ok(Article { id, text, img }))
+					None => None,
+				};
+				Some(Ok(Article {
+					id,
+					body,
+					link,
+					img,
+				}))
 			})
 			.collect::<Result<Vec<_>>>()?;
 
 		tracing::debug!("Found {num} HTML articles total", num = articles.len());
 
-		if let Some(last_read_id) = last_read_id {
+		if let Some(last_read_id) = read_filter.last_read() {
 			if let Some(pos) = articles.iter().position(|x| match &x.id {
-				Id::String(s) => s == &last_read_id,
+				Id::String(s) => s == last_read_id,
 				Id::Date(d) => d <= &last_read_id.parse::<DateTime<Utc>>().unwrap(), // unwrap NOTE: should be safe, we parse in the same format we save
 				                                                                     // TODO: add last_read_id format error for a nicer output
 			}) {
@@ -184,7 +232,12 @@ impl Html {
 					Id::Date(d) => d.to_string(),
 				}),
 				msg: Message {
-					text: a.text,
+					title: None,
+					body: a.body,
+					link: Some(Link {
+						url: a.link,
+						loc: LinkLocation::Bottom,
+					}),
 					media: a.img.map(|u| vec![Media::Photo(u)]),
 				},
 			})
@@ -222,7 +275,7 @@ impl Html {
 	}
 
 	/// Extract data from the provided HTML tags and join them
-	fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &Query) -> String {
+	fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &Query) -> Option<String> {
 		// debug_assert!(
 		// 	h.peekable().peek().is_some(),
 		// 	"No HTML tags to extract data from"
@@ -230,12 +283,12 @@ impl Html {
 
 		let data = h
 			.map(|hndl| match &q.data_location {
-				DataLocation::Text => hndl.text(),
-				DataLocation::Attr { value } => hndl.get(value).expect("attr doesnt exist"), // FIXME
+				DataLocation::Text => Some(hndl.text()),
+				DataLocation::Attr { value } => hndl.get(value),
 			})
-			.collect::<Vec<_>>();
+			.collect::<Option<Vec<_>>>();
 
-		data.join("\n\n")
+		data.map(|s| s.join("\n\n"))
 	}
 
 	// TODO: rewrite the entire fn to use today/Yesterday words and date formats from the config per source and not global

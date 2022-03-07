@@ -6,7 +6,7 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::time::{Duration, Instant};
 
 use crate::error::{Error, Result};
@@ -26,13 +26,11 @@ struct AccessToken {
 	expires: Instant,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct GoogleAuth {
 	client_id: String,
 	client_secret: String,
 	refresh_token: String,
-
-	#[serde(skip)]
 	access_token: Option<AccessToken>,
 }
 
@@ -99,7 +97,8 @@ impl GoogleAuth {
 			.text()
 			.await?;
 
-		Ok(serde_json::from_str(&resp).map_err(|_| Error::GoogleAuth(resp))?)
+		// TODO: maybe use the result from serde instead of the responce itself?
+		serde_json::from_str(&resp).map_err(|_| Error::GoogleAuth(resp))
 	}
 
 	async fn validate_access_token(&mut self) -> Result<()> {

@@ -10,30 +10,25 @@ mod auth;
 mod view_mode;
 
 pub use auth::Auth;
-use serde::Deserialize;
 pub use view_mode::ViewMode;
 
 use mailparse::ParsedMail;
 
 use self::auth::GoogleAuthExt;
 use crate::auth::GoogleAuth;
-use crate::config;
 use crate::error::{Error, Result};
 use crate::sink::Message;
 use crate::source::Responce;
 
 const IMAP_PORT: u16 = 993;
 
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug)]
 pub struct Filters {
 	pub sender: Option<String>,
 	pub subjects: Option<Vec<String>>,
 	pub exclude_subjects: Option<Vec<String>>,
 }
 
-#[derive(Deserialize)]
-#[serde(try_from = "config::Email")]
 pub struct Email {
 	imap: String,
 	email: String,
@@ -211,7 +206,7 @@ impl Email {
 			.get_body()?;
 
 			if let Some(remove_after) = remove_after {
-				body.drain(body.find(remove_after).unwrap_or_else(|| body.len())..);
+				body.drain(body.find(remove_after).unwrap_or(body.len())..);
 			}
 
 			// TODO: replace upticks ` with teloxide::utils::html::escape_code
@@ -223,12 +218,12 @@ impl Email {
 			(subject, ammonia::clean(&body))
 		};
 
-		let text = match subject {
-			Some(subject) => format!("{}\n\n{}", subject, body),
-			None => body,
-		};
-
-		Ok(Message { text, media: None })
+		Ok(Message {
+			title: subject,
+			body,
+			link: None,
+			media: None,
+		})
 	}
 }
 

@@ -8,16 +8,14 @@
 
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
-use serde::Deserialize;
 
-use crate::config;
-use crate::error::{Error, Result};
+use crate::error::Result;
+use crate::read_filter::ReadFilter;
+use crate::sink::message::{Link, LinkLocation};
 use crate::sink::Media;
 use crate::sink::Message;
 use crate::source::Responce;
 
-#[derive(Deserialize)]
-#[serde(try_from = "config::Twitter")]
 pub struct Twitter {
 	pretty_name: String, // used for hashtags
 	handle: String,
@@ -48,7 +46,7 @@ impl Twitter {
 	}
 
 	#[tracing::instrument(name = "Twitter::get")]
-	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
 		tracing::debug!("Getting tweets");
 		if self.token.is_none() {
 			self.token = Some(
@@ -60,8 +58,9 @@ impl Twitter {
 		// unwrap NOTE: initialized just above, should be safe
 		let token = self.token.as_ref().unwrap();
 
+		// TODO: keep a tweet id -> message id hashmap and handle enable with_replies from below
 		let (_, tweets) = user_timeline(self.handle.clone(), false, true, token) // TODO: remove clone
-			.older(last_read_id.as_ref().and_then(|x| x.parse().ok()))
+			.older(read_filter.last_read().and_then(|x| x.parse().ok()))
 			.await?;
 
 		tracing::debug!(
@@ -79,15 +78,27 @@ impl Twitter {
 					return None;
 				}
 
-				let text = format!(
-					"#{}\n\n{}\n<a href=\"https://twitter.com/{}/status/{}\">Link</a>",
-					self.pretty_name, tweet.text, self.handle, tweet.id
-				);
+				// let text = format!(
+				// 	"#{}\n\n{}\n<a href=\"\">Link</a>",
+				// 	self.pretty_name, tweet.text, self.handle, tweet.id
+				// );
 
 				Some(Responce {
 					id: Some(tweet.id.to_string()),
 					msg: Message {
-						text,
+						title: None,
+						body: tweet.text.clone(),
+						link: Some(Link {
+							url: format!(
+								"https://twitter.com/{handle}/status/{id}",
+								handle = self.handle,
+								id = tweet.id
+							)
+							.as_str()
+							.try_into()
+							.unwrap(),
+							loc: LinkLocation::Bottom,
+						}),
 						media: tweet.entities.media.as_ref().and_then(|x| {
 							x.iter()
 								.map(|x| match x.media_type {

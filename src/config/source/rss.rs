@@ -6,9 +6,19 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-#[derive(Debug)]
-pub enum ViewMode {
-	ReadOnly,
-	MarkAsRead,
-	Delete,
+use serde::Deserialize;
+use url::Url;
+
+use crate::source;
+
+#[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Rss {
+	url: Url,
+}
+
+impl Rss {
+	pub(crate) fn parse(self) -> source::Rss {
+		source::Rss::new(self.url.to_string())
+	}
 }

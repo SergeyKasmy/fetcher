@@ -8,21 +8,30 @@
 
 use url::Url;
 
-pub enum Media {
-	Photo(Url),
-	Video(Url),
-}
-
+#[derive(Debug)]
 pub struct Message {
-	pub text: String,
+	pub title: Option<String>,
+	pub body: String,
+	pub link: Option<Link>,
 	pub media: Option<Vec<Media>>,
 }
 
-impl std::fmt::Debug for Message {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("Message")
-			.field("text", &self.text)
-			.field("media.is_some()", &self.media.is_some())
-			.finish()
-	}
+#[derive(Debug)]
+pub struct Link {
+	pub url: Url,
+	pub loc: LinkLocation,
+}
+
+/// Either embed the link into the title or put it as a separate "Link" button at the botton of the message.
+/// PreferTitle falls back to Bottom if Message.title is None
+#[derive(Debug)]
+pub enum LinkLocation {
+	PreferTitle,
+	Bottom,
+}
+
+#[derive(Debug)]
+pub enum Media {
+	Photo(Url),
+	Video(Url),
 }
