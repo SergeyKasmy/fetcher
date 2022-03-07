@@ -36,7 +36,7 @@ pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
 				t.sink.send(rspn.msg).await?;
 
 				if let Some(id) = rspn.id {
-					read_filter.mark_as_read(&id);
+					read_filter.mark_as_read(&id)?;
 				}
 			}
 

@@ -7,6 +7,7 @@
  */
 
 // TODO: better handle invalid config values
+// TODO: make sure read_filter_type not_present_in_read_list only works with id_query.kind = id
 
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use html5ever::rcdom::Handle;

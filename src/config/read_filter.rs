@@ -28,21 +28,28 @@ pub(crate) enum ReadFilter {
 }
 
 impl ReadFilter {
-	pub(crate) fn parse(self) -> read_filter::ReadFilter {
-		match self {
-			ReadFilter::NewerThanRead(x) => read_filter::ReadFilter::NewerThanLastRead(x.parse()),
-			ReadFilter::NotPresentInReadList(x) => {
-				read_filter::ReadFilter::NotPresentInReadList(x.parse())
+	pub(crate) fn parse(self, name: &str) -> read_filter::ReadFilter {
+		let inner = match self {
+			ReadFilter::NewerThanRead(x) => {
+				read_filter::ReadFilterInner::NewerThanLastRead(x.parse())
 			}
+			ReadFilter::NotPresentInReadList(x) => {
+				read_filter::ReadFilterInner::NotPresentInReadList(x.parse())
+			}
+		};
+
+		read_filter::ReadFilter {
+			name: name.to_owned(),
+			inner,
 		}
 	}
 
-	pub(crate) fn unparse(read_filter: read_filter::ReadFilter) -> Option<Self> {
+	pub(crate) fn unparse(read_filter: &read_filter::ReadFilterInner) -> Option<Self> {
 		Some(match read_filter {
-			read_filter::ReadFilter::NewerThanLastRead(x) => {
+			read_filter::ReadFilterInner::NewerThanLastRead(x) => {
 				ReadFilter::NewerThanRead(ReadFilterNewer::unparse(x)?)
 			}
-			read_filter::ReadFilter::NotPresentInReadList(x) => {
+			read_filter::ReadFilterInner::NotPresentInReadList(x) => {
 				ReadFilter::NotPresentInReadList(ReadFilterNotPresent::unparse(x)?)
 			}
 		})
@@ -61,10 +68,10 @@ impl ReadFilterNewer {
 		}
 	}
 
-	pub(crate) fn unparse(read_filter: read_filter::newer::ReadFilterNewer) -> Option<Self> {
-		read_filter
-			.last_read_id
-			.map(|last_read_id| Self { last_read_id })
+	pub(crate) fn unparse(read_filter: &read_filter::newer::ReadFilterNewer) -> Option<Self> {
+		read_filter.last_read_id.as_ref().map(|last_read_id| Self {
+			last_read_id: last_read_id.to_owned(),
+		})
 	}
 }
 
@@ -81,11 +88,11 @@ impl ReadFilterNotPresent {
 	}
 
 	pub(crate) fn unparse(
-		read_filter: read_filter::not_present::ReadFilterNotPresent,
+		read_filter: &read_filter::not_present::ReadFilterNotPresent,
 	) -> Option<Self> {
 		if !read_filter.read_list.is_empty() {
 			Some(Self {
-				read_list: read_filter.read_list.into(),
+				read_list: read_filter.read_list.iter().map(|s| s.clone()).collect(),
 			})
 		} else {
 			None

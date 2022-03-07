@@ -33,7 +33,7 @@ pub fn read_filter(name: &str) -> Result<Option<ReadFilter>> {
 		.ok()
 		.map(|s| {
 			let read_filter_conf: config::read_filter::ReadFilter = serde_json::from_str(&s)?;
-			Ok(read_filter_conf.parse())
+			Ok(read_filter_conf.parse(name))
 		})
 		.transpose()
 		.map_err(|e| Error::CorruptedData(e, path))
@@ -45,11 +45,11 @@ pub fn read_filter(name: &str) -> Result<Option<ReadFilter>> {
 /// * the default read filter save file path is inaccessible
 /// * the write failed
 /// * the remove failed
-pub fn save_read_filter(name: &str, read_filter: ReadFilter) -> Result<()> {
-	let path = read_filter_path(name)?;
+pub fn save_read_filter(read_filter: &ReadFilter) -> Result<()> {
+	let path = read_filter_path(&read_filter.name)?;
 	// fs::write(&path, id).map_err(|e| Error::Write(e, path))
 
-	let read_filter_conf = config::read_filter::ReadFilter::unparse(read_filter);
+	let read_filter_conf = config::read_filter::ReadFilter::unparse(&read_filter.inner);
 	match read_filter_conf {
 		Some(data) => {
 			fs::write(&path, serde_json::to_string(&data).unwrap()) // unwrap NOTE: safe, serialization of such a simple struct should never fail
