@@ -15,10 +15,10 @@ use crate::error::{Error, Result};
 
 const CONFIG_FILE_EXT: &str = ".toml";
 
-/// Find all .conf configs in the first non-empty config directory by priority
+/// Find all task .toml configs in the first non-empty config directory by priority
 /// Ignore configs in directories lower in priority if one in higher priority has configs
 /// Returns (file contents, file path)
-pub fn config() -> Result<Vec<(String, PathBuf)>> {
+pub fn tasks() -> Result<Vec<(String, PathBuf)>> {
 	let cfg_dirs = if !cfg!(debug_assertions) {
 		let base_dirs = xdg::BaseDirectories::with_prefix(PREFIX)?;
 
@@ -42,7 +42,7 @@ pub fn config() -> Result<Vec<(String, PathBuf)>> {
 
 		// find all configs in the current path
 		let cfg_files = glob::glob(&format!(
-			"{cfg_dir}/**/*{CONFIG_FILE_EXT}",
+			"{cfg_dir}/tasks/**/*{CONFIG_FILE_EXT}",
 			cfg_dir = cfg_dir.display()
 		))
 		.unwrap(); // unwrap NOTE: should be safe if the glob pattern is correct

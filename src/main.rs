@@ -48,11 +48,11 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn run() -> Result<()> {
-	let tasks = settings::config()?
+	let tasks = settings::config::tasks()?
 		.into_iter()
 		.map(|(contents, path)| {
-			let conf: fetcher::config::Task =
-				toml::from_str(&contents).map_err(Error::InvalidConfig)?; // TODO: add config path to InvalidConfig
+			let task: fetcher::config::Task =
+				toml::from_str(&contents).map_err(|e| Error::InvalidConfig(e, path.clone()))?; // TODO: add config path to InvalidConfig
 
 			Ok((
 				path.file_stem()
@@ -60,7 +60,7 @@ async fn run() -> Result<()> {
 					.to_str()
 					.expect("Config file name isn't a valid unicode")
 					.to_string(),
-				conf.parse()?,
+				task.parse()?,
 			))
 		})
 		.collect::<Result<Tasks>>()?;

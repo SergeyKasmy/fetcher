@@ -11,6 +11,7 @@
 pub mod auth;
 pub mod config;
 pub mod error;
+pub mod read_filter;
 pub mod settings;
 pub mod sink;
 pub mod source;
@@ -21,22 +22,21 @@ use tokio::time::sleep;
 
 use crate::error::Error;
 use crate::error::Result;
-use crate::settings::last_read_id;
-use crate::settings::save_last_read_id;
+use crate::read_filter::ReadFilter;
 use crate::task::Task;
 
 #[tracing::instrument(skip(t))]
 pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
+	let mut read_filter = ReadFilter::read_from_fs(name, t.read_filter_kind)?;
 	loop {
 		tracing::debug!("Fetching");
-		let last_read_id = last_read_id(name)?;
 
 		let fetch = async {
-			for rspn in t.source.get(last_read_id).await? {
+			for rspn in t.source.get(&read_filter).await? {
 				t.sink.send(rspn.msg).await?;
 
 				if let Some(id) = rspn.id {
-					save_last_read_id(name, id)?;
+					read_filter.mark_as_read(&id)?;
 				}
 			}
 

@@ -17,6 +17,7 @@ pub use self::rss::Rss;
 pub use self::twitter::Twitter;
 
 use crate::error::Result;
+use crate::read_filter::ReadFilter;
 use crate::sink::Message;
 
 // TODO: add message history via responce id -> message id hashmap
@@ -38,12 +39,12 @@ pub enum Source {
 
 impl Source {
 	// TODO: try using streams instead of polling manually?
-	pub async fn get(&mut self, last_read_id: Option<String>) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
 		match self {
 			Self::Email(x) => x.get().await,
-			Self::Html(x) => x.get(last_read_id).await,
-			Self::Rss(x) => x.get(last_read_id).await,
-			Self::Twitter(x) => x.get(last_read_id).await,
+			Self::Html(x) => x.get(read_filter).await,
+			Self::Rss(x) => x.get(read_filter).await,
+			Self::Twitter(x) => x.get(read_filter).await,
 		}
 	}
 }
