@@ -39,7 +39,6 @@ pub struct Email {
 }
 
 impl Email {
-	#[tracing::instrument(name = "Email::with_password", skip(password))]
 	pub fn with_password(
 		imap: String,
 		email: String,
@@ -48,7 +47,6 @@ impl Email {
 		view_mode: ViewMode,
 		footer: Option<String>,
 	) -> Self {
-		tracing::info!("Creatng an Email provider");
 		Self {
 			imap,
 			email,
@@ -59,7 +57,6 @@ impl Email {
 		}
 	}
 
-	#[tracing::instrument(name = "Email::with_google_oauth2", skip(auth))]
 	pub fn with_google_oauth2(
 		imap: String,
 		email: String,
@@ -68,8 +65,6 @@ impl Email {
 		view_mode: ViewMode,
 		footer: Option<String>,
 	) -> Result<Self> {
-		tracing::info!("Creatng an Email provider");
-
 		Ok(Self {
 			imap,
 			email,
@@ -83,7 +78,7 @@ impl Email {
 	/// Even though it's marked async, the fetching itself is not async yet
 	/// It should be used with spawn_blocking probs
 	/// TODO: make it async lol
-	#[tracing::instrument(name = "Email::get")]
+	#[tracing::instrument(skip_all)]
 	pub async fn get(&mut self) -> Result<Vec<Responce>> {
 		tracing::debug!("Fetching emails");
 		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT).rustls()?;
