@@ -1,7 +1,7 @@
 # fetcher
 
 fetcher makes it easier to see any information, like news or articles, in a place most comfortable to you.
-It fetches any info you choose from a list of available sources, e.g. RSS, Twitter, email; filters it, and sends it to you.
+It fetches any info you choose from a list of available sources, e.g. RSS or Twitter; filters it, and sends it to you.
 Think if it like IFTTT but locally hosted and if it only supported transfering info.
 
 I wrote fetcher for myself after IFTTT had become paid, not to mention that by that time I was already not satisfied with it. I like to receive news and notifications in one place without having to search for it.
@@ -32,20 +32,42 @@ The final binary will be located in `target/release/fetcher` which you can then 
 
 ## Setup
 
-The config is a toml file located at `$XDG_CONFIG_HOME/fetcher/config.toml` and has these mandatory fields
+The main unit of execution in fetcher is a task. A task consists of a source where to fetch some kind of data from and a sink where to send that data to. To create a task, create a `foo.toml` file in `$XDG_CONFIG_HOME/fetcher/tasks` or `/etc/xdg/fetcher/tasks` where `foo` is the name you want that task to have. A proper task config file looks something like this:
 
 ```
-[<source_name>]
-type = <source_type>
+refresh = 30
+read_filter_type = "newer_than_read"
+
+[source]
+type = "rss"
+url = "<your_rss_feed>"
+
+[sink]
+type = "telegram"
+chat_id = <your_telegram_chat_id>
+
 ```
 
-Other fields are type dependant and thus will be asked for when first run.
+Currently available source types:
 
-To set up login credentials, run fetcher with `--gen-secret--<name>` where name is either of these services:
+* rss
+* email
+* twitter
+* html
+
+sink types:
+
+* telegram
+
+Since a lot of these fields are dependent on the particular source and sink types and since fetcher is in heavy development at the moment, there isn't any template or example config files but fetcher will notify you if there are missing fields and what values they can have, so it's not that difficult to make one by trial and error even without reading the source code.
+
+### Login credentials
+
+To set up login credentials, run fetcher with `--gen-secret-<name>` where name is either of these services:
 
 * `google-oauth2`
 * `twitter`
 * `telegram`
 
-After that you will be able to use these services automatically without additional authorization.
+After finishing the prompt, you will be able to use any of these services automatically without additional authorization.
 There's also a way to use an app password for Google/Gmail (saved with `--gen-secret-google-password`) but it's insecure and shouldn't be used for anything other than testing purposes

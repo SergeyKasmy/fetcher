@@ -51,6 +51,7 @@ async fn run() -> Result<()> {
 	let tasks = settings::config::tasks()?
 		.into_iter()
 		.map(|(contents, path)| {
+			tracing::debug!("Found task: {path:?}");
 			let task: fetcher::config::Task =
 				toml::from_str(&contents).map_err(|e| Error::InvalidConfig(e, path.clone()))?; // TODO: add config path to InvalidConfig
 
@@ -65,7 +66,11 @@ async fn run() -> Result<()> {
 		})
 		.collect::<Result<Tasks>>()?;
 
-	// TODO: move signal handling to main. Maybe even refactor them somewhat
+	if tasks.is_empty() {
+		tracing::warn!("No tasks provided");
+		return Ok(());
+	}
+
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
 
 	let sig = Signals::new(TERM_SIGNALS).expect("Error registering signals");
