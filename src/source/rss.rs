@@ -18,16 +18,13 @@ use crate::sink::Message;
 use crate::source::Responce;
 
 pub struct Rss {
-	// name: String,
 	// TODO: use url
 	url: String,
 	http_client: reqwest::Client,
 }
 
 impl Rss {
-	#[tracing::instrument(name = "Rss::new")]
-	pub fn new(/* name: String, */ url: String) -> Self {
-		tracing::info!("Creatng an Rss provider");
+	pub fn new(url: String) -> Self {
 		Self {
 			// name,
 			url,
@@ -35,7 +32,7 @@ impl Rss {
 		}
 	}
 
-	#[tracing::instrument(name = "Rss::get")]
+	#[tracing::instrument(skip_all)]
 	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
 		tracing::debug!("Getting RSS articles");
 		let content = self

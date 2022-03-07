@@ -26,7 +26,6 @@ pub struct Twitter {
 }
 
 impl Twitter {
-	#[tracing::instrument(name = "Twitter::new", skip(api_key, api_secret))]
 	pub fn new(
 		pretty_name: String,
 		handle: String,
@@ -34,7 +33,6 @@ impl Twitter {
 		api_secret: String,
 		filter: Vec<String>,
 	) -> Result<Self> {
-		tracing::info!("Creatng a Twitter provider");
 		Ok(Self {
 			pretty_name,
 			handle,
@@ -45,7 +43,7 @@ impl Twitter {
 		})
 	}
 
-	#[tracing::instrument(name = "Twitter::get")]
+	#[tracing::instrument(skip_all)]
 	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
 		tracing::debug!("Getting tweets");
 		if self.token.is_none() {

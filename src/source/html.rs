@@ -81,7 +81,7 @@ pub struct Html {
 }
 
 impl Html {
-	#[tracing::instrument(name = "Html::get", skip(self), fields(url = self.url.as_str()))]
+	#[tracing::instrument(skip_all)]
 	pub async fn get(&self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
 		tracing::debug!("Fetching HTML source");
 		let page = reqwest::get(self.url.as_str()).await?.text().await?;

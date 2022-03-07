@@ -45,19 +45,7 @@ fn fmt_comment_msg_text(s: &str) -> String {
 		s
 	};
 
-	s.chars().take(/* shorten to */ 50 /* chars */).collect()
-}
-
-fn fmt_comment_msg_media(m: Option<&[Media]>) -> Option<String> {
-	m.map(|v| {
-		v.iter()
-			.map(|m| match m {
-				Media::Photo(url) => format!("Media::Photo({})", url.as_str()),
-				Media::Video(url) => format!("Media::Video({})", url.as_str()),
-			})
-			.collect::<Vec<_>>()
-			.join("\n")
-	})
+	s.chars().take(/* shorten to */ 40 /* chars */).collect()
 }
 
 impl Telegram {
@@ -71,11 +59,11 @@ impl Telegram {
 		}
 	}
 
-	#[tracing::instrument(skip(message),
+	#[tracing::instrument(skip_all,
 	fields(
 		len = message.body.len(),
 		body = fmt_comment_msg_text(&message.body).as_str(),
-		media = fmt_comment_msg_media(message.media.as_deref()).as_deref()
+		media = message.media.is_some(),
 		)
 	)]
 	pub async fn send(&self, message: Message) -> Result<()> {
@@ -162,6 +150,8 @@ impl Telegram {
 	async fn send_text(&self, message: String) -> Result<TelMessage> {
 		loop {
 			tracing::info!("Sending text message");
+			tracing::debug!("Message contents: {message:?}");
+
 			match self
 				.bot
 				.send_message(self.chat_id.clone(), &message)
@@ -189,6 +179,8 @@ impl Telegram {
 	async fn send_media(&self, media: Vec<InputMedia>) -> Result<Vec<TelMessage>> {
 		loop {
 			tracing::info!("Sending media message");
+			tracing::debug!("Message contents: {media:?}");
+
 			match self
 				.bot
 				.send_media_group(self.chat_id.clone(), media.clone())
