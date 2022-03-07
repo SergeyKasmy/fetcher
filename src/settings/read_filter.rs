@@ -15,15 +15,15 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::read_filter::ReadFilter;
 
-const LAST_READ_DATA_DIR: &str = "last-read";
+const READ_DATA_DIR: &str = "read";
 
 fn read_filter_path(name: &str) -> Result<PathBuf> {
 	Ok(if cfg!(debug_assertions) {
-		PathBuf::from(format!("debug_data/last-read-id-{name}")) // FIXME
+		PathBuf::from(format!("debug_data/read/{name}")) // FIXME
 	} else {
-		xdg::BaseDirectories::with_profile(PREFIX, LAST_READ_DATA_DIR)?
+		xdg::BaseDirectories::with_profile(PREFIX, READ_DATA_DIR)?
 			.place_data_file(name)
-			.map_err(|e| Error::InaccessibleData(e, format!("LAST_READ_DATA_DIR/{name}").into()))?
+			.map_err(|e| Error::InaccessibleData(e, format!("READ_DATA_DIR/{name}").into()))?
 	})
 }
 

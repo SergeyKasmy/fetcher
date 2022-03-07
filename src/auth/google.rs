@@ -13,7 +13,6 @@ use crate::error::{Error, Result};
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
 
-// TODO: merge with
 #[derive(Deserialize)]
 struct GoogleOAuth2Responce {
 	access_token: String,

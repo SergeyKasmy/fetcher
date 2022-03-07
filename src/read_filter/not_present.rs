@@ -1,3 +1,11 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
+ */
+
 use std::collections::VecDeque;
 
 use super::{Id, Identifiable};
@@ -8,12 +16,6 @@ pub struct ReadFilterNotPresent {
 }
 
 impl ReadFilterNotPresent {
-	// pub fn new(read_list: impl IntoIterator<Item = String>) -> Self {
-	// 	Self {
-	// 		read_list: VecDeque::from_iter(read_list),
-	// 	}
-	// }
-
 	pub(crate) fn last_read(&self) -> Option<Id> {
 		// TODO: why doesn't as_deref() work?
 		self.read_list.back().map(|s| s.as_str())
