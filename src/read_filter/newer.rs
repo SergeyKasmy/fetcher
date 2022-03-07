@@ -6,7 +6,7 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use super::{Id, Identifiable};
+use super::Id;
 
 #[derive(Default, Debug)]
 pub struct ReadFilterNewer {
@@ -18,14 +18,16 @@ impl ReadFilterNewer {
 	// 	Self { last_read_id }
 	// }
 
-	pub fn last_read(&self) -> Option<Id> {
+	pub fn last_read(&self) -> Option<&str> {
 		self.last_read_id.as_deref()
 	}
 
 	/// Make sure list is sorted newest to oldest
-	pub fn remove_read_from<T: Identifiable>(&self, list: &mut Vec<T>) {
+	pub fn remove_read_from<T: Id>(&self, list: &mut Vec<T>) {
 		if let Some(last_read_id) = &self.last_read_id {
-			if let Some(last_read_id_pos) = list.iter().position(|x| x.id() == last_read_id) {
+			if let Some(last_read_id_pos) =
+				list.iter().position(|x| x.id() == last_read_id.as_str())
+			{
 				list.drain(last_read_id_pos..);
 			}
 		}
@@ -33,7 +35,7 @@ impl ReadFilterNewer {
 
 	/// Check if current_id is unread
 	/// Make sure id_list is sorted newest to oldest
-	pub fn is_unread(&self, current_id: Id, id_list: &[Id]) -> bool {
+	pub fn is_unread(&self, current_id: &str, id_list: &[&str]) -> bool {
 		if let Some(last_read_id) = &self.last_read_id {
 			if current_id == last_read_id {
 				return false;
@@ -61,7 +63,7 @@ impl ReadFilterNewer {
 		true
 	}
 
-	pub fn mark_as_read(&mut self, id: Id) {
+	pub fn mark_as_read(&mut self, id: &str) {
 		self.last_read_id = Some(id.to_owned())
 	}
 }
