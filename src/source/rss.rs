@@ -6,11 +6,12 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+use std::borrow::Cow;
+
 use rss::Channel;
 
 use crate::error::Result;
 use crate::read_filter::Id;
-use crate::read_filter::Identifiable;
 use crate::read_filter::ReadFilter;
 use crate::sink::message::Link;
 use crate::sink::message::LinkLocation;
@@ -85,8 +86,8 @@ impl std::fmt::Debug for Rss {
 	}
 }
 
-impl Identifiable for rss::Item {
-	fn id(&self) -> Id {
-		self.guid().unwrap().value()
+impl Id for rss::Item {
+	fn id(&self) -> Cow<'_, str> {
+		Cow::Borrowed(self.guid().unwrap().value())
 	}
 }

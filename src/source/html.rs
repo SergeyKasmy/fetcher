@@ -9,13 +9,15 @@
 // TODO: better handle invalid config values
 // TODO: make sure read_filter_type not_present_in_read_list only works with id_query.kind = id
 
+use std::borrow::Cow;
+
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use html5ever::rcdom::Handle;
 use soup::{NodeExt, QueryBuilderExt, Soup};
 use url::Url;
 
 use crate::error::{Error, Result};
-use crate::read_filter::ReadFilter;
+use crate::read_filter::{Id, ReadFilter};
 use crate::sink::message::{Link, LinkLocation};
 use crate::sink::{Media, Message};
 use crate::source::Responce;
@@ -45,7 +47,7 @@ pub struct TextQuery {
 	pub(crate) inner: Query,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum IdQueryKind {
 	String,
 	Date,
@@ -83,26 +85,17 @@ pub struct Html {
 impl Html {
 	#[tracing::instrument(skip_all)]
 	pub async fn get(&self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
+		// assert!(read_filter_compatible(read_filter, self.idq.kind));
+		assert!(
+			!matches!(self.idq.kind, IdQueryKind::Date),
+			"IdQueryKind Date is temporary unavailable. Use String"
+		);
 		tracing::debug!("Fetching HTML source");
+
 		let page = reqwest::get(self.url.as_str()).await?.text().await?;
 
 		let soup = Soup::new(page.as_str());
 		let items = Self::find_chain(&soup, &self.itemq);
-
-		// TODO: mb move to source and make it generic for every source?
-		#[derive(Debug)]
-		enum Id {
-			String(String),
-			Date(DateTime<Utc>),
-		}
-
-		#[derive(Debug)]
-		struct Article {
-			id: Id,
-			body: String,
-			link: Url,
-			img: Option<Url>,
-		}
 
 		let mut articles = items
 			.filter_map(|item| {
@@ -136,12 +129,16 @@ impl Html {
 					};
 
 					match &self.idq.kind {
-						IdQueryKind::String => Id::String(id_str),
-						IdQueryKind::Date => Id::Date(match Self::parse_pretty_date(&id_str) {
-							Ok(d) => d,
-							Err(e) if matches!(e, Error::InvalidDateTimeFormat(_)) => return None,
-							Err(e) => return Some(Err(e)),
-						}),
+						IdQueryKind::String => ArticleId::String(id_str),
+						IdQueryKind::Date => {
+							ArticleId::Date(match Self::parse_pretty_date(&id_str) {
+								Ok(d) => d,
+								Err(e) if matches!(e, Error::InvalidDateTimeFormat(_)) => {
+									return None
+								}
+								Err(e) => return Some(Err(e)),
+							})
+						}
 					}
 				};
 
@@ -207,19 +204,21 @@ impl Html {
 
 		tracing::debug!("Found {num} HTML articles total", num = articles.len());
 
-		if let Some(last_read_id) = read_filter.last_read() {
-			if let Some(pos) = articles.iter().position(|x| match &x.id {
-				Id::String(s) => s == last_read_id,
-				Id::Date(d) => d <= &last_read_id.parse::<DateTime<Utc>>().unwrap(), // unwrap NOTE: should be safe, we parse in the same format we save
-				                                                                     // TODO: add last_read_id format error for a nicer output
-			}) {
-				tracing::debug!(
-					"Removing {num} already read HTML articles",
-					num = articles.len() - pos
-				);
-				articles.drain(pos..);
-			}
-		}
+		// if let Some(last_read_id) = read_filter.last_read() {
+		// 	if let Some(pos) = articles.iter().position(|x| match &x.id {
+		// 		Id::String(s) => s == last_read_id,
+		// 		Id::Date(d) => d <= &last_read_id.parse::<DateTime<Utc>>().unwrap(), // unwrap NOTE: should be safe, we parse in the same format we save
+		// 		                                                                     // TODO: add last_read_id format error for a nicer output
+		// 	}) {
+		// 		tracing::debug!(
+		// 			"Removing {num} already read HTML articles",
+		// 			num = articles.len() - pos
+		// 		);
+		// 		articles.drain(pos..);
+		// 	}
+		// }
+
+		read_filter.remove_read_from(&mut articles);
 
 		tracing::debug!("{num} unread HTML articles remaining", num = articles.len());
 
@@ -228,8 +227,8 @@ impl Html {
 			.rev()
 			.map(|a| Responce {
 				id: Some(match a.id {
-					Id::String(s) => s,
-					Id::Date(d) => d.to_string(),
+					ArticleId::String(s) => s,
+					ArticleId::Date(d) => d.to_string(),
 				}),
 				msg: Message {
 					title: None,
@@ -340,3 +339,37 @@ impl Html {
 		})
 	}
 }
+
+// TODO: mb move to source and make it generic for every source?
+#[derive(Debug)]
+enum ArticleId {
+	String(String),
+	Date(DateTime<Utc>),
+}
+
+#[derive(Debug)]
+struct Article {
+	id: ArticleId,
+	body: String,
+	link: Url,
+	img: Option<Url>,
+}
+
+impl Id for Article {
+	fn id(&self) -> Cow<'_, str> {
+		match &self.id {
+			ArticleId::String(s) => Cow::Borrowed(s.as_str()),
+			ArticleId::Date(d) => todo!(),
+		}
+	}
+}
+
+/*
+/// Checks if current read filter is compatible with current id query kind
+fn read_filter_compatible(filter: &ReadFilter, idq_kind: IdQueryKind) -> bool {
+	match filter.to_kind() {
+		ReadFilterKind::NewerThanLastRead => true,
+		ReadFilterKind::NotPresentInReadList => matches!(idq_kind, IdQueryKind::String),
+	}
+}
+*/

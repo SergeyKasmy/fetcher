@@ -9,15 +9,15 @@
 pub(crate) mod newer;
 pub(crate) mod not_present;
 
+use std::borrow::Cow;
+
 use self::newer::ReadFilterNewer;
 use self::not_present::ReadFilterNotPresent;
 use crate::error::Result;
 use crate::settings;
 
-pub type Id<'a> = &'a str;
-
-pub trait Identifiable {
-	fn id(&self) -> Id;
+pub trait Id {
+	fn id(&self) -> Cow<'_, str>;
 }
 
 #[derive(Debug)]
@@ -60,26 +60,33 @@ impl ReadFilter {
 		})
 	}
 
-	pub(crate) fn last_read(&self) -> Option<Id> {
+	pub(crate) fn last_read(&self) -> Option<&str> {
 		match &self.inner {
 			ReadFilterInner::NewerThanLastRead(x) => x.last_read(),
 			ReadFilterInner::NotPresentInReadList(x) => x.last_read(),
 		}
 	}
 
-	pub(crate) fn remove_read_from<T: Identifiable>(&self, list: &mut Vec<T>) {
+	pub(crate) fn remove_read_from<T: Id>(&self, list: &mut Vec<T>) {
 		match &self.inner {
 			ReadFilterInner::NewerThanLastRead(x) => x.remove_read_from(list),
 			ReadFilterInner::NotPresentInReadList(x) => x.remove_read_from(list),
 		}
 	}
 
-	pub(crate) fn mark_as_read(&mut self, id: Id) -> Result<()> {
+	pub(crate) fn mark_as_read(&mut self, id: &str) -> Result<()> {
 		match &mut self.inner {
 			ReadFilterInner::NewerThanLastRead(x) => x.mark_as_read(id),
 			ReadFilterInner::NotPresentInReadList(x) => x.mark_as_read(id),
 		}
 
 		settings::save_read_filter(self)
+	}
+
+	pub(crate) fn to_kind(&self) -> ReadFilterKind {
+		match &self.inner {
+			ReadFilterInner::NewerThanLastRead(_) => ReadFilterKind::NewerThanLastRead,
+			ReadFilterInner::NotPresentInReadList(_) => ReadFilterKind::NotPresentInReadList,
+		}
 	}
 }

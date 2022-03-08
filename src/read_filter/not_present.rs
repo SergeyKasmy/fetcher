@@ -8,7 +8,7 @@
 
 use std::collections::VecDeque;
 
-use super::{Id, Identifiable};
+use super::Id;
 
 #[derive(Default, Debug)]
 pub struct ReadFilterNotPresent {
@@ -16,12 +16,12 @@ pub struct ReadFilterNotPresent {
 }
 
 impl ReadFilterNotPresent {
-	pub(crate) fn last_read(&self) -> Option<Id> {
+	pub(crate) fn last_read(&self) -> Option<&str> {
 		// TODO: why doesn't as_deref() work?
 		self.read_list.back().map(|s| s.as_str())
 	}
 
-	pub(crate) fn remove_read_from<T: Identifiable>(&self, list: &mut Vec<T>) {
+	pub(crate) fn remove_read_from<T: Id>(&self, list: &mut Vec<T>) {
 		list.retain(|elem| {
 			!self
 				.read_list
@@ -30,7 +30,7 @@ impl ReadFilterNotPresent {
 		});
 	}
 
-	pub(crate) fn mark_as_read(&mut self, id: Id) {
+	pub(crate) fn mark_as_read(&mut self, id: &str) {
 		self.read_list.push_back(id.to_owned());
 	}
 }

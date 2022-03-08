@@ -192,6 +192,12 @@ impl Telegram {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
 					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
 				}
+				Err(RequestError::Api(ApiError::Unknown(err_str)))
+					if err_str == "Bad Request: failed to get HTTP URL content" =>
+				{
+					tracing::warn!("{err_str}. Retrying in 30 seconds");
+					tokio::time::sleep(Duration::from_secs(30)).await;
+				}
 				Err(e) => {
 					return Err(
 						(e, Box::new(media) as Box<dyn std::fmt::Debug + Send + Sync>).into(),
