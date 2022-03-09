@@ -5,6 +5,7 @@
  *
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
+#![warn(clippy::pedantic)]
 
 // TODO: more tests
 
