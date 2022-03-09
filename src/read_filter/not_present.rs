@@ -11,14 +11,14 @@ use std::collections::VecDeque;
 use super::Id;
 
 #[derive(Default, Debug)]
-pub struct ReadFilterNotPresent {
+pub struct NotPresent {
 	pub(crate) read_list: VecDeque<String>,
 }
 
-impl ReadFilterNotPresent {
+impl NotPresent {
 	pub(crate) fn last_read(&self) -> Option<&str> {
 		// TODO: why doesn't as_deref() work?
-		self.read_list.back().map(|s| s.as_str())
+		self.read_list.back().map(String::as_str)
 	}
 
 	pub(crate) fn remove_read_from<T: Id>(&self, list: &mut Vec<T>) {

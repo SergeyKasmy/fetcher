@@ -25,9 +25,9 @@ pub struct Rss {
 }
 
 impl Rss {
+	#[must_use]
 	pub fn new(url: String) -> Self {
 		Self {
-			// name,
 			url,
 			http_client: reqwest::Client::new(),
 		}

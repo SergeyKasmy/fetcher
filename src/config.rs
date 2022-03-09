@@ -19,7 +19,7 @@ use serde::Deserialize;
 use crate::error::Result;
 use crate::task;
 
-use self::read_filter::ReadFilterKind;
+use self::read_filter::Kind;
 use self::sink::Sink;
 use self::source::Source;
 
@@ -28,7 +28,7 @@ use self::source::Source;
 pub struct Task {
 	disabled: Option<bool>,
 	#[serde(rename = "read_filter_type")]
-	read_filter_kind: ReadFilterKind,
+	read_filter_kind: Kind,
 	refresh: u64,
 	source: Source,
 	sink: Sink,

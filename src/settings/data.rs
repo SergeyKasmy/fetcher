@@ -17,8 +17,7 @@ use teloxide::Bot;
 
 use super::PREFIX;
 use crate::{
-	auth::GoogleAuth,
-	config,
+	auth, config,
 	error::{Error, Result},
 };
 
@@ -59,13 +58,20 @@ fn data(name: &str) -> Result<String> {
 	fs::read_to_string(&f).map_err(|e| Error::InaccessibleData(e, f))
 }
 
-pub fn google_oauth2() -> Result<GoogleAuth> {
-	let conf: config::auth::GoogleAuth = serde_json::from_str(&data(GOOGLE_OAUTH2)?)
+#[allow(clippy::doc_markdown)] // TODO
+/// Get date required for authentication with Google OAuth2
+///
+/// # Errors
+/// * if the file is inaccessible
+/// * if the file is corrupted
+pub fn google_oauth2() -> Result<auth::Google> {
+	let conf: config::auth::Google = serde_json::from_str(&data(GOOGLE_OAUTH2)?)
 		.map_err(|e| Error::CorruptedData(e, GOOGLE_OAUTH2.into()))?;
 
 	Ok(conf.parse())
 }
 
+/// FIXME: rename to email password
 pub fn google_password() -> Result<String> {
 	data(GOOGLE_PASS)
 }
@@ -95,11 +101,11 @@ pub async fn generate_google_oauth2() -> Result<()> {
 	let client_secret = input("Google OAuth2 client secret: ", 40)?;
 	let access_code = input(&format!("Open the link below and paste the access code:\nhttps://accounts.google.com/o/oauth2/auth?scope={SCOPE}&client_id={client_id}&response_type=code&redirect_uri=urn:ietf:wg:oauth:2.0:oob\nAccess code: "), 75)?;
 	let refresh_token =
-		GoogleAuth::generate_refresh_token(&client_id, &client_secret, &access_code).await?;
+		auth::Google::generate_refresh_token(&client_id, &client_secret, &access_code).await?;
 
 	save_data(
 		GOOGLE_OAUTH2,
-		&serde_json::to_string(&config::auth::GoogleAuth {
+		&serde_json::to_string(&config::auth::Google {
 			client_id,
 			client_secret,
 			refresh_token,

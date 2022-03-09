@@ -6,11 +6,11 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use crate::auth::GoogleAuth;
+use crate::auth;
 use crate::error::Result;
 
 pub enum Auth {
-	GoogleAuth(GoogleAuth),
+	GoogleAuth(auth::Google),
 	Password(String),
 }
 
@@ -33,7 +33,7 @@ pub(super) trait GoogleAuthExt {
 }
 
 #[async_trait::async_trait]
-impl GoogleAuthExt for GoogleAuth {
+impl GoogleAuthExt for auth::Google {
 	async fn as_imap_oauth2<'a>(&'a mut self, email: &'a str) -> Result<ImapOAuth2<'a>> {
 		Ok(ImapOAuth2 {
 			email,

@@ -38,7 +38,7 @@ impl Email {
 				self.filters.parse(),
 				self.view_mode.parse(),
 				self.footer,
-			)?,
+			),
 			Auth::Password => source::Email::with_password(
 				self.imap,
 				self.email,

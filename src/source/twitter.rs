@@ -26,21 +26,22 @@ pub struct Twitter {
 }
 
 impl Twitter {
+	#[must_use]
 	pub fn new(
 		pretty_name: String,
 		handle: String,
 		api_key: String,
 		api_secret: String,
 		filter: Vec<String>,
-	) -> Result<Self> {
-		Ok(Self {
+	) -> Self {
+		Self {
 			pretty_name,
 			handle,
 			api_key,
 			api_secret,
 			token: None,
 			filter,
-		})
+		}
 	}
 
 	#[tracing::instrument(skip_all)]

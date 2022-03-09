@@ -21,7 +21,7 @@ pub(crate) enum QueryKind {
 
 impl QueryKind {
 	fn parse(self) -> source::html::QueryKind {
-		use QueryKind::*;
+		use QueryKind::{Attr, Class, Tag};
 
 		match self {
 			Tag { value } => source::html::QueryKind::Tag { value },
@@ -40,7 +40,7 @@ pub(crate) enum DataLocation {
 
 impl DataLocation {
 	fn parse(self) -> source::html::DataLocation {
-		use DataLocation::*;
+		use DataLocation::{Attr, Text};
 
 		match self {
 			Text => source::html::DataLocation::Text,
@@ -58,7 +58,7 @@ pub(crate) struct Query {
 impl Query {
 	fn parse(self) -> source::html::Query {
 		source::html::Query {
-			kind: self.kind.into_iter().map(|x| x.parse()).collect(),
+			kind: self.kind.into_iter().map(QueryKind::parse).collect(),
 			data_location: self.data_location.parse(),
 		}
 	}
@@ -167,11 +167,11 @@ impl Html {
 	pub(crate) fn parse(self) -> source::Html {
 		source::Html {
 			url: self.url,
-			itemq: self.itemq.into_iter().map(|x| x.parse()).collect(),
-			textq: self.textq.into_iter().map(|x| x.parse()).collect(),
+			itemq: self.itemq.into_iter().map(QueryKind::parse).collect(),
+			textq: self.textq.into_iter().map(TextQuery::parse).collect(),
 			idq: self.idq.parse(),
 			linkq: self.linkq.parse(),
-			imgq: self.imgq.map(|x| x.parse()),
+			imgq: self.imgq.map(ImageQuery::parse),
 		}
 	}
 }

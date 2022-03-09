@@ -20,7 +20,7 @@ pub(crate) enum ViewMode {
 
 impl ViewMode {
 	pub(crate) fn parse(self) -> source::email::ViewMode {
-		use ViewMode::*;
+		use ViewMode::{Delete, MarkAsRead, ReadOnly};
 
 		match self {
 			ReadOnly => source::email::ViewMode::ReadOnly,

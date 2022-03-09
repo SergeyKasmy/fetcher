@@ -27,7 +27,12 @@ fn read_filter_path(name: &str) -> Result<PathBuf> {
 	})
 }
 
-pub fn read_filter(name: &str) -> Result<Option<ReadFilter>> {
+/// Returns a read filter for the task name from the filesystem.
+///
+/// # Errors
+/// * if the file is inaccessible
+/// * if the file is corrupted
+pub fn get(name: &str) -> Result<Option<ReadFilter>> {
 	let path = read_filter_path(name)?;
 	fs::read_to_string(&path)
 		.ok()
@@ -41,11 +46,12 @@ pub fn read_filter(name: &str) -> Result<Option<ReadFilter>> {
 
 /// Save the provided read filter to the fs or remove it from the fs if it's empty
 ///
-/// # Errors if
-/// * the default read filter save file path is inaccessible
-/// * the write failed
-/// * the remove failed
-pub fn save_read_filter(read_filter: &ReadFilter) -> Result<()> {
+/// # Errors
+/// * if the default read filter save file path is inaccessible
+/// * if the write failed
+/// * if the remove failed
+#[allow(clippy::missing_panics_doc)]
+pub fn save(read_filter: &ReadFilter) -> Result<()> {
 	let path = read_filter_path(&read_filter.name)?;
 	// fs::write(&path, id).map_err(|e| Error::Write(e, path))
 

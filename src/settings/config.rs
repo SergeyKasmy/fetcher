@@ -19,7 +19,10 @@ const CONFIG_FILE_EXT: &str = ".toml";
 /// Ignore configs in directories lower in priority if one in higher priority has configs
 /// Returns (file contents, file path)
 pub fn tasks() -> Result<Vec<(String, PathBuf)>> {
-	let cfg_dirs = if !cfg!(debug_assertions) {
+	let cfg_dirs = if cfg!(debug_assertions) {
+		// TODO: get that dir from env var
+		vec![PathBuf::from("debug_data/cfg".to_string())]
+	} else {
 		let base_dirs = xdg::BaseDirectories::with_prefix(PREFIX)?;
 
 		let mut cfg_dirs = Vec::with_capacity(2);
@@ -27,9 +30,6 @@ pub fn tasks() -> Result<Vec<(String, PathBuf)>> {
 		cfg_dirs.append(&mut base_dirs.get_config_dirs());
 
 		cfg_dirs
-	} else {
-		// TODO: get that dir from env var
-		vec![PathBuf::from("debug_data/cfg".to_string())]
 	};
 
 	let mut cfgs = Vec::new();

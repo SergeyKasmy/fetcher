@@ -26,14 +26,15 @@ struct AccessToken {
 }
 
 #[derive(Debug)]
-pub struct GoogleAuth {
+pub struct Google {
 	client_id: String,
 	client_secret: String,
 	refresh_token: String,
 	access_token: Option<AccessToken>,
 }
 
-impl GoogleAuth {
+impl Google {
+	#[must_use]
 	pub fn new(client_id: String, client_secret: String, refresh_token: String) -> Self {
 		Self {
 			client_id,
@@ -43,6 +44,7 @@ impl GoogleAuth {
 		}
 	}
 
+	#[allow(clippy::items_after_statements)] // TODO
 	pub async fn generate_refresh_token(
 		client_id: &str,
 		client_secret: &str,
