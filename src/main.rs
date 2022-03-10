@@ -39,7 +39,18 @@ async fn main() -> anyhow::Result<()> {
 		.without_time()
 		.init();
 
-	tracing::info!("Starting fetcher v{}", std::env!("CARGO_PKG_VERSION"));
+	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
+		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
+	} else {
+		concat!(
+			std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT"),
+			"-",
+			std::env!("VERGEN_GIT_SHA_SHORT"),
+			" on branch ",
+			std::env!("VERGEN_GIT_BRANCH")
+		)
+	};
+	tracing::info!("Running fetcher v{}", version);
 
 	// TODO: add option to send to optional global debug chat to test first
 	match std::env::args().nth(1).as_deref() {

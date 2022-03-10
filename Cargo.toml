@@ -40,3 +40,6 @@ tracing-log = "0.1.2"
 tracing-subscriber = { version = "0.3.9", features = ["env-filter", "tracing-log"] }
 url = "2.2.2"
 xdg = "2.4.1"
+
+[build-dependencies]
+vergen = { version = "7.0.0", features = [ "git" ], default-features = false }
