@@ -30,12 +30,14 @@ use std::sync::Arc;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::{select, sync::watch::Receiver};
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
 	tracing_subscriber::fmt()
-		// FIXME: properly set INFO as default log level
-		.with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+		.with_env_filter(
+			EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::from("fetcher=info")), // TODO: that doesn't look right. Isn't there a better way to use info by default?
+		)
 		.without_time()
 		.init();
 
