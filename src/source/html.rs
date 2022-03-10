@@ -85,11 +85,6 @@ pub struct Html {
 impl Html {
 	#[tracing::instrument(skip_all)]
 	pub async fn get(&self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
-		// assert!(read_filter_compatible(read_filter, self.idq.kind));
-		assert!(
-			!matches!(self.idq.kind, IdQueryKind::Date),
-			"IdQueryKind Date is temporary unavailable. Use String"
-		);
 		tracing::debug!("Fetching HTML source");
 
 		let page = reqwest::get(self.url.as_str()).await?.text().await?;
@@ -159,40 +154,43 @@ impl Html {
 					.collect::<Vec<_>>()
 					.join("\n\n");
 
-				let img: Option<Url> = match self.imgq.as_ref() {
-					Some(img_query) => {
+				let img = self
+					.imgq
+					.as_ref()
+					.and_then(|img_query| {
 						let mut img_url = match Self::extract_data(
 							&mut Self::find_chain(&item, &img_query.inner.inner.kind), // TODO: check iterator not empty
 							&img_query.inner.inner,                                    // TODO: make less fugly
 						) {
-							Some(s) => s.trim().to_string(),
+							Some(s) => s.trim().to_owned(),
 							None => {
 								if img_query.optional {
 									tracing::debug!("Found no image for the provided query but it's optional, skipping...");
 									return None;
-								} else {
-									return Some(Err(Error::Html(
-										"image not found but it's not optional",
-									)));
 								}
+
+								return Some(Err(Error::Html(
+									"image not found but it's not optional",
+								)));
 							}
 						};
 
-						if let Some(s) = &img_query.inner.prepend {
-							img_url.insert_str(0, s);
+						if let Some(prepend) = &img_query.inner.prepend {
+							img_url.insert_str(0, prepend);
 						}
 
-						match img_url
-							.as_str()
-							.try_into()
-							.map_err(|_| Error::Html("The found url isn't an actual url!"))	// FiXME
-						{
-							Ok(v) => Some(v),
-							Err(e) => return Some(Err(e)),
-						}
-					}
-					None => None,
+						Some(
+							Url::try_from(img_url.as_str())
+								.map_err(|_| Error::Html("The found url isn't an actual url!")),
+						)
+					})
+					.transpose();
+
+				let img = match img {
+					Ok(v) => v,
+					Err(e) => return Some(Err(e)),
 				};
+
 				Some(Ok(Article {
 					id,
 					body,

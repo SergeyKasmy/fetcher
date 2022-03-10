@@ -23,7 +23,7 @@ pub struct Link {
 }
 
 /// Either embed the link into the title or put it as a separate "Link" button at the botton of the message.
-/// PreferTitle falls back to Bottom if Message.title is None
+/// `PreferTitle` falls back to `Bottom` if Message.title is None
 #[derive(Debug)]
 pub enum LinkLocation {
 	PreferTitle,

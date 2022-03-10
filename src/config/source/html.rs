@@ -21,7 +21,7 @@ pub(crate) enum QueryKind {
 
 impl QueryKind {
 	fn parse(self) -> source::html::QueryKind {
-		use QueryKind::*;
+		use QueryKind::{Attr, Class, Tag};
 
 		match self {
 			Tag { value } => source::html::QueryKind::Tag { value },
@@ -40,7 +40,7 @@ pub(crate) enum DataLocation {
 
 impl DataLocation {
 	fn parse(self) -> source::html::DataLocation {
-		use DataLocation::*;
+		use DataLocation::{Attr, Text};
 
 		match self {
 			Text => source::html::DataLocation::Text,
@@ -58,7 +58,7 @@ pub(crate) struct Query {
 impl Query {
 	fn parse(self) -> source::html::Query {
 		source::html::Query {
-			kind: self.kind.into_iter().map(|x| x.parse()).collect(),
+			kind: self.kind.into_iter().map(QueryKind::parse).collect(),
 			data_location: self.data_location.parse(),
 		}
 	}
@@ -98,9 +98,9 @@ impl IdQueryKind {
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct IdQuery {
-	kind: IdQueryKind,
+	pub(crate) kind: IdQueryKind,
 	#[serde(rename = "query")]
-	inner: Query,
+	pub(crate) inner: Query,
 }
 
 impl IdQuery {
@@ -146,32 +146,32 @@ impl ImageQuery {
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct Html {
-	url: Url,
+	pub(crate) url: Url,
 	#[serde(rename = "item_query")]
-	itemq: Vec<QueryKind>,
+	pub(crate) itemq: Vec<QueryKind>,
 
 	#[serde(rename = "text_query")]
-	textq: Vec<TextQuery>,
+	pub(crate) textq: Vec<TextQuery>,
 
 	#[serde(rename = "id_query")]
-	idq: IdQuery,
+	pub(crate) idq: IdQuery,
 
 	#[serde(rename = "link_query")]
-	linkq: LinkQuery,
+	pub(crate) linkq: LinkQuery,
 
 	#[serde(rename = "img_query")]
-	imgq: Option<ImageQuery>,
+	pub(crate) imgq: Option<ImageQuery>,
 }
 
 impl Html {
 	pub(crate) fn parse(self) -> source::Html {
 		source::Html {
 			url: self.url,
-			itemq: self.itemq.into_iter().map(|x| x.parse()).collect(),
-			textq: self.textq.into_iter().map(|x| x.parse()).collect(),
+			itemq: self.itemq.into_iter().map(QueryKind::parse).collect(),
+			textq: self.textq.into_iter().map(TextQuery::parse).collect(),
 			idq: self.idq.parse(),
 			linkq: self.linkq.parse(),
-			imgq: self.imgq.map(|x| x.parse()),
+			imgq: self.imgq.map(ImageQuery::parse),
 		}
 	}
 }

@@ -49,6 +49,7 @@ fn fmt_comment_msg_text(s: &str) -> String {
 }
 
 impl Telegram {
+	#[must_use]
 	pub fn new(bot: Bot, chat_id: impl Into<ChatId>) -> Self {
 		Self {
 			// TODO: THIS BLOCKS. WHY??????
@@ -59,6 +60,7 @@ impl Telegram {
 		}
 	}
 
+	#[allow(clippy::items_after_statements)] // TODO
 	#[tracing::instrument(skip_all,
 	fields(
 		len = message.body.len(),
@@ -76,7 +78,7 @@ impl Telegram {
 
 		// TODO: move to a function
 		const PADDING: usize = 10; // how much free space to reserve for new lines and "Link" buttons. 10 should be enough
-		let approx_msg_len = title.as_ref().map(|t| t.len()).unwrap_or(0) + body.len();
+		let approx_msg_len = title.as_ref().map_or(0, String::len) + body.len();
 		let body = if approx_msg_len + PADDING > 4096 {
 			// TODO: split the message properly instead of just throwing the rest away
 			tracing::warn!("Message too long ({approx_msg_len})");
@@ -163,7 +165,10 @@ impl Telegram {
 				Ok(message) => return Ok(message),
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
-					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
+					tokio::time::sleep(Duration::from_secs(retry_after.try_into().expect(
+						"Telegram returned a negative RetryAfter value. How did that even happen?",
+					)))
+					.await;
 				}
 				Err(e) => {
 					return Err((
@@ -190,7 +195,10 @@ impl Telegram {
 				Ok(messages) => return Ok(messages),
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
-					tokio::time::sleep(Duration::from_secs(retry_after as u64)).await;
+					tokio::time::sleep(Duration::from_secs(retry_after.try_into().expect(
+						"Telegram returned a negative RetryAfter value. How did that even happen?",
+					)))
+					.await;
 				}
 				Err(RequestError::Api(ApiError::Unknown(err_str)))
 					if err_str == "Bad Request: failed to get HTTP URL content" =>

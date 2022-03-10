@@ -22,12 +22,12 @@ impl Twitter {
 	pub(crate) fn parse(self) -> Result<source::Twitter> {
 		let (api_key, api_secret) = settings::twitter()?;
 
-		source::Twitter::new(
+		Ok(source::Twitter::new(
 			self.pretty_name,
 			self.handle,
 			api_key,
 			api_secret,
 			self.filter,
-		)
+		))
 	}
 }

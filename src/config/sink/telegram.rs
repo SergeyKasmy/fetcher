@@ -19,6 +19,10 @@ pub(crate) struct Telegram {
 
 impl Telegram {
 	pub(crate) fn parse(self) -> Result<sink::Telegram> {
-		Ok(sink::Telegram::new(settings::telegram()?, self.chat_id))
+		let chat_id = match std::env::var("FETCHER_DEBUG_CHAT_ID") {
+			Ok(s) => ChatId::try_from(s).expect("Invalid chat id in FETCHER_DEBUG_CHAT_ID"),
+			_ => self.chat_id,
+		};
+		Ok(sink::Telegram::new(settings::telegram()?, chat_id))
 	}
 }

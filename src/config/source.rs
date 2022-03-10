@@ -6,10 +6,10 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-mod email;
-mod html;
-mod rss;
-mod twitter;
+pub(crate) mod email;
+pub(crate) mod html;
+pub(crate) mod rss;
+pub(crate) mod twitter;
 
 use serde::Deserialize;
 

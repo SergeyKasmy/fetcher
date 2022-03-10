@@ -8,7 +8,7 @@
 
 use std::collections::HashMap;
 
-use crate::{read_filter::ReadFilterKind, sink::Sink, source::Source};
+use crate::{read_filter::Kind, sink::Sink, source::Source};
 
 pub type Tasks = HashMap<String, Task>;
 
@@ -16,7 +16,7 @@ pub type Tasks = HashMap<String, Task>;
 pub struct Task {
 	pub disabled: Option<bool>,
 	pub refresh: u64,
-	pub read_filter_kind: ReadFilterKind,
+	pub read_filter_kind: Kind,
 	pub sink: Sink,
 	pub source: Source,
 }

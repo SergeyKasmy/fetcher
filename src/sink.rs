@@ -20,6 +20,7 @@ pub enum Sink {
 }
 
 impl Sink {
+	#[allow(clippy::missing_errors_doc)] // TODO
 	pub async fn send(&self, message: Message) -> Result<()> {
 		match self {
 			Self::Telegram(t) => t.send(message).await,

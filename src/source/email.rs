@@ -15,7 +15,7 @@ pub use view_mode::ViewMode;
 use mailparse::ParsedMail;
 
 use self::auth::GoogleAuthExt;
-use crate::auth::GoogleAuth;
+use crate::auth::Google as GoogleAuth;
 use crate::error::{Error, Result};
 use crate::sink::Message;
 use crate::source::Responce;
@@ -39,6 +39,7 @@ pub struct Email {
 }
 
 impl Email {
+	#[must_use]
 	pub fn with_password(
 		imap: String,
 		email: String,
@@ -57,6 +58,8 @@ impl Email {
 		}
 	}
 
+	// FIXME: google oauth2 is only available to gmail.com, remove the imap field
+	#[must_use]
 	pub fn with_google_oauth2(
 		imap: String,
 		email: String,
@@ -64,15 +67,15 @@ impl Email {
 		filters: Filters,
 		view_mode: ViewMode,
 		footer: Option<String>,
-	) -> Result<Self> {
-		Ok(Self {
+	) -> Self {
+		Self {
 			imap,
 			email,
 			auth: Auth::GoogleAuth(auth),
 			filters,
 			view_mode,
 			footer,
-		})
+		}
 	}
 
 	/// Even though it's marked async, the fetching itself is not async yet
@@ -172,7 +175,7 @@ impl Email {
 				Ok(Responce {
 					id: None,
 					msg: Self::parse(
-						mailparse::parse_mail(x.body().unwrap())?, // unwrap NOTE: temporary but it's safe for now because of the check above
+						&mailparse::parse_mail(x.body().unwrap())?, // unwrap NOTE: temporary but it's safe for now because of the check above
 						self.footer.as_deref(),
 					)?,
 				})
@@ -180,7 +183,7 @@ impl Email {
 			.collect::<Result<Vec<Responce>>>()
 	}
 
-	fn parse(mail: ParsedMail, remove_after: Option<&str>) -> Result<Message> {
+	fn parse(mail: &ParsedMail, remove_after: Option<&str>) -> Result<Message> {
 		let (subject, body) = {
 			let subject = mail.headers.iter().find_map(|x| {
 				if x.get_key_ref() == "Subject" {
@@ -191,7 +194,7 @@ impl Email {
 			});
 
 			let mut body = if mail.subparts.is_empty() {
-				&mail
+				mail
 			} else {
 				mail.subparts
 					.iter()

@@ -8,4 +8,4 @@
 
 mod google;
 
-pub use google::GoogleAuth;
+pub use google::Google;

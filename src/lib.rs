@@ -5,6 +5,9 @@
  *
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
+#![warn(clippy::pedantic)]
+#![allow(clippy::missing_panics_doc)] // TODO
+#![allow(clippy::missing_errors_doc)]
 
 // TODO: more tests
 
