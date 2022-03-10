@@ -20,8 +20,8 @@ pub enum Error {
 	#[error("XDG error")]
 	Xdg(#[from] xdg::BaseDirectoriesError),
 
-	#[error("Inaccessible config file")]
-	InaccessibleConfig(#[source] io::Error),
+	#[error("Inaccessible config file ({1})")]
+	InaccessibleConfig(#[source] io::Error, PathBuf),
 
 	#[error("Inaccessible data file ({1})")]
 	InaccessibleData(#[source] io::Error, PathBuf),
@@ -33,10 +33,13 @@ pub enum Error {
 	Write(#[source] io::Error, PathBuf),
 
 	#[error("Invalid config {1}")]
-	InvalidConfig(#[source] toml::de::Error, PathBuf),
+	InvalidConfig(#[source] figment::error::Error, PathBuf),
 
 	#[error("Incompatible config values in {1}: {0}")]
 	IncompatibleConfigValues(&'static str, PathBuf),
+
+	#[error("Template {0} not found")]
+	TemplateNotFound(PathBuf),
 
 	// stdin & stdout stuff
 	#[error("stdin error")]

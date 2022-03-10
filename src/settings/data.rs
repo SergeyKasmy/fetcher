@@ -53,7 +53,7 @@ fn input(prompt: &str, expected_input_len: usize) -> Result<String> {
 	Ok(buf.trim().to_string())
 }
 
-fn data(name: &str) -> Result<String> {
+pub fn data(name: &str) -> Result<String> {
 	let f = data_path(name)?;
 	fs::read_to_string(&f).map_err(|e| Error::InaccessibleData(e, f))
 }
