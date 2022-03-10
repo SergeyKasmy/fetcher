@@ -39,6 +39,8 @@ async fn main() -> anyhow::Result<()> {
 		.without_time()
 		.init();
 
+	tracing::info!("Starting fetcher v{}", std::env!("CARGO_PKG_VERSION"));
+
 	// TODO: add option to send to optional global debug chat to test first
 	match std::env::args().nth(1).as_deref() {
 		Some("--gen-secret-google-oauth2") => generate_google_oauth2().await?,
