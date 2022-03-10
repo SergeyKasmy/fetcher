@@ -11,12 +11,13 @@
 
 pub(crate) mod auth;
 pub(crate) mod read_filter;
-mod sink;
-mod source;
+pub(crate) mod sink;
+pub(crate) mod source;
 
 use serde::Deserialize;
+use std::path::Path;
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::task;
 
 use self::read_filter::Kind;
@@ -35,7 +36,17 @@ pub struct Task {
 }
 
 impl Task {
-	pub fn parse(self) -> Result<task::Task> {
+	pub fn parse(self, conf_path: &Path) -> Result<task::Task> {
+		if let read_filter::Kind::NewerThanRead = self.read_filter_kind {
+			if let Source::Html(html) = &self.source {
+				if let source::html::IdQueryKind::Date = html.idq.kind {
+					return Err(Error::IncompatibleConfigValues(
+						r#"HTML source id of type "date" isn't compatible with read_filter_type of "not_present_in_read_list""#,
+						conf_path.to_owned(),
+					));
+				}
+			}
+		}
 		Ok(task::Task {
 			disabled: self.disabled,
 			read_filter_kind: self.read_filter_kind.parse(),

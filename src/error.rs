@@ -35,6 +35,9 @@ pub enum Error {
 	#[error("Invalid config {1}")]
 	InvalidConfig(#[source] toml::de::Error, PathBuf),
 
+	#[error("Incompatible config values in {1}: {0}")]
+	IncompatibleConfigValues(&'static str, PathBuf),
+
 	// stdin & stdout stuff
 	#[error("stdin error")]
 	Stdin(#[source] io::Error),

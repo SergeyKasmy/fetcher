@@ -61,7 +61,7 @@ async fn run() -> Result<()> {
 					.to_str()
 					.expect("Config file name isn't a valid unicode")
 					.to_string(),
-				task.parse()?,
+				task.parse(&path)?,
 			))
 		})
 		.collect::<Result<Tasks>>()?;

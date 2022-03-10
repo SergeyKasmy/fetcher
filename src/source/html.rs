@@ -85,11 +85,6 @@ pub struct Html {
 impl Html {
 	#[tracing::instrument(skip_all)]
 	pub async fn get(&self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
-		// assert!(read_filter_compatible(read_filter, self.idq.kind));
-		assert!(
-			!matches!(self.idq.kind, IdQueryKind::Date),
-			"IdQueryKind Date is temporary unavailable. Use String"
-		);
 		tracing::debug!("Fetching HTML source");
 
 		let page = reqwest::get(self.url.as_str()).await?.text().await?;

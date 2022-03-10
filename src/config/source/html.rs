@@ -98,9 +98,9 @@ impl IdQueryKind {
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct IdQuery {
-	kind: IdQueryKind,
+	pub(crate) kind: IdQueryKind,
 	#[serde(rename = "query")]
-	inner: Query,
+	pub(crate) inner: Query,
 }
 
 impl IdQuery {
@@ -146,21 +146,21 @@ impl ImageQuery {
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct Html {
-	url: Url,
+	pub(crate) url: Url,
 	#[serde(rename = "item_query")]
-	itemq: Vec<QueryKind>,
+	pub(crate) itemq: Vec<QueryKind>,
 
 	#[serde(rename = "text_query")]
-	textq: Vec<TextQuery>,
+	pub(crate) textq: Vec<TextQuery>,
 
 	#[serde(rename = "id_query")]
-	idq: IdQuery,
+	pub(crate) idq: IdQuery,
 
 	#[serde(rename = "link_query")]
-	linkq: LinkQuery,
+	pub(crate) linkq: LinkQuery,
 
 	#[serde(rename = "img_query")]
-	imgq: Option<ImageQuery>,
+	pub(crate) imgq: Option<ImageQuery>,
 }
 
 impl Html {
