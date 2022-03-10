@@ -15,7 +15,7 @@ pub(crate) mod sink;
 pub(crate) mod source;
 
 use serde::Deserialize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::error::{Error, Result};
 use crate::task;
@@ -24,8 +24,16 @@ use self::read_filter::Kind;
 use self::sink::Sink;
 use self::source::Source;
 
+// #[derive(Deserialize, Debug)]
+// #[serde(transparent, rename = "templates")]
+// pub struct Templates(pub Option<Vec<PathBuf>>);
+
 #[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+pub struct Templates {
+	pub templates: Option<Vec<PathBuf>>,
+}
+
+#[derive(Deserialize, Debug)]
 pub struct Task {
 	disabled: Option<bool>,
 	#[serde(rename = "read_filter_type")]

@@ -33,7 +33,7 @@ pub enum Error {
 	Write(#[source] io::Error, PathBuf),
 
 	#[error("Invalid config {1}")]
-	InvalidConfig(#[source] toml::de::Error, PathBuf),
+	InvalidConfig(#[source] figment::error::Error, PathBuf),
 
 	#[error("Incompatible config values in {1}: {0}")]
 	IncompatibleConfigValues(&'static str, PathBuf),

@@ -7,6 +7,7 @@
  */
 
 use fetcher::{
+	config,
 	error::Error,
 	error::Result,
 	run_task,
@@ -15,6 +16,10 @@ use fetcher::{
 		generate_twitter_auth,
 	},
 	task::Tasks,
+};
+use figment::{
+	providers::{Format, Toml},
+	Figment,
 };
 use futures::future::try_join_all;
 use futures::StreamExt;
@@ -52,8 +57,26 @@ async fn run() -> Result<()> {
 		.into_iter()
 		.map(|(contents, path)| {
 			tracing::debug!("Found task: {path:?}");
-			let task: fetcher::config::Task =
-				toml::from_str(&contents).map_err(|e| Error::InvalidConfig(e, path.clone()))?; // TODO: add config path to InvalidConfig
+			let templates: config::Templates = Figment::new()
+				.merge(Toml::string(&contents))
+				.extract()
+				.map_err(|e| Error::InvalidConfig(e, path.clone()))?;
+
+			let mut conf = Figment::new();
+
+			if let Some(templates) = templates.templates {
+				for tmpl_path in templates {
+					conf = conf.merge(Toml::string(&settings::data::data(&format!(
+						"templates/{name}.toml",
+						name = tmpl_path.to_string_lossy()
+					))?));
+				}
+			}
+
+			let task: config::Task = conf
+				.merge(Toml::string(&contents))
+				.extract()
+				.map_err(|e| Error::InvalidConfig(e, path.clone()))?;
 
 			Ok((
 				path.file_stem()

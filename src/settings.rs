@@ -7,7 +7,7 @@
  */
 
 pub mod config;
-mod data;
+pub mod data;
 mod read_filter;
 
 pub use self::data::{
