@@ -66,10 +66,11 @@ async fn run() -> Result<()> {
 
 			if let Some(templates) = templates.templates {
 				for tmpl_path in templates {
-					conf = conf.merge(Toml::string(&settings::data::data(&format!(
-						"templates/{name}.toml",
-						name = tmpl_path.to_string_lossy()
-					))?));
+					let (tmpl, tmpl_full_path) = settings::config::template(&tmpl_path)?;
+
+					tracing::debug!("Using template: {}", tmpl_full_path.display());
+
+					conf = conf.merge(Toml::string(&tmpl));
 				}
 			}
 
