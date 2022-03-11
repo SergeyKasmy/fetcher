@@ -14,7 +14,7 @@ pub type Tasks = HashMap<String, Task>;
 
 #[derive(Debug)]
 pub struct Task {
-	pub disabled: Option<bool>,
+	pub disabled: bool,
 	pub refresh: u64,
 	pub read_filter_kind: Kind,
 	pub sink: Sink,

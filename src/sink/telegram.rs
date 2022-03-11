@@ -139,7 +139,8 @@ impl Telegram {
 				Err(Error::Telegram(RequestError::Api(ApiError::Unknown(e)), _))
 					if e == "Bad Request: wrong file identifier/HTTP URL specified" =>
 				{
-					tracing::error!("Telegram disapproved of the media URL ({e}), sending the message as pure text");
+					// TODO: reupload the image manually if this happens
+					tracing::warn!("Telegram disapproved of the media URL ({e}), sending the message as pure text");
 					self.send_text(text).await?;
 				}
 				Ok(_) => (),

@@ -56,7 +56,7 @@ impl Task {
 			}
 		}
 		Ok(task::Task {
-			disabled: self.disabled,
+			disabled: self.disabled.unwrap_or(false),
 			read_filter_kind: self.read_filter_kind.parse(),
 			refresh: self.refresh,
 			sink: self.sink.parse()?,

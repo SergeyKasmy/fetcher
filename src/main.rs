@@ -84,7 +84,7 @@ async fn run() -> Result<()> {
 				for tmpl_path in templates {
 					let (tmpl, tmpl_full_path) = settings::config::template(&tmpl_path)?;
 
-					tracing::debug!("Using template: {}", tmpl_full_path.display());
+					tracing::debug!("Using template: {:?}", tmpl_full_path);
 
 					conf = conf.merge(Toml::string(&tmpl));
 				}
@@ -104,11 +104,27 @@ async fn run() -> Result<()> {
 				task.parse(&path)?,
 			))
 		})
+		.filter(|task_res| {
+			// ignore the task only if it's not an error and is marked as disabled
+			task_res
+				.as_ref()
+				.map(|(_, task)| !task.disabled)
+				.unwrap_or(true)
+		})
 		.collect::<Result<Tasks>>()?;
 
 	if tasks.is_empty() {
-		tracing::warn!("No tasks provided");
+		tracing::warn!("No enabled tasks provided");
 		return Ok(());
+	} else {
+		tracing::debug!(
+			"Found {num} enabled tasks: {names:?}",
+			num = tasks.len(),
+			names = tasks
+				.iter()
+				.map(|(name, _)| name.as_str())
+				.collect::<Vec<_>>(),
+		);
 	}
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
@@ -154,10 +170,8 @@ async fn run() -> Result<()> {
 async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
-		if let Some(disabled) = t.disabled {
-			if disabled {
-				continue;
-			}
+		if t.disabled {
+			continue;
 		}
 
 		let mut shutdown_rx = shutdown_rx.clone();
