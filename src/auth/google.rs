@@ -118,10 +118,11 @@ impl Google {
 	}
 
 	pub async fn access_token(&mut self) -> Result<&str> {
+		// FIXME: for some reason the token sometimes expires by itself and should be renewed manually
 		// Update the token if:
 		// we haven't done that yet
 		if self.access_token.is_none()
-			// or if if it has expired
+			// or if if has expired
 			|| self
 				.access_token
 				.as_ref()

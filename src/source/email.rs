@@ -147,10 +147,14 @@ impl Email {
 			.collect::<Vec<_>>()
 			.join(",");
 
-		tracing::debug!(
-			"Got {num} unread mails for \"{search_string}\"",
-			num = mail_ids.len()
-		);
+		let unread_num = mail_ids.len();
+		if unread_num > 0 {
+			tracing::info!("Got {unread_num} unread filtered mails");
+		} else {
+			tracing::debug!(
+				"All email for the search query have already been read, none remaining to send"
+			);
+		}
 
 		if mail_ids.is_empty() {
 			return Ok(Vec::new());

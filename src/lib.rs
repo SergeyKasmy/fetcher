@@ -28,11 +28,10 @@ use crate::error::Result;
 use crate::read_filter::ReadFilter;
 use crate::task::Task;
 
-#[tracing::instrument(skip(t))]
 pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
 	let mut read_filter = ReadFilter::read_from_fs(name, t.read_filter_kind)?;
 	loop {
-		tracing::debug!("Fetching");
+		tracing::trace!("Running...");
 
 		let fetch = async {
 			for rspn in t.source.get(&read_filter).await? {

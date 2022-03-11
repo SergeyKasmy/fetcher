@@ -63,9 +63,7 @@ impl Telegram {
 	#[allow(clippy::items_after_statements)] // TODO
 	#[tracing::instrument(skip_all,
 	fields(
-		len = message.body.len(),
 		body = fmt_comment_msg_text(&message.body).as_str(),
-		media = message.media.is_some(),
 		)
 	)]
 	pub async fn send(&self, message: Message) -> Result<()> {
@@ -75,6 +73,12 @@ impl Telegram {
 			link,
 			media,
 		} = message;
+
+		tracing::debug!(
+			"Processing message: len: {}, media: {}",
+			body.len(),
+			media.is_some()
+		);
 
 		// TODO: move to a function
 		const PADDING: usize = 10; // how much free space to reserve for new lines and "Link" buttons. 10 should be enough
@@ -152,7 +156,7 @@ impl Telegram {
 	async fn send_text(&self, message: String) -> Result<TelMessage> {
 		loop {
 			tracing::info!("Sending text message");
-			tracing::debug!("Message contents: {message:?}");
+			tracing::trace!("Message contents: {message:?}");
 
 			match self
 				.bot
@@ -164,7 +168,7 @@ impl Telegram {
 			{
 				Ok(message) => return Ok(message),
 				Err(RequestError::RetryAfter(retry_after)) => {
-					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
+					tracing::warn!("Exceeded rate limit, retrying in {retry_after}s");
 					tokio::time::sleep(Duration::from_secs(retry_after.try_into().expect(
 						"Telegram returned a negative RetryAfter value. How did that even happen?",
 					)))
@@ -184,7 +188,7 @@ impl Telegram {
 	async fn send_media(&self, media: Vec<InputMedia>) -> Result<Vec<TelMessage>> {
 		loop {
 			tracing::info!("Sending media message");
-			tracing::debug!("Message contents: {media:?}");
+			tracing::trace!("Message contents: {media:?}");
 
 			match self
 				.bot
@@ -194,7 +198,7 @@ impl Telegram {
 			{
 				Ok(messages) => return Ok(messages),
 				Err(RequestError::RetryAfter(retry_after)) => {
-					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
+					tracing::warn!("Exceeded rate limit, retrying in {retry_after}s");
 					tokio::time::sleep(Duration::from_secs(retry_after.try_into().expect(
 						"Telegram returned a negative RetryAfter value. How did that even happen?",
 					)))

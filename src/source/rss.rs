@@ -51,7 +51,12 @@ impl Rss {
 		let mut articles = feed.items;
 		read_filter.remove_read_from(&mut articles);
 
-		tracing::debug!("{num} unread RSS articles remaning", num = articles.len());
+		let unread_num = articles.len();
+		if unread_num > 0 {
+			tracing::info!("Got {unread_num} unread RSS articles");
+		} else {
+			tracing::debug!("All articles have already been read, none remaining to send");
+		}
 
 		let messages = articles
 			.into_iter()

@@ -63,7 +63,7 @@ impl Twitter {
 			.await?;
 
 		tracing::debug!(
-			"Got {num} tweets older than the last read one",
+			"Got {num} tweets older than the last one read",
 			num = tweets.len()
 		);
 
@@ -76,11 +76,6 @@ impl Twitter {
 				{
 					return None;
 				}
-
-				// let text = format!(
-				// 	"#{}\n\n{}\n<a href=\"\">Link</a>",
-				// 	self.pretty_name, tweet.text, self.handle, tweet.id
-				// );
 
 				Some(Responce {
 					id: Some(tweet.id.to_string()),
@@ -116,10 +111,12 @@ impl Twitter {
 			})
 			.collect::<Vec<_>>();
 
-		tracing::debug!(
-			"{num} tweets remaining after filtering",
-			num = messages.len()
-		);
+		let unread_num = messages.len();
+		if unread_num > 0 {
+			tracing::info!("Got {unread_num} unread filtered tweets");
+		} else {
+			tracing::debug!("All tweets have already been read, none remaining to send");
+		}
 
 		Ok(messages)
 	}

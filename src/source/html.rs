@@ -201,24 +201,14 @@ impl Html {
 			.collect::<Result<Vec<_>>>()?;
 
 		tracing::debug!("Found {num} HTML articles total", num = articles.len());
-
-		// if let Some(last_read_id) = read_filter.last_read() {
-		// 	if let Some(pos) = articles.iter().position(|x| match &x.id {
-		// 		Id::String(s) => s == last_read_id,
-		// 		Id::Date(d) => d <= &last_read_id.parse::<DateTime<Utc>>().unwrap(), // unwrap NOTE: should be safe, we parse in the same format we save
-		// 		                                                                     // TODO: add last_read_id format error for a nicer output
-		// 	}) {
-		// 		tracing::debug!(
-		// 			"Removing {num} already read HTML articles",
-		// 			num = articles.len() - pos
-		// 		);
-		// 		articles.drain(pos..);
-		// 	}
-		// }
-
 		read_filter.remove_read_from(&mut articles);
 
-		tracing::debug!("{num} unread HTML articles remaining", num = articles.len());
+		let unread_num = articles.len();
+		if unread_num > 0 {
+			tracing::info!("Found {unread_num} unread HTML articles");
+		} else {
+			tracing::debug!("All articles have already been read, none remaining to send");
+		}
 
 		Ok(articles
 			.into_iter()

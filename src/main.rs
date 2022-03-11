@@ -21,7 +21,7 @@ use figment::{
 	providers::{Format, Toml},
 	Figment,
 };
-use futures::future::try_join_all;
+use futures::future::join_all;
 use futures::StreamExt;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
@@ -30,6 +30,7 @@ use std::sync::Arc;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::{select, sync::watch::Receiver};
+use tracing::Instrument;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -151,7 +152,7 @@ async fn run() -> Result<()> {
 }
 
 async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
-	let mut futs = Vec::new();
+	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
 		if let Some(disabled) = t.disabled {
 			if disabled {
@@ -163,21 +164,28 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 
 		// TODO: create a tracing span for each task with task name param
 		let fut = tokio::spawn(async move {
-			select! {
-				r = run_task(&name, &mut t) => r?,
-				_ = shutdown_rx.changed() => {
-					tracing::info!("{name}: shutting down...");
-				},
-			}
+			async {
+				select! {
+					res = run_task(&name, &mut t) => {
+						if let Err(e) = res {
+							tracing::error!("{}", anyhow::anyhow!(e));
+						}
+					}
+					_ = shutdown_rx.changed() => (),
+				}
 
-			#[allow(unreachable_code)]
-			Ok::<(), Error>(())
+				tracing::info!("Shutting down...");
+				#[allow(unreachable_code)]
+				Ok::<(), Error>(())
+			}
+			.instrument(tracing::info_span!("task", name = name.as_str()))
+			.await
 		});
 
-		futs.push(flatten_task(fut));
+		running_tasks.push(flatten_task(fut));
 	}
 
-	try_join_all(futs).await?;
+	let _ = join_all(running_tasks).await;
 	Ok(())
 }
 
