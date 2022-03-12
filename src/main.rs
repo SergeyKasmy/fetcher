@@ -182,7 +182,25 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 				select! {
 					res = run_task(&name, &mut t) => {
 						if let Err(e) = res {
-							tracing::error!("{:?}", anyhow::anyhow!(e));
+							// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
+							use fetcher::sink::Telegram;
+							use fetcher::sink::Message;
+							use fetcher::settings;
+
+							let err_str = format!("{:?}", anyhow::anyhow!(e));
+							tracing::error!(%err_str);
+							let send_job = async {
+								let bot = settings::telegram()?;
+								let msg = Message {
+									body: err_str,
+									..Default::default()
+								};
+								Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned()).send(msg).await?;
+								Ok::<(), Error>(())
+							};
+							if let Err(e) = send_job.await {
+								tracing::error!("Unable to send error report to the admin: {:?}", anyhow::anyhow!(e));
+							}
 						}
 					}
 					_ = shutdown_rx.changed() => (),
