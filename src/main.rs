@@ -189,17 +189,19 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 
 							let err_str = format!("{:?}", anyhow::anyhow!(e));
 							tracing::error!(%err_str);
-							let send_job = async {
-								let bot = settings::telegram()?;
-								let msg = Message {
-									body: err_str,
-									..Default::default()
+							if !cfg!(debug_assertions) {
+								let send_job = async {
+									let bot = settings::telegram()?;
+									let msg = Message {
+										body: err_str,
+										..Default::default()
+									};
+									Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned()).send(msg).await?;
+									Ok::<(), Error>(())
 								};
-								Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned()).send(msg).await?;
-								Ok::<(), Error>(())
-							};
-							if let Err(e) = send_job.await {
-								tracing::error!("Unable to send error report to the admin: {:?}", anyhow::anyhow!(e));
+								if let Err(e) = send_job.await {
+									tracing::error!("Unable to send error report to the admin: {:?}", anyhow::anyhow!(e));
+								}
 							}
 						}
 					}

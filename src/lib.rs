@@ -27,6 +27,7 @@ use tokio::time::sleep;
 use crate::error::Error;
 use crate::error::Result;
 use crate::read_filter::ReadFilter;
+use crate::source::Source;
 use crate::task::Task;
 
 pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
@@ -36,9 +37,14 @@ pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
 
 		let fetch = async {
 			for entry in t.source.get(&read_filter).await? {
-				t.sink.send(entry.msg).await?;
+				tracing::trace!("Processing entry: {entry:?}");
 
-				read_filter.mark_as_read(&entry.id)?;
+				t.sink.send(entry.msg).await?;
+				match &mut t.source {
+					// Email has custom read filtering and read marking
+					Source::Email(e) => e.mark_as_read(&entry.id).await?,
+					_ => read_filter.mark_as_read(&entry.id)?,
+				}
 			}
 
 			Ok::<(), Error>(())
