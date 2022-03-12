@@ -36,9 +36,11 @@ pub(crate) enum ReadFilter {
 impl ReadFilter {
 	pub(crate) fn parse(self, name: &str) -> read_filter::ReadFilter {
 		let inner = match self {
-			ReadFilter::NewerThanRead(x) => read_filter::Inner::NewerThanLastRead(x.parse()),
+			ReadFilter::NewerThanRead(x) => {
+				read_filter::ReadFilterInner::NewerThanLastRead(x.parse())
+			}
 			ReadFilter::NotPresentInReadList(x) => {
-				read_filter::Inner::NotPresentInReadList(x.parse())
+				read_filter::ReadFilterInner::NotPresentInReadList(x.parse())
 			}
 		};
 
@@ -48,12 +50,12 @@ impl ReadFilter {
 		}
 	}
 
-	pub(crate) fn unparse(read_filter: &read_filter::Inner) -> Option<Self> {
+	pub(crate) fn unparse(read_filter: &read_filter::ReadFilterInner) -> Option<Self> {
 		Some(match read_filter {
-			read_filter::Inner::NewerThanLastRead(x) => {
+			read_filter::ReadFilterInner::NewerThanLastRead(x) => {
 				ReadFilter::NewerThanRead(Newer::unparse(x)?)
 			}
-			read_filter::Inner::NotPresentInReadList(x) => {
+			read_filter::ReadFilterInner::NotPresentInReadList(x) => {
 				ReadFilter::NotPresentInReadList(NotPresent::unparse(x)?)
 			}
 		})

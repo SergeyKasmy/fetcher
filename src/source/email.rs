@@ -7,6 +7,7 @@
  */
 
 mod auth;
+pub mod filters;
 mod view_mode;
 
 pub use auth::Auth;
@@ -15,19 +16,13 @@ pub use view_mode::ViewMode;
 use mailparse::ParsedMail;
 
 use self::auth::GoogleAuthExt;
+use self::filters::Filters;
 use crate::auth::Google as GoogleAuth;
 use crate::error::{Error, Result};
 use crate::sink::Message;
 use crate::source::Responce;
 
 const IMAP_PORT: u16 = 993;
-
-#[derive(Debug)]
-pub struct Filters {
-	pub sender: Option<String>,
-	pub subjects: Option<Vec<String>>,
-	pub exclude_subjects: Option<Vec<String>>,
-}
 
 pub struct Email {
 	imap: String,
@@ -88,7 +83,7 @@ impl Email {
 
 		let mut session = match &mut self.auth {
 			Auth::GoogleAuth(auth) => {
-				tracing::debug!("Logging in to IMAP with Google OAuth2");
+				tracing::trace!("Logging in to IMAP with Google OAuth2");
 
 				client
 					.authenticate("XOAUTH2", &auth.as_imap_oauth2(&self.email).await?)
@@ -96,7 +91,7 @@ impl Email {
 					.map_err(|(e, _)| Error::from(e))?
 			}
 			Auth::Password(password) => {
-				tracing::debug!("Logging in to IMAP with a password");
+				tracing::warn!("Logging in to IMAP with a password, this is insecure");
 
 				client
 					.login(&self.email, password)
@@ -107,12 +102,12 @@ impl Email {
 
 		match self.view_mode {
 			ViewMode::ReadOnly => {
-				tracing::debug!("Using INBOX in ro mode");
+				tracing::trace!("Using INBOX in ro mode");
 
 				session.examine("INBOX")?;
 			}
 			ViewMode::MarkAsRead | ViewMode::Delete => {
-				tracing::debug!("Using INBOX in rw mode");
+				tracing::trace!("Using INBOX in rw mode");
 
 				session.select("INBOX")?;
 			}

@@ -9,67 +9,22 @@
 // TODO: better handle invalid config values
 // TODO: make sure read_filter_type not_present_in_read_list only works with id_query.kind = id
 
-use std::borrow::Cow;
+pub(crate) mod query;
 
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use html5ever::rcdom::Handle;
 use soup::{NodeExt, QueryBuilderExt, Soup};
+use std::borrow::Cow;
 use url::Url;
 
+use self::query::{
+	DataLocation, IdQuery, IdQueryKind, ImageQuery, LinkQuery, Query, QueryKind, TextQuery,
+};
 use crate::error::{Error, Result};
 use crate::read_filter::{Id, ReadFilter};
 use crate::sink::message::{Link, LinkLocation};
 use crate::sink::{Media, Message};
 use crate::source::Responce;
-
-#[derive(Clone, Debug)]
-pub enum QueryKind {
-	Tag { value: String },
-	Class { value: String },
-	Attr { name: String, value: String },
-}
-
-#[derive(Debug)]
-pub enum DataLocation {
-	Text,
-	Attr { value: String },
-}
-
-#[derive(Debug)]
-pub struct Query {
-	pub(crate) kind: Vec<QueryKind>,
-	pub(crate) data_location: DataLocation,
-}
-
-#[derive(Debug)]
-pub struct TextQuery {
-	pub(crate) prepend: Option<String>,
-	pub(crate) inner: Query,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum IdQueryKind {
-	String,
-	Date,
-}
-
-#[derive(Debug)]
-pub struct IdQuery {
-	pub(crate) kind: IdQueryKind,
-	pub(crate) inner: Query,
-}
-
-#[derive(Debug)]
-pub struct LinkQuery {
-	pub(crate) prepend: Option<String>,
-	pub(crate) inner: Query,
-}
-
-#[derive(Debug)]
-pub struct ImageQuery {
-	pub(crate) optional: bool,
-	pub(crate) inner: LinkQuery,
-}
 
 #[derive(Debug)]
 pub struct Html {

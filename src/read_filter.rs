@@ -23,11 +23,11 @@ pub trait Id {
 #[derive(Debug)]
 pub struct ReadFilter {
 	pub(crate) name: String,
-	pub(crate) inner: Inner,
+	pub(crate) inner: ReadFilterInner,
 }
 
 #[derive(Debug)]
-pub enum Inner {
+pub enum ReadFilterInner {
 	NewerThanLastRead(Newer),
 	NotPresentInReadList(NotPresent),
 }
@@ -44,9 +44,9 @@ impl ReadFilter {
 		settings::get(name).map(|x| {
 			x.unwrap_or_else(|| {
 				let inner = match default_type {
-					Kind::NewerThanLastRead => Inner::NewerThanLastRead(Newer::default()),
+					Kind::NewerThanLastRead => ReadFilterInner::NewerThanLastRead(Newer::default()),
 					Kind::NotPresentInReadList => {
-						Inner::NotPresentInReadList(NotPresent::default())
+						ReadFilterInner::NotPresentInReadList(NotPresent::default())
 					}
 				};
 
@@ -59,7 +59,7 @@ impl ReadFilter {
 	}
 
 	pub(crate) fn last_read(&self) -> Option<&str> {
-		use Inner::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
 		match &self.inner {
 			NewerThanLastRead(x) => x.last_read(),
@@ -68,7 +68,7 @@ impl ReadFilter {
 	}
 
 	pub(crate) fn remove_read_from<T: Id>(&self, list: &mut Vec<T>) {
-		use Inner::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
 		match &self.inner {
 			NewerThanLastRead(x) => x.remove_read_from(list),
@@ -78,7 +78,7 @@ impl ReadFilter {
 
 	#[allow(clippy::missing_errors_doc)] // TODO
 	pub(crate) fn mark_as_read(&mut self, id: &str) -> Result<()> {
-		use Inner::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
 		match &mut self.inner {
 			NewerThanLastRead(x) => x.mark_as_read(id),
@@ -89,7 +89,7 @@ impl ReadFilter {
 	}
 
 	pub(crate) fn to_kind(&self) -> Kind {
-		use Inner::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
 		match &self.inner {
 			NewerThanLastRead(_) => Kind::NewerThanLastRead,

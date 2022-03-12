@@ -6,143 +6,14 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+pub(crate) mod query;
+
 use serde::Deserialize;
 use url::Url;
 
 use crate::source;
 
-#[derive(Deserialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) enum QueryKind {
-	Tag { value: String },
-	Class { value: String },
-	Attr { name: String, value: String },
-}
-
-impl QueryKind {
-	fn parse(self) -> source::html::QueryKind {
-		use QueryKind::{Attr, Class, Tag};
-
-		match self {
-			Tag { value } => source::html::QueryKind::Tag { value },
-			Class { value } => source::html::QueryKind::Class { value },
-			Attr { name, value } => source::html::QueryKind::Attr { name, value },
-		}
-	}
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) enum DataLocation {
-	Text,
-	Attr { value: String },
-}
-
-impl DataLocation {
-	fn parse(self) -> source::html::DataLocation {
-		use DataLocation::{Attr, Text};
-
-		match self {
-			Text => source::html::DataLocation::Text,
-			Attr { value } => source::html::DataLocation::Attr { value },
-		}
-	}
-}
-
-#[derive(Deserialize, Debug)]
-pub(crate) struct Query {
-	kind: Vec<QueryKind>,
-	data_location: DataLocation,
-}
-
-impl Query {
-	fn parse(self) -> source::html::Query {
-		source::html::Query {
-			kind: self.kind.into_iter().map(QueryKind::parse).collect(),
-			data_location: self.data_location.parse(),
-		}
-	}
-}
-
-#[derive(Deserialize, Debug)]
-pub(crate) struct TextQuery {
-	prepend: Option<String>,
-	#[serde(flatten)]
-	inner: Query,
-}
-
-impl TextQuery {
-	fn parse(self) -> source::html::TextQuery {
-		source::html::TextQuery {
-			prepend: self.prepend,
-			inner: self.inner.parse(),
-		}
-	}
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) enum IdQueryKind {
-	String,
-	Date,
-}
-
-impl IdQueryKind {
-	fn parse(self) -> source::html::IdQueryKind {
-		match self {
-			IdQueryKind::String => source::html::IdQueryKind::String,
-			IdQueryKind::Date => source::html::IdQueryKind::Date,
-		}
-	}
-}
-
-#[derive(Deserialize, Debug)]
-pub(crate) struct IdQuery {
-	pub(crate) kind: IdQueryKind,
-	#[serde(rename = "query")]
-	pub(crate) inner: Query,
-}
-
-impl IdQuery {
-	fn parse(self) -> source::html::IdQuery {
-		source::html::IdQuery {
-			kind: self.kind.parse(),
-			inner: self.inner.parse(),
-		}
-	}
-}
-
-#[derive(Deserialize, Debug)]
-pub(crate) struct LinkQuery {
-	prepend: Option<String>,
-	#[serde(flatten)]
-	inner: Query,
-}
-
-impl LinkQuery {
-	fn parse(self) -> source::html::LinkQuery {
-		source::html::LinkQuery {
-			prepend: self.prepend,
-			inner: self.inner.parse(),
-		}
-	}
-}
-
-#[derive(Deserialize, Debug)]
-pub(crate) struct ImageQuery {
-	optional: Option<bool>,
-	#[serde(flatten)]
-	inner: LinkQuery,
-}
-
-impl ImageQuery {
-	fn parse(self) -> source::html::ImageQuery {
-		source::html::ImageQuery {
-			optional: self.optional.unwrap_or(false),
-			inner: self.inner.parse(),
-		}
-	}
-}
+use self::query::{IdQuery, ImageQuery, LinkQuery, QueryKind, TextQuery};
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct Html {
