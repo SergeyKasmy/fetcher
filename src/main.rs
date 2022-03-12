@@ -182,7 +182,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 				select! {
 					res = run_task(&name, &mut t) => {
 						if let Err(e) = res {
-							tracing::error!("{}", anyhow::anyhow!(e));
+							tracing::error!("{:?}", anyhow::anyhow!(e));
 						}
 					}
 					_ = shutdown_rx.changed() => (),
