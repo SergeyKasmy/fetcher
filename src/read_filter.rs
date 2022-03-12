@@ -9,15 +9,13 @@
 pub(crate) mod newer;
 pub(crate) mod not_present;
 
-use std::borrow::Cow;
-
 use self::newer::Newer;
 use self::not_present::NotPresent;
 use crate::error::Result;
 use crate::settings;
 
 pub trait Id {
-	fn id(&self) -> Cow<'_, str>;
+	fn id(&self) -> &str;
 }
 
 #[derive(Debug)]

@@ -16,17 +16,9 @@ pub use self::html::Html;
 pub use self::rss::Rss;
 pub use self::twitter::Twitter;
 
+use crate::entry::Entry;
 use crate::error::Result;
 use crate::read_filter::ReadFilter;
-use crate::sink::Message;
-
-// TODO: add message history via responce id -> message id hashmap
-// TODO: add pretty name/hashtag and link here instead of doing it manually
-#[derive(Debug)]
-pub struct Responce {
-	pub id: Option<String>,
-	pub msg: Message,
-}
 
 // TODO: add google calendar source. Google OAuth2 is already implemented :)
 #[derive(Debug)]
@@ -40,7 +32,7 @@ pub enum Source {
 impl Source {
 	// TODO: try using streams instead of polling manually?
 	#[allow(clippy::missing_errors_doc)] // TODO
-	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Entry>> {
 		match self {
 			Self::Email(x) => x.get().await,
 			Self::Html(x) => x.get(read_filter).await,

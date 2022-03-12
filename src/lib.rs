@@ -13,6 +13,7 @@
 
 pub mod auth;
 pub mod config;
+pub mod entry;
 pub mod error;
 pub mod read_filter;
 pub mod settings;
@@ -34,12 +35,10 @@ pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
 		tracing::trace!("Running...");
 
 		let fetch = async {
-			for rspn in t.source.get(&read_filter).await? {
-				t.sink.send(rspn.msg).await?;
+			for entry in t.source.get(&read_filter).await? {
+				t.sink.send(entry.msg).await?;
 
-				if let Some(id) = rspn.id {
-					read_filter.mark_as_read(&id)?;
-				}
+				read_filter.mark_as_read(&entry.id)?;
 			}
 
 			Ok::<(), Error>(())

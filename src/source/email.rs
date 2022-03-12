@@ -18,9 +18,9 @@ use mailparse::ParsedMail;
 use self::auth::GoogleAuthExt;
 use self::filters::Filters;
 use crate::auth::Google as GoogleAuth;
+use crate::entry::Entry;
 use crate::error::{Error, Result};
 use crate::sink::Message;
-use crate::source::Responce;
 
 const IMAP_PORT: u16 = 993;
 
@@ -77,7 +77,7 @@ impl Email {
 	/// It should be used with spawn_blocking probs
 	/// TODO: make it async lol
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&mut self) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self) -> Result<Vec<Entry>> {
 		tracing::debug!("Fetching emails");
 		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT).rustls()?;
 
@@ -171,27 +171,23 @@ impl Email {
 			.iter()
 			.filter(|x| x.body().is_some()) // TODO: properly handle error cases and don't just filter them out
 			.map(|x| {
-				Ok(Responce {
-					id: None,
-					msg: Self::parse(
-						&mailparse::parse_mail(x.body().unwrap())?, // unwrap NOTE: temporary but it's safe for now because of the check above
-						self.footer.as_deref(),
-					)?,
-				})
+				self.parse(
+					&mailparse::parse_mail(x.body().unwrap())?, // unwrap NOTE: temporary but it's safe for now because of the check above
+				)
 			})
-			.collect::<Result<Vec<Responce>>>()
+			.collect::<Result<Vec<Entry>>>()
 	}
 
-	fn parse(mail: &ParsedMail, remove_after: Option<&str>) -> Result<Message> {
-		let (subject, body) = {
-			let subject = mail.headers.iter().find_map(|x| {
-				if x.get_key_ref() == "Subject" {
-					Some(x.get_value())
-				} else {
-					None
-				}
-			});
+	fn parse(&self, mail: &ParsedMail) -> Result<Entry> {
+		let subject = mail.headers.iter().find_map(|x| {
+			if x.get_key_ref() == "Subject" {
+				Some(x.get_value())
+			} else {
+				None
+			}
+		});
 
+		let body = {
 			let mut body = if mail.subparts.is_empty() {
 				mail
 			} else {
@@ -202,8 +198,8 @@ impl Email {
 			}
 			.get_body()?;
 
-			if let Some(remove_after) = remove_after {
-				body.drain(body.find(remove_after).unwrap_or(body.len())..);
+			if let Some(footer) = self.footer.as_deref() {
+				body.drain(body.find(footer).unwrap_or(body.len())..);
 			}
 
 			// TODO: replace upticks ` with teloxide::utils::html::escape_code
@@ -212,14 +208,17 @@ impl Email {
 			// I dislike the need to add an extra dependency just for this simple task but you gotta do what you gotta do.
 			// Hopefully I'll find a better way to escape everything though since I don't fear a possibility that it'll be
 			// somehow harmful 'cause it doesn't consern me, only Telegram :P
-			(subject, ammonia::clean(&body))
+			ammonia::clean(&body)
 		};
 
-		Ok(Message {
-			title: subject,
-			body,
-			link: None,
-			media: None,
+		Ok(Entry {
+			id: String::new(),
+			msg: Message {
+				title: subject,
+				body,
+				link: None,
+				media: None,
+			},
 		})
 	}
 }
