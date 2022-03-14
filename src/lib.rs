@@ -31,7 +31,7 @@ use crate::source::Source;
 use crate::task::Task;
 
 pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
-	let mut read_filter = ReadFilter::read_from_fs(name, t.read_filter_kind)?;
+	let mut read_filter = ReadFilter::read_from_fs(name.to_owned(), t.read_filter_kind)?;
 	loop {
 		tracing::trace!("Running...");
 

@@ -12,6 +12,7 @@ use crate::entry::Entry;
 
 #[derive(Default, Debug)]
 pub struct NotPresent {
+	pub(crate) name: String,
 	pub(crate) read_list: VecDeque<String>,
 }
 

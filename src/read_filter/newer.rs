@@ -10,6 +10,7 @@ use crate::entry::Entry;
 
 #[derive(Default, Debug)]
 pub struct Newer {
+	pub(crate) name: String,
 	pub(crate) last_read_id: Option<String>,
 }
 

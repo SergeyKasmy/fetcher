@@ -32,8 +32,8 @@ fn read_filter_path(name: &str) -> Result<PathBuf> {
 /// # Errors
 /// * if the file is inaccessible
 /// * if the file is corrupted
-pub fn get(name: &str) -> Result<Option<ReadFilter>> {
-	let path = read_filter_path(name)?;
+pub fn get(name: String) -> Result<Option<ReadFilter>> {
+	let path = read_filter_path(&name)?;
 	fs::read_to_string(&path)
 		.ok()
 		.map(|s| {
@@ -52,10 +52,10 @@ pub fn get(name: &str) -> Result<Option<ReadFilter>> {
 /// * if the remove failed
 #[allow(clippy::missing_panics_doc)]
 pub fn save(read_filter: &ReadFilter) -> Result<()> {
-	let path = read_filter_path(&read_filter.name)?;
+	let path = read_filter_path(&read_filter.name())?;
 	// fs::write(&path, id).map_err(|e| Error::Write(e, path))
 
-	let read_filter_conf = config::read_filter::ReadFilter::unparse(&read_filter.inner);
+	let read_filter_conf = config::read_filter::ReadFilter::unparse(&read_filter);
 	match read_filter_conf {
 		Some(data) => {
 			fs::write(&path, serde_json::to_string(&data).unwrap()) // unwrap NOTE: safe, serialization of such a simple struct should never fail
