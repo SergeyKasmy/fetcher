@@ -201,10 +201,23 @@ impl Html {
 				}
 			}
 			.filter(|found| {
-				ignore
-					.into_iter()
-					.flat_map(|ignore| Self::find(found, ignore, &[]))
-					.count() == 0
+				for i in ignore.iter() {
+					let should_be_ignored = match i {
+						QueryKind::Tag { value: tag } => found.name() == tag,
+						QueryKind::Class { value: class } => {
+							found.get("class").map_or(false, |c| &c == class)
+						}
+						QueryKind::Attr { name, value } => {
+							found.get(name).map_or(false, |a| &a == value)
+						}
+					};
+
+					if should_be_ignored {
+						return false;
+					}
+				}
+
+				true
 			}),
 		)
 	}

@@ -44,6 +44,7 @@ impl Task {
 			read_filter_kind: self.read_filter_kind.parse(),
 			refresh: self.refresh,
 			sink: self.sink.parse()?,
+			// sink: todo!(),
 			source: self.source.parse()?,
 		})
 	}
@@ -59,89 +60,91 @@ impl Task {
 // 		let _task: Task = serde_yaml::from_str(&s).unwrap();
 // 	}
 
-// 	#[test]
-// 	fn ser() {
-// 		use crate::config::source::html::query::*;
-// 		use crate::config::source::html::Html;
-// 		use std::str::FromStr;
+// #[test]
+// fn ser() {
+// 	use crate::config::source::html::query::*;
+// 	use crate::config::source::html::Html;
+// 	use std::str::FromStr;
 
-// 		let source = Source::Html(Html {
-// 			url: url::Url::from_str("https://blog.counter-strike.net/index.php/category/updates/")
-// 				.unwrap(),
-// 			itemq: vec![Query {
-// 				kind: QueryKind::Attr {
-// 					name: "id".to_owned(),
-// 					value: "post_container".to_owned(),
+// 	let source = Source::Html(Html {
+// 		url: url::Url::from_str("https://blog.counter-strike.net/index.php/category/updates/")
+// 			.unwrap(),
+// 		itemq: vec![Query {
+// 			kind: QueryKind::Attr {
+// 				name: "id".to_owned(),
+// 				value: "post_container".to_owned(),
+// 			},
+// 			ignore: None,
+// 		}],
+// 		textq: vec![TextQuery {
+// 			prepend: None,
+// 			inner: QueryData {
+// 				data_location: DataLocation::Text,
+// 				query: vec![Query {
+// 					kind: QueryKind::Tag {
+// 						value: "p".to_owned(),
+// 					},
+// 					ignore: Some(QueryKind::Class {
+// 						value: "post_date".to_owned(),
+// 					}),
+// 				}],
+// 			},
+// 		}],
+// 		idq: IdQuery {
+// 			kind: IdQueryKind::String,
+// 			inner: QueryData {
+// 				data_location: DataLocation::Attr {
+// 					value: "href".to_owned(),
 // 				},
-// 				ignore: None,
-// 			}],
-// 			textq: vec![TextQuery {
-// 				prepend: None,
-// 				inner: QueryData {
-// 					data_location: DataLocation::Text,
-// 					query: vec![Query {
+// 				query: vec![
+// 					Query {
 // 						kind: QueryKind::Tag {
-// 							value: "p".to_owned(),
+// 							value: "h2".to_owned(),
 // 						},
 // 						ignore: None,
-// 					}],
-// 				},
-// 			}],
-// 			idq: IdQuery {
-// 				kind: IdQueryKind::String,
-// 				inner: QueryData {
-// 					data_location: DataLocation::Attr {
-// 						value: "href".to_owned(),
 // 					},
-// 					query: vec![
-// 						Query {
-// 							kind: QueryKind::Tag {
-// 								value: "h2".to_owned(),
-// 							},
-// 							ignore: None,
+// 					Query {
+// 						kind: QueryKind::Tag {
+// 							value: "a".to_owned(),
 // 						},
-// 						Query {
-// 							kind: QueryKind::Tag {
-// 								value: "a".to_owned(),
-// 							},
-// 							ignore: None,
-// 						},
-// 					],
-// 				},
-// 			},
-// 			linkq: LinkQuery {
-// 				prepend: None,
-// 				inner: QueryData {
-// 					data_location: DataLocation::Attr {
-// 						value: "href".to_owned(),
+// 						ignore: None,
 // 					},
-// 					query: vec![
-// 						Query {
-// 							kind: QueryKind::Tag {
-// 								value: "h2".to_owned(),
-// 							},
-// 							ignore: None,
-// 						},
-// 						Query {
-// 							kind: QueryKind::Tag {
-// 								value: "a".to_owned(),
-// 							},
-// 							ignore: None,
-// 						},
-// 					],
-// 				},
+// 				],
 // 			},
-// 			imgq: None,
-// 		});
+// 		},
+// 		linkq: LinkQuery {
+// 			prepend: None,
+// 			inner: QueryData {
+// 				data_location: DataLocation::Attr {
+// 					value: "href".to_owned(),
+// 				},
+// 				query: vec![
+// 					Query {
+// 						kind: QueryKind::Tag {
+// 							value: "h2".to_owned(),
+// 						},
+// 						ignore: None,
+// 					},
+// 					Query {
+// 						kind: QueryKind::Tag {
+// 							value: "a".to_owned(),
+// 						},
+// 						ignore: None,
+// 					},
+// 				],
+// 			},
+// 		},
+// 		imgq: None,
+// 	});
 
-// 		let task = Task {
-// 			disabled: Some(true),
-// 			read_filter_kind: read_filter::Kind::NewerThanRead,
-// 			refresh: 1,
-// 			source,
-// 		};
+// 	let task = Task {
+// 		disabled: Some(true),
+// 		read_filter_kind: read_filter::Kind::NewerThanRead,
+// 		refresh: 1,
+// 		source,
+// 	};
 
-// 		let s = serde_yaml::to_string(&task).unwrap();
-// 		std::fs::write("/tmp/csgo-updates.yaml", s).unwrap();
-// 	}
+// 	let s = serde_yaml::to_string(&task).unwrap();
+// 	std::fs::write("/tmp/csgo-updates.yaml", s).unwrap();
+// }
 // }
