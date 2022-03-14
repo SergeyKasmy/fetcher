@@ -28,7 +28,7 @@ pub struct Templates {
 pub struct Task {
 	disabled: Option<bool>,
 	#[serde(rename = "read_filter_type")]
-	read_filter_kind: read_filter::Kind,
+	read_filter_kind: Option<read_filter::Kind>,
 	refresh: u64,
 	source: Source,
 	sink: Sink,
@@ -36,7 +36,7 @@ pub struct Task {
 
 impl Task {
 	pub fn parse(self, conf_path: &Path) -> Result<task::Task> {
-		if let read_filter::Kind::NewerThanRead = self.read_filter_kind {
+		if let Some(read_filter::Kind::NewerThanRead) = self.read_filter_kind {
 			if let Source::Html(html) = &self.source {
 				if let source::html::query::IdQueryKind::Date = html.idq.kind {
 					return Err(Error::IncompatibleConfigValues(
@@ -46,9 +46,26 @@ impl Task {
 				}
 			}
 		}
+
+		match (&self.source, &self.read_filter_kind) {
+			(Source::Email(_), Some(_)) => {
+				return Err(Error::IncompatibleConfigValues(
+					"Source type Email doesn't support custom read filters",
+					conf_path.to_owned(),
+				));
+			}
+			(Source::Email(_), None) | (_, Some(_)) => (),
+			(_, None) => {
+				return Err(Error::IncompatibleConfigValues(
+					r#"Missing field "read_filter_type""#,
+					conf_path.to_owned(),
+				))
+			}
+		}
+
 		Ok(task::Task {
 			disabled: self.disabled.unwrap_or(false),
-			read_filter_kind: self.read_filter_kind.parse(),
+			read_filter_kind: self.read_filter_kind.map(read_filter::Kind::parse),
 			refresh: self.refresh,
 			sink: self.sink.parse()?,
 			// sink: todo!(),

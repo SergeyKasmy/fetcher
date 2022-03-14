@@ -51,16 +51,22 @@ pub fn get(name: String) -> Result<Option<ReadFilter>> {
 /// * if the write failed
 /// * if the remove failed
 #[allow(clippy::missing_panics_doc)]
-pub fn save(read_filter: &ReadFilter) -> Result<()> {
-	let path = read_filter_path(&read_filter.name())?;
-	// fs::write(&path, id).map_err(|e| Error::Write(e, path))
+pub fn save(filter: &ReadFilter) -> Result<()> {
+	let path = read_filter_path(filter.name())?;
+	let filter_conf = config::read_filter::ReadFilter::unparse(filter);
 
-	let read_filter_conf = config::read_filter::ReadFilter::unparse(&read_filter);
-	match read_filter_conf {
+	match filter_conf {
 		Some(data) => {
 			fs::write(&path, serde_json::to_string(&data).unwrap()) // unwrap NOTE: safe, serialization of such a simple struct should never fail
 				.map_err(|e| Error::Write(e, path))
 		}
-		None => fs::remove_file(&path).map_err(|e| Error::Write(e, path)),
+		None => delete(filter),
 	}
+}
+
+pub fn delete(filter: &ReadFilter) -> Result<()> {
+	let path = read_filter_path(filter.name())?;
+
+	// TODO: don't error if file doesn't exist
+	fs::remove_file(&path).map_err(|e| Error::Write(e, path))
 }

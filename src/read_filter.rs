@@ -31,7 +31,7 @@ pub enum Kind {
 impl ReadFilter {
 	// TODO: properly migrate types if the one on the disk is of one type and the provided one is of different type
 	pub(crate) fn read_from_fs(name: String, default_type: Kind) -> Result<Self> {
-		settings::get(name).map(|x| {
+		settings::read_filter::get(name).map(|x| {
 			x.unwrap_or_else(|| match default_type {
 				Kind::NewerThanLastRead => ReadFilter::NewerThanLastRead(Newer::default()),
 				Kind::NotPresentInReadList => {
@@ -39,6 +39,10 @@ impl ReadFilter {
 				}
 			})
 		})
+	}
+
+	pub(crate) fn delete_from_fs(self) -> Result<()> {
+		settings::read_filter::delete(&self)
 	}
 
 	pub(crate) fn name(&self) -> &str {
@@ -77,7 +81,7 @@ impl ReadFilter {
 			NotPresentInReadList(x) => x.mark_as_read(id),
 		}
 
-		settings::save(self)
+		settings::read_filter::save(self)
 	}
 
 	pub(crate) fn to_kind(&self) -> Kind {

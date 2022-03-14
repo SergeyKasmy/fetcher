@@ -31,19 +31,26 @@ use crate::source::Source;
 use crate::task::Task;
 
 pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
-	let mut read_filter = ReadFilter::read_from_fs(name.to_owned(), t.read_filter_kind)?;
+	let mut read_filter = t
+		.read_filter_kind
+		.map(|x| ReadFilter::read_from_fs(name.to_owned(), x))
+		.transpose()?;
+
 	loop {
 		tracing::trace!("Running...");
 
 		let fetch = async {
-			for entry in t.source.get(&read_filter).await? {
+			for entry in t.source.get(read_filter.as_ref()).await? {
 				tracing::trace!("Processing entry: {entry:?}");
 
 				t.sink.send(entry.msg).await?;
-				match &mut t.source {
+				match (&mut t.source, &mut read_filter) {
 					// Email has custom read filtering and read marking
-					Source::Email(e) => e.mark_as_read(&entry.id).await?,
-					_ => read_filter.mark_as_read(&entry.id)?,
+					(Source::Email(e), None) => e.mark_as_read(&entry.id).await?,
+					// delete read_filter save file if it was created for some very strange reason for this source type
+					(Source::Email(_), Some(_)) => read_filter.take().unwrap().delete_from_fs()?,
+					(_, Some(f)) => f.mark_as_read(&entry.id)?,
+					_ => unreachable!(),
 				}
 			}
 
@@ -52,7 +59,7 @@ pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
 
 		match fetch.await {
 			Ok(_) => (),
-			Err(e @ Error::Network(_)) => tracing::warn!("{e:?}"),
+			Err(e @ Error::Network(_)) => tracing::warn!("{:?}", anyhow::anyhow!(e)),
 			Err(e) => return Err(e),
 		}
 

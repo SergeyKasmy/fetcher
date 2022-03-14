@@ -32,12 +32,12 @@ pub enum Source {
 impl Source {
 	// TODO: try using streams instead of polling manually?
 	#[allow(clippy::missing_errors_doc)] // TODO
-	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Entry>> {
+	pub async fn get(&mut self, read_filter: Option<&ReadFilter>) -> Result<Vec<Entry>> {
 		match self {
 			Self::Email(x) => x.get().await,
-			Self::Html(x) => x.get(read_filter).await,
-			Self::Rss(x) => x.get(read_filter).await,
-			Self::Twitter(x) => x.get(read_filter).await,
+			Self::Html(x) => x.get(read_filter.unwrap()).await,
+			Self::Rss(x) => x.get(read_filter.unwrap()).await,
+			Self::Twitter(x) => x.get(read_filter.unwrap()).await,
 		}
 	}
 }
