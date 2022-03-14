@@ -184,13 +184,7 @@ impl Email {
 				body.drain(body.find(footer).unwrap_or(body.len())..);
 			}
 
-			// TODO: replace upticks ` with teloxide::utils::html::escape_code
-
-			// NOTE: emails often contain all kinds of html or other text which Telegram's HTML parser doesn't approve of
-			// I dislike the need to add an extra dependency just for this simple task but you gotta do what you gotta do.
-			// Hopefully I'll find a better way to escape everything though since I don't fear a possibility that it'll be
-			// somehow harmful 'cause it doesn't consern me, only Telegram :P
-			ammonia::clean(&body)
+			body
 		};
 
 		Ok(Entry {
