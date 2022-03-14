@@ -15,7 +15,6 @@ use crate::read_filter;
 pub(crate) enum Kind {
 	NewerThanRead,
 	NotPresentInReadList,
-	Custom,
 }
 
 impl Kind {
@@ -23,7 +22,6 @@ impl Kind {
 		match self {
 			Kind::NewerThanRead => read_filter::Kind::NewerThanLastRead,
 			Kind::NotPresentInReadList => read_filter::Kind::NotPresentInReadList,
-			Kind::Custom => read_filter::Kind::Custom,
 		}
 	}
 }
@@ -33,7 +31,6 @@ impl Kind {
 pub(crate) enum ReadFilter {
 	NewerThanRead(Newer),
 	NotPresentInReadList(NotPresent),
-	Custom,
 }
 
 impl ReadFilter {
@@ -45,7 +42,6 @@ impl ReadFilter {
 			ReadFilter::NotPresentInReadList(x) => {
 				read_filter::ReadFilterInner::NotPresentInReadList(x.parse())
 			}
-			ReadFilter::Custom => read_filter::ReadFilterInner::Custom,
 		};
 
 		read_filter::ReadFilter {
@@ -62,7 +58,6 @@ impl ReadFilter {
 			read_filter::ReadFilterInner::NotPresentInReadList(x) => {
 				ReadFilter::NotPresentInReadList(NotPresent::unparse(x)?)
 			}
-			read_filter::ReadFilterInner::Custom => ReadFilter::Custom,
 		})
 	}
 }

@@ -27,14 +27,12 @@ pub struct ReadFilter {
 pub enum ReadFilterInner {
 	NewerThanLastRead(Newer),
 	NotPresentInReadList(NotPresent),
-	Custom,
 }
 
 #[derive(Clone, Copy, Debug)]
 pub enum Kind {
 	NewerThanLastRead,
 	NotPresentInReadList,
-	Custom,
 }
 
 impl ReadFilter {
@@ -47,7 +45,6 @@ impl ReadFilter {
 					Kind::NotPresentInReadList => {
 						ReadFilterInner::NotPresentInReadList(NotPresent::default())
 					}
-					Kind::Custom => ReadFilterInner::Custom,
 				};
 
 				Self {
@@ -59,45 +56,41 @@ impl ReadFilter {
 	}
 
 	pub(crate) fn last_read(&self) -> Option<&str> {
-		use ReadFilterInner::{Custom, NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
 		match &self.inner {
 			NewerThanLastRead(x) => x.last_read(),
 			NotPresentInReadList(x) => x.last_read(),
-			Custom => None,
 		}
 	}
 
 	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
-		use ReadFilterInner::{Custom, NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
 		match &self.inner {
 			NewerThanLastRead(x) => x.remove_read_from(list),
 			NotPresentInReadList(x) => x.remove_read_from(list),
-			Custom => (),
 		}
 	}
 
 	#[allow(clippy::missing_errors_doc)] // TODO
 	pub(crate) fn mark_as_read(&mut self, id: &str) -> Result<()> {
-		use ReadFilterInner::{Custom, NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
 		match &mut self.inner {
 			NewerThanLastRead(x) => x.mark_as_read(id),
 			NotPresentInReadList(x) => x.mark_as_read(id),
-			Custom => (),
 		}
 
 		settings::save(self)
 	}
 
 	pub(crate) fn to_kind(&self) -> Kind {
-		use ReadFilterInner::{Custom, NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
 		match &self.inner {
 			NewerThanLastRead(_) => Kind::NewerThanLastRead,
 			NotPresentInReadList(_) => Kind::NotPresentInReadList,
-			Custom => Kind::Custom,
 		}
 	}
 }
