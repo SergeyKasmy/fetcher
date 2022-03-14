@@ -8,14 +8,14 @@
 
 pub(crate) mod query;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 use crate::source;
 
 use self::query::{IdQuery, ImageQuery, LinkQuery, Query, TextQuery};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct Html {
 	pub(crate) url: Url,
 	#[serde(rename = "item_query")]

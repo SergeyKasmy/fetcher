@@ -1,8 +1,8 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::source;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum QueryKind {
 	Tag { value: String },
@@ -22,7 +22,7 @@ impl QueryKind {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum DataLocation {
 	Text,
@@ -40,10 +40,10 @@ impl DataLocation {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct Query {
-	kind: QueryKind,
-	ignore: Option<Vec<QueryKind>>,
+	pub(crate) kind: QueryKind,
+	pub(crate) ignore: Option<Vec<QueryKind>>,
 }
 
 impl Query {
@@ -58,10 +58,10 @@ impl Query {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct QueryData {
-	query: Vec<Query>,
-	data_location: DataLocation,
+	pub(crate) query: Vec<Query>,
+	pub(crate) data_location: DataLocation,
 }
 
 impl QueryData {
@@ -73,11 +73,11 @@ impl QueryData {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct TextQuery {
-	prepend: Option<String>,
+	pub(crate) prepend: Option<String>,
 	#[serde(flatten)]
-	inner: QueryData,
+	pub(crate) inner: QueryData,
 }
 
 impl TextQuery {
@@ -89,7 +89,7 @@ impl TextQuery {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum IdQueryKind {
 	String,
@@ -105,7 +105,7 @@ impl IdQueryKind {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct IdQuery {
 	pub(crate) kind: IdQueryKind,
 	#[serde(flatten)]
@@ -121,11 +121,11 @@ impl IdQuery {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct LinkQuery {
-	prepend: Option<String>,
-	#[serde(rename = "data")]
-	inner: QueryData,
+	pub(crate) prepend: Option<String>,
+	#[serde(rename = "query")]
+	pub(crate) inner: QueryData,
 }
 
 impl LinkQuery {
@@ -137,7 +137,7 @@ impl LinkQuery {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct ImageQuery {
 	optional: Option<bool>,
 	#[serde(flatten)]

@@ -6,11 +6,11 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::source;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct Filters {
 	sender: Option<String>,
 	subjects: Option<Vec<String>>,

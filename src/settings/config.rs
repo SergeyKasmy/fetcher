@@ -16,7 +16,7 @@ use std::{
 use super::PREFIX;
 use crate::error::{Error, Result};
 
-const CONFIG_FILE_EXT: &str = ".toml";
+const CONFIG_FILE_EXT: &str = ".yaml";
 
 /// Find all task .toml configs in the first non-empty config directory by priority
 /// Ignore configs in directories lower in priority if one in higher priority has configs    // TODO: isn't just ignoring them kinda stupid?

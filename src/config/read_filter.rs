@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::read_filter;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Kind {
 	NewerThanRead,
