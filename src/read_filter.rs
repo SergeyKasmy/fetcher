@@ -9,25 +9,15 @@
 pub(crate) mod newer;
 pub(crate) mod not_present;
 
-use std::borrow::Cow;
-
 use self::newer::Newer;
 use self::not_present::NotPresent;
+use crate::entry::Entry;
 use crate::error::Result;
 use crate::settings;
 
-pub trait Id {
-	fn id(&self) -> Cow<'_, str>;
-}
-
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
-pub struct ReadFilter {
-	pub(crate) name: String,
-	pub(crate) inner: ReadFilterInner,
-}
-
-#[derive(Debug)]
-pub enum ReadFilterInner {
+pub enum ReadFilter {
 	NewerThanLastRead(Newer),
 	NotPresentInReadList(NotPresent),
 }
@@ -40,37 +30,43 @@ pub enum Kind {
 
 impl ReadFilter {
 	// TODO: properly migrate types if the one on the disk is of one type and the provided one is of different type
-	pub(crate) fn read_from_fs(name: &str, default_type: Kind) -> Result<Self> {
-		settings::get(name).map(|x| {
-			x.unwrap_or_else(|| {
-				let inner = match default_type {
-					Kind::NewerThanLastRead => ReadFilterInner::NewerThanLastRead(Newer::default()),
-					Kind::NotPresentInReadList => {
-						ReadFilterInner::NotPresentInReadList(NotPresent::default())
-					}
-				};
-
-				Self {
-					name: name.to_owned(),
-					inner,
+	pub(crate) fn read_from_fs(name: String, default_type: Kind) -> Result<Self> {
+		settings::read_filter::get(name).map(|x| {
+			x.unwrap_or_else(|| match default_type {
+				Kind::NewerThanLastRead => ReadFilter::NewerThanLastRead(Newer::default()),
+				Kind::NotPresentInReadList => {
+					ReadFilter::NotPresentInReadList(NotPresent::default())
 				}
 			})
 		})
 	}
 
-	pub(crate) fn last_read(&self) -> Option<&str> {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+	pub(crate) fn delete_from_fs(self) -> Result<()> {
+		settings::read_filter::delete(&self)
+	}
 
-		match &self.inner {
+	pub(crate) fn name(&self) -> &str {
+		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
+
+		match self {
+			NewerThanLastRead(x) => &x.name,
+			NotPresentInReadList(x) => &x.name,
+		}
+	}
+
+	pub(crate) fn last_read(&self) -> Option<&str> {
+		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
+
+		match &self {
 			NewerThanLastRead(x) => x.last_read(),
 			NotPresentInReadList(x) => x.last_read(),
 		}
 	}
 
-	pub(crate) fn remove_read_from<T: Id>(&self, list: &mut Vec<T>) {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
+		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
 
-		match &self.inner {
+		match &self {
 			NewerThanLastRead(x) => x.remove_read_from(list),
 			NotPresentInReadList(x) => x.remove_read_from(list),
 		}
@@ -78,20 +74,20 @@ impl ReadFilter {
 
 	#[allow(clippy::missing_errors_doc)] // TODO
 	pub(crate) fn mark_as_read(&mut self, id: &str) -> Result<()> {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
 
-		match &mut self.inner {
+		match self {
 			NewerThanLastRead(x) => x.mark_as_read(id),
 			NotPresentInReadList(x) => x.mark_as_read(id),
 		}
 
-		settings::save(self)
+		settings::read_filter::save(self)
 	}
 
 	pub(crate) fn to_kind(&self) -> Kind {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
 
-		match &self.inner {
+		match &self {
 			NewerThanLastRead(_) => Kind::NewerThanLastRead,
 			NotPresentInReadList(_) => Kind::NotPresentInReadList,
 		}

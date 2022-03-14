@@ -6,17 +6,14 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use std::borrow::Cow;
-
 use rss::Channel;
 
+use crate::entry::Entry;
 use crate::error::Result;
-use crate::read_filter::Id;
 use crate::read_filter::ReadFilter;
 use crate::sink::message::Link;
 use crate::sink::message::LinkLocation;
 use crate::sink::Message;
-use crate::source::Responce;
 
 pub struct Rss {
 	// TODO: use url
@@ -34,7 +31,7 @@ impl Rss {
 	}
 
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Entry>> {
 		tracing::debug!("Getting RSS articles");
 		let content = self
 			.http_client
@@ -48,22 +45,12 @@ impl Rss {
 
 		tracing::debug!("Got {num} RSS articles total", num = feed.items.len());
 
-		let mut articles = feed.items;
-		read_filter.remove_read_from(&mut articles);
-
-		let unread_num = articles.len();
-		if unread_num > 0 {
-			tracing::info!("Got {unread_num} unread RSS articles");
-		} else {
-			tracing::debug!("All articles have already been read, none remaining to send");
-		}
-
-		let messages = articles
+		let mut entries = feed
+			.items
 			.into_iter()
-			.rev()
 			.map(|x| {
-				Responce {
-					id: Some(x.guid.as_ref().unwrap().value.clone()), // unwrap NOTE: same as above
+				Entry {
+					id: x.guid.as_ref().unwrap().value.clone(), // unwrap NOTE: same as above
 					msg: Message {
 						// unwrap NOTE: "safe", these are required fields
 						title: Some(x.title.unwrap()),
@@ -77,8 +64,17 @@ impl Rss {
 				}
 			})
 			.collect();
+		read_filter.remove_read_from(&mut entries);
 
-		Ok(messages)
+		let unread_num = entries.len();
+		if unread_num > 0 {
+			tracing::info!("Got {unread_num} unread RSS articles");
+		} else {
+			tracing::debug!("All articles have already been read, none remaining to send");
+		}
+
+		entries.reverse();
+		Ok(entries)
 	}
 }
 
@@ -88,11 +84,5 @@ impl std::fmt::Debug for Rss {
 			// .field("name", &self.name)
 			.field("url", &self.url)
 			.finish_non_exhaustive()
-	}
-}
-
-impl Id for rss::Item {
-	fn id(&self) -> Cow<'_, str> {
-		Cow::Borrowed(self.guid().unwrap().value())
 	}
 }

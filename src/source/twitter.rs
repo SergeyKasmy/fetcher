@@ -9,12 +9,12 @@
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 
+use crate::entry::Entry;
 use crate::error::Result;
 use crate::read_filter::ReadFilter;
 use crate::sink::message::{Link, LinkLocation};
 use crate::sink::Media;
 use crate::sink::Message;
-use crate::source::Responce;
 
 pub struct Twitter {
 	pretty_name: String, // used for hashtags
@@ -45,7 +45,7 @@ impl Twitter {
 	}
 
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Entry>> {
 		tracing::debug!("Getting tweets");
 		if self.token.is_none() {
 			self.token = Some(
@@ -77,8 +77,8 @@ impl Twitter {
 					return None;
 				}
 
-				Some(Responce {
-					id: Some(tweet.id.to_string()),
+				Some(Entry {
+					id: tweet.id.to_string(),
 					msg: Message {
 						title: None,
 						body: tweet.text.clone(),
