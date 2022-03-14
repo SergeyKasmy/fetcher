@@ -42,6 +42,7 @@ impl DataLocation {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct Query {
+	#[serde(flatten)]
 	pub(crate) kind: QueryKind,
 	pub(crate) ignore: Option<Vec<QueryKind>>,
 }
@@ -124,7 +125,7 @@ impl IdQuery {
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct LinkQuery {
 	pub(crate) prepend: Option<String>,
-	#[serde(rename = "query")]
+	#[serde(flatten)]
 	pub(crate) inner: QueryData,
 }
 
