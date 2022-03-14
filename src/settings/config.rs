@@ -98,7 +98,7 @@ pub fn template(name: &Path) -> Result<(String, PathBuf)> {
 
 	let tmpl_path = cfg_dirs.into_iter().find_map(|mut dir| {
 		let mut file_name = name.as_os_str().to_owned();
-		file_name.push(".toml");
+		file_name.push(CONFIG_FILE_EXT);
 
 		dir.push(file_name);
 		if dir.exists() {
