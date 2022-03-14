@@ -42,14 +42,32 @@ impl DataLocation {
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct Query {
-	kind: Vec<QueryKind>,
-	data_location: DataLocation,
+	kind: QueryKind,
+	ignore: Option<Vec<QueryKind>>,
 }
 
 impl Query {
-	fn parse(self) -> source::html::query::Query {
+	pub(crate) fn parse(self) -> source::html::query::Query {
 		source::html::query::Query {
-			kind: self.kind.into_iter().map(QueryKind::parse).collect(),
+			kind: self.kind.parse(),
+			ignore: self
+				.ignore
+				.map(|v| v.into_iter().map(QueryKind::parse).collect::<Vec<_>>())
+				.unwrap_or_default(),
+		}
+	}
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct QueryData {
+	query: Vec<Query>,
+	data_location: DataLocation,
+}
+
+impl QueryData {
+	fn parse(self) -> source::html::query::QueryData {
+		source::html::query::QueryData {
+			query: self.query.into_iter().map(Query::parse).collect(),
 			data_location: self.data_location.parse(),
 		}
 	}
@@ -59,7 +77,7 @@ impl Query {
 pub(crate) struct TextQuery {
 	prepend: Option<String>,
 	#[serde(flatten)]
-	inner: Query,
+	inner: QueryData,
 }
 
 impl TextQuery {
@@ -90,8 +108,8 @@ impl IdQueryKind {
 #[derive(Deserialize, Debug)]
 pub(crate) struct IdQuery {
 	pub(crate) kind: IdQueryKind,
-	#[serde(rename = "query")]
-	pub(crate) inner: Query,
+	#[serde(flatten)]
+	pub(crate) inner: QueryData,
 }
 
 impl IdQuery {
@@ -106,8 +124,8 @@ impl IdQuery {
 #[derive(Deserialize, Debug)]
 pub(crate) struct LinkQuery {
 	prepend: Option<String>,
-	#[serde(flatten)]
-	inner: Query,
+	#[serde(rename = "data")]
+	inner: QueryData,
 }
 
 impl LinkQuery {

@@ -5,7 +5,6 @@
  *
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
-
 // TODO: better handle invalid config values
 // TODO: make sure read_filter_type not_present_in_read_list only works with id_query.kind = id
 
@@ -18,7 +17,8 @@ use std::borrow::Cow;
 use url::Url;
 
 use self::query::{
-	DataLocation, IdQuery, IdQueryKind, ImageQuery, LinkQuery, Query, QueryKind, TextQuery,
+	DataLocation, IdQuery, IdQueryKind, ImageQuery, LinkQuery, Query, QueryData, QueryKind,
+	TextQuery,
 };
 use crate::error::{Error, Result};
 use crate::read_filter::{Id, ReadFilter};
@@ -29,9 +29,9 @@ use crate::source::Responce;
 #[derive(Debug)]
 pub struct Html {
 	pub(crate) url: Url,
-	pub(crate) itemq: Vec<QueryKind>,
+	pub(crate) itemq: Vec<Query>,
 	// TODO: make a separate title_query: Option<TextQuery> and allow to put a link into it
-	pub(crate) textq: Vec<TextQuery>,
+	pub(crate) textq: Vec<TextQuery>, // allow to find multiple paragraphs and join them together
 	pub(crate) idq: IdQuery,
 	pub(crate) linkq: LinkQuery,
 	pub(crate) imgq: Option<ImageQuery>,
@@ -51,7 +51,7 @@ impl Html {
 			.filter_map(|item| {
 				let link: Url = {
 					let mut link = match Self::extract_data(
-						&mut Self::find_chain(&item, &self.linkq.inner.kind),
+						&mut Self::find_chain(&item, &self.linkq.inner.query),
 						&self.linkq.inner,
 					)
 					.ok_or(Error::Html("link not found"))
@@ -69,7 +69,7 @@ impl Html {
 
 				let id = {
 					let id_str = match Self::extract_data(
-						&mut Self::find_chain(&item, &self.idq.inner.kind),
+						&mut Self::find_chain(&item, &self.idq.inner.query),
 						&self.idq.inner,
 					)
 					.ok_or(Error::Html("id not found"))
@@ -96,7 +96,7 @@ impl Html {
 					.textq
 					.iter()
 					.filter_map(|x| {
-						Self::extract_data(&mut Self::find_chain(&item, &x.inner.kind), &x.inner)
+						Self::extract_data(&mut Self::find_chain(&item, &x.inner.query), &x.inner)
 							.map(|s| {
 								let mut s = s.trim().to_string();
 								if let Some(prepend) = x.prepend.as_deref() {
@@ -114,8 +114,8 @@ impl Html {
 					.as_ref()
 					.and_then(|img_query| {
 						let mut img_url = match Self::extract_data(
-							&mut Self::find_chain(&item, &img_query.inner.inner.kind), // TODO: check iterator not empty
-							&img_query.inner.inner,                                    // TODO: make less fugly
+							&mut Self::find_chain(&item, &img_query.inner.inner.query), // TODO: check iterator not empty
+							&img_query.inner.inner,                                     // TODO: make less fugly
 						) {
 							Some(s) => s.trim().to_owned(),
 							None => {
@@ -190,26 +190,39 @@ impl Html {
 	fn find<'a>(
 		qb: &impl QueryBuilderExt,
 		q: &'a QueryKind,
+		ignore: &'a [QueryKind],
 	) -> Box<dyn Iterator<Item = Handle> + 'a> {
-		match q {
-			QueryKind::Tag { value } => qb.tag(value.as_str()).find_all(),
-			QueryKind::Class { value } => qb.class(value.as_str()).find_all(),
-			QueryKind::Attr { name, value } => qb.attr(name.as_str(), value.as_str()).find_all(),
-		}
+		Box::new(
+			match q {
+				QueryKind::Tag { value } => qb.tag(value.as_str()).find_all(),
+				QueryKind::Class { value } => qb.class(value.as_str()).find_all(),
+				QueryKind::Attr { name, value } => {
+					qb.attr(name.as_str(), value.as_str()).find_all()
+				}
+			}
+			.filter(|found| {
+				ignore
+					.into_iter()
+					.flat_map(|ignore| Self::find(found, ignore, &[]))
+					.count() == 0
+			}),
+		)
 	}
 
 	/// Find all items matching the query in all the provided HTML parts
 	fn find_chain<'a>(
 		qb: &impl QueryBuilderExt,
-		qs: &'a [QueryKind],
+		qs: &'a [Query],
 	) -> Box<dyn Iterator<Item = Handle> + 'a> {
 		// debug_assert!(!qs.is_empty());
 		let mut handles: Option<Box<dyn Iterator<Item = Handle>>> = None;
 
 		for q in qs {
 			handles = Some(match handles {
-				None => Self::find(qb, q),
-				Some(handles) => Box::new(handles.flat_map(|hndl| Self::find(&hndl, q))),
+				None => Self::find(qb, &q.kind, &q.ignore),
+				Some(handles) => {
+					Box::new(handles.flat_map(|hndl| Self::find(&hndl, &q.kind, &q.ignore)))
+				}
 			});
 		}
 
@@ -217,7 +230,7 @@ impl Html {
 	}
 
 	/// Extract data from the provided HTML tags and join them
-	fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &Query) -> Option<String> {
+	fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &QueryData) -> Option<String> {
 		// debug_assert!(
 		// 	h.peekable().peek().is_some(),
 		// 	"No HTML tags to extract data from"

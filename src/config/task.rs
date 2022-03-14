@@ -44,7 +44,20 @@ impl Task {
 			read_filter_kind: self.read_filter_kind.parse(),
 			refresh: self.refresh,
 			sink: self.sink.parse()?,
+			// sink: todo!(),
 			source: self.source.parse()?,
 		})
 	}
 }
+
+// #[cfg(test)]
+// mod tests {
+// 	use super::*;
+
+// 	#[test]
+// 	fn conf() {
+// 		let s = std::fs::read_to_string("debug_data/cfg/tasks/csgo-updates.toml").unwrap();
+// 		println!("{:?}", &s[750..]);
+// 		let _task: Task = toml::from_str(&s).unwrap();
+// 	}
+// }

@@ -13,13 +13,13 @@ use url::Url;
 
 use crate::source;
 
-use self::query::{IdQuery, ImageQuery, LinkQuery, QueryKind, TextQuery};
+use self::query::{IdQuery, ImageQuery, LinkQuery, Query, TextQuery};
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct Html {
 	pub(crate) url: Url,
 	#[serde(rename = "item_query")]
-	pub(crate) itemq: Vec<QueryKind>,
+	pub(crate) itemq: Vec<Query>,
 
 	#[serde(rename = "text_query")]
 	pub(crate) textq: Vec<TextQuery>,
@@ -38,7 +38,7 @@ impl Html {
 	pub(crate) fn parse(self) -> source::Html {
 		source::Html {
 			url: self.url,
-			itemq: self.itemq.into_iter().map(QueryKind::parse).collect(),
+			itemq: self.itemq.into_iter().map(Query::parse).collect(),
 			textq: self.textq.into_iter().map(TextQuery::parse).collect(),
 			idq: self.idq.parse(),
 			linkq: self.linkq.parse(),
