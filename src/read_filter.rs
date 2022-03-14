@@ -18,6 +18,7 @@ pub trait Id {
 	fn id(&self) -> &str;
 }
 
+// TODO: dont store all this stuff if ReadFilterKind == Custom
 #[derive(Debug)]
 pub struct ReadFilter {
 	pub(crate) name: String,
@@ -28,12 +29,14 @@ pub struct ReadFilter {
 pub enum ReadFilterInner {
 	NewerThanLastRead(Newer),
 	NotPresentInReadList(NotPresent),
+	Custom,
 }
 
 #[derive(Clone, Copy, Debug)]
 pub enum Kind {
 	NewerThanLastRead,
 	NotPresentInReadList,
+	Custom,
 }
 
 impl ReadFilter {
@@ -46,6 +49,7 @@ impl ReadFilter {
 					Kind::NotPresentInReadList => {
 						ReadFilterInner::NotPresentInReadList(NotPresent::default())
 					}
+					Kind::Custom => ReadFilterInner::Custom,
 				};
 
 				Self {
@@ -57,41 +61,45 @@ impl ReadFilter {
 	}
 
 	pub(crate) fn last_read(&self) -> Option<&str> {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{Custom, NewerThanLastRead, NotPresentInReadList};
 
 		match &self.inner {
 			NewerThanLastRead(x) => x.last_read(),
 			NotPresentInReadList(x) => x.last_read(),
+			Custom => None,
 		}
 	}
 
 	pub(crate) fn remove_read_from<T: Id>(&self, list: &mut Vec<T>) {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{Custom, NewerThanLastRead, NotPresentInReadList};
 
 		match &self.inner {
 			NewerThanLastRead(x) => x.remove_read_from(list),
 			NotPresentInReadList(x) => x.remove_read_from(list),
+			Custom => (),
 		}
 	}
 
 	#[allow(clippy::missing_errors_doc)] // TODO
 	pub(crate) fn mark_as_read(&mut self, id: &str) -> Result<()> {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{Custom, NewerThanLastRead, NotPresentInReadList};
 
 		match &mut self.inner {
 			NewerThanLastRead(x) => x.mark_as_read(id),
 			NotPresentInReadList(x) => x.mark_as_read(id),
+			Custom => (),
 		}
 
 		settings::save(self)
 	}
 
 	pub(crate) fn to_kind(&self) -> Kind {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{Custom, NewerThanLastRead, NotPresentInReadList};
 
 		match &self.inner {
 			NewerThanLastRead(_) => Kind::NewerThanLastRead,
 			NotPresentInReadList(_) => Kind::NotPresentInReadList,
+			Custom => Kind::Custom,
 		}
 	}
 }

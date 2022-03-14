@@ -14,6 +14,7 @@ use crate::config;
 use crate::error::Error;
 use crate::error::Result;
 use crate::read_filter::ReadFilter;
+use crate::read_filter::ReadFilterInner;
 
 const READ_DATA_DIR: &str = "read";
 
@@ -52,6 +53,10 @@ pub fn get(name: &str) -> Result<Option<ReadFilter>> {
 /// * if the remove failed
 #[allow(clippy::missing_panics_doc)]
 pub fn save(read_filter: &ReadFilter) -> Result<()> {
+	if let ReadFilterInner::Custom = read_filter.inner {
+		return Ok(());
+	}
+
 	let path = read_filter_path(&read_filter.name)?;
 	// fs::write(&path, id).map_err(|e| Error::Write(e, path))
 
