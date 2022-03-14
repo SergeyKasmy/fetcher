@@ -46,6 +46,7 @@ async fn main() -> anyhow::Result<()> {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
 		concat!(
+			"v",
 			std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT"),
 			"-",
 			std::env!("VERGEN_GIT_SHA_SHORT"),
@@ -53,7 +54,7 @@ async fn main() -> anyhow::Result<()> {
 			std::env!("VERGEN_GIT_BRANCH")
 		)
 	};
-	tracing::info!("Running fetcher v{}", version);
+	tracing::info!("Running fetcher {}", version);
 
 	// TODO: add option to send to optional global debug chat to test first
 	match std::env::args().nth(1).as_deref() {
