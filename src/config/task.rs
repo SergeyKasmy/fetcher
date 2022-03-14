@@ -9,12 +9,11 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+use super::{read_filter, sink::Sink, source, source::Source};
 use crate::{
 	error::{Error, Result},
 	task,
 };
-
-use super::{read_filter, sink::Sink, source, source::Source};
 
 // #[derive(Deserialize, Debug)]
 // #[serde(transparent, rename = "templates")]

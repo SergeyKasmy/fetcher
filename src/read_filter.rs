@@ -11,12 +11,9 @@ pub(crate) mod not_present;
 
 use self::newer::Newer;
 use self::not_present::NotPresent;
+use crate::entry::Entry;
 use crate::error::Result;
 use crate::settings;
-
-pub trait Id {
-	fn id(&self) -> &str;
-}
 
 // TODO: dont store all this stuff if ReadFilterKind == Custom
 #[derive(Debug)]
@@ -25,6 +22,7 @@ pub struct ReadFilter {
 	pub(crate) inner: ReadFilterInner,
 }
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub enum ReadFilterInner {
 	NewerThanLastRead(Newer),
@@ -70,7 +68,7 @@ impl ReadFilter {
 		}
 	}
 
-	pub(crate) fn remove_read_from<T: Id>(&self, list: &mut Vec<T>) {
+	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		use ReadFilterInner::{Custom, NewerThanLastRead, NotPresentInReadList};
 
 		match &self.inner {

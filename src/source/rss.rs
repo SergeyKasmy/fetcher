@@ -10,7 +10,6 @@ use rss::Channel;
 
 use crate::entry::Entry;
 use crate::error::Result;
-use crate::read_filter::Id;
 use crate::read_filter::ReadFilter;
 use crate::sink::message::Link;
 use crate::sink::message::LinkLocation;
@@ -85,11 +84,5 @@ impl std::fmt::Debug for Rss {
 			// .field("name", &self.name)
 			.field("url", &self.url)
 			.finish_non_exhaustive()
-	}
-}
-
-impl Id for rss::Item {
-	fn id(&self) -> &str {
-		self.guid().unwrap().value()
 	}
 }

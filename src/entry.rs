@@ -6,7 +6,7 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use crate::{read_filter::Id, sink::Message};
+use crate::sink::Message;
 
 // TODO: add message history via responce id -> message id hashmap
 // TODO: add pretty name/hashtag and link here instead of doing it manually
@@ -16,8 +16,9 @@ pub struct Entry {
 	pub msg: Message,
 }
 
-impl Id for Entry {
-	fn id(&self) -> &str {
+impl Entry {
+	#[must_use]
+	pub fn id(&self) -> &str {
 		self.id.as_str()
 	}
 }

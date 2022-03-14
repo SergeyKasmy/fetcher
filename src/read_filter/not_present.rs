@@ -8,7 +8,7 @@
 
 use std::collections::VecDeque;
 
-use super::Id;
+use crate::entry::Entry;
 
 #[derive(Default, Debug)]
 pub struct NotPresent {
@@ -21,7 +21,7 @@ impl NotPresent {
 		self.read_list.back().map(String::as_str)
 	}
 
-	pub(crate) fn remove_read_from<T: Id>(&self, list: &mut Vec<T>) {
+	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		list.retain(|elem| {
 			!self
 				.read_list
