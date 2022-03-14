@@ -6,9 +6,9 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Auth {
 	#[serde(rename = "google_oauth2")]

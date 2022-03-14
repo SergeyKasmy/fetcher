@@ -1,8 +1,8 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::source;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum QueryKind {
 	Tag { value: String },
@@ -22,7 +22,7 @@ impl QueryKind {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum DataLocation {
 	Text,
@@ -40,26 +40,45 @@ impl DataLocation {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct Query {
-	kind: Vec<QueryKind>,
-	data_location: DataLocation,
+	#[serde(flatten)]
+	pub(crate) kind: QueryKind,
+	pub(crate) ignore: Option<Vec<QueryKind>>,
 }
 
 impl Query {
-	fn parse(self) -> source::html::query::Query {
+	pub(crate) fn parse(self) -> source::html::query::Query {
 		source::html::query::Query {
-			kind: self.kind.into_iter().map(QueryKind::parse).collect(),
+			kind: self.kind.parse(),
+			ignore: self
+				.ignore
+				.map(|v| v.into_iter().map(QueryKind::parse).collect::<Vec<_>>())
+				.unwrap_or_default(),
+		}
+	}
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub(crate) struct QueryData {
+	pub(crate) query: Vec<Query>,
+	pub(crate) data_location: DataLocation,
+}
+
+impl QueryData {
+	fn parse(self) -> source::html::query::QueryData {
+		source::html::query::QueryData {
+			query: self.query.into_iter().map(Query::parse).collect(),
 			data_location: self.data_location.parse(),
 		}
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct TextQuery {
-	prepend: Option<String>,
+	pub(crate) prepend: Option<String>,
 	#[serde(flatten)]
-	inner: Query,
+	pub(crate) inner: QueryData,
 }
 
 impl TextQuery {
@@ -71,7 +90,7 @@ impl TextQuery {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum IdQueryKind {
 	String,
@@ -87,11 +106,11 @@ impl IdQueryKind {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct IdQuery {
 	pub(crate) kind: IdQueryKind,
-	#[serde(rename = "query")]
-	pub(crate) inner: Query,
+	#[serde(flatten)]
+	pub(crate) inner: QueryData,
 }
 
 impl IdQuery {
@@ -103,11 +122,11 @@ impl IdQuery {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct LinkQuery {
-	prepend: Option<String>,
+	pub(crate) prepend: Option<String>,
 	#[serde(flatten)]
-	inner: Query,
+	pub(crate) inner: QueryData,
 }
 
 impl LinkQuery {
@@ -119,7 +138,7 @@ impl LinkQuery {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct ImageQuery {
 	optional: Option<bool>,
 	#[serde(flatten)]

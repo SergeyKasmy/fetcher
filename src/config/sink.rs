@@ -8,14 +8,14 @@
 
 mod telegram;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
 use crate::sink;
 
 use self::telegram::Telegram;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Sink {
 	Telegram(Telegram),

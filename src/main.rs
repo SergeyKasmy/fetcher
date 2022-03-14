@@ -18,7 +18,7 @@ use fetcher::{
 	task::Tasks,
 };
 use figment::{
-	providers::{Format, Toml},
+	providers::{Format, Yaml},
 	Figment,
 };
 use futures::future::join_all;
@@ -74,7 +74,7 @@ async fn run() -> Result<()> {
 		.map(|(contents, path)| {
 			tracing::debug!("Found task: {path:?}");
 			let templates: config::Templates = Figment::new()
-				.merge(Toml::string(&contents))
+				.merge(Yaml::string(&contents))
 				.extract()
 				.map_err(|e| Error::InvalidConfig(e, path.clone()))?;
 
@@ -86,12 +86,12 @@ async fn run() -> Result<()> {
 
 					tracing::debug!("Using template: {:?}", tmpl_full_path);
 
-					conf = conf.merge(Toml::string(&tmpl));
+					conf = conf.merge(Yaml::string(&tmpl));
 				}
 			}
 
 			let task: config::Task = conf
-				.merge(Toml::string(&contents))
+				.merge(Yaml::string(&contents))
 				.extract()
 				.map_err(|e| Error::InvalidConfig(e, path.clone()))?;
 

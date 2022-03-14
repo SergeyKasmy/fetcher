@@ -13,14 +13,20 @@ pub(crate) enum DataLocation {
 
 #[derive(Debug)]
 pub(crate) struct Query {
-	pub(crate) kind: Vec<QueryKind>,
+	pub(crate) kind: QueryKind,
+	pub(crate) ignore: Vec<QueryKind>,
+}
+
+#[derive(Debug)]
+pub(crate) struct QueryData {
+	pub(crate) query: Vec<Query>,
 	pub(crate) data_location: DataLocation,
 }
 
 #[derive(Debug)]
 pub(crate) struct TextQuery {
 	pub(crate) prepend: Option<String>,
-	pub(crate) inner: Query,
+	pub(crate) inner: QueryData,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -32,13 +38,13 @@ pub(crate) enum IdQueryKind {
 #[derive(Debug)]
 pub(crate) struct IdQuery {
 	pub(crate) kind: IdQueryKind,
-	pub(crate) inner: Query,
+	pub(crate) inner: QueryData,
 }
 
 #[derive(Debug)]
 pub(crate) struct LinkQuery {
 	pub(crate) prepend: Option<String>,
-	pub(crate) inner: Query,
+	pub(crate) inner: QueryData,
 }
 
 #[derive(Debug)]

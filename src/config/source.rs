@@ -11,7 +11,7 @@ pub(crate) mod html;
 pub(crate) mod rss;
 pub(crate) mod twitter;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
 use crate::source;
@@ -21,7 +21,7 @@ use self::html::Html;
 use self::rss::Rss;
 use self::twitter::Twitter;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Source {
 	Email(Email),
