@@ -34,19 +34,19 @@ pub struct Telegram {
 /// Make the message text more logging friendly:
 /// 1. Remove the opening html tag if it begins with one
 /// 2. Shorten the message to 150 chars
-fn fmt_comment_msg_text(s: &str) -> String {
-	let s = if s.starts_with('<') {
-		if let Some(tag_end) = s.find('>') {
-			&s[tag_end..]
-		} else {
-			s
-		}
-	} else {
-		s
-	};
+// fn fmt_comment_msg_text(s: &str) -> String {
+// 	let s = if s.starts_with('<') {
+// 		if let Some(tag_end) = s.find('>') {
+// 			&s[tag_end..]
+// 		} else {
+// 			s
+// 		}
+// 	} else {
+// 		s
+// 	};
 
-	s.chars().take(/* shorten to */ 40 /* chars */).collect()
-}
+// 	s.chars().take(/* shorten to */ 40 /* chars */).collect()
+// }
 
 impl Telegram {
 	#[must_use]
@@ -61,11 +61,7 @@ impl Telegram {
 	}
 
 	#[allow(clippy::items_after_statements)] // TODO
-	#[tracing::instrument(skip_all,
-	fields(
-		body = fmt_comment_msg_text(&message.body).as_str(),
-		)
-	)]
+	#[tracing::instrument(skip_all)]
 	pub async fn send(&self, message: Message) -> Result<()> {
 		let Message {
 			title,
@@ -83,9 +79,9 @@ impl Telegram {
 		let body = ammonia::clean(&body);
 
 		tracing::debug!(
-			"Processing message: len: {}, media: {}",
-			body.len(),
-			media.is_some()
+			"Processing message: title: {title:?}, body len: {blen}, media: {m}",
+			blen = body.len(),
+			m = media.is_some(),
 		);
 
 		const PADDING: usize = 10; // how much free space to reserve for new lines and "Link" buttons. 10 should be enough

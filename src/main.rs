@@ -189,7 +189,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 							use fetcher::settings;
 
 							let err_str = format!("{:?}", anyhow::anyhow!(e));
-							tracing::error!(%err_str);
+							tracing::error!("{}", err_str);
 							if !cfg!(debug_assertions) {
 								let send_job = async {
 									let bot = settings::telegram()?;

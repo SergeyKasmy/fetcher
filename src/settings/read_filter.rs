@@ -18,6 +18,7 @@ use crate::read_filter::ReadFilter;
 const READ_DATA_DIR: &str = "read";
 
 fn read_filter_path(name: &str) -> Result<PathBuf> {
+	debug_assert!(!name.is_empty());
 	Ok(if cfg!(debug_assertions) {
 		PathBuf::from(format!("debug_data/read/{name}")) // FIXME
 	} else {

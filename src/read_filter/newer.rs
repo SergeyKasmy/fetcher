@@ -8,16 +8,19 @@
 
 use crate::entry::Entry;
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Newer {
 	pub(crate) name: String,
 	pub(crate) last_read_id: Option<String>,
 }
 
 impl Newer {
-	// pub fn new(last_read_id: Option<String>) -> Self {
-	// 	Self { last_read_id }
-	// }
+	pub fn new(name: String) -> Self {
+		Self {
+			name,
+			last_read_id: None,
+		}
+	}
 
 	pub fn last_read(&self) -> Option<&str> {
 		self.last_read_id.as_deref()

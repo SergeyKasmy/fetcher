@@ -10,13 +10,20 @@ use std::collections::VecDeque;
 
 use crate::entry::Entry;
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct NotPresent {
 	pub(crate) name: String,
 	pub(crate) read_list: VecDeque<String>,
 }
 
 impl NotPresent {
+	pub(crate) fn new(name: String) -> Self {
+		Self {
+			name,
+			read_list: Default::default(),
+		}
+	}
+
 	pub(crate) fn last_read(&self) -> Option<&str> {
 		// TODO: why doesn't as_deref() work?
 		self.read_list.back().map(String::as_str)

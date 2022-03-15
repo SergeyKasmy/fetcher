@@ -31,11 +31,12 @@ pub enum Kind {
 impl ReadFilter {
 	// TODO: properly migrate types if the one on the disk is of one type and the provided one is of different type
 	pub(crate) fn read_from_fs(name: String, default_type: Kind) -> Result<Self> {
-		settings::read_filter::get(name).map(|x| {
+		// TODO
+		settings::read_filter::get(name.clone()).map(|x| {
 			x.unwrap_or_else(|| match default_type {
-				Kind::NewerThanLastRead => ReadFilter::NewerThanLastRead(Newer::default()),
+				Kind::NewerThanLastRead => ReadFilter::NewerThanLastRead(Newer::new(name)),
 				Kind::NotPresentInReadList => {
-					ReadFilter::NotPresentInReadList(NotPresent::default())
+					ReadFilter::NotPresentInReadList(NotPresent::new(name))
 				}
 			})
 		})
