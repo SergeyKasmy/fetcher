@@ -10,14 +10,14 @@ mod auth;
 mod filters;
 mod view_mode;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use self::auth::Auth;
 use self::filters::Filters;
 use self::view_mode::ViewMode;
 use crate::{error::Result, settings, source};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Email {
 	imap: String,

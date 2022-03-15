@@ -16,7 +16,7 @@ use std::{
 use super::PREFIX;
 use crate::error::{Error, Result};
 
-const CONFIG_FILE_EXT: &str = ".toml";
+const CONFIG_FILE_EXT: &str = ".yaml";
 
 /// Find all task .toml configs in the first non-empty config directory by priority
 /// Ignore configs in directories lower in priority if one in higher priority has configs    // TODO: isn't just ignoring them kinda stupid?
@@ -98,7 +98,7 @@ pub fn template(name: &Path) -> Result<(String, PathBuf)> {
 
 	let tmpl_path = cfg_dirs.into_iter().find_map(|mut dir| {
 		let mut file_name = name.as_os_str().to_owned();
-		file_name.push(".toml");
+		file_name.push(CONFIG_FILE_EXT);
 
 		dir.push(file_name);
 		if dir.exists() {

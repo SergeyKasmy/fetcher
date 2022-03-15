@@ -6,13 +6,9 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-pub mod config;
-pub mod data;
-pub mod read_filter;
-
-pub use self::data::{
-	generate_google_oauth2, generate_google_password, generate_telegram, generate_twitter_auth,
-	google_oauth2, google_password, telegram, twitter,
-};
-
-const PREFIX: &str = "fetcher";
+#[derive(Debug)]
+pub struct Filters {
+	pub sender: Option<String>,
+	pub subjects: Option<Vec<String>>,
+	pub exclude_subjects: Option<Vec<String>>,
+}

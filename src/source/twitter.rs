@@ -9,12 +9,12 @@
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 
+use crate::entry::Entry;
 use crate::error::Result;
 use crate::read_filter::ReadFilter;
 use crate::sink::message::{Link, LinkLocation};
 use crate::sink::Media;
 use crate::sink::Message;
-use crate::source::Responce;
 
 pub struct Twitter {
 	pretty_name: String, // used for hashtags
@@ -45,7 +45,7 @@ impl Twitter {
 	}
 
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Entry>> {
 		tracing::debug!("Getting tweets");
 		if self.token.is_none() {
 			self.token = Some(
@@ -63,7 +63,7 @@ impl Twitter {
 			.await?;
 
 		tracing::debug!(
-			"Got {num} tweets older than the last read one",
+			"Got {num} tweets older than the last one read",
 			num = tweets.len()
 		);
 
@@ -77,13 +77,8 @@ impl Twitter {
 					return None;
 				}
 
-				// let text = format!(
-				// 	"#{}\n\n{}\n<a href=\"\">Link</a>",
-				// 	self.pretty_name, tweet.text, self.handle, tweet.id
-				// );
-
-				Some(Responce {
-					id: Some(tweet.id.to_string()),
+				Some(Entry {
+					id: tweet.id.to_string(),
 					msg: Message {
 						title: None,
 						body: tweet.text.clone(),
@@ -116,10 +111,12 @@ impl Twitter {
 			})
 			.collect::<Vec<_>>();
 
-		tracing::debug!(
-			"{num} tweets remaining after filtering",
-			num = messages.len()
-		);
+		let unread_num = messages.len();
+		if unread_num > 0 {
+			tracing::info!("Got {unread_num} unread filtered tweets");
+		} else {
+			tracing::debug!("All tweets have already been read, none remaining to send");
+		}
 
 		Ok(messages)
 	}

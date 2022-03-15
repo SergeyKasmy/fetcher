@@ -18,10 +18,10 @@ use fetcher::{
 	task::Tasks,
 };
 use figment::{
-	providers::{Format, Toml},
+	providers::{Format, Yaml},
 	Figment,
 };
-use futures::future::try_join_all;
+use futures::future::join_all;
 use futures::StreamExt;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
@@ -30,16 +30,31 @@ use std::sync::Arc;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::{select, sync::watch::Receiver};
+use tracing::Instrument;
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
 	tracing_subscriber::fmt()
-		// FIXME: properly set INFO as default log level
-		.with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+		.with_env_filter(
+			EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::from("fetcher=info")), // TODO: that doesn't look right. Isn't there a better way to use info by default?
+		)
 		.without_time()
 		.init();
 
-	tracing::info!("Starting fetcher v{}", std::env!("CARGO_PKG_VERSION"));
+	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
+		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
+	} else {
+		concat!(
+			"v",
+			std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT"),
+			"-",
+			std::env!("VERGEN_GIT_SHA_SHORT"),
+			" on branch ",
+			std::env!("VERGEN_GIT_BRANCH")
+		)
+	};
+	tracing::info!("Running fetcher {}", version);
 
 	// TODO: add option to send to optional global debug chat to test first
 	match std::env::args().nth(1).as_deref() {
@@ -60,7 +75,7 @@ async fn run() -> Result<()> {
 		.map(|(contents, path)| {
 			tracing::debug!("Found task: {path:?}");
 			let templates: config::Templates = Figment::new()
-				.merge(Toml::string(&contents))
+				.merge(Yaml::string(&contents))
 				.extract()
 				.map_err(|e| Error::InvalidConfig(e, path.clone()))?;
 
@@ -70,14 +85,14 @@ async fn run() -> Result<()> {
 				for tmpl_path in templates {
 					let (tmpl, tmpl_full_path) = settings::config::template(&tmpl_path)?;
 
-					tracing::debug!("Using template: {}", tmpl_full_path.display());
+					tracing::debug!("Using template: {:?}", tmpl_full_path);
 
-					conf = conf.merge(Toml::string(&tmpl));
+					conf = conf.merge(Yaml::string(&tmpl));
 				}
 			}
 
 			let task: config::Task = conf
-				.merge(Toml::string(&contents))
+				.merge(Yaml::string(&contents))
 				.extract()
 				.map_err(|e| Error::InvalidConfig(e, path.clone()))?;
 
@@ -90,11 +105,27 @@ async fn run() -> Result<()> {
 				task.parse(&path)?,
 			))
 		})
+		.filter(|task_res| {
+			// ignore the task only if it's not an error and is marked as disabled
+			task_res
+				.as_ref()
+				.map(|(_, task)| !task.disabled)
+				.unwrap_or(true)
+		})
 		.collect::<Result<Tasks>>()?;
 
 	if tasks.is_empty() {
-		tracing::warn!("No tasks provided");
+		tracing::warn!("No enabled tasks provided");
 		return Ok(());
+	} else {
+		tracing::debug!(
+			"Found {num} enabled tasks: {names:?}",
+			num = tasks.len(),
+			names = tasks
+				.iter()
+				.map(|(name, _)| name.as_str())
+				.collect::<Vec<_>>(),
+		);
 	}
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
@@ -138,33 +169,58 @@ async fn run() -> Result<()> {
 }
 
 async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
-	let mut futs = Vec::new();
+	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
-		if let Some(disabled) = t.disabled {
-			if disabled {
-				continue;
-			}
+		if t.disabled {
+			continue;
 		}
 
 		let mut shutdown_rx = shutdown_rx.clone();
 
 		// TODO: create a tracing span for each task with task name param
 		let fut = tokio::spawn(async move {
-			select! {
-				r = run_task(&name, &mut t) => r?,
-				_ = shutdown_rx.changed() => {
-					tracing::info!("{name}: shutting down...");
-				},
-			}
+			async {
+				select! {
+					res = run_task(&name, &mut t) => {
+						if let Err(e) = res {
+							// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
+							use fetcher::sink::Telegram;
+							use fetcher::sink::Message;
+							use fetcher::settings;
 
-			#[allow(unreachable_code)]
-			Ok::<(), Error>(())
+							let err_str = format!("{:?}", anyhow::anyhow!(e));
+							tracing::error!(%err_str);
+							if !cfg!(debug_assertions) {
+								let send_job = async {
+									let bot = settings::telegram()?;
+									let msg = Message {
+										body: err_str,
+										..Default::default()
+									};
+									Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned()).send(msg).await?;
+									Ok::<(), Error>(())
+								};
+								if let Err(e) = send_job.await {
+									tracing::error!("Unable to send error report to the admin: {:?}", anyhow::anyhow!(e));
+								}
+							}
+						}
+					}
+					_ = shutdown_rx.changed() => (),
+				}
+
+				tracing::info!("Shutting down...");
+				#[allow(unreachable_code)]
+				Ok::<(), Error>(())
+			}
+			.instrument(tracing::info_span!("task", name = name.as_str()))
+			.await
 		});
 
-		futs.push(flatten_task(fut));
+		running_tasks.push(flatten_task(fut));
 	}
 
-	try_join_all(futs).await?;
+	let _ = join_all(running_tasks).await;
 	Ok(())
 }
 

@@ -8,15 +8,45 @@
 
 use std::collections::HashMap;
 
-use crate::{read_filter::Kind, sink::Sink, source::Source};
+use crate::{read_filter, sink::Sink, source::Source};
 
 pub type Tasks = HashMap<String, Task>;
 
 #[derive(Debug)]
 pub struct Task {
-	pub disabled: Option<bool>,
+	// NOTE: only these 2 are safe to modify however you want
+	pub disabled: bool,
 	pub refresh: u64,
-	pub read_filter_kind: Kind,
-	pub sink: Sink,
-	pub source: Source,
+	pub(crate) read_filter_kind: Option<read_filter::Kind>,
+	pub(crate) sink: Sink,
+	pub(crate) source: Source,
+}
+
+impl Task {
+	#[must_use]
+	pub fn new(
+		disabled: bool,
+		refresh: u64,
+		read_filter_kind: Option<read_filter::Kind>,
+		sink: Sink,
+		source: Source,
+	) -> Self {
+		// TODO: make that a Result with a custom error
+		// or just remove panicing somehow else
+		match (&source, &read_filter_kind) {
+			(Source::Email(_), Some(_)) => {
+				panic!("Email source doesn't support custom read filter types")
+			}
+			(Source::Email(_), None) | (_, Some(_)) => (),
+			(_, None) => panic!("read_filter_type field missing"),
+		}
+
+		Self {
+			disabled,
+			refresh,
+			read_filter_kind,
+			sink,
+			source,
+		}
+	}
 }

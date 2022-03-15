@@ -6,10 +6,11 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use super::Id;
+use crate::entry::Entry;
 
 #[derive(Default, Debug)]
 pub struct Newer {
+	pub(crate) name: String,
 	pub(crate) last_read_id: Option<String>,
 }
 
@@ -23,7 +24,7 @@ impl Newer {
 	}
 
 	/// Make sure list is sorted newest to oldest
-	pub fn remove_read_from<T: Id>(&self, list: &mut Vec<T>) {
+	pub fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		if let Some(last_read_id) = &self.last_read_id {
 			if let Some(last_read_id_pos) =
 				list.iter().position(|x| x.id() == last_read_id.as_str())

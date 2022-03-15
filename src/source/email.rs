@@ -7,6 +7,7 @@
  */
 
 mod auth;
+pub mod filters;
 mod view_mode;
 
 pub use auth::Auth;
@@ -15,19 +16,13 @@ pub use view_mode::ViewMode;
 use mailparse::ParsedMail;
 
 use self::auth::GoogleAuthExt;
+use self::filters::Filters;
 use crate::auth::Google as GoogleAuth;
+use crate::entry::Entry;
 use crate::error::{Error, Result};
 use crate::sink::Message;
-use crate::source::Responce;
 
 const IMAP_PORT: u16 = 993;
-
-#[derive(Debug)]
-pub struct Filters {
-	pub sender: Option<String>,
-	pub subjects: Option<Vec<String>>,
-	pub exclude_subjects: Option<Vec<String>>,
-}
 
 pub struct Email {
 	imap: String,
@@ -82,13 +77,13 @@ impl Email {
 	/// It should be used with spawn_blocking probs
 	/// TODO: make it async lol
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&mut self) -> Result<Vec<Responce>> {
+	pub async fn get(&mut self) -> Result<Vec<Entry>> {
 		tracing::debug!("Fetching emails");
 		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT).rustls()?;
 
 		let mut session = match &mut self.auth {
 			Auth::GoogleAuth(auth) => {
-				tracing::debug!("Logging in to IMAP with Google OAuth2");
+				tracing::trace!("Logging in to IMAP with Google OAuth2");
 
 				client
 					.authenticate("XOAUTH2", &auth.as_imap_oauth2(&self.email).await?)
@@ -96,7 +91,7 @@ impl Email {
 					.map_err(|(e, _)| Error::from(e))?
 			}
 			Auth::Password(password) => {
-				tracing::debug!("Logging in to IMAP with a password");
+				tracing::warn!("Logging in to IMAP with a password, this is insecure");
 
 				client
 					.login(&self.email, password)
@@ -105,18 +100,7 @@ impl Email {
 			}
 		};
 
-		match self.view_mode {
-			ViewMode::ReadOnly => {
-				tracing::debug!("Using INBOX in ro mode");
-
-				session.examine("INBOX")?;
-			}
-			ViewMode::MarkAsRead | ViewMode::Delete => {
-				tracing::debug!("Using INBOX in rw mode");
-
-				session.select("INBOX")?;
-			}
-		};
+		session.examine("INBOX")?;
 
 		let search_string = {
 			let mut tmp = "UNSEEN ".to_string();
@@ -147,52 +131,45 @@ impl Email {
 			.collect::<Vec<_>>()
 			.join(",");
 
-		tracing::debug!(
-			"Got {num} unread mails for \"{search_string}\"",
-			num = mail_ids.len()
-		);
+		let unread_num = mail_ids.len();
+		if unread_num > 0 {
+			tracing::info!("Got {unread_num} unread filtered mails");
+		} else {
+			tracing::debug!(
+				"All email for the search query have already been read, none remaining to send"
+			);
+		}
 
 		if mail_ids.is_empty() {
 			return Ok(Vec::new());
 		}
 
-		// TODO: reverse order
 		let mails = session.uid_fetch(&mail_ids, "BODY[]")?;
-
-		// TODO: handle sent messages separately
-		// mb a callback with email UID after successful sending?
-		if let ViewMode::Delete = self.view_mode {
-			session.uid_store(&mail_ids, "+FLAGS.SILENT (\\Deleted)")?;
-			session.uid_expunge(&mail_ids)?;
-		}
-
 		session.logout()?;
 
 		mails
 			.iter()
 			.filter(|x| x.body().is_some()) // TODO: properly handle error cases and don't just filter them out
+			.rev()
 			.map(|x| {
-				Ok(Responce {
-					id: None,
-					msg: Self::parse(
-						&mailparse::parse_mail(x.body().unwrap())?, // unwrap NOTE: temporary but it's safe for now because of the check above
-						self.footer.as_deref(),
-					)?,
-				})
+				self.parse(
+					&mailparse::parse_mail(x.body().unwrap())?, // unwrap NOTE: temporary but it's safe for now because of the check above
+					x.uid.unwrap().to_string(),
+				)
 			})
-			.collect::<Result<Vec<Responce>>>()
+			.collect::<Result<Vec<Entry>>>()
 	}
 
-	fn parse(mail: &ParsedMail, remove_after: Option<&str>) -> Result<Message> {
-		let (subject, body) = {
-			let subject = mail.headers.iter().find_map(|x| {
-				if x.get_key_ref() == "Subject" {
-					Some(x.get_value())
-				} else {
-					None
-				}
-			});
+	fn parse(&self, mail: &ParsedMail, id: String) -> Result<Entry> {
+		let subject = mail.headers.iter().find_map(|x| {
+			if x.get_key_ref() == "Subject" {
+				Some(x.get_value())
+			} else {
+				None
+			}
+		});
 
+		let body = {
 			let mut body = if mail.subparts.is_empty() {
 				mail
 			} else {
@@ -203,25 +180,67 @@ impl Email {
 			}
 			.get_body()?;
 
-			if let Some(remove_after) = remove_after {
-				body.drain(body.find(remove_after).unwrap_or(body.len())..);
+			if let Some(footer) = self.footer.as_deref() {
+				body.drain(body.find(footer).unwrap_or(body.len())..);
 			}
 
-			// TODO: replace upticks ` with teloxide::utils::html::escape_code
-
-			// NOTE: emails often contain all kinds of html or other text which Telegram's HTML parser doesn't approve of
-			// I dislike the need to add an extra dependency just for this simple task but you gotta do what you gotta do.
-			// Hopefully I'll find a better way to escape everything though since I don't fear a possibility that it'll be
-			// somehow harmful 'cause it doesn't consern me, only Telegram :P
-			(subject, ammonia::clean(&body))
+			body
 		};
 
-		Ok(Message {
-			title: subject,
-			body,
-			link: None,
-			media: None,
+		Ok(Entry {
+			id,
+			msg: Message {
+				title: subject,
+				body,
+				link: None,
+				media: None,
+			},
 		})
+	}
+
+	pub(crate) async fn mark_as_read(&mut self, uid: &str) -> Result<()> {
+		if let ViewMode::ReadOnly = self.view_mode {
+			return Ok(());
+		}
+
+		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT).rustls()?;
+		let mut session = match &mut self.auth {
+			Auth::GoogleAuth(auth) => {
+				tracing::trace!("Logging in to IMAP with Google OAuth2");
+
+				client
+					.authenticate("XOAUTH2", &auth.as_imap_oauth2(&self.email).await?)
+					// .map_err(|(e, _)| Error::EmailAuth(e))?
+					.map_err(|(e, _)| Error::from(e))?
+			}
+			Auth::Password(password) => {
+				tracing::warn!("Logging in to IMAP with a password, this is insecure");
+
+				client
+					.login(&self.email, password)
+					// .map_err(|(e, _)| Error::EmailAuth(e))?
+					.map_err(|(e, _)| Error::from(e))?
+			}
+		};
+
+		session.select("INBOX")?;
+
+		match self.view_mode {
+			ViewMode::MarkAsRead => {
+				session.uid_store(uid, "+FLAGS.SILENT (\\Seen)")?;
+				tracing::debug!("Marked email uid {uid} as read");
+			}
+			ViewMode::Delete => {
+				session.uid_store(uid, "+FLAGS.SILENT (\\Deleted)")?;
+				session.uid_expunge(uid)?;
+				tracing::debug!("Deleted email uid {uid}");
+			}
+			ViewMode::ReadOnly => unreachable!(),
+		};
+
+		session.logout()?;
+
+		Ok(())
 	}
 }
 

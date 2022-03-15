@@ -8,7 +8,7 @@
 
 use url::Url;
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct Message {
 	pub title: Option<String>,
 	pub body: String,

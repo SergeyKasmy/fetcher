@@ -6,11 +6,11 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::source;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct Filters {
 	sender: Option<String>,
 	subjects: Option<Vec<String>>,
@@ -18,8 +18,8 @@ pub(crate) struct Filters {
 }
 
 impl Filters {
-	pub(crate) fn parse(self) -> source::email::Filters {
-		source::email::Filters {
+	pub(crate) fn parse(self) -> source::email::filters::Filters {
+		source::email::filters::Filters {
 			sender: self.sender,
 			subjects: self.subjects,
 			exclude_subjects: self.exclude_subjects,

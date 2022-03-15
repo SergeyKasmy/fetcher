@@ -63,9 +63,7 @@ impl Telegram {
 	#[allow(clippy::items_after_statements)] // TODO
 	#[tracing::instrument(skip_all,
 	fields(
-		len = message.body.len(),
 		body = fmt_comment_msg_text(&message.body).as_str(),
-		media = message.media.is_some(),
 		)
 	)]
 	pub async fn send(&self, message: Message) -> Result<()> {
@@ -76,15 +74,32 @@ impl Telegram {
 			media,
 		} = message;
 
-		// TODO: move to a function
+		// TODO: replace upticks ` with teloxide::utils::html::escape_code
+
+		// NOTE: emails/html sites often contain all kinds of html or other text which Telegram's HTML parser doesn't approve of
+		// I dislike the need to add an extra dependency just for this simple task but you gotta do what you gotta do.
+		// Hopefully I'll find a better way to escape everything though since I don't fear a possibility that it'll be
+		// somehow harmful 'cause it doesn't consern me, only Telegram :P
+		let body = ammonia::clean(&body);
+
+		tracing::debug!(
+			"Processing message: len: {}, media: {}",
+			body.len(),
+			media.is_some()
+		);
+
 		const PADDING: usize = 10; // how much free space to reserve for new lines and "Link" buttons. 10 should be enough
-		let approx_msg_len = title.as_ref().map_or(0, String::len) + body.len();
-		let body = if approx_msg_len + PADDING > 4096 {
+		let title_len = title.as_ref().map_or(0, String::len);
+		let approx_msg_len = title_len + body.len() + PADDING;
+		let body = if title_len + body.len() + PADDING > 4096 {
 			// TODO: split the message properly instead of just throwing the rest away
 			tracing::warn!("Message too long ({approx_msg_len})");
-			let (idx, _) = body.char_indices().nth(4096 - PADDING).unwrap(); // unwrap NOTE: safe, length already confirmed to be bigger
+			let (idx, _) = body.char_indices().nth(4096 - title_len - PADDING).unwrap(); // unwrap FIXME: len is measured in bytes while chat_indices is in graphemes. That may cause crashes.
+																			 // It would be just better to split the message in parts and send that instead of trying to fix this
 			let mut m = body[..idx].to_string();
 			m.push_str("...");
+			tracing::debug!("Message body length after trimming: {}", m.len());
+			tracing::debug!("Message full approx len: {}", m.len() + title_len + PADDING);
 			m
 		} else {
 			body
@@ -135,7 +150,8 @@ impl Telegram {
 				Err(Error::Telegram(RequestError::Api(ApiError::Unknown(e)), _))
 					if e == "Bad Request: wrong file identifier/HTTP URL specified" =>
 				{
-					tracing::error!("Telegram disapproved of the media URL ({e}), sending the message as pure text");
+					// TODO: reupload the image manually if this happens
+					tracing::warn!("Telegram disapproved of the media URL ({e}), sending the message as pure text");
 					self.send_text(text).await?;
 				}
 				Ok(_) => (),
@@ -152,7 +168,7 @@ impl Telegram {
 	async fn send_text(&self, message: String) -> Result<TelMessage> {
 		loop {
 			tracing::info!("Sending text message");
-			tracing::debug!("Message contents: {message:?}");
+			tracing::trace!("Message contents: {message:?}");
 
 			match self
 				.bot
@@ -164,7 +180,7 @@ impl Telegram {
 			{
 				Ok(message) => return Ok(message),
 				Err(RequestError::RetryAfter(retry_after)) => {
-					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
+					tracing::warn!("Exceeded rate limit, retrying in {retry_after}s");
 					tokio::time::sleep(Duration::from_secs(retry_after.try_into().expect(
 						"Telegram returned a negative RetryAfter value. How did that even happen?",
 					)))
@@ -184,7 +200,7 @@ impl Telegram {
 	async fn send_media(&self, media: Vec<InputMedia>) -> Result<Vec<TelMessage>> {
 		loop {
 			tracing::info!("Sending media message");
-			tracing::debug!("Message contents: {media:?}");
+			tracing::trace!("Message contents: {media:?}");
 
 			match self
 				.bot
@@ -194,7 +210,7 @@ impl Telegram {
 			{
 				Ok(messages) => return Ok(messages),
 				Err(RequestError::RetryAfter(retry_after)) => {
-					tracing::warn!("Exceeded rate limit, retrying in {retry_after}");
+					tracing::warn!("Exceeded rate limit, retrying in {retry_after}s");
 					tokio::time::sleep(Duration::from_secs(retry_after.try_into().expect(
 						"Telegram returned a negative RetryAfter value. How did that even happen?",
 					)))
