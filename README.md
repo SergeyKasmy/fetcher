@@ -32,20 +32,20 @@ The final binary will be located in `target/release/fetcher` which you can then 
 
 ## Setup
 
-The main unit of execution in fetcher is a task. A task consists of a source where to fetch some kind of data from and a sink where to send that data to. To create a task, create a `foo.toml` file in `$XDG_CONFIG_HOME/fetcher/tasks` or `/etc/xdg/fetcher/tasks` where `foo` is the name you want that task to have. A proper task config file looks something like this:
+The main unit of execution in fetcher is a task. A task consists of a source where to fetch some kind of data from and a sink where to send that data to. To create a task, create a `foo.yaml` file in `$XDG_CONFIG_HOME/fetcher/tasks` or `/etc/xdg/fetcher/tasks` where `foo` is the name you want that task to have. A proper task config file looks something like this:
 
-```
-refresh = 30
-read_filter_type = "newer_than_read"
+```yaml
+# optional
+disabled: true
 
-[source]
-type = "rss"
-url = "<your_rss_feed>"
-
-[sink]
-type = "telegram"
-chat_id = <your_telegram_chat_id>
-
+refresh: 30	 # in minutes
+read_filter_type: newer_than_read
+source:
+  type: rss
+  url: <your_rss_feed_url>
+sink:
+  type: telegram
+  chat_id: <your_telegram_chat_id>
 ```
 
 Currently available source types:
