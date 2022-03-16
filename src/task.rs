@@ -14,9 +14,9 @@ pub type Tasks = HashMap<String, Task>;
 
 #[derive(Debug)]
 pub struct Task {
-	// NOTE: only these 2 are safe to modify however you want
 	pub disabled: bool,
 	pub refresh: u64,
+	pub tag: Option<String>,
 	pub(crate) read_filter_kind: Option<read_filter::Kind>,
 	pub(crate) sink: Sink,
 	pub(crate) source: Source,
@@ -27,6 +27,7 @@ impl Task {
 	pub fn new(
 		disabled: bool,
 		refresh: u64,
+		tag: Option<String>,
 		read_filter_kind: Option<read_filter::Kind>,
 		sink: Sink,
 		source: Source,
@@ -44,6 +45,7 @@ impl Task {
 		Self {
 			disabled,
 			refresh,
+			tag,
 			read_filter_kind,
 			sink,
 			source,

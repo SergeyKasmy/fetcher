@@ -67,7 +67,7 @@ async fn process_entry(
 ) -> Result<()> {
 	tracing::trace!("Processing entry: {entry:?}");
 
-	t.sink.send(entry.msg).await?;
+	t.sink.send(entry.msg, t.tag.as_deref()).await?;
 	match (&mut t.source, &mut read_filter) {
 		// Email has custom read filtering and read marking
 		(Source::Email(e), None) => e.mark_as_read(&entry.id).await?,

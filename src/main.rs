@@ -197,7 +197,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 										body: err_str,
 										..Default::default()
 									};
-									Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned()).send(msg).await?;
+									Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned()).send(msg, Some(&name)).await?;
 									Ok::<(), Error>(())
 								};
 								if let Err(e) = send_job.await {

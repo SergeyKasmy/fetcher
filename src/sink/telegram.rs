@@ -25,6 +25,8 @@ use crate::{
 	sink::{message::LinkLocation, Media, Message},
 };
 
+const MAX_MSG_LEN: usize = 4096;
+
 pub struct Telegram {
 	// bot: Throttle<Bot>,
 	bot: Bot,
@@ -62,7 +64,7 @@ impl Telegram {
 
 	#[allow(clippy::items_after_statements)] // TODO
 	#[tracing::instrument(skip_all)]
-	pub async fn send(&self, message: Message) -> Result<()> {
+	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<()> {
 		let Message {
 			title,
 			body,
@@ -84,14 +86,17 @@ impl Telegram {
 			m = media.is_some(),
 		);
 
-		const PADDING: usize = 10; // how much free space to reserve for new lines and "Link" buttons. 10 should be enough
+		const PADDING: usize = 30; // how much free space to reserve for new lines and "Link" buttons. 30 should be enough
 		let title_len = title.as_ref().map_or(0, String::len);
 		let approx_msg_len = title_len + body.len() + PADDING;
-		let body = if title_len + body.len() + PADDING > 4096 {
+		let body = if title_len + body.len() + PADDING > MAX_MSG_LEN {
 			// TODO: split the message properly instead of just throwing the rest away
 			tracing::warn!("Message too long ({approx_msg_len})");
-			let (idx, _) = body.char_indices().nth(4096 - title_len - PADDING).unwrap(); // unwrap FIXME: len is measured in bytes while chat_indices is in graphemes. That may cause crashes.
-																			 // It would be just better to split the message in parts and send that instead of trying to fix this
+			let (idx, _) = body
+				.char_indices()
+				.nth(MAX_MSG_LEN - title_len - PADDING)
+				.unwrap(); // unwrap FIXME: len is measured in bytes while chat_indices is in graphemes. That may cause crashes.
+		   // It would be just better to split the message in parts and send that instead of trying to fix this
 			let mut m = body[..idx].to_string();
 			m.push_str("...");
 			tracing::debug!("Message body length after trimming: {}", m.len());
@@ -101,26 +106,36 @@ impl Telegram {
 			body
 		};
 
-		let text = match (&title, &link) {
-			(Some(title), Some(link)) => match link.loc {
-				LinkLocation::PreferTitle => {
-					format!("<a href=\"{url}\">{title}</a>\n{body}", url = link.url,)
+		let text = {
+			let mut text = match (&title, &link) {
+				(Some(title), Some(link)) => match link.loc {
+					LinkLocation::PreferTitle => {
+						format!("<a href=\"{url}\">{title}</a>\n{body}", url = link.url,)
+					}
+					LinkLocation::Bottom => {
+						format!(
+							"{title}\n{body}\n<a href=\"{url}\">Link</a>",
+							url = link.url
+						)
+					}
+				},
+				(Some(title), None) => {
+					format!("{title}\n{body}")
 				}
-				LinkLocation::Bottom => {
-					format!(
-						"{title}\n{body}\n<a href=\"{url}\">Link</a>",
-						url = link.url
-					)
+				(None, Some(link)) => {
+					format!("{body}\n<a href=\"{url}\">Link</a>", url = link.url)
 				}
-			},
-			(Some(title), None) => {
-				format!("{title}\n{body}")
+				(None, None) => body,
+			};
+
+			if let Some(tag) = tag {
+				text.insert_str(0, &format!("#{tag}\n\n"));
 			}
-			(None, Some(link)) => {
-				format!("{body}\n<a href=\"{url}\">Link</a>", url = link.url)
-			}
-			(None, None) => body,
+
+			text
 		};
+
+		assert!(text.len() < MAX_MSG_LEN);
 
 		if let Some(media) = media {
 			match self

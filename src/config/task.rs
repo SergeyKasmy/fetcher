@@ -29,6 +29,7 @@ pub struct Task {
 	disabled: Option<bool>,
 	#[serde(rename = "read_filter_type")]
 	read_filter_kind: Option<read_filter::Kind>,
+	tag: Option<String>,
 	refresh: u64,
 	source: Source,
 	sink: Sink,
@@ -66,9 +67,9 @@ impl Task {
 		Ok(task::Task {
 			disabled: self.disabled.unwrap_or(false),
 			read_filter_kind: self.read_filter_kind.map(read_filter::Kind::parse),
+			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
 			refresh: self.refresh,
 			sink: self.sink.parse()?,
-			// sink: todo!(),
 			source: self.source.parse()?,
 		})
 	}

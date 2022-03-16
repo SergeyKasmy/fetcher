@@ -21,9 +21,9 @@ pub enum Sink {
 
 impl Sink {
 	#[allow(clippy::missing_errors_doc)] // TODO
-	pub async fn send(&self, message: Message) -> Result<()> {
+	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<()> {
 		match self {
-			Self::Telegram(t) => t.send(message).await,
+			Self::Telegram(t) => t.send(message, tag).await,
 		}
 	}
 }
