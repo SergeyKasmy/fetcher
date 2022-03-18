@@ -6,14 +6,15 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use std::fs;
+use std::fs::{self, File};
 use std::path::PathBuf;
 
 use super::PREFIX;
 use crate::config;
-use crate::error::Error;
-use crate::error::Result;
-use crate::read_filter::ReadFilter;
+use fetcher::{
+	error::{Error, Result},
+	read_filter::ReadFilter,
+};
 
 const READ_DATA_DIR: &str = "read";
 
@@ -45,6 +46,16 @@ pub fn get(name: String) -> Result<Option<ReadFilter>> {
 		.map_err(|e| Error::CorruptedData(e, path))
 }
 
+pub fn save_file(name: &str) -> Result<File> {
+	let path = read_filter_path(name)?;
+
+	fs::OpenOptions::new()
+		.write(true)
+		.open(&path)
+		.map_err(|e| Error::Write(e, path))
+}
+
+/*
 /// Save the provided read filter to the fs or remove it from the fs if it's empty
 ///
 /// # Errors
@@ -71,3 +82,4 @@ pub fn delete(filter: &ReadFilter) -> Result<()> {
 	// TODO: don't error if file doesn't exist
 	fs::remove_file(&path).map_err(|e| Error::Write(e, path))
 }
+*/

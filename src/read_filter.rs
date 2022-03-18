@@ -9,8 +9,11 @@
 pub(crate) mod newer;
 pub(crate) mod not_present;
 
+use std::io::Write;
+
 use self::newer::Newer;
 use self::not_present::NotPresent;
+use crate::config;
 use crate::entry::Entry;
 use crate::error::Result;
 
@@ -28,22 +31,22 @@ pub enum Kind {
 }
 
 impl ReadFilter {
-	// TODO: properly migrate types if the one on the disk is of one type and the provided one is of different type
-	pub(crate) fn read_from_fs(name: String, default_type: Kind) -> Result<Self> {
-		// TODO
-		settings::read_filter::get(name.clone()).map(|x| {
-			x.unwrap_or_else(|| match default_type {
-				Kind::NewerThanLastRead => ReadFilter::NewerThanLastRead(Newer::new(name)),
-				Kind::NotPresentInReadList => {
-					ReadFilter::NotPresentInReadList(NotPresent::new(name))
-				}
-			})
-		})
-	}
+	// // TODO: properly migrate types if the one on the disk is of one type and the provided one is of different type
+	// pub(crate) fn read_from_fs(name: String, default_type: Kind) -> Result<Self> {
+	// 	// TODO
+	// 	settings::read_filter::get(name.clone()).map(|x| {
+	// 		x.unwrap_or_else(|| match default_type {
+	// 			Kind::NewerThanLastRead => ReadFilter::NewerThanLastRead(Newer::new(name)),
+	// 			Kind::NotPresentInReadList => {
+	// 				ReadFilter::NotPresentInReadList(NotPresent::new(name))
+	// 			}
+	// 		})
+	// 	})
+	// }
 
-	pub(crate) fn delete_from_fs(self) -> Result<()> {
-		settings::read_filter::delete(&self)
-	}
+	// pub(crate) fn delete_from_fs(self) -> Result<()> {
+	// 	settings::read_filter::delete(&self)
+	// }
 
 	pub(crate) fn name(&self) -> &str {
 		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
@@ -72,8 +75,9 @@ impl ReadFilter {
 		}
 	}
 
+	// TODO: move external_save inside the struct
 	#[allow(clippy::missing_errors_doc)] // TODO
-	pub(crate) fn mark_as_read(&mut self, id: &str) -> Result<()> {
+	pub(crate) fn mark_as_read(&mut self, id: &str, external_save: impl Write) -> Result<()> {
 		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
 
 		match self {
@@ -81,7 +85,15 @@ impl ReadFilter {
 			NotPresentInReadList(x) => x.mark_as_read(id),
 		}
 
-		settings::read_filter::save(self)
+		// settings::read_filter::save(self)
+		config::read_filter::ReadFilter::unparse(&self).map(|filter_conf| {
+			let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
+			external_save
+				.write_all(s.as_bytes())
+				.expect("Read Filter save error"); // FIXME
+		});
+
+		Ok(())
 	}
 
 	pub(crate) fn to_kind(&self) -> Kind {

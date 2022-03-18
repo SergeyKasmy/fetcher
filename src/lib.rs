@@ -20,6 +20,7 @@ pub mod sink;
 pub mod source;
 pub mod task;
 
+use std::io::Write;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -30,18 +31,23 @@ use crate::read_filter::ReadFilter;
 use crate::source::Source;
 use crate::task::Task;
 
-pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
-	let mut read_filter = t
-		.read_filter_kind
-		.map(|x| ReadFilter::read_from_fs(name.to_owned(), x))
-		.transpose()?;
+pub async fn run_task(
+	name: &str,
+	t: &mut Task,
+	mut read_filter: Option<&mut ReadFilter>,
+	rf_extern_save: &mut impl Write,
+) -> Result<()> {
+	// let mut read_filter = t
+	// 	.read_filter_kind
+	// 	.map(|x| ReadFilter::read_from_fs(name.to_owned(), x))
+	// 	.transpose()?;
 
 	loop {
 		tracing::trace!("Running...");
 
 		let fetch = async {
-			for entry in t.source.get(read_filter.as_ref()).await? {
-				process_entry(t, entry, &mut read_filter).await?;
+			for entry in t.source.get(read_filter.as_deref()).await? {
+				process_entry(t, entry, read_filter.as_deref_mut(), rf_extern_save).await?;
 			}
 
 			Ok::<(), Error>(())
@@ -62,7 +68,8 @@ pub async fn run_task(name: &str, t: &mut Task) -> Result<()> {
 async fn process_entry(
 	t: &mut Task,
 	entry: Entry,
-	mut read_filter: &mut Option<ReadFilter>,
+	mut read_filter: Option<&mut ReadFilter>,
+	rf_extern_save: &mut impl Write,
 ) -> Result<()> {
 	tracing::trace!("Processing entry: {entry:?}");
 
@@ -72,9 +79,9 @@ async fn process_entry(
 		(Source::Email(e), None) => e.mark_as_read(&entry.id).await?,
 		// delete read_filter save file if it was created for some very strange reason for this source type
 		(Source::Email(_), Some(_)) => {
-			read_filter.take().unwrap().delete_from_fs()?;
+			// read_filter.take().unwrap().delete_from_fs()?;
 		}
-		(_, Some(f)) => f.mark_as_read(&entry.id)?,
+		(_, Some(f)) => f.mark_as_read(&entry.id, rf_extern_save)?,
 		_ => unreachable!(),
 	}
 
