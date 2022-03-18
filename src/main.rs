@@ -32,13 +32,14 @@ use crate::settings::data::{
 };
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> color_eyre::Result<()> {
 	tracing_subscriber::fmt()
 		.with_env_filter(
 			EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::from("fetcher=info")), // TODO: that doesn't look right. Isn't there a better way to use info by default?
 		)
 		.without_time()
 		.init();
+	color_eyre::install()?;
 
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
@@ -132,7 +133,7 @@ async fn run() -> Result<()> {
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
 
-	let sig = Signals::new(TERM_SIGNALS).expect("Error registering signals");
+	let sig = Signals::new(TERM_SIGNALS).expect("Error registering signals"); // FIXME
 	let sig_handle = sig.handle();
 
 	let sig_term_now = Arc::new(AtomicBool::new(false));
@@ -146,6 +147,7 @@ async fn run() -> Result<()> {
 		)
 		.expect("Error registering signal handler");
 
+		// FIXME
 		flag::register(*s, Arc::clone(&sig_term_now)).expect("Error registering signal handler");
 	}
 
@@ -201,7 +203,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 							use fetcher::sink::Telegram;
 							use fetcher::sink::Message;
 
-							let err_str = format!("{:?}", anyhow::anyhow!(e));
+							let err_str = format!("{:?}", color_eyre::eyre::eyre!(e));
 							tracing::error!("{}", err_str);
 							if !cfg!(debug_assertions) {
 								let send_job = async {
@@ -221,7 +223,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 									Ok::<(), Error>(())
 								};
 								if let Err(e) = send_job.await {
-									tracing::error!("Unable to send error report to the admin: {:?}", anyhow::anyhow!(e));
+									tracing::error!("Unable to send error report to the admin: {:?}", color_eyre::eyre::eyre!(e));
 								}
 							}
 						}

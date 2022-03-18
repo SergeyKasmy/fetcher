@@ -20,7 +20,7 @@ pub(crate) struct Telegram {
 impl Telegram {
 	pub(crate) fn parse(self, settings: &DataSettings) -> Result<sink::Telegram> {
 		let chat_id = match std::env::var("FETCHER_DEBUG_CHAT_ID") {
-			Ok(s) => ChatId::try_from(s).expect("Invalid chat id in FETCHER_DEBUG_CHAT_ID"),
+			Ok(s) => ChatId::try_from(s).expect("Invalid chat id in FETCHER_DEBUG_CHAT_ID"), // FIXME
 			_ => self.chat_id,
 		};
 		Ok(sink::Telegram::new(
@@ -28,8 +28,8 @@ impl Telegram {
 				.telegram
 				.as_ref()
 				.cloned()
-				.expect("No telegram settings found"),
+				.expect("No telegram settings found"), // FIXME
 			chat_id,
-		)) // FIXME
+		))
 	}
 }

@@ -61,7 +61,7 @@ impl Newer {
 					}
 					some => some,
 				})
-				.expect("current_id not found in id_list");
+				.expect("current_id not found in id_list"); // either FIXME: or write a better comment why it's safe or smth
 		}
 
 		true

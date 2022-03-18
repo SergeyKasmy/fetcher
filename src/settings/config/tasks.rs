@@ -20,7 +20,8 @@ use figment::{
 use itertools::Itertools; // for .flatten_ok()
 use std::path::PathBuf;
 
-const FILE_EXT: &str = ".yaml";
+use super::CONFIG_FILE_EXT;
+use crate::settings;
 
 pub fn get(settings: &DataSettings) -> Result<Tasks> {
 	super::cfg_dirs()?
@@ -35,13 +36,14 @@ pub fn get(settings: &DataSettings) -> Result<Tasks> {
 }
 
 pub fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result<Tasks> {
-	let cfgs = glob::glob(&format!(
-		"{tasks_dir}/**/*{FILE_EXT}",
+	let glob_str = format!(
+		"{tasks_dir}/**/*.{CONFIG_FILE_EXT}",
 		tasks_dir = tasks_dir
 			.to_str()
-			.expect("Non unicode paths are currently unsupported")
-	))
-	.unwrap(); // unwrap NOTE: should be safe if the glob pattern is correct
+			.expect("Non unicode paths are currently unsupported") // FIXME
+	);
+
+	let cfgs = glob::glob(&glob_str).unwrap(); // unwrap NOTE: should be safe if the glob pattern is correct
 
 	cfgs.into_iter()
 		.filter_map(|c| match c {
@@ -68,8 +70,7 @@ pub fn task(path: PathBuf, settings: &DataSettings) -> Result<Option<NamedTask>>
 
 	if let Some(templates) = templates.templates {
 		for tmpl_name in templates {
-			let tmpl =
-				crate::settings::config::templates::find(tmpl_name)?.expect("Template not found"); // FIXME
+			let tmpl = settings::config::templates::find(tmpl_name)?.expect("Template not found"); // FIXME
 
 			tracing::debug!("Using template: {:?}", tmpl.path);
 
@@ -84,11 +85,12 @@ pub fn task(path: PathBuf, settings: &DataSettings) -> Result<Option<NamedTask>>
 
 	let task = task.parse(&path, settings)?;
 	if task.disabled {
+		tracing::debug!("Found task {:?} but it's disabled", path);
 		return Ok(None);
 	}
 
 	Ok(Some(task.into_named_task(
-		name(&path).expect("Invalid config name"),
+		name(&path).expect("Invalid config name"), // FIXME
 		path,
 	)))
 }

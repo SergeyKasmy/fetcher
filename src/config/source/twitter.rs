@@ -25,7 +25,7 @@ impl Twitter {
 			.twitter_auth
 			.as_ref()
 			.cloned()
-			.expect("No twitter auth data");
+			.expect("No twitter auth data"); // FIXME
 
 		Ok(source::Twitter::new(
 			self.pretty_name,

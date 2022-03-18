@@ -97,7 +97,7 @@ impl ReadFilter {
 			let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
 			external_save
 				.write_all(s.as_bytes())
-				.expect("Read Filter save error"); // FIXME
+				.expect("Read Filter save error"); // unwrap FIXME
 		});
 
 		Ok(())

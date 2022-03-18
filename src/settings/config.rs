@@ -14,7 +14,7 @@ use std::path::PathBuf;
 
 use super::PREFIX;
 
-const CONFIG_FILE_EXT: &str = ".yaml";
+const CONFIG_FILE_EXT: &str = "yaml";
 
 // TODO: use directories instead of xdg
 fn cfg_dirs() -> Result<Vec<PathBuf>> {

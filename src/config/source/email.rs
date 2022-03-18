@@ -38,7 +38,7 @@ impl Email {
 					.google_oauth2
 					.as_ref()
 					.cloned()
-					.expect("No google oauth2 found"),
+					.expect("No google oauth2 found"), // FIXME
 				self.filters.parse(),
 				self.view_mode.parse(),
 				self.footer,
@@ -50,7 +50,7 @@ impl Email {
 					.google_password
 					.as_ref()
 					.cloned()
-					.expect("No google password found"),
+					.expect("No google password found"), // FIXME
 				self.filters.parse(),
 				self.view_mode.parse(),
 				self.footer,

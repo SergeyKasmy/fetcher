@@ -15,7 +15,9 @@ use fetcher::task::template::Template;
 
 use super::CONFIG_FILE_EXT;
 
+#[tracing::instrument(name = "template")]
 pub fn find(name: String) -> Result<Option<Template>> {
+	tracing::trace!("Searching for template in all directores");
 	super::cfg_dirs()?
 		.into_iter()
 		.map(|mut p| {
@@ -26,9 +28,11 @@ pub fn find(name: String) -> Result<Option<Template>> {
 		.transpose()
 }
 
-pub fn find_in(mut templates_path: PathBuf, name: String) -> Result<Option<Template>> {
+pub fn find_in(templates_path: PathBuf, name: String) -> Result<Option<Template>> {
+	tracing::trace!("Searching for template in {}", templates_path.display());
 	let path = templates_path.join(&name).with_extension(CONFIG_FILE_EXT);
 	if !path.is_file() {
+		tracing::trace!("{path:?} is not a file");
 		// return Err(Error::TemplateNotFound(name));
 		return Ok(None);
 	}
