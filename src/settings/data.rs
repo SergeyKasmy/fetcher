@@ -6,20 +6,19 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+use fetcher::{
+	auth, config,
+	error::{Error, Result},
+};
+use serde::{Deserialize, Serialize};
 use std::{
 	fs,
 	io::{self, stdin, Write},
 	path::PathBuf,
 };
-
-use serde::{Deserialize, Serialize};
 use teloxide::Bot;
 
 use super::PREFIX;
-use crate::{
-	auth, config,
-	error::{Error, Result},
-};
 
 const GOOGLE_OAUTH2: &str = "google_oauth2.json";
 const GOOGLE_PASS: &str = "google_pass.txt";
@@ -53,9 +52,13 @@ fn input(prompt: &str, expected_input_len: usize) -> Result<String> {
 	Ok(buf.trim().to_string())
 }
 
-pub fn data(name: &str) -> Result<String> {
+pub fn data(name: &str) -> Result<Option<String>> {
 	let f = data_path(name)?;
-	fs::read_to_string(&f).map_err(|e| Error::InaccessibleData(e, f))
+	if !f.is_file() {
+		return Ok(None);
+	}
+
+	Some(fs::read_to_string(&f).map_err(|e| Error::InaccessibleData(e, f))).transpose()
 }
 
 #[allow(clippy::doc_markdown)] // TODO
@@ -64,29 +67,39 @@ pub fn data(name: &str) -> Result<String> {
 /// # Errors
 /// * if the file is inaccessible
 /// * if the file is corrupted
-pub fn google_oauth2() -> Result<auth::Google> {
-	let conf: config::auth::Google = serde_json::from_str(&data(GOOGLE_OAUTH2)?)
-		.map_err(|e| Error::CorruptedData(e, GOOGLE_OAUTH2.into()))?;
+pub fn google_oauth2() -> Result<Option<auth::Google>> {
+	let data = match data(GOOGLE_OAUTH2)? {
+		Some(d) => d,
+		None => return Ok(None),
+	};
 
-	Ok(conf.parse())
+	let conf: config::auth::Google =
+		serde_json::from_str(&data).map_err(|e| Error::CorruptedData(e, GOOGLE_OAUTH2.into()))?;
+
+	Ok(Some(conf.parse()))
 }
 
-/// FIXME: rename to email password
-pub fn google_password() -> Result<String> {
+/// TODO: rename to email password
+pub fn google_password() -> Result<Option<String>> {
 	data(GOOGLE_PASS)
 }
 
-pub fn twitter() -> Result<(String, String)> {
+pub fn twitter() -> Result<Option<(String, String)>> {
+	let data = match data(TWITTER)? {
+		Some(d) => d,
+		None => return Ok(None),
+	};
+
 	let TwitterAuthSaveFormat {
 		api_key,
 		api_secret,
-	} = serde_json::from_str(&data(TWITTER)?).map_err(|e| Error::CorruptedData(e, TWITTER.into()))?;
+	} = serde_json::from_str(&data).map_err(|e| Error::CorruptedData(e, TWITTER.into()))?;
 
-	Ok((api_key, api_secret))
+	Ok(Some((api_key, api_secret)))
 }
 
-pub fn telegram() -> Result<Bot> {
-	Ok(Bot::new(data(TELEGRAM)?))
+pub fn telegram() -> Result<Option<Bot>> {
+	Ok(data(TELEGRAM)?.map(|s| Bot::new(s)))
 }
 
 fn save_data(name: &str, data: &str) -> Result<()> {

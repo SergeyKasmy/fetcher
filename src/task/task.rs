@@ -59,4 +59,10 @@ impl Task {
 			task: self,
 		}
 	}
+
+	/// TODO: implement this only for source type T that needs a read filter
+	/// Get the task's read filter kind.
+	pub fn read_filter_kind(&self) -> Option<read_filter::Kind> {
+		self.read_filter_kind
+	}
 }

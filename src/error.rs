@@ -77,6 +77,9 @@ pub enum Error {
 
 	#[error("Invalid DateTime format")]
 	InvalidDateTimeFormat(#[from] chrono::format::ParseError),
+
+	#[error("Other err: {0}")]
+	Other(String),
 }
 
 impl From<reqwest::Error> for Error {

@@ -28,13 +28,14 @@ impl Kind {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub(crate) enum ReadFilter {
+pub enum ReadFilter {
 	NewerThanRead(Newer),
 	NotPresentInReadList(NotPresent),
 }
 
 impl ReadFilter {
-	pub(crate) fn parse(self, name: String) -> read_filter::ReadFilter {
+	#[must_use]
+	pub fn parse(self, name: String) -> read_filter::ReadFilter {
 		match self {
 			ReadFilter::NewerThanRead(x) => {
 				read_filter::ReadFilter::NewerThanLastRead(x.parse(name))
@@ -58,7 +59,7 @@ impl ReadFilter {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct Newer {
+pub struct Newer {
 	last_read_id: String,
 }
 
@@ -78,7 +79,7 @@ impl Newer {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct NotPresent {
+pub struct NotPresent {
 	read_list: Vec<String>,
 }
 

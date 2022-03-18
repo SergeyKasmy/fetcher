@@ -31,6 +31,13 @@ pub enum Kind {
 }
 
 impl ReadFilter {
+	#[must_use]
+	pub fn new(kind: Kind, name: String) -> Self {
+		match kind {
+			Kind::NewerThanLastRead => Self::NewerThanLastRead(Newer::new(name)),
+			Kind::NotPresentInReadList => Self::NotPresentInReadList(NotPresent::new(name)),
+		}
+	}
 	// // TODO: properly migrate types if the one on the disk is of one type and the provided one is of different type
 	// pub(crate) fn read_from_fs(name: String, default_type: Kind) -> Result<Self> {
 	// 	// TODO
@@ -77,7 +84,7 @@ impl ReadFilter {
 
 	// TODO: move external_save inside the struct
 	#[allow(clippy::missing_errors_doc)] // TODO
-	pub(crate) fn mark_as_read(&mut self, id: &str, external_save: impl Write) -> Result<()> {
+	pub(crate) fn mark_as_read(&mut self, id: &str, mut external_save: impl Write) -> Result<()> {
 		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
 
 		match self {

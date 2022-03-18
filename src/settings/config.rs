@@ -12,6 +12,8 @@ pub mod templates;
 use fetcher::error::Result;
 use std::path::PathBuf;
 
+use super::PREFIX;
+
 const CONFIG_FILE_EXT: &str = ".yaml";
 
 // TODO: use directories instead of xdg

@@ -11,14 +11,15 @@ use serde::{Deserialize, Serialize};
 use crate::auth;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct Google {
-	pub(crate) client_id: String,
-	pub(crate) client_secret: String,
-	pub(crate) refresh_token: String,
+pub struct Google {
+	pub client_id: String,
+	pub client_secret: String,
+	pub refresh_token: String,
 }
 
 impl Google {
-	pub(crate) fn parse(self) -> auth::Google {
+	#[must_use]
+	pub fn parse(self) -> auth::Google {
 		auth::Google::new(self.client_id, self.client_secret, self.refresh_token)
 	}
 }

@@ -10,22 +10,24 @@ use std::fs;
 use std::path::PathBuf;
 
 use fetcher::error::Error;
+use fetcher::error::Result;
 use fetcher::task::template::Template;
 
 use super::CONFIG_FILE_EXT;
 
-pub fn find(name: String) -> Result<Template> {
-	Ok(super::cfg_dirs()?
+pub fn find(name: String) -> Result<Option<Template>> {
+	super::cfg_dirs()?
 		.into_iter()
 		.map(|mut p| {
 			p.push("templates");
 			p
 		})
-		.find_map(|p| find_in(p, name)?))
+		.find_map(|p| find_in(p, name.clone()).transpose()) // TODO: what da transpose doin? Probs will short circuit as soon as it encounters an error. Is that what we actually want?
+		.transpose()
 }
 
 pub fn find_in(mut templates_path: PathBuf, name: String) -> Result<Option<Template>> {
-	let path = templates_path.join(name).with_extension(CONFIG_FILE_EXT);
+	let path = templates_path.join(&name).with_extension(CONFIG_FILE_EXT);
 	if !path.is_file() {
 		// return Err(Error::TemplateNotFound(name));
 		return Ok(None);
@@ -34,9 +36,9 @@ pub fn find_in(mut templates_path: PathBuf, name: String) -> Result<Option<Templ
 	let contents =
 		fs::read_to_string(&path).map_err(|e| Error::InaccessibleConfig(e, path.clone()))?;
 
-	Ok(Template {
+	Ok(Some(Template {
 		name,
 		path,
 		contents,
-	})
+	}))
 }
