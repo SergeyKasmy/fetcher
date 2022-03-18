@@ -6,8 +6,12 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-pub mod config;
-pub mod data;
-pub mod read_filter;
+pub mod named_task;
+pub mod task;
+pub mod template;
 
-const PREFIX: &str = "fetcher";
+pub use self::{
+	named_task::NamedTask,
+	task::{Task, Tasks},
+	template::Template,
+};

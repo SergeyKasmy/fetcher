@@ -15,12 +15,8 @@ use crate::{
 	task,
 };
 
-// #[derive(Deserialize, Debug)]
-// #[serde(transparent, rename = "templates")]
-// pub struct Templates(pub Option<Vec<PathBuf>>);
-
 #[derive(Deserialize, Debug)]
-pub struct Templates {
+pub struct TemplatesField {
 	pub templates: Option<Vec<PathBuf>>,
 }
 

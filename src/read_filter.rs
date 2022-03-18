@@ -13,7 +13,6 @@ use self::newer::Newer;
 use self::not_present::NotPresent;
 use crate::entry::Entry;
 use crate::error::Result;
-use crate::settings;
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]

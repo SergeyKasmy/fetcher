@@ -6,17 +6,9 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use fetcher::{
-	config,
-	error::Error,
-	error::Result,
-	run_task,
-	settings::{
-		self, generate_google_oauth2, generate_google_password, generate_telegram,
-		generate_twitter_auth,
-	},
-	task::Tasks,
-};
+mod settings;
+
+use fetcher::{config, error::Error, error::Result, run_task, task::Tasks};
 use figment::{
 	providers::{Format, Yaml},
 	Figment,

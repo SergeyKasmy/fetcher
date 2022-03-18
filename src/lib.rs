@@ -16,7 +16,6 @@ pub mod config;
 pub mod entry;
 pub mod error;
 pub mod read_filter;
-pub mod settings;
 pub mod sink;
 pub mod source;
 pub mod task;

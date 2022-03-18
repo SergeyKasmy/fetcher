@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
 
-use crate::{error::Result, settings, sink};
+use crate::{error::Result, sink};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
