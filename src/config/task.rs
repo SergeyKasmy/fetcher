@@ -7,7 +7,7 @@
  */
 
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use super::{read_filter, sink::Sink, source, source::Source, DataSettings};
 use crate::{

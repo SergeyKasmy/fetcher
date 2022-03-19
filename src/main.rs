@@ -8,10 +8,10 @@
 
 mod settings;
 
+use fetcher::error::Result;
 use fetcher::{
 	config::{self, DataSettings},
-	error::{Error, Result},
-	read_filter::ReadFilter,
+	error::Error,
 	run_task,
 	task::{NamedTask, Tasks},
 };

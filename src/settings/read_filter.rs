@@ -55,7 +55,7 @@ pub fn get(name: &str, default: Option<fetcher::read_filter::Kind>) -> Result<Op
 	let writer = || -> Result<Writer> {
 		let path = read_filter_path(name)?;
 
-		let mut file = fs::OpenOptions::new()
+		let file = fs::OpenOptions::new()
 			.create(true)
 			.write(true)
 			.truncate(true)
@@ -72,13 +72,13 @@ pub fn get(name: &str, default: Option<fetcher::read_filter::Kind>) -> Result<Op
 		.map(|s| {
 			let read_filter_conf: config::read_filter::ReadFilter =
 				serde_json::from_str(&s).map_err(|e| Error::CorruptedData(e, path))?;
-			Ok(read_filter_conf.parse(Some(writer()?)))
+			Ok(read_filter_conf.parse(writer()?))
 		});
 
 	match filter {
 		f @ Some(_) => f.transpose(),
 		None => default
-			.map(|k| Ok(ReadFilter::new(k, Some(Box::new(writer()?)))))
+			.map(|k| Ok(ReadFilter::new(k, Box::new(writer()?))))
 			.transpose(),
 	}
 }

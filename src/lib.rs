@@ -69,7 +69,7 @@ async fn process_entry(
 		(Source::Email(_), Some(_)) => {
 			// read_filter.take().unwrap().delete_from_fs()?;
 		}
-		(_, Some(f)) => f.mark_as_read(&entry.id)?,
+		(_, Some(f)) => f.mark_as_read(&entry.id).await?,
 		_ => unreachable!(),
 	}
 

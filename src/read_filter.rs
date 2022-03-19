@@ -9,19 +9,19 @@
 pub(crate) mod newer;
 pub(crate) mod not_present;
 
-use std::io::{self, Write};
+use std::io::Write;
 
 use self::newer::Newer;
 use self::not_present::NotPresent;
 use crate::config;
 use crate::entry::Entry;
-use crate::error::{Error, Result};
+use crate::error::Result;
 
 pub type Writer = Box<dyn Write + Send + Sync>;
 
 pub struct ReadFilter {
 	pub(crate) inner: ReadFilterInner,
-	pub(crate) external_save: Option<Writer>,
+	pub(crate) external_save: Writer,
 }
 
 #[allow(clippy::module_name_repetitions)]
@@ -39,7 +39,7 @@ pub enum Kind {
 
 impl ReadFilter {
 	#[must_use]
-	pub fn new(kind: Kind, external_save: Option<Writer>) -> Self {
+	pub fn new(kind: Kind, external_save: Writer) -> Self {
 		let inner = match kind {
 			Kind::NewerThanLastRead => ReadFilterInner::NewerThanLastRead(Newer::new()),
 			Kind::NotPresentInReadList => ReadFilterInner::NotPresentInReadList(NotPresent::new()),
@@ -71,7 +71,7 @@ impl ReadFilter {
 
 	// TODO: move external_save inside the struct
 	#[allow(clippy::missing_errors_doc)] // TODO
-	pub(crate) fn mark_as_read(&mut self, id: &str) -> Result<()> {
+	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<()> {
 		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
 		match &mut self.inner {
@@ -79,21 +79,26 @@ impl ReadFilter {
 			NotPresentInReadList(x) => x.mark_as_read(id),
 		}
 
-		// settings::read_filter::save(self)
-		config::read_filter::ReadFilter::unparse(self)
-			.map(|filter_conf| {
-				self.external_save
-					.as_mut()
-					.map(|w| {
-						let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
-													  // FIXME: error type
-						w.write_all(s.as_bytes()).expect("Read Filter save error"); // FIXME
+		match config::read_filter::ReadFilter::unparse(self) {
+			Some(filter_conf) => {
+				let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
 
-						Ok::<(), Error>(())
+				// is this even worth it?
+				{
+					let mut w = std::mem::replace(&mut self.external_save, Box::new(Vec::new()));
+
+					let mut w = tokio::task::spawn_blocking(move || {
+						w.write_all(s.as_bytes()).expect("Read Filter save error"); // FIXME
+						w
 					})
-					.transpose()
-			})
-			.transpose()?;
+					.await
+					.unwrap(); // unwrap NOTE: crash the app if the thread crashed
+
+					std::mem::swap(&mut w, &mut self.external_save);
+				}
+			}
+			None => (),
+		}
 
 		Ok(())
 	}
@@ -112,7 +117,6 @@ impl std::fmt::Debug for ReadFilter {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("ReadFilter")
 			.field("inner", &self.inner)
-			.field("external_save.is_some", &self.external_save.is_some())
-			.finish()
+			.finish_non_exhaustive()
 	}
 }
