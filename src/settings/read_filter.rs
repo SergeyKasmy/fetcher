@@ -6,7 +6,8 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use std::fs;
+use std::fs::{self, File};
+use std::io::{self, Seek, Write};
 use std::path::PathBuf;
 
 use super::PREFIX;
@@ -35,22 +36,33 @@ fn read_filter_path(name: &str) -> Result<PathBuf> {
 /// * if the file is inaccessible
 /// * if the file is corrupted
 pub fn get(name: &str, default: Option<fetcher::read_filter::Kind>) -> Result<Option<ReadFilter>> {
+	struct TruncatingFileWriter {
+		file: File,
+	}
+
+	impl Write for TruncatingFileWriter {
+		fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+			self.file.set_len(0)?;
+			self.file.rewind()?;
+			self.file.write(buf)
+		}
+
+		fn flush(&mut self) -> std::io::Result<()> {
+			self.file.flush()
+		}
+	}
+
 	let writer = || -> Result<Writer> {
 		let path = read_filter_path(name)?;
 
-		Ok(Box::new(move || {
-			// TODO: don't open a file anew each time
-			let mut file = fs::OpenOptions::new()
-				.create(true)
-				.write(true)
-				.truncate(true)
-				.open(&path)
-				.map_err(|e| Error::Write(e, path.clone()))?;
+		let mut file = fs::OpenOptions::new()
+			.create(true)
+			.write(true)
+			.truncate(true)
+			.open(&path)
+			.map_err(|e| Error::Write(e, path.clone()))?;
 
-			// file.set_len(0).map_err(|e| Error::Write(e, path.clone()))?;
-			// file.rewind().map_err(|e| Error::Write(e, path.clone()))?;
-			Ok(Box::new(file))
-		}))
+		Ok(Box::new(TruncatingFileWriter { file }))
 	};
 
 	let path = read_filter_path(name)?;

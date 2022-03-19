@@ -17,7 +17,7 @@ use crate::config;
 use crate::entry::Entry;
 use crate::error::{Error, Result};
 
-pub type Writer = Box<dyn Fn() -> Result<Box<dyn Write>> + Send + Sync>;
+pub type Writer = Box<dyn Write + Send + Sync>;
 
 pub struct ReadFilter {
 	pub(crate) inner: ReadFilterInner,
@@ -83,12 +83,11 @@ impl ReadFilter {
 		config::read_filter::ReadFilter::unparse(self)
 			.map(|filter_conf| {
 				self.external_save
-					.as_ref()
+					.as_mut()
 					.map(|w| {
 						let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
 													  // FIXME: error type
-						w()?.write_all(s.as_bytes())
-							.expect("Read Filter save error"); // FIXME
+						w.write_all(s.as_bytes()).expect("Read Filter save error"); // FIXME
 
 						Ok::<(), Error>(())
 					})
