@@ -7,11 +7,11 @@
  */
 
 // TODO: create a type that wraps the Error enum with the name of the task at the task level
+// TODO: create sub-enums, e.g. Error::Fsio() that can have Fsio::Read, ::Write, ::NoPerms, etc
 
 use std::{error::Error as StdError, io, path::PathBuf};
 
 type BoxError = Box<dyn StdError + Send + Sync>;
-
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(thiserror::Error, Debug)]

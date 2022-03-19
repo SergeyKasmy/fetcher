@@ -6,14 +6,14 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use std::fs::{self, File};
+use std::fs;
 use std::path::PathBuf;
 
 use super::PREFIX;
 use crate::config;
 use fetcher::{
 	error::{Error, Result},
-	read_filter::ReadFilter,
+	read_filter::{ReadFilter, Writer},
 };
 
 const READ_DATA_DIR: &str = "read";
@@ -35,6 +35,24 @@ fn read_filter_path(name: &str) -> Result<PathBuf> {
 /// * if the file is inaccessible
 /// * if the file is corrupted
 pub fn get(name: &str, default: Option<fetcher::read_filter::Kind>) -> Result<Option<ReadFilter>> {
+	let writer = || -> Result<Writer> {
+		let path = read_filter_path(name)?;
+
+		Ok(Box::new(move || {
+			// TODO: don't open a file anew each time
+			let mut file = fs::OpenOptions::new()
+				.create(true)
+				.write(true)
+				.truncate(true)
+				.open(&path)
+				.map_err(|e| Error::Write(e, path.clone()))?;
+
+			// file.set_len(0).map_err(|e| Error::Write(e, path.clone()))?;
+			// file.rewind().map_err(|e| Error::Write(e, path.clone()))?;
+			Ok(Box::new(file))
+		}))
+	};
+
 	let path = read_filter_path(name)?;
 
 	let filter = fs::read_to_string(&path)
@@ -42,26 +60,15 @@ pub fn get(name: &str, default: Option<fetcher::read_filter::Kind>) -> Result<Op
 		.map(|s| {
 			let read_filter_conf: config::read_filter::ReadFilter =
 				serde_json::from_str(&s).map_err(|e| Error::CorruptedData(e, path))?;
-			Ok(read_filter_conf.parse(Some(Box::new(save_file(name)?))))
+			Ok(read_filter_conf.parse(Some(writer()?)))
 		});
 
 	match filter {
 		f @ Some(_) => f.transpose(),
 		None => default
-			.map(|k| Ok(ReadFilter::new(k, Some(Box::new(save_file(name)?)))))
+			.map(|k| Ok(ReadFilter::new(k, Some(Box::new(writer()?)))))
 			.transpose(),
 	}
-}
-
-pub fn save_file(name: &str) -> Result<File> {
-	// struct FileWriter {}
-	let path = read_filter_path(name)?;
-
-	fs::OpenOptions::new()
-		.create(true)
-		.write(true)
-		.open(&path)
-		.map_err(|e| Error::Write(e, path))
 }
 
 /*

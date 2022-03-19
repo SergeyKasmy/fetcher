@@ -9,15 +9,15 @@
 pub(crate) mod newer;
 pub(crate) mod not_present;
 
-use std::io::Write;
+use std::io::{self, Write};
 
 use self::newer::Newer;
 use self::not_present::NotPresent;
 use crate::config;
 use crate::entry::Entry;
-use crate::error::Result;
+use crate::error::{Error, Result};
 
-pub(crate) type Writer = Box<dyn Write + Send + Sync>;
+pub type Writer = Box<dyn Fn() -> Result<Box<dyn Write>> + Send + Sync>;
 
 pub struct ReadFilter {
 	pub(crate) inner: ReadFilterInner,
@@ -80,12 +80,21 @@ impl ReadFilter {
 		}
 
 		// settings::read_filter::save(self)
-		config::read_filter::ReadFilter::unparse(self).map(|filter_conf| {
-			self.external_save.as_mut().map(|w| {
-				let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
-				w.write_all(s.as_bytes()).expect("Read Filter save error"); // FIXME
+		config::read_filter::ReadFilter::unparse(self)
+			.map(|filter_conf| {
+				self.external_save
+					.as_ref()
+					.map(|w| {
+						let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
+													  // FIXME: error type
+						w()?.write_all(s.as_bytes())
+							.expect("Read Filter save error"); // FIXME
+
+						Ok::<(), Error>(())
+					})
+					.transpose()
 			})
-		});
+			.transpose()?;
 
 		Ok(())
 	}
