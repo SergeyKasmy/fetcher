@@ -12,14 +12,12 @@ use crate::entry::Entry;
 
 #[derive(Debug)]
 pub struct NotPresent {
-	pub(crate) name: String,
 	pub(crate) read_list: VecDeque<String>,
 }
 
 impl NotPresent {
-	pub(crate) fn new(name: String) -> Self {
+	pub(crate) fn new() -> Self {
 		Self {
-			name,
 			read_list: Default::default(),
 		}
 	}

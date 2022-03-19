@@ -10,16 +10,12 @@ use crate::entry::Entry;
 
 #[derive(Debug)]
 pub struct Newer {
-	pub(crate) name: String,
 	pub(crate) last_read_id: Option<String>,
 }
 
 impl Newer {
-	pub fn new(name: String) -> Self {
-		Self {
-			name,
-			last_read_id: None,
-		}
+	pub fn new() -> Self {
+		Self { last_read_id: None }
 	}
 
 	pub fn last_read(&self) -> Option<&str> {

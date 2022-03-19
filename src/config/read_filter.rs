@@ -35,23 +35,28 @@ pub enum ReadFilter {
 
 impl ReadFilter {
 	#[must_use]
-	pub fn parse(self, name: String) -> read_filter::ReadFilter {
-		match self {
+	pub fn parse(self, external_save: Option<read_filter::Writer>) -> read_filter::ReadFilter {
+		let inner = match self {
 			ReadFilter::NewerThanRead(x) => {
-				read_filter::ReadFilter::NewerThanLastRead(x.parse(name))
+				read_filter::ReadFilterInner::NewerThanLastRead(x.parse())
 			}
 			ReadFilter::NotPresentInReadList(x) => {
-				read_filter::ReadFilter::NotPresentInReadList(x.parse(name))
+				read_filter::ReadFilterInner::NotPresentInReadList(x.parse())
 			}
+		};
+
+		read_filter::ReadFilter {
+			inner,
+			external_save,
 		}
 	}
 
 	pub(crate) fn unparse(read_filter: &read_filter::ReadFilter) -> Option<Self> {
-		Some(match read_filter {
-			read_filter::ReadFilter::NewerThanLastRead(x) => {
+		Some(match &read_filter.inner {
+			read_filter::ReadFilterInner::NewerThanLastRead(x) => {
 				ReadFilter::NewerThanRead(Newer::unparse(x)?)
 			}
-			read_filter::ReadFilter::NotPresentInReadList(x) => {
+			read_filter::ReadFilterInner::NotPresentInReadList(x) => {
 				ReadFilter::NotPresentInReadList(NotPresent::unparse(x)?)
 			}
 		})
@@ -64,9 +69,8 @@ pub struct Newer {
 }
 
 impl Newer {
-	pub(crate) fn parse(self, name: String) -> read_filter::newer::Newer {
+	pub(crate) fn parse(self) -> read_filter::newer::Newer {
 		read_filter::newer::Newer {
-			name,
 			last_read_id: Some(self.last_read_id),
 		}
 	}
@@ -84,9 +88,8 @@ pub struct NotPresent {
 }
 
 impl NotPresent {
-	pub(crate) fn parse(self, name: String) -> read_filter::not_present::NotPresent {
+	pub(crate) fn parse(self) -> read_filter::not_present::NotPresent {
 		read_filter::not_present::NotPresent {
-			name,
 			read_list: self.read_list.into(),
 		}
 	}

@@ -17,9 +17,16 @@ use crate::config;
 use crate::entry::Entry;
 use crate::error::Result;
 
+pub(crate) type Writer = Box<dyn Write + Send + Sync>;
+
+pub struct ReadFilter {
+	pub(crate) inner: ReadFilterInner,
+	pub(crate) external_save: Option<Writer>,
+}
+
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
-pub enum ReadFilter {
+pub enum ReadFilterInner {
 	NewerThanLastRead(Newer),
 	NotPresentInReadList(NotPresent),
 }
@@ -32,51 +39,31 @@ pub enum Kind {
 
 impl ReadFilter {
 	#[must_use]
-	pub fn new(kind: Kind, name: String) -> Self {
-		match kind {
-			Kind::NewerThanLastRead => Self::NewerThanLastRead(Newer::new(name)),
-			Kind::NotPresentInReadList => Self::NotPresentInReadList(NotPresent::new(name)),
-		}
-	}
-	// // TODO: properly migrate types if the one on the disk is of one type and the provided one is of different type
-	// pub(crate) fn read_from_fs(name: String, default_type: Kind) -> Result<Self> {
-	// 	// TODO
-	// 	settings::read_filter::get(name.clone()).map(|x| {
-	// 		x.unwrap_or_else(|| match default_type {
-	// 			Kind::NewerThanLastRead => ReadFilter::NewerThanLastRead(Newer::new(name)),
-	// 			Kind::NotPresentInReadList => {
-	// 				ReadFilter::NotPresentInReadList(NotPresent::new(name))
-	// 			}
-	// 		})
-	// 	})
-	// }
+	pub fn new(kind: Kind, external_save: Option<Writer>) -> Self {
+		let inner = match kind {
+			Kind::NewerThanLastRead => ReadFilterInner::NewerThanLastRead(Newer::new()),
+			Kind::NotPresentInReadList => ReadFilterInner::NotPresentInReadList(NotPresent::new()),
+		};
 
-	// pub(crate) fn delete_from_fs(self) -> Result<()> {
-	// 	settings::read_filter::delete(&self)
-	// }
-
-	pub(crate) fn name(&self) -> &str {
-		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
-
-		match self {
-			NewerThanLastRead(x) => &x.name,
-			NotPresentInReadList(x) => &x.name,
+		Self {
+			inner,
+			external_save,
 		}
 	}
 
 	pub(crate) fn last_read(&self) -> Option<&str> {
-		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
-		match &self {
+		match &self.inner {
 			NewerThanLastRead(x) => x.last_read(),
 			NotPresentInReadList(x) => x.last_read(),
 		}
 	}
 
 	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
-		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
-		match &self {
+		match &self.inner {
 			NewerThanLastRead(x) => x.remove_read_from(list),
 			NotPresentInReadList(x) => x.remove_read_from(list),
 		}
@@ -84,29 +71,29 @@ impl ReadFilter {
 
 	// TODO: move external_save inside the struct
 	#[allow(clippy::missing_errors_doc)] // TODO
-	pub(crate) fn mark_as_read(&mut self, id: &str, mut external_save: impl Write) -> Result<()> {
-		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
+	pub(crate) fn mark_as_read(&mut self, id: &str) -> Result<()> {
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
-		match self {
+		match &mut self.inner {
 			NewerThanLastRead(x) => x.mark_as_read(id),
 			NotPresentInReadList(x) => x.mark_as_read(id),
 		}
 
 		// settings::read_filter::save(self)
-		config::read_filter::ReadFilter::unparse(&self).map(|filter_conf| {
-			let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
-			external_save
-				.write_all(s.as_bytes())
-				.expect("Read Filter save error"); // unwrap FIXME
+		config::read_filter::ReadFilter::unparse(self).map(|filter_conf| {
+			self.external_save.as_mut().map(|w| {
+				let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
+				w.write_all(s.as_bytes()).expect("Read Filter save error"); // FIXME
+			})
 		});
 
 		Ok(())
 	}
 
 	pub(crate) fn to_kind(&self) -> Kind {
-		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
-		match &self {
+		match &self.inner {
 			NewerThanLastRead(_) => Kind::NewerThanLastRead,
 			NotPresentInReadList(_) => Kind::NotPresentInReadList,
 		}

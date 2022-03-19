@@ -187,17 +187,11 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 		let mut shutdown_rx = shutdown_rx.clone();
 
 		let fut = tokio::spawn(async move {
-			let mut read_filter = match settings::read_filter::get(name.clone())? {
-				f @ Some(_) => f,
-				None => t
-					.read_filter_kind()
-					.map(|k| ReadFilter::new(k, name.clone())),
-			};
-			let mut save_file = settings::read_filter::save_file(&name)?;
+			let mut read_filter = settings::read_filter::get(&name, t.read_filter_kind())?;
 
 			async {
 				select! {
-					res = run_task(&name, &mut t, read_filter.as_mut(), &mut save_file) => {
+					res = run_task(&mut t, read_filter.as_mut()) => {
 						if let Err(e) = res {
 							// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
 							use fetcher::sink::Telegram;

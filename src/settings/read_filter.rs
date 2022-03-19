@@ -34,16 +34,23 @@ fn read_filter_path(name: &str) -> Result<PathBuf> {
 /// # Errors
 /// * if the file is inaccessible
 /// * if the file is corrupted
-pub fn get(name: String) -> Result<Option<ReadFilter>> {
-	let path = read_filter_path(&name)?;
-	fs::read_to_string(&path)
-		.ok()
+pub fn get(name: &str, default: Option<fetcher::read_filter::Kind>) -> Result<Option<ReadFilter>> {
+	let path = read_filter_path(name)?;
+
+	let filter = fs::read_to_string(&path)
+		.ok() // if it doesn't already exist
 		.map(|s| {
-			let read_filter_conf: config::read_filter::ReadFilter = serde_json::from_str(&s)?;
-			Ok(read_filter_conf.parse(name))
-		})
-		.transpose()
-		.map_err(|e| Error::CorruptedData(e, path))
+			let read_filter_conf: config::read_filter::ReadFilter =
+				serde_json::from_str(&s).map_err(|e| Error::CorruptedData(e, path))?;
+			Ok(read_filter_conf.parse(Some(Box::new(save_file(name)?))))
+		});
+
+	match filter {
+		f @ Some(_) => f.transpose(),
+		None => default
+			.map(|k| Ok(ReadFilter::new(k, Some(Box::new(save_file(name)?)))))
+			.transpose(),
+	}
 }
 
 pub fn save_file(name: &str) -> Result<File> {
