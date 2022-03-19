@@ -34,10 +34,11 @@ use crate::settings::data::{
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
 	tracing_subscriber::fmt()
+		.pretty()
 		.with_env_filter(
 			EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::from("fetcher=info")), // TODO: that doesn't look right. Isn't there a better way to use info by default?
 		)
-		.without_time()
+		// .without_time()
 		.init();
 	color_eyre::install()?;
 
@@ -69,51 +70,7 @@ async fn main() -> color_eyre::Result<()> {
 }
 
 async fn run() -> Result<()> {
-	// let tasks = settings::config::tasks::get(settings::data::settings())?
-	// .into_iter()
-	// .map(|named_task| {
-	// 	tracing::debug!("Found task: {:?}", named_task.path);
-	// 	let templates: config::TemplatesField = Figment::new()
-	// 		.merge(Yaml::string(&named_task.task))
-	// 		.extract()
-	// 		.map_err(|e| Error::InvalidConfig(e, path.clone()))?;
-
-	// 	let mut conf = Figment::new();
-
-	// 	if let Some(templates) = templates.templates {
-	// 		for tmpl_path in templates {
-	// 			let (tmpl, tmpl_full_path) = settings::config::template(&tmpl_path)?;
-
-	// 			tracing::debug!("Using template: {:?}", tmpl_full_path);
-
-	// 			conf = conf.merge(Yaml::string(&tmpl));
-	// 		}
-	// 	}
-
-	// 	let task: config::Task = conf
-	// 		.merge(Yaml::string(&contents))
-	// 		.extract()
-	// 		.map_err(|e| Error::InvalidConfig(e, path.clone()))?;
-
-	// 	Ok((
-	// 		path.file_stem()
-	// 			.expect("Somehow the config file found before wasn't an actual config file after all...")
-	// 			.to_str()
-	// 			.expect("Config file name isn't a valid unicode")
-	// 			.to_string(),
-	// 		task.parse(&path)?,
-	// 	))
-	// })
-	// .filter(|task_res| {
-	// 	// ignore the task only if it's not an error and is marked as disabled
-	// 	task_res
-	// 		.as_ref()
-	// 		.map(|(_, task)| !task.disabled)
-	// 		.unwrap_or(true)
-	// })
-	// .collect::<Result<Tasks>>()?;
-
-	let tasks = settings::config::tasks::get(&DataSettings {
+	let tasks = settings::config::tasks::get_all(&DataSettings {
 		twitter_auth: settings::data::twitter()?,
 		google_oauth2: settings::data::google_oauth2()?,
 		google_password: settings::data::google_password()?,
@@ -180,64 +137,80 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 		task: mut t,
 	} in tasks
 	{
-		// if t.disabled {
-		// 	continue;
-		// }
-
 		let mut shutdown_rx = shutdown_rx.clone();
 
 		let fut = tokio::spawn(async move {
-			let mut read_filter = settings::read_filter::get(&name, t.read_filter_kind())?;
+			let res: Result<()> = async {
+				let mut read_filter = settings::read_filter::get(&name, t.read_filter_kind())?;
 
-			async {
 				select! {
-					res = run_task(&mut t, read_filter.as_mut()) => {
-						if let Err(e) = res {
-							// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
-							use fetcher::sink::Telegram;
-							use fetcher::sink::Message;
-
-							let err_str = format!("{:?}", color_eyre::eyre::eyre!(e));
-							tracing::error!("{}", err_str);
-							if !cfg!(debug_assertions) {
-								let send_job = async {
-									let bot = match settings::data::telegram()? {
-										Some(b) => b,
-										None => {
-											let s = "Unable to send error report to the admin: telegram bot token is not provided".to_owned();
-											tracing::error!(%s);
-											return Err(Error::Other(s));	// TODO: this kinda sucks
-										}
-									};
-									let msg = Message {
-										body: err_str,
-										..Default::default()
-									};
-									Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned()).send(msg, Some(&name)).await?;
-									Ok::<(), Error>(())
-								};
-								if let Err(e) = send_job.await {
-									tracing::error!("Unable to send error report to the admin: {:?}", color_eyre::eyre::eyre!(e));
-								}
-							}
-						}
-					}
-					_ = shutdown_rx.changed() => (),
+					res = run_task(&mut t, read_filter.as_mut()) => res,
+					_ = shutdown_rx.changed() => Ok(()),
 				}
-
-				tracing::info!("Shutting down...");
-				#[allow(unreachable_code)]
-				Ok::<(), Error>(())
 			}
 			.instrument(tracing::info_span!("task", name = name.as_str()))
-			.await
+			.await;
+
+			// production error reporting
+			if let Err(e) = &res {
+				if !cfg!(debug_assertions) {
+					// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
+					use fetcher::sink::Message;
+					use fetcher::sink::Telegram;
+
+					// let err_str = format!("{:?}", color_eyre::eyre::eyre!(e));
+					let err_str = format!("{:?}", e); // TODO: make it pretier like eyre
+					tracing::error!("{}", err_str);
+					let send_job = async {
+						let bot = match settings::data::telegram()? {
+							Some(b) => b,
+							None => {
+								let s = "Unable to send error report to the admin: telegram bot token is not provided".to_owned();
+								tracing::error!(%s);
+								return Err(Error::Other(s)); // TODO: this kinda sucks
+							}
+						};
+						let msg = Message {
+							body: err_str,
+							..Default::default()
+						};
+						Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned())
+							.send(msg, Some(&name))
+							.await?;
+						Ok::<(), Error>(())
+					};
+					if let Err(e) = send_job.await {
+						tracing::error!(
+							"Unable to send error report to the admin: {:?}",
+							// color_eyre::eyre::eyre!(e)
+							e
+						);
+					}
+				}
+			}
+
+			tracing::info!("Shutting down...");
+			res
 		});
 
 		running_tasks.push(flatten_task(fut));
 	}
 
-	let _ = join_all(running_tasks).await;
-	Ok(())
+	// print every error but return only the first
+	let mut first_err = None;
+	for res in join_all(running_tasks).await {
+		if let Err(e) = res {
+			tracing::error!("{:?}", e);
+			if let None = first_err {
+				first_err = Some(e);
+			}
+		}
+	}
+
+	match first_err {
+		None => Ok(()),
+		Some(e) => Err(e),
+	}
 }
 
 async fn flatten_task<T>(h: JoinHandle<Result<T>>) -> Result<T> {

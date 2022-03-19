@@ -54,9 +54,11 @@ pub fn get(name: &str, default: Option<fetcher::read_filter::Kind>) -> Result<Op
 }
 
 pub fn save_file(name: &str) -> Result<File> {
+	// struct FileWriter {}
 	let path = read_filter_path(name)?;
 
 	fs::OpenOptions::new()
+		.create(true)
 		.write(true)
 		.open(&path)
 		.map_err(|e| Error::Write(e, path))

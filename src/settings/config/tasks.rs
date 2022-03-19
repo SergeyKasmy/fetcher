@@ -23,7 +23,9 @@ use std::path::PathBuf;
 use super::CONFIG_FILE_EXT;
 use crate::settings;
 
-pub fn get(settings: &DataSettings) -> Result<Tasks> {
+// #[tracing::instrument(name = "settings:task", skip(settings))]
+#[tracing::instrument(skip(settings))]
+pub fn get_all(settings: &DataSettings) -> Result<Tasks> {
 	super::cfg_dirs()?
 		.into_iter()
 		.map(|mut p| {
@@ -47,7 +49,7 @@ pub fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result<Tasks
 
 	cfgs.into_iter()
 		.filter_map(|c| match c {
-			Ok(v) => task(v, settings).transpose(), // TODO: is that okay?
+			Ok(v) => get(v, settings).transpose(), // TODO: is that okay?
 			Err(e) => Some(Err(Error::InaccessibleConfig(
 				e.into_error(),
 				tasks_dir.clone(),
@@ -56,7 +58,9 @@ pub fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result<Tasks
 		.collect()
 }
 
-pub fn task(path: PathBuf, settings: &DataSettings) -> Result<Option<NamedTask>> {
+#[tracing::instrument(skip(settings))]
+pub fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<NamedTask>> {
+	tracing::trace!("Parsing a task from file");
 	fn name(path: &PathBuf) -> Option<String> {
 		Some(path.file_stem()?.to_str()?.to_owned())
 	}
@@ -72,7 +76,7 @@ pub fn task(path: PathBuf, settings: &DataSettings) -> Result<Option<NamedTask>>
 		for tmpl_name in templates {
 			let tmpl = settings::config::templates::find(tmpl_name)?.expect("Template not found"); // FIXME
 
-			tracing::debug!("Using template: {:?}", tmpl.path);
+			tracing::trace!("Using template: {:?}", tmpl.path);
 
 			conf = conf.merge(Yaml::string(&tmpl.contents));
 		}
@@ -85,7 +89,7 @@ pub fn task(path: PathBuf, settings: &DataSettings) -> Result<Option<NamedTask>>
 
 	let task = task.parse(&path, settings)?;
 	if task.disabled {
-		tracing::debug!("Found task {:?} but it's disabled", path);
+		tracing::trace!("Task is disabled, skipping...");
 		return Ok(None);
 	}
 

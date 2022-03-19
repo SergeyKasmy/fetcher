@@ -17,7 +17,6 @@ use super::CONFIG_FILE_EXT;
 
 #[tracing::instrument(name = "template")]
 pub fn find(name: String) -> Result<Option<Template>> {
-	tracing::trace!("Searching for template in all directores");
 	super::cfg_dirs()?
 		.into_iter()
 		.map(|mut p| {
