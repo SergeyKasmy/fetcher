@@ -33,23 +33,6 @@ pub struct Telegram {
 	chat_id: ChatId,
 }
 
-/// Make the message text more logging friendly:
-/// 1. Remove the opening html tag if it begins with one
-/// 2. Shorten the message to 150 chars
-// fn fmt_comment_msg_text(s: &str) -> String {
-// 	let s = if s.starts_with('<') {
-// 		if let Some(tag_end) = s.find('>') {
-// 			&s[tag_end..]
-// 		} else {
-// 			s
-// 		}
-// 	} else {
-// 		s
-// 	};
-
-// 	s.chars().take(/* shorten to */ 40 /* chars */).collect()
-// }
-
 impl Telegram {
 	#[must_use]
 	pub fn new(bot: Bot, chat_id: impl Into<ChatId>) -> Self {
@@ -86,26 +69,6 @@ impl Telegram {
 			m = media.is_some(),
 		);
 
-		const PADDING: usize = 30; // how much free space to reserve for new lines and "Link" buttons. 30 should be enough
-		let title_len = title.as_ref().map_or(0, String::len);
-		let approx_msg_len = title_len + body.len() + PADDING;
-		let body = if title_len + body.len() + PADDING > MAX_MSG_LEN {
-			// TODO: split the message properly instead of just throwing the rest away
-			tracing::warn!("Message too long ({approx_msg_len})");
-			let (idx, _) = body
-				.char_indices()
-				.nth(MAX_MSG_LEN - title_len - PADDING)
-				.unwrap(); // unwrap FIXME: len is measured in bytes while chat_indices is in graphemes. That may cause crashes.
-		   // It would be just better to split the message in parts and send that instead of trying to fix this
-			let mut m = body[..idx].to_string();
-			m.push_str("...");
-			tracing::debug!("Message body length after trimming: {}", m.len());
-			tracing::debug!("Message full approx len: {}", m.len() + title_len + PADDING);
-			m
-		} else {
-			body
-		};
-
 		let text = {
 			let mut text = match (&title, &link) {
 				(Some(title), Some(link)) => match link.loc {
@@ -135,7 +98,47 @@ impl Telegram {
 			text
 		};
 
-		assert!(text.len() < MAX_MSG_LEN);
+		// FIXME: bug: if the message is just a couple of bytes over the limit and ends with a link, it could split in in two, e.g. 1) <a hre 2) f="">Link</a> and thus break it
+		let text = {
+			if text.len() > MAX_MSG_LEN {
+				let mut parts = Vec::new();
+				let mut begin_slice_from = 0;
+
+				loop {
+					if begin_slice_from == text.len() {
+						break;
+					}
+
+					let till = std::cmp::min(begin_slice_from + MAX_MSG_LEN, text.len());
+
+					// this assumes that the string slice is valid which it may not be
+					#[allow(clippy::string_from_utf8_as_bytes)]
+					match std::str::from_utf8(&text.as_bytes()[begin_slice_from..till]) {
+						Ok(s) => {
+							parts.push(s);
+							begin_slice_from = till;
+						}
+						Err(e) => {
+							let valid_up_to = e.valid_up_to();
+							let s = &text[begin_slice_from..valid_up_to];
+							parts.push(s);
+							begin_slice_from = valid_up_to;
+						}
+					}
+				}
+
+				let last_part = parts.pop().unwrap();
+				for part in parts {
+					self.send_text(part.to_owned()).await?;
+				}
+
+				last_part.to_owned()
+			} else {
+				text
+			}
+		};
+
+		// assert!(text.len() < MAX_MSG_LEN);
 
 		if let Some(media) = media {
 			match self
@@ -258,6 +261,7 @@ impl std::fmt::Debug for Telegram {
 
 // 	#[tokio::test]
 // 	async fn send_text_too_long() {
+// 		eprintln!("Running");
 // 		let tg = Telegram::new(
 // 			Bot::new(var("BOT_TOKEN").unwrap()),
 // 			var("DEBUG_CHAT_ID").unwrap(),
@@ -276,12 +280,19 @@ impl std::fmt::Debug for Telegram {
 // 			long_text.push('2');
 // 		}
 
-// 		// tg.send_text(too_long_text).await.unwrap();
-// 		tg.send(Message {
-// 			text: long_text,
-// 			media: None,
-// 		})
+// 		eprintln!("Message constructed");
+// 		tg.send(
+// 			Message {
+// 				// title: Some("Testing title".to_owned()),
+// 				title: None,
+// 				body: long_text,
+// 				link: None,
+// 				media: None,
+// 			},
+// 			None,
+// 		)
 // 		.await
 // 		.unwrap();
+// 		eprintln!("Message sent");
 // 	}
 // }

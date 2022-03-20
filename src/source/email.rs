@@ -198,6 +198,7 @@ impl Email {
 		})
 	}
 
+	// FIXME: doesn't actually work for some reason
 	pub(crate) async fn mark_as_read(&mut self, uid: &str) -> Result<()> {
 		if let ViewMode::ReadOnly = self.view_mode {
 			return Ok(());
