@@ -8,4 +8,4 @@
 
 pub(crate) mod google;
 
-pub(crate) use google::Google;
+pub use google::Google;

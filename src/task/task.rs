@@ -6,11 +6,11 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use std::collections::HashMap;
+use std::{collections::HashSet, path::PathBuf};
 
-use crate::{read_filter, sink::Sink, source::Source};
+use crate::{read_filter, sink::Sink, source::Source, task::named_task::NamedTask};
 
-pub type Tasks = HashMap<String, Task>;
+pub type Tasks = HashSet<NamedTask>;
 
 #[derive(Debug)]
 pub struct Task {
@@ -50,5 +50,19 @@ impl Task {
 			sink,
 			source,
 		}
+	}
+
+	pub fn into_named_task(self, name: String, path: PathBuf) -> NamedTask {
+		NamedTask {
+			name,
+			path,
+			task: self,
+		}
+	}
+
+	/// TODO: implement this only for source type T that needs a read filter
+	/// Get the task's read filter kind.
+	pub fn read_filter_kind(&self) -> Option<read_filter::Kind> {
+		self.read_filter_kind
 	}
 }

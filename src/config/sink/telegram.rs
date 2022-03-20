@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
 
-use crate::{error::Result, settings, sink};
+use crate::{config::DataSettings, error::Result, sink};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -18,11 +18,18 @@ pub(crate) struct Telegram {
 }
 
 impl Telegram {
-	pub(crate) fn parse(self) -> Result<sink::Telegram> {
+	pub(crate) fn parse(self, settings: &DataSettings) -> Result<sink::Telegram> {
 		let chat_id = match std::env::var("FETCHER_DEBUG_CHAT_ID") {
-			Ok(s) => ChatId::try_from(s).expect("Invalid chat id in FETCHER_DEBUG_CHAT_ID"),
+			Ok(s) => ChatId::try_from(s).expect("Invalid chat id in FETCHER_DEBUG_CHAT_ID"), // FIXME
 			_ => self.chat_id,
 		};
-		Ok(sink::Telegram::new(settings::telegram()?, chat_id))
+		Ok(sink::Telegram::new(
+			settings
+				.telegram
+				.as_ref()
+				.cloned()
+				.expect("No telegram settings found"), // FIXME
+			chat_id,
+		))
 	}
 }

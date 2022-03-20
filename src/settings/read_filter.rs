@@ -6,14 +6,15 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use std::fs;
 use std::path::PathBuf;
+use tokio::fs;
 
 use super::PREFIX;
 use crate::config;
-use crate::error::Error;
-use crate::error::Result;
-use crate::read_filter::ReadFilter;
+use fetcher::{
+	error::{Error, Result},
+	read_filter::{ReadFilter, Writer},
+};
 
 const READ_DATA_DIR: &str = "read";
 
@@ -33,18 +34,61 @@ fn read_filter_path(name: &str) -> Result<PathBuf> {
 /// # Errors
 /// * if the file is inaccessible
 /// * if the file is corrupted
-pub fn get(name: String) -> Result<Option<ReadFilter>> {
-	let path = read_filter_path(&name)?;
-	fs::read_to_string(&path)
-		.ok()
+pub async fn get(
+	name: &str,
+	default: Option<fetcher::read_filter::Kind>,
+) -> Result<Option<ReadFilter>> {
+	struct TruncatingFileWriter {
+		file: std::fs::File,
+	}
+
+	impl std::io::Write for TruncatingFileWriter {
+		fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+			use std::io::Seek;
+
+			self.file.set_len(0)?;
+			self.file.rewind()?;
+			self.file.write(buf)
+		}
+
+		fn flush(&mut self) -> std::io::Result<()> {
+			self.file.flush()
+		}
+	}
+
+	let writer = || -> Result<Writer> {
+		let path = read_filter_path(name)?;
+
+		let file = std::fs::OpenOptions::new()
+			.create(true)
+			.write(true)
+			.truncate(true)
+			.open(&path)
+			.map_err(|e| Error::Write(e, path.clone()))?;
+
+		Ok(Box::new(TruncatingFileWriter { file }))
+	};
+
+	let path = read_filter_path(name)?;
+
+	let filter = fs::read_to_string(&path)
+		.await
+		.ok() // if it doesn't already exist
 		.map(|s| {
-			let read_filter_conf: config::read_filter::ReadFilter = serde_json::from_str(&s)?;
-			Ok(read_filter_conf.parse(name))
-		})
-		.transpose()
-		.map_err(|e| Error::CorruptedData(e, path))
+			let read_filter_conf: config::read_filter::ReadFilter =
+				serde_json::from_str(&s).map_err(|e| Error::CorruptedData(e, path))?;
+			Ok(read_filter_conf.parse(writer()?))
+		});
+
+	match filter {
+		f @ Some(_) => f.transpose(),
+		None => default
+			.map(|k| Ok(ReadFilter::new(k, Box::new(writer()?))))
+			.transpose(),
+	}
 }
 
+/*
 /// Save the provided read filter to the fs or remove it from the fs if it's empty
 ///
 /// # Errors
@@ -71,3 +115,4 @@ pub fn delete(filter: &ReadFilter) -> Result<()> {
 	// TODO: don't error if file doesn't exist
 	fs::remove_file(&path).map_err(|e| Error::Write(e, path))
 }
+*/

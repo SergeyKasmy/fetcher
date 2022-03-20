@@ -9,11 +9,18 @@
 // TODO: add deny_unknown_fields annotations to every config struct
 // TODO: mb rename .parse() into .into() or something of that sort? .into() is already used by From/Into traits though. Naming is hard, man... UPD: into_conf() and from_conf() are way better!
 
-pub(crate) mod auth;
-pub(crate) mod read_filter;
-pub(crate) mod sink;
-pub(crate) mod source;
-pub(crate) mod task;
+pub mod auth;
+pub mod read_filter;
+pub mod sink;
+pub mod source;
+pub mod task;
 
 pub use self::task::Task;
-pub use self::task::Templates;
+pub use self::task::TemplatesField;
+
+pub struct DataSettings {
+	pub twitter_auth: Option<(String, String)>,
+	pub google_oauth2: Option<crate::auth::Google>,
+	pub google_password: Option<String>,
+	pub telegram: Option<teloxide::Bot>,
+}

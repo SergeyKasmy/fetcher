@@ -8,7 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{error::Result, settings, source};
+use crate::{config::DataSettings, error::Result, source};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -19,8 +19,13 @@ pub(crate) struct Twitter {
 }
 
 impl Twitter {
-	pub(crate) fn parse(self) -> Result<source::Twitter> {
-		let (api_key, api_secret) = settings::twitter()?;
+	pub(crate) fn parse(self, settings: &DataSettings) -> Result<source::Twitter> {
+		// let (api_key, api_secret) = settings::twitter()?;
+		let (api_key, api_secret) = settings
+			.twitter_auth
+			.as_ref()
+			.cloned()
+			.expect("No twitter auth data"); // FIXME
 
 		Ok(source::Twitter::new(
 			self.pretty_name,

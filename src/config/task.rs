@@ -7,21 +7,17 @@
  */
 
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use super::{read_filter, sink::Sink, source, source::Source};
+use super::{read_filter, sink::Sink, source, source::Source, DataSettings};
 use crate::{
 	error::{Error, Result},
 	task,
 };
 
-// #[derive(Deserialize, Debug)]
-// #[serde(transparent, rename = "templates")]
-// pub struct Templates(pub Option<Vec<PathBuf>>);
-
 #[derive(Deserialize, Debug)]
-pub struct Templates {
-	pub templates: Option<Vec<PathBuf>>,
+pub struct TemplatesField {
+	pub templates: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -36,7 +32,7 @@ pub struct Task {
 }
 
 impl Task {
-	pub fn parse(self, conf_path: &Path) -> Result<task::Task> {
+	pub fn parse(self, conf_path: &Path, settings: &DataSettings) -> Result<task::Task> {
 		if let Some(read_filter::Kind::NewerThanRead) = self.read_filter_kind {
 			if let Source::Html(html) = &self.source {
 				if let source::html::query::IdQueryKind::Date = html.idq.kind {
@@ -69,8 +65,8 @@ impl Task {
 			read_filter_kind: self.read_filter_kind.map(read_filter::Kind::parse),
 			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
 			refresh: self.refresh,
-			sink: self.sink.parse()?,
-			source: self.source.parse()?,
+			sink: self.sink.parse(settings)?,
+			source: self.source.parse(settings)?,
 		})
 	}
 }

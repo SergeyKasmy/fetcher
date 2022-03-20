@@ -6,8 +6,11 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-pub mod config;
-pub mod data;
-pub mod read_filter;
+use std::path::PathBuf;
 
-const PREFIX: &str = "fetcher";
+#[derive(Debug)]
+pub struct Template {
+	pub name: String,
+	pub path: PathBuf,
+	pub contents: String,
+}

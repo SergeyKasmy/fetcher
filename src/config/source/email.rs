@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use self::auth::Auth;
 use self::filters::Filters;
 use self::view_mode::ViewMode;
-use crate::{error::Result, settings, source};
+use crate::{config::DataSettings, error::Result, source};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -29,12 +29,16 @@ pub(crate) struct Email {
 }
 
 impl Email {
-	pub(crate) fn parse(self) -> Result<source::Email> {
+	pub(crate) fn parse(self, settings: &DataSettings) -> Result<source::Email> {
 		Ok(match self.auth {
 			Auth::GoogleOAuth2 => source::Email::with_google_oauth2(
 				self.imap,
 				self.email,
-				settings::google_oauth2()?,
+				settings
+					.google_oauth2
+					.as_ref()
+					.cloned()
+					.expect("No google oauth2 found"), // FIXME
 				self.filters.parse(),
 				self.view_mode.parse(),
 				self.footer,
@@ -42,7 +46,11 @@ impl Email {
 			Auth::Password => source::Email::with_password(
 				self.imap,
 				self.email,
-				settings::google_password()?,
+				settings
+					.google_password
+					.as_ref()
+					.cloned()
+					.expect("No google password found"), // FIXME
 				self.filters.parse(),
 				self.view_mode.parse(),
 				self.footer,
