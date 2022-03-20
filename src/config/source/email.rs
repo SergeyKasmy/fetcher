@@ -15,7 +15,11 @@ use serde::{Deserialize, Serialize};
 use self::auth::Auth;
 use self::filters::Filters;
 use self::view_mode::ViewMode;
-use crate::{config::DataSettings, error::Result, source};
+use crate::{
+	config::DataSettings,
+	error::{Error, Result},
+	source,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -34,11 +38,9 @@ impl Email {
 			Auth::GoogleOAuth2 => source::Email::with_google_oauth2(
 				self.imap,
 				self.email,
-				settings
-					.google_oauth2
-					.as_ref()
-					.cloned()
-					.expect("No google oauth2 found"), // FIXME
+				settings.google_oauth2.as_ref().cloned().ok_or_else(|| {
+					Error::ServiceNotReady("Google authentication via OAuth2".to_owned())
+				})?,
 				self.filters.parse(),
 				self.view_mode.parse(),
 				self.footer,
@@ -46,11 +48,9 @@ impl Email {
 			Auth::Password => source::Email::with_password(
 				self.imap,
 				self.email,
-				settings
-					.google_password
-					.as_ref()
-					.cloned()
-					.expect("No google password found"), // FIXME
+				settings.google_password.as_ref().cloned().ok_or_else(|| {
+					Error::ServiceNotReady("Google authentication via password".to_owned())
+				})?,
 				self.filters.parse(),
 				self.view_mode.parse(),
 				self.footer,

@@ -36,7 +36,7 @@ fn data_path(name: &str) -> Result<PathBuf> {
 	} else {
 		xdg::BaseDirectories::with_prefix(PREFIX)?
 			.place_data_file(name)
-			.map_err(|e| Error::InaccessibleData(e, name.into()))?
+			.map_err(|e| Error::LocalIoRead(e, name.into()))?
 	})
 }
 
@@ -76,7 +76,7 @@ pub async fn data(name: &str) -> Result<Option<String>> {
 	Some(
 		fs::read_to_string(&f)
 			.await
-			.map_err(|e| Error::InaccessibleData(e, f)),
+			.map_err(|e| Error::LocalIoRead(e, f)),
 	)
 	.transpose()
 }
@@ -94,7 +94,7 @@ pub async fn google_oauth2() -> Result<Option<auth::Google>> {
 	};
 
 	let conf: config::auth::Google =
-		serde_json::from_str(&data).map_err(|e| Error::CorruptedData(e, GOOGLE_OAUTH2.into()))?;
+		serde_json::from_str(&data).map_err(|e| Error::CorruptedFile(e, GOOGLE_OAUTH2.into()))?;
 
 	Ok(Some(conf.parse()))
 }
@@ -113,7 +113,7 @@ pub async fn twitter() -> Result<Option<(String, String)>> {
 	let TwitterAuthSaveFormat {
 		api_key,
 		api_secret,
-	} = serde_json::from_str(&data).map_err(|e| Error::CorruptedData(e, TWITTER.into()))?;
+	} = serde_json::from_str(&data).map_err(|e| Error::CorruptedFile(e, TWITTER.into()))?;
 
 	Ok(Some((api_key, api_secret)))
 }
@@ -124,7 +124,9 @@ pub async fn telegram() -> Result<Option<Bot>> {
 
 async fn save_data(name: &str, data: &str) -> Result<()> {
 	let p = data_path(name)?;
-	fs::write(&p, data).await.map_err(|e| Error::Write(e, p))
+	fs::write(&p, data)
+		.await
+		.map_err(|e| Error::LocalIoWrite(e, p))
 }
 
 pub async fn generate_google_oauth2() -> Result<()> {

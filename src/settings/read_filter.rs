@@ -21,11 +21,11 @@ const READ_DATA_DIR: &str = "read";
 fn read_filter_path(name: &str) -> Result<PathBuf> {
 	debug_assert!(!name.is_empty());
 	Ok(if cfg!(debug_assertions) {
-		PathBuf::from(format!("debug_data/read/{name}")) // FIXME
+		PathBuf::from(format!("debug_data/read/{name}"))
 	} else {
 		xdg::BaseDirectories::with_profile(PREFIX, READ_DATA_DIR)?
 			.place_data_file(name)
-			.map_err(|e| Error::InaccessibleData(e, format!("READ_DATA_DIR/{name}").into()))?
+			.map_err(|e| Error::LocalIoRead(e, format!("READ_DATA_DIR/{name}").into()))?
 	})
 }
 
@@ -64,7 +64,7 @@ pub async fn get(
 			.write(true)
 			.truncate(true)
 			.open(&path)
-			.map_err(|e| Error::Write(e, path.clone()))?;
+			.map_err(|e| Error::LocalIoWrite(e, path.clone()))?;
 
 		Ok(Box::new(TruncatingFileWriter { file }))
 	};
@@ -76,7 +76,7 @@ pub async fn get(
 		.ok() // if it doesn't already exist
 		.map(|s| {
 			let read_filter_conf: config::read_filter::ReadFilter =
-				serde_json::from_str(&s).map_err(|e| Error::CorruptedData(e, path))?;
+				serde_json::from_str(&s).map_err(|e| Error::CorruptedFile(e, path))?;
 			Ok(read_filter_conf.parse(writer()?))
 		});
 

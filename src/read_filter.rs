@@ -15,7 +15,7 @@ use self::newer::Newer;
 use self::not_present::NotPresent;
 use crate::config;
 use crate::entry::Entry;
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 pub type Writer = Box<dyn Write + Send + Sync>;
 
@@ -87,11 +87,12 @@ impl ReadFilter {
 					let mut w = std::mem::replace(&mut self.external_save, Box::new(Vec::new()));
 
 					let mut w = tokio::task::spawn_blocking(move || {
-						w.write_all(s.as_bytes()).expect("Read Filter save error"); // FIXME
-						w
+						w.write_all(s.as_bytes())
+							.map_err(Error::LocalIoWriteReadFilterData)?;
+						Ok::<_, Error>(w)
 					})
 					.await
-					.unwrap(); // unwrap NOTE: crash the app if the thread crashed
+					.unwrap()?; // unwrap NOTE: crash the app if the thread crashed
 
 					std::mem::swap(&mut w, &mut self.external_save);
 				}

@@ -48,12 +48,12 @@ impl Html {
 
 		let mut entries = items
 			.filter_map(|item| {
-				let link: Url = {
+				let link = {
 					let mut link = match Self::extract_data(
 						&mut Self::find_chain(&item, &self.linkq.inner.query),
 						&self.linkq.inner,
 					)
-					.ok_or(Error::Html("link not found"))
+					.ok_or(Error::HtmlParse("link not found", None))
 					{
 						Ok(s) => s.trim().to_string(),
 						Err(e) => return Some(Err(e)),
@@ -63,7 +63,12 @@ impl Html {
 						link.insert_str(0, prepend);
 					}
 
-					link.as_str().try_into().unwrap() // unwrap FIXME: pretty print if the found field isn't a valid url
+					match Url::try_from(link.as_str()).map_err(|e| {
+						Error::HtmlParse("The found link is not a valid url", Some(Box::new(e)))
+					}) {
+						Ok(v) => v,
+						Err(e) => return Some(Err(e)),
+					}
 				};
 
 				let id = {
@@ -71,7 +76,7 @@ impl Html {
 						&mut Self::find_chain(&item, &self.idq.inner.query),
 						&self.idq.inner,
 					)
-					.ok_or(Error::Html("id not found"))
+					.ok_or(Error::HtmlParse("id not found", None))
 					{
 						Ok(s) => s.trim().to_string(),
 						Err(e) => return Some(Err(e)),
@@ -120,12 +125,13 @@ impl Html {
 							Some(s) => s.trim().to_owned(),
 							None => {
 								if img_query.optional {
-									tracing::debug!("Found no image for the provided query but it's optional, skipping...");
+									tracing::trace!("Found no image for the provided query but it's optional, skipping...");
 									return None;
 								}
 
-								return Some(Err(Error::Html(
+								return Some(Err(Error::HtmlParse(
 									"image not found but it's not optional",
+									None,
 								)));
 							}
 						};
@@ -134,10 +140,12 @@ impl Html {
 							img_url.insert_str(0, prepend);
 						}
 
-						Some(
-							Url::try_from(img_url.as_str())
-								.map_err(|_| Error::Html("The found url isn't an actual url!")),
-						)
+						Some(Url::try_from(img_url.as_str()).map_err(|e| {
+							Error::HtmlParse(
+								"the found image url is an invalid url",
+								Some(Box::new(e)),
+							)
+						}))
 					})
 					.transpose();
 

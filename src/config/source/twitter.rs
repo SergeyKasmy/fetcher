@@ -8,7 +8,11 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{config::DataSettings, error::Result, source};
+use crate::{
+	config::DataSettings,
+	error::{Error, Result},
+	source,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -25,7 +29,7 @@ impl Twitter {
 			.twitter_auth
 			.as_ref()
 			.cloned()
-			.expect("No twitter auth data"); // FIXME
+			.ok_or_else(|| Error::ServiceNotReady("Twitter authentication".to_owned()))?;
 
 		Ok(source::Twitter::new(
 			self.pretty_name,

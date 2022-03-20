@@ -44,7 +44,7 @@ pub async fn run_task(t: &mut Task, mut read_filter: Option<&mut ReadFilter>) ->
 
 		match fetch.await {
 			Ok(_) => (),
-			Err(e @ Error::Network(_)) => tracing::warn!("{:?}", color_eyre::eyre::eyre!(e)),
+			Err(e @ Error::NoConnection(_)) => tracing::warn!("{:?}", color_eyre::eyre::eyre!(e)),
 			Err(e) => return Err(e),
 		}
 

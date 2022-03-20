@@ -42,7 +42,7 @@ pub fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result<Tasks
 		"{tasks_dir}/**/*.{CONFIG_FILE_EXT}",
 		tasks_dir = tasks_dir
 			.to_str()
-			.expect("Non unicode paths are currently unsupported") // FIXME
+			.ok_or(Error::BadPath(tasks_dir.clone()))?
 	);
 
 	let cfgs = glob::glob(&glob_str).unwrap(); // unwrap NOTE: should be safe if the glob pattern is correct
@@ -50,10 +50,7 @@ pub fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result<Tasks
 	cfgs.into_iter()
 		.filter_map(|c| match c {
 			Ok(v) => get(v, settings).transpose(), // TODO: is that okay?
-			Err(e) => Some(Err(Error::InaccessibleConfig(
-				e.into_error(),
-				tasks_dir.clone(),
-			))),
+			Err(e) => Some(Err(Error::LocalIoRead(e.into_error(), tasks_dir.clone()))),
 		})
 		.collect()
 }
@@ -68,13 +65,14 @@ pub fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<NamedTask>> 
 	let templates: TemplatesField = Figment::new()
 		.merge(Yaml::file(&path))
 		.extract()
-		.map_err(|e| Error::InvalidConfig(e, path.clone()))?;
+		.map_err(|e| Error::InvalidConfigFormat(e, path.clone()))?;
 
 	let mut conf = Figment::new();
 
 	if let Some(templates) = templates.templates {
 		for tmpl_name in templates {
-			let tmpl = settings::config::templates::find(tmpl_name)?.expect("Template not found"); // FIXME
+			let tmpl = settings::config::templates::find(&tmpl_name)?
+				.ok_or_else(|| Error::TemplateNotFound(tmpl_name.clone(), path.clone()))?;
 
 			tracing::trace!("Using template: {:?}", tmpl.path);
 
@@ -85,7 +83,7 @@ pub fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<NamedTask>> 
 	let task: config::Task = conf
 		.merge(Yaml::file(&path))
 		.extract()
-		.map_err(|e| Error::InvalidConfig(e, path.clone()))?;
+		.map_err(|e| Error::InvalidConfigFormat(e, path.clone()))?;
 
 	let task = task.parse(&path, settings)?;
 	if task.disabled {
@@ -94,7 +92,7 @@ pub fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<NamedTask>> 
 	}
 
 	Ok(Some(task.into_named_task(
-		name(&path).expect("Invalid config name"), // FIXME
+		name(&path).ok_or_else(|| Error::BadPath(path.clone()))?,
 		path,
 	)))
 }
