@@ -59,9 +59,9 @@ async fn main() -> color_eyre::Result<()> {
 	// TODO: add option to send to optional global debug chat to test first
 	match std::env::args().nth(1).as_deref() {
 		Some("--gen-secret-google-oauth2") => generate_google_oauth2().await?,
-		Some("--gen-secret-google-password") => generate_google_password()?,
-		Some("--gen-secret-telegram") => generate_telegram()?,
-		Some("--gen-secret-twitter") => generate_twitter_auth()?,
+		Some("--gen-secret-google-password") => generate_google_password().await?,
+		Some("--gen-secret-telegram") => generate_telegram().await?,
+		Some("--gen-secret-twitter") => generate_twitter_auth().await?,
 		None => run().await?,
 		Some(_) => panic!("error"),
 	};
@@ -71,10 +71,10 @@ async fn main() -> color_eyre::Result<()> {
 
 async fn run() -> Result<()> {
 	let tasks = settings::config::tasks::get_all(&DataSettings {
-		twitter_auth: settings::data::twitter()?,
-		google_oauth2: settings::data::google_oauth2()?,
-		google_password: settings::data::google_password()?,
-		telegram: settings::data::telegram()?,
+		twitter_auth: settings::data::twitter().await?,
+		google_oauth2: settings::data::google_oauth2().await?,
+		google_password: settings::data::google_password().await?,
+		telegram: settings::data::telegram().await?,
 	})?;
 
 	if tasks.is_empty() {
@@ -141,7 +141,8 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 
 		let fut = tokio::spawn(async move {
 			let res: Result<()> = async {
-				let mut read_filter = settings::read_filter::get(&name, t.read_filter_kind())?;
+				let mut read_filter =
+					settings::read_filter::get(&name, t.read_filter_kind()).await?;
 
 				select! {
 					res = run_task(&mut t, read_filter.as_mut()) => res,
@@ -162,7 +163,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 					let err_str = format!("{:?}", e); // TODO: make it pretier like eyre
 					tracing::error!("{}", err_str);
 					let send_job = async {
-						let bot = match settings::data::telegram()? {
+						let bot = match settings::data::telegram().await? {
 							Some(b) => b,
 							None => {
 								let s = "Unable to send error report to the admin: telegram bot token is not provided".to_owned();

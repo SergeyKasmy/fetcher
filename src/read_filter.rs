@@ -69,7 +69,6 @@ impl ReadFilter {
 		}
 	}
 
-	// TODO: move external_save inside the struct
 	#[allow(clippy::missing_errors_doc)] // TODO
 	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<()> {
 		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};

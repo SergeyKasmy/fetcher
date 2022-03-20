@@ -6,9 +6,8 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use std::fs::{self, File};
-use std::io::{self, Seek, Write};
 use std::path::PathBuf;
+use tokio::fs;
 
 use super::PREFIX;
 use crate::config;
@@ -35,13 +34,18 @@ fn read_filter_path(name: &str) -> Result<PathBuf> {
 /// # Errors
 /// * if the file is inaccessible
 /// * if the file is corrupted
-pub fn get(name: &str, default: Option<fetcher::read_filter::Kind>) -> Result<Option<ReadFilter>> {
+pub async fn get(
+	name: &str,
+	default: Option<fetcher::read_filter::Kind>,
+) -> Result<Option<ReadFilter>> {
 	struct TruncatingFileWriter {
-		file: File,
+		file: std::fs::File,
 	}
 
-	impl Write for TruncatingFileWriter {
-		fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+	impl std::io::Write for TruncatingFileWriter {
+		fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+			use std::io::Seek;
+
 			self.file.set_len(0)?;
 			self.file.rewind()?;
 			self.file.write(buf)
@@ -55,7 +59,7 @@ pub fn get(name: &str, default: Option<fetcher::read_filter::Kind>) -> Result<Op
 	let writer = || -> Result<Writer> {
 		let path = read_filter_path(name)?;
 
-		let file = fs::OpenOptions::new()
+		let file = std::fs::OpenOptions::new()
 			.create(true)
 			.write(true)
 			.truncate(true)
@@ -68,6 +72,7 @@ pub fn get(name: &str, default: Option<fetcher::read_filter::Kind>) -> Result<Op
 	let path = read_filter_path(name)?;
 
 	let filter = fs::read_to_string(&path)
+		.await
 		.ok() // if it doesn't already exist
 		.map(|s| {
 			let read_filter_conf: config::read_filter::ReadFilter =
