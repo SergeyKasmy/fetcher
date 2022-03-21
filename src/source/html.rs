@@ -47,40 +47,33 @@ impl Html {
 		let items = Self::find_chain(&soup, &self.itemq);
 
 		let mut entries = items
-			.filter_map(|item| {
+			.map(|item| -> Result<Entry> {
 				let link = {
-					let mut link = match Self::extract_data(
+					let mut link = Self::extract_data(
 						&mut Self::find_chain(&item, &self.linkq.inner.query),
 						&self.linkq.inner,
 					)
-					.ok_or(Error::HtmlParse("link not found", None))
-					{
-						Ok(s) => s.trim().to_string(),
-						Err(e) => return Some(Err(e)),
-					};
+					.ok_or(Error::HtmlParse("link not found", None))?
+					.trim()
+					.to_owned();
 
 					if let Some(prepend) = &self.linkq.prepend {
 						link.insert_str(0, prepend);
 					}
 
-					match Url::try_from(link.as_str()).map_err(|e| {
+					Url::try_from(link.as_str()).map_err(|e| {
 						Error::HtmlParse("The found link is not a valid url", Some(Box::new(e)))
-					}) {
-						Ok(v) => v,
-						Err(e) => return Some(Err(e)),
-					}
+					})?
 				};
 
 				let id = {
-					let id_str = match Self::extract_data(
+					let id_str = Self::extract_data(
 						&mut Self::find_chain(&item, &self.idq.inner.query),
 						&self.idq.inner,
 					)
-					.ok_or(Error::HtmlParse("id not found", None))
-					{
-						Ok(s) => s.trim().to_string(),
-						Err(e) => return Some(Err(e)),
-					};
+					.ok_or(Error::HtmlParse("id not found", None))?
+					.trim()
+					.to_owned();
 
 					match &self.idq.kind {
 						IdQueryKind::String => id_str,
@@ -147,14 +140,9 @@ impl Html {
 							)
 						}))
 					})
-					.transpose();
+					.transpose()?;
 
-				let img = match img {
-					Ok(v) => v,
-					Err(e) => return Some(Err(e)),
-				};
-
-				Some(Ok(Entry {
+				Ok(Entry {
 					id,
 					msg: Message {
 						title: None,
@@ -165,7 +153,7 @@ impl Html {
 						}),
 						media: img.map(|url| vec![Media::Photo(url)]),
 					},
-				}))
+				})
 			})
 			.collect::<Result<Vec<_>>>()?;
 

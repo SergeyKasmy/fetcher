@@ -52,6 +52,7 @@ impl Task {
 		}
 	}
 
+	#[must_use]
 	pub fn into_named_task(self, name: String, path: PathBuf) -> NamedTask {
 		NamedTask {
 			name,
@@ -62,6 +63,7 @@ impl Task {
 
 	/// TODO: implement this only for source type T that needs a read filter
 	/// Get the task's read filter kind.
+	#[must_use]
 	pub fn read_filter_kind(&self) -> Option<read_filter::Kind> {
 		self.read_filter_kind
 	}

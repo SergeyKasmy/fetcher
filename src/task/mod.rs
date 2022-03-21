@@ -7,6 +7,7 @@
  */
 
 pub mod named_task;
+#[allow(clippy::module_inception)]
 pub mod task;
 pub mod template;
 

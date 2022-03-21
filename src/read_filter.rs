@@ -24,7 +24,6 @@ pub struct ReadFilter {
 	pub(crate) external_save: Writer,
 }
 
-#[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub enum ReadFilterInner {
 	NewerThanLastRead(Newer),

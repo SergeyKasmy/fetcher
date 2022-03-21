@@ -14,16 +14,16 @@ pub struct Newer {
 }
 
 impl Newer {
-	pub fn new() -> Self {
+	pub(crate) fn new() -> Self {
 		Self { last_read_id: None }
 	}
 
-	pub fn last_read(&self) -> Option<&str> {
+	pub(crate) fn last_read(&self) -> Option<&str> {
 		self.last_read_id.as_deref()
 	}
 
 	/// Make sure list is sorted newest to oldest
-	pub fn remove_read_from(&self, list: &mut Vec<Entry>) {
+	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		if let Some(last_read_id) = &self.last_read_id {
 			if let Some(last_read_id_pos) =
 				list.iter().position(|x| x.id() == last_read_id.as_str())
@@ -35,7 +35,7 @@ impl Newer {
 
 	/// Check if `current_id` is unread
 	/// Make sure `id_list` is sorted newest to oldest
-	pub fn is_unread(&self, current_id: &str, id_list: &[&str]) -> bool {
+	pub(crate) fn is_unread(&self, current_id: &str, id_list: &[&str]) -> bool {
 		if let Some(last_read_id) = &self.last_read_id {
 			if current_id == last_read_id {
 				return false;
@@ -63,7 +63,7 @@ impl Newer {
 		true
 	}
 
-	pub fn mark_as_read(&mut self, id: &str) {
+	pub(crate) fn mark_as_read(&mut self, id: &str) {
 		self.last_read_id = Some(id.to_owned());
 	}
 }

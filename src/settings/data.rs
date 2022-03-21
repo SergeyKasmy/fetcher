@@ -119,7 +119,7 @@ pub async fn twitter() -> Result<Option<(String, String)>> {
 }
 
 pub async fn telegram() -> Result<Option<Bot>> {
-	Ok(data(TELEGRAM).await?.map(|s| Bot::new(s)))
+	Ok(data(TELEGRAM).await?.map(Bot::new))
 }
 
 async fn save_data(name: &str, data: &str) -> Result<()> {

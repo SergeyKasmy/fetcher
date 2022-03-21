@@ -18,7 +18,7 @@ use figment::{
 	Figment,
 };
 use itertools::Itertools; // for .flatten_ok()
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::CONFIG_FILE_EXT;
 use crate::settings;
@@ -42,7 +42,7 @@ pub fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result<Tasks
 		"{tasks_dir}/**/*.{CONFIG_FILE_EXT}",
 		tasks_dir = tasks_dir
 			.to_str()
-			.ok_or(Error::BadPath(tasks_dir.clone()))?
+			.ok_or_else(|| Error::BadPath(tasks_dir.clone()))?
 	);
 
 	let cfgs = glob::glob(&glob_str).unwrap(); // unwrap NOTE: should be safe if the glob pattern is correct
@@ -58,7 +58,7 @@ pub fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result<Tasks
 #[tracing::instrument(skip(settings))]
 pub fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<NamedTask>> {
 	tracing::trace!("Parsing a task from file");
-	fn name(path: &PathBuf) -> Option<String> {
+	fn name(path: &Path) -> Option<String> {
 		Some(path.file_stem()?.to_str()?.to_owned())
 	}
 

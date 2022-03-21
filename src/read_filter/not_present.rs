@@ -18,7 +18,7 @@ pub struct NotPresent {
 impl NotPresent {
 	pub(crate) fn new() -> Self {
 		Self {
-			read_list: Default::default(),
+			read_list: VecDeque::default(),
 		}
 	}
 

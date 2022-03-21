@@ -8,6 +8,7 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::missing_panics_doc)] // TODO
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::module_name_repetitions)]
 
 // TODO: more tests
 
@@ -36,6 +37,8 @@ pub async fn run_task(t: &mut Task, mut read_filter: Option<&mut ReadFilter>) ->
 
 		let fetch = async {
 			for entry in t.source.get(read_filter.as_deref()).await? {
+				// without the .as_deref, the option is moved instead of borrowed
+				#[allow(clippy::needless_option_as_deref)]
 				process_entry(t, entry, read_filter.as_deref_mut()).await?;
 			}
 

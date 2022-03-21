@@ -198,7 +198,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 	for res in join_all(running_tasks).await {
 		if let Err(e) = res {
 			tracing::error!("{:?}", e);
-			if let None = first_err {
+			if first_err.is_none() {
 				first_err = Some(e);
 			}
 		}
