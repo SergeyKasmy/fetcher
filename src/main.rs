@@ -140,11 +140,11 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 
 		let fut = tokio::spawn(async move {
 			let res: Result<()> = async {
-				let mut read_filter =
-					settings::read_filter::get(&name, t.read_filter_kind()).await?;
+				// let mut read_filter =
+				// 	settings::read_filter::get(&name, t.read_filter_kind()).await?;
 
 				select! {
-					res = run_task(&mut t, read_filter.as_mut()) => res,
+					res = run_task(&mut t) => res,
 					_ = shutdown_rx.changed() => Ok(()),
 				}
 			}

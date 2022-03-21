@@ -25,9 +25,7 @@ impl Newer {
 	/// Make sure list is sorted newest to oldest
 	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		if let Some(last_read_id) = &self.last_read_id {
-			if let Some(last_read_id_pos) =
-				list.iter().position(|x| x.id() == last_read_id.as_str())
-			{
+			if let Some(last_read_id_pos) = list.iter().position(|x| last_read_id == &x.id) {
 				list.drain(last_read_id_pos..);
 			}
 		}

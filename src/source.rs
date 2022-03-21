@@ -6,6 +6,8 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+// TODO: add google calendar source. Google OAuth2 is already implemented :)
+
 pub mod email;
 pub mod html;
 pub mod rss;
@@ -20,42 +22,98 @@ use crate::entry::Entry;
 use crate::error::Result;
 use crate::read_filter::ReadFilter;
 
-// TODO: add google calendar source. Google OAuth2 is already implemented :)
 #[derive(Debug)]
 pub enum Source {
-	Email(Email),
+	WithSharedReadFilter(WithSharedReadFilter),
+	WithCustomReadFilter(WithCustomReadFilter),
+}
+
+impl Source {
+	pub async fn get(&mut self) -> Result<Vec<Entry>> {
+		match self {
+			Source::WithSharedReadFilter(x) => x.get().await,
+			Source::WithCustomReadFilter(x) => x.get().await,
+		}
+	}
+
+	pub async fn mark_as_read(&mut self, id: &str) -> Result<()> {
+		match self {
+			Self::WithSharedReadFilter(x) => x.mark_as_read(id).await,
+			Self::WithCustomReadFilter(x) => x.mark_as_read(id).await,
+		}
+	}
+}
+
+#[derive(Debug)]
+pub struct WithSharedReadFilter {
+	read_filter: ReadFilter,
+	sources: Vec<WithSharedReadFilterInner>,
+}
+
+#[derive(Debug)]
+pub enum WithSharedReadFilterInner {
 	Html(Html),
 	Rss(Rss),
 	Twitter(Twitter),
 }
 
-impl Source {
-	// TODO: try using streams instead of polling manually?
-	#[allow(clippy::missing_errors_doc)] // TODO
-	pub async fn get(&mut self, read_filter: Option<&ReadFilter>) -> Result<Vec<Entry>> {
-		match self {
-			Self::Email(x) => x.get().await,
-			Self::Html(x) => x.get(read_filter.unwrap()).await,
-			Self::Rss(x) => x.get(read_filter.unwrap()).await,
-			Self::Twitter(x) => x.get(read_filter.unwrap()).await,
+impl WithSharedReadFilter {
+	pub async fn new(sources: Vec<WithSharedReadFilterInner>, read_filter: ReadFilter) -> Self {
+		match sources.len() {
+			0 => todo!("Source vec can't be empty"),
+			1 => (),
+			// assert that all source types are of the same enum variant
+			_ => {
+				assert!(sources.windows(2).fold(true, |is_same, x| {
+					if is_same {
+						std::mem::discriminant(&x[0]) == std::mem::discriminant(&x[1])
+					} else {
+						is_same
+					}
+				}));
+			}
+		}
+
+		Self {
+			read_filter,
+			sources,
 		}
 	}
-}
 
-impl From<Email> for Source {
-	fn from(e: Email) -> Self {
-		Self::Email(e)
+	pub async fn get(&mut self) -> Result<Vec<Entry>> {
+		let mut entries = Vec::new();
+
+		for s in &mut self.sources {
+			entries.extend(match s {
+				WithSharedReadFilterInner::Html(x) => x.get(&self.read_filter).await?,
+				WithSharedReadFilterInner::Rss(x) => x.get(&self.read_filter).await?,
+				WithSharedReadFilterInner::Twitter(x) => x.get(&self.read_filter).await?,
+			});
+		}
+
+		Ok(entries)
+	}
+
+	pub async fn mark_as_read(&mut self, id: &str) -> Result<()> {
+		self.read_filter.mark_as_read(id).await
 	}
 }
 
-impl From<Rss> for Source {
-	fn from(r: Rss) -> Self {
-		Self::Rss(r)
-	}
+#[derive(Debug)]
+pub enum WithCustomReadFilter {
+	Email(Email),
 }
 
-impl From<Twitter> for Source {
-	fn from(t: Twitter) -> Self {
-		Self::Twitter(t)
+impl WithCustomReadFilter {
+	pub async fn get(&mut self) -> Result<Vec<Entry>> {
+		Ok(match self {
+			Self::Email(x) => x.get().await?,
+		})
+	}
+
+	pub async fn mark_as_read(&mut self, id: &str) -> Result<()> {
+		match self {
+			Self::Email(x) => x.mark_as_read(id).await,
+		}
 	}
 }

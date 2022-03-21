@@ -68,6 +68,15 @@ impl ReadFilter {
 		}
 	}
 
+	pub(crate) fn to_kind(&self) -> Kind {
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+
+		match &self.inner {
+			NewerThanLastRead(_) => Kind::NewerThanLastRead,
+			NotPresentInReadList(_) => Kind::NotPresentInReadList,
+		}
+	}
+
 	#[allow(clippy::missing_errors_doc)] // TODO
 	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<()> {
 		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
@@ -81,7 +90,8 @@ impl ReadFilter {
 			Some(filter_conf) => {
 				let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
 
-				// is this even worth it?
+				// TODO: is this even worth it?
+				// UPD: probably now
 				{
 					let mut w = std::mem::replace(&mut self.external_save, Box::new(Vec::new()));
 
@@ -100,15 +110,6 @@ impl ReadFilter {
 		}
 
 		Ok(())
-	}
-
-	pub(crate) fn to_kind(&self) -> Kind {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
-
-		match &self.inner {
-			NewerThanLastRead(_) => Kind::NewerThanLastRead,
-			NotPresentInReadList(_) => Kind::NotPresentInReadList,
-		}
 	}
 }
 

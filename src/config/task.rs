@@ -27,47 +27,22 @@ pub struct Task {
 	read_filter_kind: Option<read_filter::Kind>,
 	tag: Option<String>,
 	refresh: u64,
-	source: Source,
+	sources: Vec<Source>,
 	sink: Sink,
 }
 
 impl Task {
 	pub fn parse(self, conf_path: &Path, settings: &DataSettings) -> Result<task::Task> {
-		if let Some(read_filter::Kind::NewerThanRead) = self.read_filter_kind {
-			if let Source::Html(html) = &self.source {
-				if let source::html::query::IdQueryKind::Date = html.idq.kind {
-					return Err(Error::IncompatibleConfigValues(
-						r#"HTML source id of type "date" isn't compatible with read_filter_type of "not_present_in_read_list""#,
-						conf_path.to_owned(),
-					));
-				}
-			}
-		}
-
-		match (&self.source, &self.read_filter_kind) {
-			(Source::Email(_), Some(_)) => {
-				return Err(Error::IncompatibleConfigValues(
-					"Source type Email doesn't support custom read filters",
-					conf_path.to_owned(),
-				));
-			}
-			(Source::Email(_), None) | (_, Some(_)) => (),
-			(_, None) => {
-				return Err(Error::IncompatibleConfigValues(
-					r#"Missing field "read_filter_type""#,
-					conf_path.to_owned(),
-				))
-			}
-		}
-
-		Ok(task::Task {
-			disabled: self.disabled.unwrap_or(false),
-			read_filter_kind: self.read_filter_kind.map(read_filter::Kind::parse),
-			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
-			refresh: self.refresh,
-			sink: self.sink.parse(settings)?,
-			source: self.source.parse(settings)?,
-		})
+		// Ok(task::Task {
+		// 	disabled: self.disabled.unwrap_or(false),
+		// 	read_filter_kind: self.read_filter_kind.map(read_filter::Kind::parse),
+		// 	tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
+		// 	refresh: self.refresh,
+		// 	sink: self.sink.parse(settings)?,
+		// 	// source: self.source.parse(settings)?,
+		// 	sources: todo!(),
+		// })
+		todo!()
 	}
 }
 

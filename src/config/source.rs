@@ -34,11 +34,12 @@ pub(crate) enum Source {
 
 impl Source {
 	pub(crate) fn parse(self, settings: &DataSettings) -> Result<source::Source> {
-		Ok(match self {
-			Source::Email(x) => source::Source::Email(x.parse(settings)?),
-			Source::Html(x) => source::Source::Html(x.parse()),
-			Source::Rss(x) => source::Source::Rss(x.parse()),
-			Source::Twitter(x) => source::Source::Twitter(x.parse(settings)?),
-		})
+		todo!()
+		// Ok(match self {
+		// 	Source::Email(x) => source::Source::Email(x.parse(settings)?),
+		// 	Source::Html(x) => source::Source::Html(x.parse()),
+		// 	Source::Rss(x) => source::Source::Rss(x.parse()),
+		// 	Source::Twitter(x) => source::Source::Twitter(x.parse(settings)?),
+		// })
 	}
 }

@@ -8,7 +8,7 @@
 
 use std::{collections::HashSet, path::PathBuf};
 
-use crate::{read_filter, sink::Sink, source::Source, task::named_task::NamedTask};
+use crate::{sink::Sink, source::Source, task::named_task::NamedTask};
 
 pub type Tasks = HashSet<NamedTask>;
 
@@ -17,9 +17,9 @@ pub struct Task {
 	pub disabled: bool,
 	pub refresh: u64,
 	pub tag: Option<String>,
-	pub(crate) read_filter_kind: Option<read_filter::Kind>,
-	pub(crate) sink: Sink,
+	// pub(crate) read_filter_kind: Option<read_filter::Kind>,
 	pub(crate) source: Source,
+	pub(crate) sink: Sink,
 }
 
 impl Task {
@@ -28,25 +28,13 @@ impl Task {
 		disabled: bool,
 		refresh: u64,
 		tag: Option<String>,
-		read_filter_kind: Option<read_filter::Kind>,
-		sink: Sink,
 		source: Source,
+		sink: Sink,
 	) -> Self {
-		// TODO: make that a Result with a custom error
-		// or just remove panicing somehow else
-		match (&source, &read_filter_kind) {
-			(Source::Email(_), Some(_)) => {
-				panic!("Email source doesn't support custom read filter types")
-			}
-			(Source::Email(_), None) | (_, Some(_)) => (),
-			(_, None) => panic!("read_filter_type field missing"),
-		}
-
 		Self {
 			disabled,
 			refresh,
 			tag,
-			read_filter_kind,
 			sink,
 			source,
 		}
@@ -60,11 +48,76 @@ impl Task {
 			task: self,
 		}
 	}
-
-	/// TODO: implement this only for source type T that needs a read filter
-	/// Get the task's read filter kind.
-	#[must_use]
-	pub fn read_filter_kind(&self) -> Option<read_filter::Kind> {
-		self.read_filter_kind
-	}
 }
+
+// #[cfg(test)]
+// mod tests {
+// 	mod source_types {
+// 		use teloxide::Bot;
+
+// 		use super::super::Task;
+// 		use crate::source::email::ViewMode;
+// 		use crate::{
+// 			sink::Sink,
+// 			sink::Telegram,
+// 			source::Rss,
+// 			source::Source,
+// 			source::{email::filters::Filters, Email},
+// 		};
+
+// 		#[test]
+// 		fn one_type() {
+// 			let _x = Task::new(
+// 				false,
+// 				1,
+// 				None,
+// 				Sink::Telegram(Telegram::new(Bot::new("null"), 0)),
+// 				vec![Source::Rss(Rss::new("null".to_owned()))],
+// 			);
+// 		}
+
+// 		#[test]
+// 		fn same_types() {
+// 			let _x = Task::new(
+// 				false,
+// 				1,
+// 				None,
+// 				Sink::Telegram(Telegram::new(Bot::new("null"), 0)),
+// 				vec![
+// 					Source::Rss(Rss::new("null".to_owned())),
+// 					Source::Rss(Rss::new("null".to_owned())),
+// 					Source::Rss(Rss::new("null".to_owned())),
+// 				],
+// 			);
+// 		}
+
+// 		#[test]
+// 		#[should_panic]
+// 		fn different_types() {
+// 			let _x = Task::new(
+// 				false,
+// 				1,
+// 				None,
+// 				Sink::Telegram(Telegram::new(Bot::new("null"), 0)),
+// 				vec![
+// 					Source::Rss(Rss::new("null".to_owned())),
+// 					Source::Rss(Rss::new("null".to_owned())),
+// 					Source::Rss(Rss::new("null".to_owned())),
+// 					Source::Rss(Rss::new("null".to_owned())),
+// 					Source::Email(Email::with_password(
+// 						"null".to_owned(),
+// 						"null".to_owned(),
+// 						"null".to_owned(),
+// 						Filters {
+// 							sender: None,
+// 							subjects: None,
+// 							exclude_subjects: None,
+// 						},
+// 						ViewMode::ReadOnly,
+// 						None,
+// 					)),
+// 				],
+// 			);
+// 		}
+// 	}
+// }
