@@ -58,7 +58,8 @@ pub enum WithSharedReadFilterInner {
 }
 
 impl WithSharedReadFilter {
-	pub async fn new(sources: Vec<WithSharedReadFilterInner>, read_filter: ReadFilter) -> Self {
+	#[must_use]
+	pub fn new(sources: Vec<WithSharedReadFilterInner>, read_filter: ReadFilter) -> Self {
 		match sources.len() {
 			0 => todo!("Source vec can't be empty"),
 			1 => (),

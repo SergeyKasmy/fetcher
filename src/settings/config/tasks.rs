@@ -11,13 +11,12 @@
 use fetcher::{
 	config::{self, DataSettings, TemplatesField},
 	error::{Error, Result},
-	task::{NamedTask, Tasks},
+	task::{Task, Tasks},
 };
 use figment::{
 	providers::{Format, Yaml},
 	Figment,
 };
-use itertools::Itertools; // for .flatten_ok()
 use std::path::{Path, PathBuf};
 
 use super::CONFIG_FILE_EXT;
@@ -25,19 +24,19 @@ use crate::settings;
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]
 #[tracing::instrument(skip(settings))]
-pub fn get_all(settings: &DataSettings) -> Result<Tasks> {
-	super::cfg_dirs()?
-		.into_iter()
-		.map(|mut p| {
-			p.push("tasks");
-			p
-		})
-		.map(|d| get_all_from(d, settings))
-		.flatten_ok()
-		.collect()
+pub async fn get_all(settings: &DataSettings) -> Result<Tasks> {
+	let mut tasks = Tasks::new();
+	for dir in super::cfg_dirs()?.into_iter().map(|mut p| {
+		p.push("tasks");
+		p
+	}) {
+		tasks.extend(get_all_from(dir, settings).await?);
+	}
+
+	Ok(tasks)
 }
 
-pub fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result<Tasks> {
+pub async fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result<Tasks> {
 	let glob_str = format!(
 		"{tasks_dir}/**/*.{CONFIG_FILE_EXT}",
 		tasks_dir = tasks_dir
@@ -47,16 +46,21 @@ pub fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result<Tasks
 
 	let cfgs = glob::glob(&glob_str).unwrap(); // unwrap NOTE: should be safe if the glob pattern is correct
 
-	cfgs.into_iter()
-		.filter_map(|c| match c {
-			Ok(v) => get(v, settings).transpose(), // TODO: is that okay?
-			Err(e) => Some(Err(Error::LocalIoRead(e.into_error(), tasks_dir.clone()))),
-		})
-		.collect()
+	let mut tasks = Tasks::new();
+	for cfg in cfgs {
+		match cfg {
+			Ok(v) => {
+				get(v, settings).await?.map(|x| tasks.insert(x));
+			}
+			Err(e) => return Err(Error::LocalIoRead(e.into_error(), tasks_dir.clone())),
+		}
+	}
+
+	Ok(tasks)
 }
 
 #[tracing::instrument(skip(settings))]
-pub fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<NamedTask>> {
+pub async fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<Task>> {
 	tracing::trace!("Parsing a task from file");
 	fn name(path: &Path) -> Option<String> {
 		Some(path.file_stem()?.to_str()?.to_owned())
@@ -85,14 +89,12 @@ pub fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<NamedTask>> 
 		.extract()
 		.map_err(|e| Error::InvalidConfigFormat(e, path.clone()))?;
 
-	let task = task.parse(&path, settings)?;
+	let name = name(&path).ok_or_else(|| Error::BadPath(path.clone()))?;
+	let task = task.parse(name, path, settings).await?;
 	if task.disabled {
 		tracing::trace!("Task is disabled, skipping...");
 		return Ok(None);
 	}
 
-	Ok(Some(task.into_named_task(
-		name(&path).ok_or_else(|| Error::BadPath(path.clone()))?,
-		path,
-	)))
+	Ok(Some(task))
 }

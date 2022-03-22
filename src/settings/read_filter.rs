@@ -37,6 +37,7 @@ fn read_filter_path(name: &str) -> Result<PathBuf> {
 #[tracing::instrument(skip(default))]
 pub async fn get(
 	name: &str,
+	// TODO: remove option
 	default: Option<fetcher::read_filter::Kind>,
 ) -> Result<Option<ReadFilter>> {
 	struct TruncatingFileWriter {

@@ -16,12 +16,14 @@ use fetcher::{
 	config::{self, DataSettings},
 	error::Error,
 	run_task,
-	task::{NamedTask, Tasks},
+	task::Tasks,
 };
 use futures::future::join_all;
 use futures::StreamExt;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tokio::sync::watch;
@@ -74,7 +76,15 @@ async fn run() -> Result<()> {
 		google_oauth2: settings::data::google_oauth2().await?,
 		google_password: settings::data::google_password().await?,
 		telegram: settings::data::telegram().await?,
-	})?;
+		read_filter: Box::new(
+			|name: String,
+			 default: Option<fetcher::read_filter::Kind>|
+			 -> Pin<Box<dyn Future<Output = Result<Option<fetcher::read_filter::ReadFilter>>>>> {
+				Box::pin(async move { settings::read_filter::get(&name, default).await })
+			},
+		),
+	})
+	.await?;
 
 	if tasks.is_empty() {
 		tracing::warn!("No enabled tasks provided");
@@ -130,12 +140,8 @@ async fn run() -> Result<()> {
 
 async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 	let mut running_tasks = Vec::new();
-	for NamedTask {
-		name,
-		path: _,
-		task: mut t,
-	} in tasks
-	{
+	for mut t in tasks {
+		let name = t.name.clone(); // TODO: ehhh
 		let mut shutdown_rx = shutdown_rx.clone();
 
 		let fut = tokio::spawn(async move {
@@ -175,7 +181,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 							..Default::default()
 						};
 						Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned())
-							.send(msg, Some(&name))
+							.send(msg, Some(&t.name))
 							.await?;
 						Ok::<(), Error>(())
 					};

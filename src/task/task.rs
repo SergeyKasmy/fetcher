@@ -6,14 +6,20 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use std::{collections::HashSet, path::PathBuf};
+use std::{
+	collections::HashSet,
+	hash::{Hash, Hasher},
+	path::PathBuf,
+};
 
-use crate::{sink::Sink, source::Source, task::named_task::NamedTask};
+use crate::{sink::Sink, source::Source};
 
-pub type Tasks = HashSet<NamedTask>;
+pub type Tasks = HashSet<Task>;
 
 #[derive(Debug)]
 pub struct Task {
+	pub name: String,
+	pub path: PathBuf,
 	pub disabled: bool,
 	pub refresh: u64,
 	pub tag: Option<String>,
@@ -25,6 +31,8 @@ pub struct Task {
 impl Task {
 	#[must_use]
 	pub fn new(
+		name: String,
+		path: PathBuf,
 		disabled: bool,
 		refresh: u64,
 		tag: Option<String>,
@@ -32,23 +40,30 @@ impl Task {
 		sink: Sink,
 	) -> Self {
 		Self {
+			name,
+			path,
 			disabled,
 			refresh,
 			tag,
-			sink,
 			source,
-		}
-	}
-
-	#[must_use]
-	pub fn into_named_task(self, name: String, path: PathBuf) -> NamedTask {
-		NamedTask {
-			name,
-			path,
-			task: self,
+			sink,
 		}
 	}
 }
+
+impl Hash for Task {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		self.name.hash(state);
+	}
+}
+
+impl PartialEq for Task {
+	fn eq(&self, other: &Self) -> bool {
+		self.name == other.name
+	}
+}
+
+impl Eq for Task {}
 
 // #[cfg(test)]
 // mod tests {

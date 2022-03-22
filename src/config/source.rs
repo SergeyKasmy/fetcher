@@ -14,7 +14,7 @@ pub mod twitter;
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
-use crate::source;
+use crate::{read_filter, source};
 
 use self::email::Email;
 use self::html::Html;
@@ -24,22 +24,71 @@ use self::twitter::Twitter;
 use super::DataSettings;
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+#[serde(untagged)]
 pub(crate) enum Source {
-	Email(Email),
+	// WithSharedReadFilter(OneOrMultiple<WithSharedReadFilter>),
+	WithSharedReadFilter(Vec<WithSharedReadFilter>),
+	WithCustomReadFilter(WithCustomReadFilter),
+}
+
+// #[derive(Deserialize, Serialize, Debug)]
+// pub(crate) enum OneOrMultiple<T> {
+// 	One(T),
+// 	Multiple(Vec<T>),
+// }
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) enum WithSharedReadFilter {
 	Html(Html),
 	Rss(Rss),
 	Twitter(Twitter),
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) enum WithCustomReadFilter {
+	Email(Email),
+}
+
 impl Source {
-	pub(crate) fn parse(self, settings: &DataSettings) -> Result<source::Source> {
-		todo!()
-		// Ok(match self {
-		// 	Source::Email(x) => source::Source::Email(x.parse(settings)?),
-		// 	Source::Html(x) => source::Source::Html(x.parse()),
-		// 	Source::Rss(x) => source::Source::Rss(x.parse()),
-		// 	Source::Twitter(x) => source::Source::Twitter(x.parse(settings)?),
-		// })
+	pub(crate) async fn parse(
+		self,
+		name: &str,
+		settings: &DataSettings,
+		default_read_filter_kind: Option<read_filter::Kind>,
+	) -> Result<source::Source> {
+		Ok(match self {
+			Source::WithSharedReadFilter(v) => {
+				let inner = v
+					.into_iter()
+					.map(|x| {
+						Ok(match x {
+							WithSharedReadFilter::Html(x) => {
+								source::WithSharedReadFilterInner::Html(x.parse())
+							}
+							WithSharedReadFilter::Rss(x) => {
+								source::WithSharedReadFilterInner::Rss(x.parse())
+							}
+							WithSharedReadFilter::Twitter(x) => {
+								source::WithSharedReadFilterInner::Twitter(x.parse(settings)?)
+							}
+						})
+					})
+					.collect::<Result<Vec<_>>>()?;
+
+				source::Source::WithSharedReadFilter(source::WithSharedReadFilter::new(
+					inner,
+					(settings.read_filter)(name.to_owned(), default_read_filter_kind)
+						.await?
+						.unwrap(), // unwrap FIXME: remove when settings::read_filter::get gets updated
+				))
+			}
+			Source::WithCustomReadFilter(s) => match s {
+				WithCustomReadFilter::Email(x) => source::Source::WithCustomReadFilter(
+					source::WithCustomReadFilter::Email(x.parse(settings)?),
+				),
+			},
+		})
 	}
 }

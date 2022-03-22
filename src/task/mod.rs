@@ -6,13 +6,11 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-pub mod named_task;
 #[allow(clippy::module_inception)]
 pub mod task;
 pub mod template;
 
 pub use self::{
-	named_task::NamedTask,
 	task::{Task, Tasks},
 	template::Template,
 };

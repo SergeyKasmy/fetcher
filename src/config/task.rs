@@ -7,13 +7,10 @@
  */
 
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::PathBuf;
 
-use super::{read_filter, sink::Sink, source, source::Source, DataSettings};
-use crate::{
-	error::{Error, Result},
-	task,
-};
+use super::{read_filter, sink::Sink, source::Source, DataSettings};
+use crate::{error::Result, task};
 
 #[derive(Deserialize, Debug)]
 pub struct TemplatesField {
@@ -27,22 +24,34 @@ pub struct Task {
 	read_filter_kind: Option<read_filter::Kind>,
 	tag: Option<String>,
 	refresh: u64,
-	sources: Vec<Source>,
+	source: Source,
 	sink: Sink,
 }
 
 impl Task {
-	pub fn parse(self, conf_path: &Path, settings: &DataSettings) -> Result<task::Task> {
-		// Ok(task::Task {
-		// 	disabled: self.disabled.unwrap_or(false),
-		// 	read_filter_kind: self.read_filter_kind.map(read_filter::Kind::parse),
-		// 	tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
-		// 	refresh: self.refresh,
-		// 	sink: self.sink.parse(settings)?,
-		// 	// source: self.source.parse(settings)?,
-		// 	sources: todo!(),
-		// })
-		todo!()
+	pub async fn parse(
+		self,
+		name: String,
+		path: PathBuf,
+		settings: &DataSettings,
+	) -> Result<task::Task> {
+		let source = self
+			.source
+			.parse(
+				&name,
+				settings,
+				self.read_filter_kind.map(read_filter::Kind::parse),
+			)
+			.await?;
+		Ok(task::Task {
+			name,
+			path,
+			disabled: self.disabled.unwrap_or(false),
+			refresh: self.refresh,
+			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
+			source,
+			sink: self.sink.parse(settings)?,
+		})
 	}
 }
 
