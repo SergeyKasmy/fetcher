@@ -6,6 +6,7 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use crate::read_filter;
@@ -84,7 +85,7 @@ impl Newer {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct NotPresent {
-	read_list: Vec<String>,
+	read_list: Vec<(String, chrono::DateTime<Utc>)>,
 }
 
 impl NotPresent {

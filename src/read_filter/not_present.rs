@@ -6,13 +6,16 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+use chrono::{DateTime, Utc};
 use std::collections::VecDeque;
 
 use crate::entry::Entry;
 
+const MAX_LIST_LEN: usize = 500;
+
 #[derive(Debug)]
 pub struct NotPresent {
-	pub(crate) read_list: VecDeque<String>,
+	pub(crate) read_list: VecDeque<(String, DateTime<Utc>)>,
 }
 
 impl NotPresent {
@@ -23,8 +26,7 @@ impl NotPresent {
 	}
 
 	pub(crate) fn last_read(&self) -> Option<&str> {
-		// TODO: why doesn't as_deref() work?
-		self.read_list.back().map(String::as_str)
+		self.read_list.back().map(|(s, _)| s.as_str())
 	}
 
 	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
@@ -32,11 +34,16 @@ impl NotPresent {
 			!self
 				.read_list
 				.iter()
-				.any(|read_elem_id| read_elem_id.as_str() == elem.id())
+				.any(|(read_elem_id, _)| read_elem_id.as_str() == elem.id())
 		});
 	}
 
 	pub(crate) fn mark_as_read(&mut self, id: &str) {
-		self.read_list.push_back(id.to_owned());
+		self.read_list
+			.push_back((id.to_owned(), chrono::Utc::now()));
+
+		while self.read_list.len() > MAX_LIST_LEN {
+			self.read_list.pop_front();
+		}
 	}
 }
