@@ -23,15 +23,17 @@ pub use self::task::TemplatesField;
 use crate::error::Result;
 use crate::read_filter::ReadFilter;
 
+pub type ReadFilterGetter = Box<
+	dyn Fn(
+		String,
+		Option<crate::read_filter::Kind>,
+	) -> Pin<Box<dyn Future<Output = Result<Option<ReadFilter>>>>>,
+>;
+
 pub struct DataSettings {
 	pub twitter_auth: Option<(String, String)>,
 	pub google_oauth2: Option<crate::auth::Google>,
 	pub google_password: Option<String>,
 	pub telegram: Option<teloxide::Bot>,
-	pub read_filter: Box<
-		dyn Fn(
-			String,
-			Option<crate::read_filter::Kind>,
-		) -> Pin<Box<dyn Future<Output = Result<Option<ReadFilter>>>>>,
-	>,
+	pub read_filter: ReadFilterGetter,
 }

@@ -23,20 +23,22 @@ use self::twitter::Twitter;
 
 use super::DataSettings;
 
+#[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(untagged)]
 pub(crate) enum Source {
-	// WithSharedReadFilter(OneOrMultiple<WithSharedReadFilter>),
-	WithSharedReadFilter(Vec<WithSharedReadFilter>),
+	WithSharedReadFilter(OneOrMultiple<WithSharedReadFilter>),
 	WithCustomReadFilter(WithCustomReadFilter),
 }
 
-// #[derive(Deserialize, Serialize, Debug)]
-// pub(crate) enum OneOrMultiple<T> {
-// 	One(T),
-// 	Multiple(Vec<T>),
-// }
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(untagged)]
+pub(crate) enum OneOrMultiple<T> {
+	One(T),
+	Multiple(Vec<T>),
+}
 
+#[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum WithSharedReadFilter {
@@ -60,6 +62,11 @@ impl Source {
 	) -> Result<source::Source> {
 		Ok(match self {
 			Source::WithSharedReadFilter(v) => {
+				let v = match v {
+					OneOrMultiple::One(x) => vec![x],
+					OneOrMultiple::Multiple(x) => x,
+				};
+
 				let inner = v
 					.into_iter()
 					.map(|x| {
