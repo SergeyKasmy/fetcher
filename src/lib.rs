@@ -36,7 +36,7 @@ pub async fn run_task(t: &mut Task) -> Result<()> {
 		tracing::trace!("Running...");
 
 		let fetch = async {
-			for entry in t.source.get().await? {
+			for entry in t.source.get(&t.parsers).await? {
 				process_entry(&mut t.sink, entry, t.tag.as_deref(), &mut t.source).await?;
 			}
 

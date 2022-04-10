@@ -10,11 +10,12 @@
 
 pub mod email;
 pub mod http;
-pub mod processing;
+pub mod parser;
 pub mod twitter;
 
 pub use self::email::Email;
 pub use self::http::Http;
+use self::parser::Parser;
 pub use self::twitter::Twitter;
 
 use crate::entry::Entry;
@@ -28,10 +29,10 @@ pub enum Source {
 }
 
 impl Source {
-	pub async fn get(&mut self) -> Result<Vec<Entry>> {
+	pub async fn get(&mut self, parsers: &[Parser]) -> Result<Vec<Entry>> {
 		match self {
-			Source::WithSharedReadFilter(x) => x.get().await,
-			Source::WithCustomReadFilter(x) => x.get().await,
+			Source::WithSharedReadFilter(x) => x.get(parsers).await,
+			Source::WithCustomReadFilter(x) => x.get(parsers).await,
 		}
 	}
 
@@ -84,13 +85,20 @@ impl WithSharedReadFilter {
 		}
 	}
 
-	pub async fn get(&mut self) -> Result<Vec<Entry>> {
+	pub async fn get(&mut self, parsers: &[Parser]) -> Result<Vec<Entry>> {
 		let mut entries = Vec::new();
 
 		for s in &mut self.sources {
 			entries.extend(match s {
-				WithSharedReadFilterInner::Http(x) => x.get(&self.read_filter).await?,
-				// WithSharedReadFilterInner::Rss(x) => x.get(&self.read_filter).await?,
+				WithSharedReadFilterInner::Http(x) => {
+					let mut data = x.get().await?;
+					for parser in parsers {
+						data = parser.parse(data).await?;
+					}
+
+					data
+				}
+				// TODO: Twitter source doesn't support parsing/processing data
 				WithSharedReadFilterInner::Twitter(x) => x.get(&self.read_filter).await?,
 			});
 		}
@@ -104,7 +112,7 @@ impl WithSharedReadFilter {
 }
 
 impl WithCustomReadFilter {
-	pub async fn get(&mut self) -> Result<Vec<Entry>> {
+	pub async fn get(&mut self, parsers: &[Parser]) -> Result<Vec<Entry>> {
 		Ok(match self {
 			Self::Email(x) => x.get().await?,
 		})

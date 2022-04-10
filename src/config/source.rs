@@ -8,7 +8,7 @@
 
 pub mod email;
 pub mod http;
-pub mod processing;
+pub mod parser;
 pub mod twitter;
 
 use serde::{Deserialize, Serialize};

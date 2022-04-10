@@ -25,8 +25,8 @@ pub(crate) struct Html {
 }
 
 impl Html {
-	pub(crate) fn parse(self) -> source::processing::Html {
-		source::processing::Html {
+	pub(crate) fn parse(self) -> source::parser::Html {
+		source::parser::Html {
 			itemq: self.itemq.into_iter().map(Query::parse).collect(),
 			textq: self.textq.into_iter().map(TextQuery::parse).collect(),
 			idq: self.idq.parse(),

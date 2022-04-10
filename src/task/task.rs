@@ -14,7 +14,7 @@ use std::{
 
 use crate::{
 	sink::Sink,
-	source::{processing::Process, Source},
+	source::{parser::Parser, Source},
 };
 
 pub type Tasks = HashSet<Task>;
@@ -28,7 +28,7 @@ pub struct Task {
 	pub tag: Option<String>,
 	// pub(crate) read_filter_kind: Option<read_filter::Kind>,
 	pub(crate) source: Source,
-	pub(crate) process: Process, // TODO: make Vec
+	pub(crate) parsers: Vec<Parser>,
 	pub(crate) sink: Sink,
 }
 

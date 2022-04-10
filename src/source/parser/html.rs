@@ -22,7 +22,6 @@ use self::query::{
 };
 use crate::entry::Entry;
 use crate::error::{Error, Result};
-use crate::read_filter::ReadFilter;
 use crate::sink::message::{Link, LinkLocation};
 use crate::sink::{Media, Message};
 
@@ -41,7 +40,7 @@ impl Html {
 	pub async fn process(
 		&self,
 		entries: Vec<Entry>,
-		_read_filter: &ReadFilter,
+		// _read_filter: &ReadFilter,
 	) -> Result<Vec<Entry>> {
 		tracing::debug!("Processing HTML");
 

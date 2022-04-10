@@ -19,15 +19,13 @@ pub(crate) enum QueryKind {
 }
 
 impl QueryKind {
-	pub(crate) fn parse(self) -> source::processing::html::query::QueryKind {
+	pub(crate) fn parse(self) -> source::parser::html::query::QueryKind {
 		use QueryKind::{Attr, Class, Tag};
 
 		match self {
-			Tag { value } => source::processing::html::query::QueryKind::Tag { value },
-			Class { value } => source::processing::html::query::QueryKind::Class { value },
-			Attr { name, value } => {
-				source::processing::html::query::QueryKind::Attr { name, value }
-			}
+			Tag { value } => source::parser::html::query::QueryKind::Tag { value },
+			Class { value } => source::parser::html::query::QueryKind::Class { value },
+			Attr { name, value } => source::parser::html::query::QueryKind::Attr { name, value },
 		}
 	}
 }
@@ -40,12 +38,12 @@ pub(crate) enum DataLocation {
 }
 
 impl DataLocation {
-	fn parse(self) -> source::processing::html::query::DataLocation {
+	fn parse(self) -> source::parser::html::query::DataLocation {
 		use DataLocation::{Attr, Text};
 
 		match self {
-			Text => source::processing::html::query::DataLocation::Text,
-			Attr { value } => source::processing::html::query::DataLocation::Attr { value },
+			Text => source::parser::html::query::DataLocation::Text,
+			Attr { value } => source::parser::html::query::DataLocation::Attr { value },
 		}
 	}
 }
@@ -58,8 +56,8 @@ pub(crate) struct Query {
 }
 
 impl Query {
-	pub(crate) fn parse(self) -> source::processing::html::query::Query {
-		source::processing::html::query::Query {
+	pub(crate) fn parse(self) -> source::parser::html::query::Query {
+		source::parser::html::query::Query {
 			kind: self.kind.parse(),
 			ignore: self
 				.ignore
@@ -76,8 +74,8 @@ pub(crate) struct QueryData {
 }
 
 impl QueryData {
-	fn parse(self) -> source::processing::html::query::QueryData {
-		source::processing::html::query::QueryData {
+	fn parse(self) -> source::parser::html::query::QueryData {
+		source::parser::html::query::QueryData {
 			query: self.query.into_iter().map(Query::parse).collect(),
 			data_location: self.data_location.parse(),
 		}
@@ -92,8 +90,8 @@ pub(crate) struct TextQuery {
 }
 
 impl TextQuery {
-	pub(crate) fn parse(self) -> source::processing::html::query::TextQuery {
-		source::processing::html::query::TextQuery {
+	pub(crate) fn parse(self) -> source::parser::html::query::TextQuery {
+		source::parser::html::query::TextQuery {
 			prepend: self.prepend,
 			inner: self.inner.parse(),
 		}
@@ -108,10 +106,10 @@ pub(crate) enum IdQueryKind {
 }
 
 impl IdQueryKind {
-	fn parse(self) -> source::processing::html::query::IdQueryKind {
+	fn parse(self) -> source::parser::html::query::IdQueryKind {
 		match self {
-			IdQueryKind::String => source::processing::html::query::IdQueryKind::String,
-			IdQueryKind::Date => source::processing::html::query::IdQueryKind::Date,
+			IdQueryKind::String => source::parser::html::query::IdQueryKind::String,
+			IdQueryKind::Date => source::parser::html::query::IdQueryKind::Date,
 		}
 	}
 }
@@ -124,8 +122,8 @@ pub(crate) struct IdQuery {
 }
 
 impl IdQuery {
-	pub(crate) fn parse(self) -> source::processing::html::query::IdQuery {
-		source::processing::html::query::IdQuery {
+	pub(crate) fn parse(self) -> source::parser::html::query::IdQuery {
+		source::parser::html::query::IdQuery {
 			kind: self.kind.parse(),
 			inner: self.inner.parse(),
 		}
@@ -140,8 +138,8 @@ pub(crate) struct LinkQuery {
 }
 
 impl LinkQuery {
-	pub(crate) fn parse(self) -> source::processing::html::query::LinkQuery {
-		source::processing::html::query::LinkQuery {
+	pub(crate) fn parse(self) -> source::parser::html::query::LinkQuery {
+		source::parser::html::query::LinkQuery {
 			prepend: self.prepend,
 			inner: self.inner.parse(),
 		}
@@ -156,8 +154,8 @@ pub(crate) struct ImageQuery {
 }
 
 impl ImageQuery {
-	pub(crate) fn parse(self) -> source::processing::html::query::ImageQuery {
-		source::processing::html::query::ImageQuery {
+	pub(crate) fn parse(self) -> source::parser::html::query::ImageQuery {
+		source::parser::html::query::ImageQuery {
 			optional: self.optional.unwrap_or(false),
 			inner: self.inner.parse(),
 		}
