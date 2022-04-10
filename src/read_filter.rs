@@ -13,7 +13,7 @@ use std::io::Write;
 
 use self::newer::Newer;
 use self::not_present::NotPresent;
-use crate::config;
+// use crate::config;	FIXME: CONFIG TMP
 use crate::entry::Entry;
 use crate::error::{Error, Result};
 
@@ -86,12 +86,14 @@ impl ReadFilter {
 			NotPresentInReadList(x) => x.mark_as_read(id),
 		}
 
+		/*
+		// FIXME: CONFIG TMP
 		match config::read_filter::ReadFilter::unparse(self) {
 			Some(filter_conf) => {
 				let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
 
 				// TODO: is this even worth it?
-				// UPD: probably now
+				// UPD: probably not
 				{
 					let mut w = std::mem::replace(&mut self.external_save, Box::new(Vec::new()));
 
@@ -108,6 +110,7 @@ impl ReadFilter {
 			}
 			None => (),
 		}
+		*/
 
 		Ok(())
 	}

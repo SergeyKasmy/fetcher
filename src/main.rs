@@ -6,7 +6,6 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-// 22.03.22 03:30 CONTINUE: source templates
 // TODO: proper argument parser. Something like clap or argh or something
 
 mod settings;

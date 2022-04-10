@@ -7,8 +7,8 @@
  */
 
 pub mod email;
-pub mod html;
-pub mod rss;
+pub mod http;
+pub mod processing;
 pub mod twitter;
 
 use serde::{Deserialize, Serialize};
@@ -17,8 +17,8 @@ use crate::error::Result;
 use crate::{read_filter, source};
 
 use self::email::Email;
-use self::html::Html;
-use self::rss::Rss;
+use self::http::Http;
+// use self::rss::Rss;
 use self::twitter::Twitter;
 
 use super::DataSettings;
@@ -42,8 +42,8 @@ pub(crate) enum OneOrMultiple<T> {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum WithSharedReadFilter {
-	Html(Html),
-	Rss(Rss),
+	Http(Http),
+	// Rss(Rss),
 	Twitter(Twitter),
 }
 
@@ -71,11 +71,8 @@ impl Source {
 					.into_iter()
 					.map(|x| {
 						Ok(match x {
-							WithSharedReadFilter::Html(x) => {
-								source::WithSharedReadFilterInner::Html(x.parse())
-							}
-							WithSharedReadFilter::Rss(x) => {
-								source::WithSharedReadFilterInner::Rss(x.parse())
+							WithSharedReadFilter::Http(x) => {
+								source::WithSharedReadFilterInner::Http(x.parse())
 							}
 							WithSharedReadFilter::Twitter(x) => {
 								source::WithSharedReadFilterInner::Twitter(x.parse(settings)?)

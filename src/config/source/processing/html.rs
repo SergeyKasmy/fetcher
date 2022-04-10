@@ -1,15 +1,6 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/.
- *
- * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
- */
-
 pub(crate) mod query;
 
 use serde::{Deserialize, Serialize};
-use url::Url;
 
 use crate::source;
 
@@ -17,7 +8,6 @@ use self::query::{IdQuery, ImageQuery, LinkQuery, Query, TextQuery};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct Html {
-	pub(crate) url: Url,
 	#[serde(rename = "item_query")]
 	pub(crate) itemq: Vec<Query>,
 
@@ -35,9 +25,8 @@ pub(crate) struct Html {
 }
 
 impl Html {
-	pub(crate) fn parse(self) -> source::Html {
-		source::Html {
-			url: self.url,
+	pub(crate) fn parse(self) -> source::processing::Html {
+		source::processing::Html {
 			itemq: self.itemq.into_iter().map(Query::parse).collect(),
 			textq: self.textq.into_iter().map(TextQuery::parse).collect(),
 			idq: self.idq.parse(),

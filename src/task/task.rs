@@ -12,7 +12,10 @@ use std::{
 	path::PathBuf,
 };
 
-use crate::{sink::Sink, source::Source};
+use crate::{
+	sink::Sink,
+	source::{processing::Process, Source},
+};
 
 pub type Tasks = HashSet<Task>;
 
@@ -25,10 +28,14 @@ pub struct Task {
 	pub tag: Option<String>,
 	// pub(crate) read_filter_kind: Option<read_filter::Kind>,
 	pub(crate) source: Source,
+	pub(crate) process: Process, // TODO: make Vec
 	pub(crate) sink: Sink,
 }
 
+/*
+// FIXME: is this even needed in the public API?
 impl Task {
+	#[allow(clippy::too_many_arguments)] // FIXME
 	#[must_use]
 	pub fn new(
 		name: String,
@@ -37,6 +44,7 @@ impl Task {
 		refresh: u64,
 		tag: Option<String>,
 		source: Source,
+		process: Process,
 		sink: Sink,
 	) -> Self {
 		Self {
@@ -46,10 +54,12 @@ impl Task {
 			refresh,
 			tag,
 			source,
+			process,
 			sink,
 		}
 	}
 }
+*/
 
 impl Hash for Task {
 	fn hash<H: Hasher>(&self, state: &mut H) {

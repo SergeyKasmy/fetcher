@@ -12,6 +12,7 @@ pub(crate) mod query;
 
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use html5ever::rcdom::Handle;
+use itertools::Itertools;
 use soup::{NodeExt, QueryBuilderExt, Soup};
 use url::Url;
 
@@ -27,7 +28,6 @@ use crate::sink::{Media, Message};
 
 #[derive(Debug)]
 pub struct Html {
-	pub(crate) url: Url,
 	pub(crate) itemq: Vec<Query>,
 	// TODO: make a separate title_query: Option<TextQuery> and allow to put a link into it
 	pub(crate) textq: Vec<TextQuery>, // allow to find multiple paragraphs and join them together
@@ -38,12 +38,24 @@ pub struct Html {
 
 impl Html {
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&self, read_filter: &ReadFilter) -> Result<Vec<Entry>> {
-		tracing::debug!("Fetching HTML source");
+	pub async fn process(
+		&self,
+		entries: Vec<Entry>,
+		_read_filter: &ReadFilter,
+	) -> Result<Vec<Entry>> {
+		tracing::debug!("Processing HTML");
 
-		let page = reqwest::get(self.url.as_str()).await?.text().await?;
+		entries
+			.into_iter()
+			.map(|x| self.process_entry(x))
+			.flatten_ok()
+			.collect::<Result<Vec<Entry>>>()
+	}
 
-		let soup = Soup::new(page.as_str());
+	#[allow(clippy::too_many_lines)] // FIXME
+	#[allow(clippy::needless_pass_by_value)] // FIXME
+	fn process_entry(&self, entry: Entry) -> Result<Vec<Entry>> {
+		let soup = Soup::new(entry.msg.body.as_str());
 		let items = Self::find_chain(&soup, &self.itemq);
 
 		let mut entries = items
@@ -158,7 +170,7 @@ impl Html {
 			.collect::<Result<Vec<_>>>()?;
 
 		tracing::debug!("Found {num} HTML articles total", num = entries.len());
-		read_filter.remove_read_from(&mut entries);
+		// read_filter.remove_read_from(&mut entries);	// FIXME
 
 		let unread_num = entries.len();
 		if unread_num > 0 {
@@ -245,6 +257,7 @@ impl Html {
 	}
 
 	// TODO: rewrite the entire fn to use today/Yesterday words and date formats from the config per source and not global
+	#[allow(dead_code)]
 	fn parse_pretty_date(mut date_str: &str) -> Result<DateTime<Utc>> {
 		enum DateTimeKind {
 			Today,

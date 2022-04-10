@@ -9,13 +9,12 @@
 // TODO: add google calendar source. Google OAuth2 is already implemented :)
 
 pub mod email;
-pub mod html;
-pub mod rss;
+pub mod http;
+pub mod processing;
 pub mod twitter;
 
 pub use self::email::Email;
-pub use self::html::Html;
-pub use self::rss::Rss;
+pub use self::http::Http;
 pub use self::twitter::Twitter;
 
 use crate::entry::Entry;
@@ -52,9 +51,13 @@ pub struct WithSharedReadFilter {
 
 #[derive(Debug)]
 pub enum WithSharedReadFilterInner {
-	Html(Html),
-	Rss(Rss),
+	Http(Http),
 	Twitter(Twitter),
+}
+
+#[derive(Debug)]
+pub enum WithCustomReadFilter {
+	Email(Email),
 }
 
 impl WithSharedReadFilter {
@@ -86,8 +89,8 @@ impl WithSharedReadFilter {
 
 		for s in &mut self.sources {
 			entries.extend(match s {
-				WithSharedReadFilterInner::Html(x) => x.get(&self.read_filter).await?,
-				WithSharedReadFilterInner::Rss(x) => x.get(&self.read_filter).await?,
+				WithSharedReadFilterInner::Http(x) => x.get(&self.read_filter).await?,
+				// WithSharedReadFilterInner::Rss(x) => x.get(&self.read_filter).await?,
 				WithSharedReadFilterInner::Twitter(x) => x.get(&self.read_filter).await?,
 			});
 		}
@@ -98,11 +101,6 @@ impl WithSharedReadFilter {
 	pub async fn mark_as_read(&mut self, id: &str) -> Result<()> {
 		self.read_filter.mark_as_read(id).await
 	}
-}
-
-#[derive(Debug)]
-pub enum WithCustomReadFilter {
-	Email(Email),
 }
 
 impl WithCustomReadFilter {
