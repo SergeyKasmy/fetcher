@@ -21,7 +21,7 @@ use self::http::Http;
 // use self::rss::Rss;
 use self::twitter::Twitter;
 
-use super::DataSettings;
+use super::{DataSettings, OneOrMultiple};
 
 #[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
 #[derive(Deserialize, Serialize, Debug)]
@@ -29,13 +29,6 @@ use super::DataSettings;
 pub(crate) enum Source {
 	WithSharedReadFilter(OneOrMultiple<WithSharedReadFilter>),
 	WithCustomReadFilter(WithCustomReadFilter),
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(untagged)]
-pub(crate) enum OneOrMultiple<T> {
-	One(T),
-	Multiple(Vec<T>),
 }
 
 #[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
@@ -62,10 +55,7 @@ impl Source {
 	) -> Result<source::Source> {
 		Ok(match self {
 			Source::WithSharedReadFilter(v) => {
-				let v = match v {
-					OneOrMultiple::One(x) => vec![x],
-					OneOrMultiple::Multiple(x) => x,
-				};
+				let v: Vec<WithSharedReadFilter> = v.into();
 
 				let inner = v
 					.into_iter()

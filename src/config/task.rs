@@ -9,7 +9,9 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use super::{read_filter, sink::Sink, source::parser::Parser, source::Source, DataSettings};
+use super::{
+	read_filter, sink::Sink, source::parser::Parser, source::Source, DataSettings, OneOrMultiple,
+};
 use crate::{error::Result, task};
 
 #[derive(Deserialize, Debug)]
@@ -25,7 +27,8 @@ pub struct Task {
 	tag: Option<String>,
 	refresh: u64,
 	source: Source,
-	process: Parser,
+	// parse: Option<Vec<Parser>>,
+	parse: Option<OneOrMultiple<Parser>>,
 	sink: Sink,
 }
 
@@ -51,7 +54,10 @@ impl Task {
 			refresh: self.refresh,
 			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
 			source,
-			parsers: vec![self.process.parse()], // FIXME
+			parsers: self.parse.map(|x| {
+				let x: Vec<Parser> = x.into();
+				x.into_iter().map(Parser::parse).collect()
+			}),
 			sink: self.sink.parse(settings)?,
 		})
 	}

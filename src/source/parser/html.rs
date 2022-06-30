@@ -37,23 +37,23 @@ pub struct Html {
 
 impl Html {
 	#[tracing::instrument(skip_all)]
-	pub async fn process(
+	pub async fn parse(
 		&self,
 		entries: Vec<Entry>,
 		// _read_filter: &ReadFilter,
 	) -> Result<Vec<Entry>> {
-		tracing::debug!("Processing HTML");
+		tracing::debug!("Parsing HTML");
 
 		entries
 			.into_iter()
-			.map(|x| self.process_entry(x))
+			.map(|x| self.parse_entry(x))
 			.flatten_ok()
 			.collect::<Result<Vec<Entry>>>()
 	}
 
 	#[allow(clippy::too_many_lines)] // FIXME
 	#[allow(clippy::needless_pass_by_value)] // FIXME
-	fn process_entry(&self, entry: Entry) -> Result<Vec<Entry>> {
+	fn parse_entry(&self, entry: Entry) -> Result<Vec<Entry>> {
 		let soup = Soup::new(entry.msg.body.as_str());
 		let items = Self::find_chain(&soup, &self.itemq);
 

@@ -28,7 +28,7 @@ pub struct Task {
 	pub tag: Option<String>,
 	// pub(crate) read_filter_kind: Option<read_filter::Kind>,
 	pub(crate) source: Source,
-	pub(crate) parsers: Vec<Parser>,
+	pub(crate) parsers: Option<Vec<Parser>>,
 	pub(crate) sink: Sink,
 }
 

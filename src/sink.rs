@@ -7,9 +7,11 @@
  */
 
 pub mod message;
+mod stdout;
 mod telegram;
 
 pub use message::{Media, Message};
+pub use stdout::Stdout;
 pub use telegram::Telegram;
 
 use crate::error::Result;
@@ -17,6 +19,7 @@ use crate::error::Result;
 #[derive(Debug)]
 pub enum Sink {
 	Telegram(Telegram),
+	Stdout(Stdout),
 }
 
 impl Sink {
@@ -24,6 +27,7 @@ impl Sink {
 	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<()> {
 		match self {
 			Self::Telegram(t) => t.send(message, tag).await,
+			Self::Stdout(s) => s.send(message, tag).await,
 		}
 	}
 }
