@@ -6,9 +6,11 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+pub mod caps;
 pub mod html;
 pub mod rss;
 
+pub use self::caps::Caps;
 pub use self::html::Html;
 pub use self::rss::Rss;
 
@@ -21,6 +23,8 @@ use crate::error::Result;
 pub enum Parser {
 	Html(Html),
 	Rss(Rss),
+
+	Caps(Caps),
 }
 
 impl Parser {
@@ -28,6 +32,7 @@ impl Parser {
 		match self {
 			Parser::Html(x) => x.parse(entry),
 			Parser::Rss(x) => x.parse(entry),
+			Parser::Caps(x) => x.parse(entry),
 		}
 	}
 }

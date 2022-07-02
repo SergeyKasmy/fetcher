@@ -18,15 +18,19 @@ use self::html::Html;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Parser {
-	Rss,
 	Html(Html),
+	Rss,
+
+	Caps,
 }
 
 impl Parser {
 	pub(crate) fn parse(self) -> source::parser::Parser {
 		match self {
-			Parser::Rss => source::parser::Parser::Rss(source::parser::Rss {}),
 			Parser::Html(x) => source::parser::Parser::Html(x.parse()),
+			Parser::Rss => source::parser::Parser::Rss(source::parser::Rss {}),
+
+			Parser::Caps => source::parser::Parser::Caps(source::parser::Caps {}),
 		}
 	}
 }

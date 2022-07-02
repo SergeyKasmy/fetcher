@@ -33,6 +33,7 @@ pub struct Task {
 	source: Source,
 	// parse: Option<Vec<Parser>>,
 	parse: Option<OneOrMultiple<Parser>>,
+	// TODO: several sinks
 	sink: Sink,
 }
 
