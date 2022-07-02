@@ -45,7 +45,6 @@ impl Rss {
 				}
 			})
 			.collect::<Vec<_>>();
-		// read_filter.remove_read_from(&mut entries);	// FIXME
 
 		let unread_num = entries.len();
 		if unread_num > 0 {

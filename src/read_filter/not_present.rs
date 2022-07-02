@@ -29,7 +29,6 @@ impl NotPresent {
 		self.read_list.back().map(|(s, _)| s.as_str())
 	}
 
-	#[allow(dead_code)] // TODO
 	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		list.retain(|elem| {
 			!self

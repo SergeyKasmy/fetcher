@@ -56,6 +56,20 @@ impl Source {
 			parsed_entries = unparsed_entries;
 		}
 
+		let total_num = parsed_entries.len();
+		match self {
+			Source::WithSharedReadFilter(x) => x.remove_read(&mut parsed_entries),
+			Source::WithCustomReadFilter(x) => x.remove_read(&mut parsed_entries),
+		}
+
+		let unread_num = parsed_entries.len();
+		if total_num != unread_num {
+			tracing::debug!(
+				"Removed {read_num} read entries, {unread_num} remaining",
+				read_num = total_num - unread_num
+			);
+		}
+
 		Ok(parsed_entries)
 	}
 
@@ -128,6 +142,10 @@ impl WithSharedReadFilter {
 	pub async fn mark_as_read(&mut self, id: &str) -> Result<()> {
 		self.read_filter.mark_as_read(id).await
 	}
+
+	pub fn remove_read(&self, entries: &mut Vec<Entry>) {
+		self.read_filter.remove_read_from(entries);
+	}
 }
 
 impl WithCustomReadFilter {
@@ -140,6 +158,13 @@ impl WithCustomReadFilter {
 	pub async fn mark_as_read(&mut self, id: &str) -> Result<()> {
 		match self {
 			Self::Email(x) => x.mark_as_read(id).await,
+		}
+	}
+
+	#[allow(clippy::ptr_arg)]
+	pub fn remove_read(&self, _entries: &mut Vec<Entry>) {
+		match self {
+			Self::Email(_) => (), // NO-OP, emails should already be unread only when fetching
 		}
 	}
 }
