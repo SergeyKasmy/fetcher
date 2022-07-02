@@ -26,7 +26,7 @@ impl Rss {
 
 		tracing::debug!("Got {num} RSS articles total", num = feed.items.len());
 
-		let mut entries = feed
+		let entries = feed
 			.items
 			.into_iter()
 			.map(|x| {
@@ -44,16 +44,9 @@ impl Rss {
 					},
 				}
 			})
+			.rev()
 			.collect::<Vec<_>>();
 
-		let unread_num = entries.len();
-		if unread_num > 0 {
-			tracing::info!("Got {unread_num} unread RSS articles");
-		} else {
-			tracing::debug!("All articles have already been read, none remaining to send");
-		}
-
-		entries.reverse();
 		Ok(entries)
 	}
 }
