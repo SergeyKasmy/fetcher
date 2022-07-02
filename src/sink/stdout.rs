@@ -18,9 +18,11 @@ pub struct Stdout;
 impl Stdout {
 	pub async fn send(&self, msg: Message, tag: Option<&str>) -> Result<()> {
 		tokio::io::stdout().write_all(format!(
-			"------------------------------\nMessage:\nTitle: {title}\n\nBody:{body}\nTag: {tag}\n------------------------------",
+			"------------------------------\nMessage:\nTitle: {title}\n\nBody:\n{body}\n\nLink: {link:?}\nMedia: {media}\nTag: {tag}\n------------------------------",
 			title = msg.title.as_deref().unwrap_or("None"),
 			body = msg.body,
+			link = msg.link,
+			media = msg.media.is_some(),
 			tag = tag.unwrap_or("None")
 		).as_bytes()).await.map_err(Error::Stdout)
 	}

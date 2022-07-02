@@ -156,14 +156,6 @@ impl Html {
 			.collect::<Result<Vec<_>>>()?;
 
 		tracing::debug!("Found {num} HTML articles total", num = entries.len());
-		// read_filter.remove_read_from(&mut entries);	// FIXME
-
-		let unread_num = entries.len();
-		if unread_num > 0 {
-			tracing::info!("Found {unread_num} unread HTML articles");
-		} else {
-			tracing::debug!("All articles have already been read, none remaining to send");
-		}
 
 		entries.reverse();
 		Ok(entries)
