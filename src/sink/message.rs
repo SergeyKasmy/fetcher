@@ -40,8 +40,16 @@ pub enum LinkLocation {
 	Bottom,
 }
 
-#[derive(Debug)]
 pub enum Media {
 	Photo(Url),
 	Video(Url),
+}
+
+impl Debug for Media {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Photo(x) => f.debug_tuple("Photo").field(&x.as_str()).finish(),
+			Self::Video(x) => f.debug_tuple("Video").field(&x.as_str()).finish(),
+		}
+	}
 }

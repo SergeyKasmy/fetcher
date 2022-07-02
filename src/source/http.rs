@@ -6,6 +6,7 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+use std::fmt::Debug;
 use url::Url;
 
 use crate::entry::Entry;
@@ -13,7 +14,6 @@ use crate::error::Result;
 use crate::sink::message::{Link, LinkLocation};
 use crate::sink::Message;
 
-#[derive(Debug)]
 pub struct Http {
 	pub(crate) url: Url,
 }
@@ -37,5 +37,13 @@ impl Http {
 				media: None,
 			},
 		}])
+	}
+}
+
+impl Debug for Http {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Http")
+			.field("url", &self.url.as_str())
+			.finish()
 	}
 }

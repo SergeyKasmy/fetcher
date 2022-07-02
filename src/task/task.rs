@@ -26,7 +26,6 @@ pub struct Task {
 	pub disabled: bool,
 	pub refresh: u64,
 	pub tag: Option<String>,
-	// pub(crate) read_filter_kind: Option<read_filter::Kind>,
 	pub(crate) source: Source,
 	pub(crate) parsers: Option<Vec<Parser>>,
 	pub(crate) sink: Sink,

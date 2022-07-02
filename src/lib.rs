@@ -30,7 +30,7 @@ use crate::error::Result;
 use crate::task::Task;
 
 pub async fn run_task(t: &mut Task) -> Result<()> {
-	tracing::trace!("Running task...");
+	tracing::trace!("Running task: {:#?}", t);
 
 	let fetch = async {
 		for entry in t.source.get(t.parsers.as_deref()).await? {
