@@ -147,12 +147,9 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 		let name = t.name.clone(); // TODO: ehhh
 		let mut shutdown_rx = shutdown_rx.clone();
 
-		let fut = tokio::spawn(async move {
-			let res: Result<()> = async {
-				// let mut read_filter =
-				// 	settings::read_filter::get(&name, t.read_filter_kind()).await?;
-
-				select! {
+		let fut = tokio::spawn(
+			async move {
+				let res: Result<()> = select! {
 					res = async {
 						loop {
 							run_task(&mut t).await?;
@@ -165,55 +162,54 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 							sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
 						}
 
-						Ok::<(), Error>(())
+						Ok(())
 					} => res,
 					_ = shutdown_rx.changed() => Ok(()),
-				}
-			}
-			.instrument(tracing::info_span!("task", name = name.as_str()))
-			.await;
+				};
 
-			// production error reporting
-			if let Err(e) = &res {
-				if !cfg!(debug_assertions) {
-					// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
-					use fetcher::sink::Message;
-					use fetcher::sink::Telegram;
+				// production error reporting
+				if let Err(e) = &res {
+					if !cfg!(debug_assertions) {
+						// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
+						use fetcher::sink::Message;
+						use fetcher::sink::Telegram;
 
-					// let err_str = format!("{:?}", color_eyre::eyre::eyre!(e));
-					let err_str = format!("{:?}", e); // TODO: make it pretier like eyre
-					tracing::error!("{}", err_str);
-					let send_job = async {
-						let bot = match settings::data::telegram().await? {
-							Some(b) => b,
-							None => {
-								let s = "Unable to send error report to the admin: telegram bot token is not provided".to_owned();
-								tracing::error!(%s);
-								return Err(Error::Other(s)); // TODO: this kinda sucks
-							}
+						// let err_str = format!("{:?}", color_eyre::eyre::eyre!(e));
+						let err_str = format!("{:?}", e); // TODO: make it pretier like eyre
+						tracing::error!("{}", err_str);
+						let send_job = async {
+							let bot = match settings::data::telegram().await? {
+								Some(b) => b,
+								None => {
+									let s = "Unable to send error report to the admin: telegram bot token is not provided".to_owned();
+									tracing::error!(%s);
+									return Err(Error::Other(s)); // TODO: this kinda sucks
+								}
+							};
+							let msg = Message {
+								body: err_str,
+								..Default::default()
+							};
+							Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned())
+								.send(msg, Some(&t.name))
+								.await?;
+							Ok::<(), Error>(())
 						};
-						let msg = Message {
-							body: err_str,
-							..Default::default()
-						};
-						Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned())
-							.send(msg, Some(&t.name))
-							.await?;
-						Ok::<(), Error>(())
-					};
-					if let Err(e) = send_job.await {
-						tracing::error!(
-							"Unable to send error report to the admin: {:?}",
-							// color_eyre::eyre::eyre!(e)
-							e
-						);
+						if let Err(e) = send_job.await {
+							tracing::error!(
+								"Unable to send error report to the admin: {:?}",
+								// color_eyre::eyre::eyre!(e)
+								e
+							);
+						}
 					}
 				}
-			}
 
-			tracing::info!("Shutting down...");
-			res
-		});
+				tracing::info!("Shutting down...");
+				res
+			}
+			.instrument(tracing::info_span!("task", name = name.as_str())),
+		);
 
 		running_tasks.push(flatten_task(fut));
 	}

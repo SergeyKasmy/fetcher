@@ -182,6 +182,7 @@ impl Telegram {
 	async fn send_text(&self, message: String) -> Result<TelMessage> {
 		loop {
 			tracing::info!("Sending text message");
+			// TODO: move to the Sink::send() despetcher method mb
 			tracing::trace!("Message contents: {message:?}");
 
 			match self
