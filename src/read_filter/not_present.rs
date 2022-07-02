@@ -34,7 +34,7 @@ impl NotPresent {
 			!self
 				.read_list
 				.iter()
-				.any(|(read_elem_id, _)| read_elem_id.as_str() == elem.id())
+				.any(|(read_elem_id, _)| read_elem_id == &elem.id)
 		});
 	}
 

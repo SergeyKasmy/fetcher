@@ -15,10 +15,3 @@ pub struct Entry {
 	pub id: String, // TODO: add date id type
 	pub msg: Message,
 }
-
-impl Entry {
-	#[must_use]
-	pub fn id(&self) -> &str {
-		self.id.as_str()
-	}
-}

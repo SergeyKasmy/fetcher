@@ -6,6 +6,8 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+use std::fmt::Debug;
+
 use url::Url;
 
 #[derive(Default, Debug)]
@@ -16,10 +18,18 @@ pub struct Message {
 	pub media: Option<Vec<Media>>,
 }
 
-#[derive(Debug)]
 pub struct Link {
 	pub url: Url,
 	pub loc: LinkLocation,
+}
+
+impl Debug for Link {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Link")
+			.field("url", &self.url.as_str())
+			.field("loc", &self.loc)
+			.finish()
+	}
 }
 
 /// Either embed the link into the title or put it as a separate "Link" button at the botton of the message.
@@ -30,8 +40,16 @@ pub enum LinkLocation {
 	Bottom,
 }
 
-#[derive(Debug)]
 pub enum Media {
 	Photo(Url),
 	Video(Url),
+}
+
+impl Debug for Media {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Photo(x) => f.debug_tuple("Photo").field(&x.as_str()).finish(),
+			Self::Video(x) => f.debug_tuple("Video").field(&x.as_str()).finish(),
+		}
+	}
 }

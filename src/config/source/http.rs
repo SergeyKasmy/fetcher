@@ -12,13 +12,12 @@ use url::Url;
 use crate::source;
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct Rss {
-	url: Url,
+pub(crate) struct Http {
+	pub(crate) url: Url,
 }
 
-impl Rss {
-	pub(crate) fn parse(self) -> source::Rss {
-		source::Rss::new(self.url.to_string())
+impl Http {
+	pub(crate) fn parse(self) -> source::Http {
+		source::Http { url: self.url }
 	}
 }

@@ -10,38 +10,19 @@ use rss::Channel;
 
 use crate::entry::Entry;
 use crate::error::Result;
-use crate::read_filter::ReadFilter;
 use crate::sink::message::Link;
 use crate::sink::message::LinkLocation;
 use crate::sink::Message;
 
-pub struct Rss {
-	// TODO: use url
-	url: String,
-	http_client: reqwest::Client,
-}
+#[derive(Debug)]
+pub struct Rss;
 
 impl Rss {
-	#[must_use]
-	pub fn new(url: String) -> Self {
-		Self {
-			url,
-			http_client: reqwest::Client::new(),
-		}
-	}
-
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Entry>> {
-		tracing::debug!("Getting RSS articles");
-		let content = self
-			.http_client
-			.get(&self.url)
-			.send()
-			.await?
-			.bytes()
-			.await?;
+	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>> {
+		tracing::debug!("Parsing RSS articles");
 
-		let feed = Channel::read_from(&content[..])?;
+		let feed = Channel::read_from(entry.msg.body.as_bytes())?;
 
 		tracing::debug!("Got {num} RSS articles total", num = feed.items.len());
 
@@ -63,8 +44,7 @@ impl Rss {
 					},
 				}
 			})
-			.collect();
-		read_filter.remove_read_from(&mut entries);
+			.collect::<Vec<_>>();
 
 		let unread_num = entries.len();
 		if unread_num > 0 {
@@ -75,14 +55,5 @@ impl Rss {
 
 		entries.reverse();
 		Ok(entries)
-	}
-}
-
-impl std::fmt::Debug for Rss {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("Rss")
-			// .field("name", &self.name)
-			.field("url", &self.url)
-			.finish_non_exhaustive()
 	}
 }

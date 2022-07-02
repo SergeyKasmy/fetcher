@@ -7,13 +7,12 @@
  */
 
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::PathBuf;
 
-use super::{read_filter, sink::Sink, source, source::Source, DataSettings};
-use crate::{
-	error::{Error, Result},
-	task,
+use super::{
+	read_filter, sink::Sink, source::parser::Parser, source::Source, DataSettings, OneOrMultiple,
 };
+use crate::{error::Result, task};
 
 #[derive(Deserialize, Debug)]
 pub struct TemplatesField {
@@ -21,6 +20,10 @@ pub struct TemplatesField {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+// TODO: add
+// #[serde(deny_unknown_fields)]
+// but allow templates templates field
+// that's used elsewhere
 pub struct Task {
 	disabled: Option<bool>,
 	#[serde(rename = "read_filter_type")]
@@ -28,45 +31,39 @@ pub struct Task {
 	tag: Option<String>,
 	refresh: u64,
 	source: Source,
+	// parse: Option<Vec<Parser>>,
+	parse: Option<OneOrMultiple<Parser>>,
+	// TODO: several sinks
 	sink: Sink,
 }
 
 impl Task {
-	pub fn parse(self, conf_path: &Path, settings: &DataSettings) -> Result<task::Task> {
-		if let Some(read_filter::Kind::NewerThanRead) = self.read_filter_kind {
-			if let Source::Html(html) = &self.source {
-				if let source::html::query::IdQueryKind::Date = html.idq.kind {
-					return Err(Error::IncompatibleConfigValues(
-						r#"HTML source id of type "date" isn't compatible with read_filter_type of "not_present_in_read_list""#,
-						conf_path.to_owned(),
-					));
-				}
-			}
-		}
-
-		match (&self.source, &self.read_filter_kind) {
-			(Source::Email(_), Some(_)) => {
-				return Err(Error::IncompatibleConfigValues(
-					"Source type Email doesn't support custom read filters",
-					conf_path.to_owned(),
-				));
-			}
-			(Source::Email(_), None) | (_, Some(_)) => (),
-			(_, None) => {
-				return Err(Error::IncompatibleConfigValues(
-					r#"Missing field "read_filter_type""#,
-					conf_path.to_owned(),
-				))
-			}
-		}
-
+	pub async fn parse(
+		self,
+		name: String,
+		path: PathBuf,
+		settings: &DataSettings,
+	) -> Result<task::Task> {
+		let source = self
+			.source
+			.parse(
+				&name,
+				settings,
+				self.read_filter_kind.map(read_filter::Kind::parse),
+			)
+			.await?;
 		Ok(task::Task {
+			name,
+			path,
 			disabled: self.disabled.unwrap_or(false),
-			read_filter_kind: self.read_filter_kind.map(read_filter::Kind::parse),
-			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
 			refresh: self.refresh,
+			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
+			source,
+			parsers: self.parse.map(|x| {
+				let x: Vec<Parser> = x.into();
+				x.into_iter().map(Parser::parse).collect()
+			}),
 			sink: self.sink.parse(settings)?,
-			source: self.source.parse(settings)?,
 		})
 	}
 }

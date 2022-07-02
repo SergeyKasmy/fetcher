@@ -21,13 +21,11 @@ use self::query::{
 };
 use crate::entry::Entry;
 use crate::error::{Error, Result};
-use crate::read_filter::ReadFilter;
 use crate::sink::message::{Link, LinkLocation};
 use crate::sink::{Media, Message};
 
 #[derive(Debug)]
 pub struct Html {
-	pub(crate) url: Url,
 	pub(crate) itemq: Vec<Query>,
 	// TODO: make a separate title_query: Option<TextQuery> and allow to put a link into it
 	pub(crate) textq: Vec<TextQuery>, // allow to find multiple paragraphs and join them together
@@ -37,13 +35,13 @@ pub struct Html {
 }
 
 impl Html {
+	#[allow(clippy::too_many_lines)] // FIXME
+	#[allow(clippy::needless_pass_by_value)] // FIXME
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&self, read_filter: &ReadFilter) -> Result<Vec<Entry>> {
-		tracing::debug!("Fetching HTML source");
+	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>> {
+		tracing::debug!("Parsing HTML");
 
-		let page = reqwest::get(self.url.as_str()).await?.text().await?;
-
-		let soup = Soup::new(page.as_str());
+		let soup = Soup::new(entry.msg.body.as_str());
 		let items = Self::find_chain(&soup, &self.itemq);
 
 		let mut entries = items
@@ -158,14 +156,6 @@ impl Html {
 			.collect::<Result<Vec<_>>>()?;
 
 		tracing::debug!("Found {num} HTML articles total", num = entries.len());
-		read_filter.remove_read_from(&mut entries);
-
-		let unread_num = entries.len();
-		if unread_num > 0 {
-			tracing::info!("Found {unread_num} unread HTML articles");
-		} else {
-			tracing::debug!("All articles have already been read, none remaining to send");
-		}
 
 		entries.reverse();
 		Ok(entries)
@@ -245,6 +235,7 @@ impl Html {
 	}
 
 	// TODO: rewrite the entire fn to use today/Yesterday words and date formats from the config per source and not global
+	#[allow(dead_code)]
 	fn parse_pretty_date(mut date_str: &str) -> Result<DateTime<Utc>> {
 		enum DateTimeKind {
 			Today,

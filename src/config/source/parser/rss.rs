@@ -5,12 +5,3 @@
  *
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
-
-#[allow(clippy::module_inception)]
-pub mod task;
-pub mod template;
-
-pub use self::{
-	task::{Task, Tasks},
-	template::Template,
-};

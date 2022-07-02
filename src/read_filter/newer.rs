@@ -22,19 +22,18 @@ impl Newer {
 		self.last_read_id.as_deref()
 	}
 
-	/// Make sure list is sorted newest to oldest
+	/// Make sure the list is sorted oldest to newest
 	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		if let Some(last_read_id) = &self.last_read_id {
-			if let Some(last_read_id_pos) =
-				list.iter().position(|x| x.id() == last_read_id.as_str())
-			{
-				list.drain(last_read_id_pos..);
+			if let Some(last_read_id_pos) = list.iter().position(|x| last_read_id == &x.id) {
+				list.drain(..=last_read_id_pos);
 			}
 		}
 	}
 
 	/// Check if `current_id` is unread
 	/// Make sure `id_list` is sorted newest to oldest
+	#[allow(dead_code)] // TODO
 	pub(crate) fn is_unread(&self, current_id: &str, id_list: &[&str]) -> bool {
 		if let Some(last_read_id) = &self.last_read_id {
 			if current_id == last_read_id {

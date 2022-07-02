@@ -19,12 +19,14 @@ use crate::sink;
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Sink {
 	Telegram(Telegram),
+	Stdout,
 }
 
 impl Sink {
 	pub(crate) fn parse(self, settings: &DataSettings) -> Result<sink::Sink> {
 		Ok(match self {
 			Sink::Telegram(x) => sink::Sink::Telegram(x.parse(settings)?),
+			Sink::Stdout => sink::Sink::Stdout(sink::Stdout {}),
 		})
 	}
 }

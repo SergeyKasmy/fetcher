@@ -14,6 +14,7 @@ pub use auth::Auth;
 pub use view_mode::ViewMode;
 
 use mailparse::ParsedMail;
+use std::fmt::Write as _;
 
 use self::auth::GoogleAuthExt;
 use self::filters::Filters;
@@ -106,18 +107,18 @@ impl Email {
 			let mut tmp = "UNSEEN ".to_string();
 
 			if let Some(sender) = &self.filters.sender {
-				tmp.push_str(&format!(r#"FROM "{sender}" "#));
+				let _ = write!(tmp, r#"FROM "{sender}" "#);
 			}
 
 			if let Some(subjects) = &self.filters.subjects {
 				for s in subjects {
-					tmp.push_str(&format!(r#"SUBJECT "{s}" "#));
+					let _ = write!(tmp, r#"SUBJECT "{s}" "#);
 				}
 			}
 
 			if let Some(ex_subjects) = &self.filters.exclude_subjects {
 				for exs in ex_subjects {
-					tmp.push_str(&format!(r#"NOT SUBJECT "{exs}" "#));
+					let _ = write!(tmp, r#"NOT SUBJECT "{exs}" "#);
 				}
 			}
 
@@ -197,9 +198,10 @@ impl Email {
 			},
 		})
 	}
+	// }
 
 	// FIXME: doesn't actually work for some reason
-	pub(crate) async fn mark_as_read(&mut self, uid: &str) -> Result<()> {
+	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<()> {
 		if let ViewMode::ReadOnly = self.view_mode {
 			return Ok(());
 		}
@@ -228,13 +230,13 @@ impl Email {
 
 		match self.view_mode {
 			ViewMode::MarkAsRead => {
-				session.uid_store(uid, "+FLAGS.SILENT (\\Seen)")?;
-				tracing::debug!("Marked email uid {uid} as read");
+				session.uid_store(id, "+FLAGS.SILENT (\\Seen)")?;
+				tracing::debug!("Marked email uid {id} as read");
 			}
 			ViewMode::Delete => {
-				session.uid_store(uid, "+FLAGS.SILENT (\\Deleted)")?;
-				session.uid_expunge(uid)?;
-				tracing::debug!("Deleted email uid {uid}");
+				session.uid_store(id, "+FLAGS.SILENT (\\Deleted)")?;
+				session.uid_expunge(id)?;
+				tracing::debug!("Deleted email uid {id}");
 			}
 			ViewMode::ReadOnly => unreachable!(),
 		};

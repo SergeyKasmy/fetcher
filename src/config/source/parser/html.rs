@@ -9,7 +9,6 @@
 pub(crate) mod query;
 
 use serde::{Deserialize, Serialize};
-use url::Url;
 
 use crate::source;
 
@@ -17,7 +16,6 @@ use self::query::{IdQuery, ImageQuery, LinkQuery, Query, TextQuery};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct Html {
-	pub(crate) url: Url,
 	#[serde(rename = "item_query")]
 	pub(crate) itemq: Vec<Query>,
 
@@ -35,9 +33,8 @@ pub(crate) struct Html {
 }
 
 impl Html {
-	pub(crate) fn parse(self) -> source::Html {
-		source::Html {
-			url: self.url,
+	pub(crate) fn parse(self) -> source::parser::Html {
+		source::parser::Html {
 			itemq: self.itemq.into_iter().map(Query::parse).collect(),
 			textq: self.textq.into_iter().map(TextQuery::parse).collect(),
 			idq: self.idq.parse(),

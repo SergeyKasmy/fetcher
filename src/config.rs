@@ -15,12 +15,44 @@ pub mod sink;
 pub mod source;
 pub mod task;
 
+use std::future::Future;
+use std::pin::Pin;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 pub use self::task::Task;
 pub use self::task::TemplatesField;
+use crate::error::Result;
+use crate::read_filter::ReadFilter;
+
+pub type ReadFilterGetter = Box<
+	dyn Fn(
+		String,
+		Option<crate::read_filter::Kind>,
+	) -> Pin<Box<dyn Future<Output = Result<Option<ReadFilter>>>>>,
+>;
 
 pub struct DataSettings {
 	pub twitter_auth: Option<(String, String)>,
 	pub google_oauth2: Option<crate::auth::Google>,
 	pub google_password: Option<String>,
 	pub telegram: Option<teloxide::Bot>,
+	pub read_filter: ReadFilterGetter,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(untagged)]
+pub(crate) enum OneOrMultiple<T> {
+	One(T),
+	Multiple(Vec<T>),
+}
+
+impl<T> From<OneOrMultiple<T>> for Vec<T> {
+	fn from(one_or_mltp: OneOrMultiple<T>) -> Self {
+		match one_or_mltp {
+			OneOrMultiple::One(x) => vec![x],
+			OneOrMultiple::Multiple(x) => x,
+		}
+	}
 }

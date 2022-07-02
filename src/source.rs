@@ -6,56 +6,165 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+// TODO: add google calendar source. Google OAuth2 is already implemented :)
+
 pub mod email;
-pub mod html;
-pub mod rss;
+pub mod http;
+pub mod parser;
 pub mod twitter;
 
+use itertools::Itertools;
+
 pub use self::email::Email;
-pub use self::html::Html;
-pub use self::rss::Rss;
+pub use self::http::Http;
+use self::parser::Parser;
 pub use self::twitter::Twitter;
 
 use crate::entry::Entry;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::read_filter::ReadFilter;
 
-// TODO: add google calendar source. Google OAuth2 is already implemented :)
 #[derive(Debug)]
 pub enum Source {
-	Email(Email),
-	Html(Html),
-	Rss(Rss),
-	Twitter(Twitter),
+	WithSharedReadFilter(WithSharedReadFilter),
+	WithCustomReadFilter(WithCustomReadFilter),
 }
 
 impl Source {
-	// TODO: try using streams instead of polling manually?
-	#[allow(clippy::missing_errors_doc)] // TODO
-	pub async fn get(&mut self, read_filter: Option<&ReadFilter>) -> Result<Vec<Entry>> {
+	pub async fn get(&mut self, parsers: Option<&[Parser]>) -> Result<Vec<Entry>> {
+		let unparsed_entries = match self {
+			Source::WithSharedReadFilter(x) => x.get().await?,
+			Source::WithCustomReadFilter(x) => x.get().await?,
+		};
+
+		let mut parsed_entries = Vec::new();
+
+		if let Some(parsers) = parsers {
+			for entry in unparsed_entries {
+				let mut entries_to_parse = vec![entry];
+				for parser in parsers {
+					entries_to_parse = entries_to_parse
+						.into_iter()
+						.map(|e| parser.parse(e))
+						.flatten_ok()
+						.collect::<Result<Vec<_>>>()?;
+				}
+
+				parsed_entries.extend(entries_to_parse);
+			}
+		} else {
+			parsed_entries = unparsed_entries;
+		}
+
+		let total_num = parsed_entries.len();
 		match self {
-			Self::Email(x) => x.get().await,
-			Self::Html(x) => x.get(read_filter.unwrap()).await,
-			Self::Rss(x) => x.get(read_filter.unwrap()).await,
-			Self::Twitter(x) => x.get(read_filter.unwrap()).await,
+			Source::WithSharedReadFilter(x) => x.remove_read(&mut parsed_entries),
+			Source::WithCustomReadFilter(x) => x.remove_read(&mut parsed_entries),
+		}
+
+		let unread_num = parsed_entries.len();
+		if total_num != unread_num {
+			tracing::debug!(
+				"Removed {read_num} read entries, {unread_num} remaining",
+				read_num = total_num - unread_num
+			);
+		}
+
+		Ok(parsed_entries)
+	}
+
+	pub async fn mark_as_read(&mut self, id: &str) -> Result<()> {
+		match self {
+			Self::WithSharedReadFilter(x) => x.mark_as_read(id).await,
+			Self::WithCustomReadFilter(x) => x.mark_as_read(id).await,
 		}
 	}
 }
 
-impl From<Email> for Source {
-	fn from(e: Email) -> Self {
-		Self::Email(e)
+#[derive(Debug)]
+pub struct WithSharedReadFilter {
+	read_filter: ReadFilter,
+	sources: Vec<WithSharedReadFilterInner>,
+}
+
+#[derive(Debug)]
+pub enum WithSharedReadFilterInner {
+	Http(Http),
+	Twitter(Twitter),
+}
+
+#[derive(Debug)]
+pub enum WithCustomReadFilter {
+	Email(Email),
+}
+
+impl WithSharedReadFilter {
+	pub fn new(sources: Vec<WithSharedReadFilterInner>, read_filter: ReadFilter) -> Result<Self> {
+		match sources.len() {
+			0 => {
+				return Err(Error::IncompatibleConfigValues(
+					"A task can't have 0 sources (path is not applicable)",
+					std::path::PathBuf::new(),
+				))
+			}
+			1 => (),
+			// assert that all source types are of the same enum variant
+			_ => {
+				assert!(sources.windows(2).fold(true, |is_same, x| {
+					if is_same {
+						std::mem::discriminant(&x[0]) == std::mem::discriminant(&x[1])
+					} else {
+						is_same
+					}
+				}));
+			}
+		}
+
+		Ok(Self {
+			read_filter,
+			sources,
+		})
+	}
+
+	pub async fn get(&mut self) -> Result<Vec<Entry>> {
+		let mut entries = Vec::new();
+
+		for s in &mut self.sources {
+			entries.extend(match s {
+				WithSharedReadFilterInner::Http(x) => x.get().await?,
+				WithSharedReadFilterInner::Twitter(x) => x.get(&self.read_filter).await?,
+			});
+		}
+
+		Ok(entries)
+	}
+
+	pub async fn mark_as_read(&mut self, id: &str) -> Result<()> {
+		self.read_filter.mark_as_read(id).await
+	}
+
+	pub fn remove_read(&self, entries: &mut Vec<Entry>) {
+		self.read_filter.remove_read_from(entries);
 	}
 }
 
-impl From<Rss> for Source {
-	fn from(r: Rss) -> Self {
-		Self::Rss(r)
+impl WithCustomReadFilter {
+	pub async fn get(&mut self) -> Result<Vec<Entry>> {
+		Ok(match self {
+			Self::Email(x) => x.get().await?,
+		})
 	}
-}
 
-impl From<Twitter> for Source {
-	fn from(t: Twitter) -> Self {
-		Self::Twitter(t)
+	pub async fn mark_as_read(&mut self, id: &str) -> Result<()> {
+		match self {
+			Self::Email(x) => x.mark_as_read(id).await,
+		}
+	}
+
+	#[allow(clippy::ptr_arg)]
+	pub fn remove_read(&self, _entries: &mut Vec<Entry>) {
+		match self {
+			Self::Email(_) => (), // NO-OP, emails should already be unread only when fetching
+		}
 	}
 }

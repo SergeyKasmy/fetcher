@@ -6,7 +6,6 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-// 22.03.22 03:30 CONTINUE: source templates
 // TODO: proper argument parser. Something like clap or argh or something
 
 mod settings;
@@ -16,16 +15,20 @@ use fetcher::{
 	config::{self, DataSettings},
 	error::Error,
 	run_task,
-	task::{NamedTask, Tasks},
+	task::Tasks,
 };
 use futures::future::join_all;
 use futures::StreamExt;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
+use tokio::time::sleep;
 use tokio::{select, sync::watch::Receiver};
 use tracing::Instrument;
 use tracing_subscriber::EnvFilter;
@@ -61,31 +64,41 @@ async fn main() -> color_eyre::Result<()> {
 		Some("--gen-secret-google-password") => settings::data::generate_google_password().await?,
 		Some("--gen-secret-telegram") => settings::data::generate_telegram().await?,
 		Some("--gen-secret-twitter") => settings::data::generate_twitter_auth().await?,
-		None => run().await?,
+
+		Some("--once") => run(true).await?,
+		None => run(false).await?,
 		Some(_) => panic!("error"),
 	};
 
 	Ok(())
 }
 
-async fn run() -> Result<()> {
+async fn run(once: bool) -> Result<()> {
 	let tasks = settings::config::tasks::get_all(&DataSettings {
 		twitter_auth: settings::data::twitter().await?,
 		google_oauth2: settings::data::google_oauth2().await?,
 		google_password: settings::data::google_password().await?,
 		telegram: settings::data::telegram().await?,
-	})?;
+		read_filter: Box::new(
+			|name: String,
+			 default: Option<fetcher::read_filter::Kind>|
+			 -> Pin<Box<dyn Future<Output = Result<Option<fetcher::read_filter::ReadFilter>>>>> {
+				Box::pin(async move { settings::read_filter::get(&name, default).await })
+			},
+		),
+	})
+	.await?;
 
 	if tasks.is_empty() {
 		tracing::warn!("No enabled tasks provided");
 		return Ok(());
-	} else {
-		tracing::debug!(
-			"Found {num} enabled tasks: {names:?}",
-			num = tasks.len(),
-			names = tasks.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(),
-		);
 	}
+
+	tracing::debug!(
+		"Found {num} enabled tasks: {names:?}",
+		num = tasks.len(),
+		names = tasks.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(),
+	);
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
 
@@ -119,7 +132,7 @@ async fn run() -> Result<()> {
 		Ok::<(), Error>(())
 	});
 
-	run_tasks(tasks, shutdown_rx).await?;
+	run_tasks(tasks, shutdown_rx, once).await?;
 
 	sig_handle.close(); // TODO: figure out wtf this is and why
 	sig_task
@@ -128,70 +141,75 @@ async fn run() -> Result<()> {
 	Ok(())
 }
 
-async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
+async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Result<()> {
 	let mut running_tasks = Vec::new();
-	for NamedTask {
-		name,
-		path: _,
-		task: mut t,
-	} in tasks
-	{
+	for mut t in tasks {
+		let name = t.name.clone(); // TODO: ehhh
 		let mut shutdown_rx = shutdown_rx.clone();
 
-		let fut = tokio::spawn(async move {
-			let res: Result<()> = async {
-				let mut read_filter =
-					settings::read_filter::get(&name, t.read_filter_kind()).await?;
+		let fut = tokio::spawn(
+			async move {
+				let res: Result<()> = select! {
+					res = async {
+						loop {
+							run_task(&mut t).await?;
 
-				select! {
-					res = run_task(&mut t, read_filter.as_mut()) => res,
-					_ = shutdown_rx.changed() => Ok(()),
-				}
-			}
-			.instrument(tracing::info_span!("task", name = name.as_str()))
-			.await;
-
-			// production error reporting
-			if let Err(e) = &res {
-				if !cfg!(debug_assertions) {
-					// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
-					use fetcher::sink::Message;
-					use fetcher::sink::Telegram;
-
-					// let err_str = format!("{:?}", color_eyre::eyre::eyre!(e));
-					let err_str = format!("{:?}", e); // TODO: make it pretier like eyre
-					tracing::error!("{}", err_str);
-					let send_job = async {
-						let bot = match settings::data::telegram().await? {
-							Some(b) => b,
-							None => {
-								let s = "Unable to send error report to the admin: telegram bot token is not provided".to_owned();
-								tracing::error!(%s);
-								return Err(Error::Other(s)); // TODO: this kinda sucks
+							if once {
+								break;
 							}
+
+							tracing::debug!("Sleeping for {time}m", time = t.refresh);
+							sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
+						}
+
+						Ok(())
+					} => res,
+					_ = shutdown_rx.changed() => Ok(()),
+				};
+
+				// production error reporting
+				if let Err(e) = &res {
+					if !cfg!(debug_assertions) {
+						// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
+						use fetcher::sink::Message;
+						use fetcher::sink::Telegram;
+
+						// let err_str = format!("{:?}", color_eyre::eyre::eyre!(e));
+						let err_str = format!("{:?}", e); // TODO: make it pretier like eyre
+						tracing::error!("{}", err_str);
+						let send_job = async {
+							let bot = match settings::data::telegram().await? {
+								Some(b) => b,
+								None => {
+									let s = "Unable to send error report to the admin: telegram bot token is not provided".to_owned();
+									tracing::error!(%s);
+									return Err(Error::Other(s)); // TODO: this kinda sucks
+								}
+							};
+							let msg = Message {
+								body: err_str,
+								..Default::default()
+							};
+							Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned())
+								.send(msg, Some(&t.name))
+								.await?;
+							Ok::<(), Error>(())
 						};
-						let msg = Message {
-							body: err_str,
-							..Default::default()
-						};
-						Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned())
-							.send(msg, Some(&name))
-							.await?;
-						Ok::<(), Error>(())
-					};
-					if let Err(e) = send_job.await {
-						tracing::error!(
-							"Unable to send error report to the admin: {:?}",
-							// color_eyre::eyre::eyre!(e)
-							e
-						);
+						if let Err(e) = send_job.await {
+							tracing::error!(
+								"Unable to send error report to the admin: {:?}",
+								// color_eyre::eyre::eyre!(e)
+								e
+							);
+						}
 					}
 				}
-			}
 
-			tracing::info!("Shutting down...");
-			res
-		});
+				tracing::info!("Shutting down...");
+				res
+			}
+			.instrument(tracing::info_span!("task", name = name.as_str())),
+		);
 
 		running_tasks.push(flatten_task(fut));
 	}
