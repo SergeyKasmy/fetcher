@@ -14,6 +14,7 @@ pub use auth::Auth;
 pub use view_mode::ViewMode;
 
 use mailparse::ParsedMail;
+use std::fmt::Write as _;
 
 use self::auth::GoogleAuthExt;
 use self::filters::Filters;
@@ -106,18 +107,18 @@ impl Email {
 			let mut tmp = "UNSEEN ".to_string();
 
 			if let Some(sender) = &self.filters.sender {
-				tmp.push_str(&format!(r#"FROM "{sender}" "#));
+				let _ = write!(tmp, r#"FROM "{sender}" "#);
 			}
 
 			if let Some(subjects) = &self.filters.subjects {
 				for s in subjects {
-					tmp.push_str(&format!(r#"SUBJECT "{s}" "#));
+					let _ = write!(tmp, r#"SUBJECT "{s}" "#);
 				}
 			}
 
 			if let Some(ex_subjects) = &self.filters.exclude_subjects {
 				for exs in ex_subjects {
-					tmp.push_str(&format!(r#"NOT SUBJECT "{exs}" "#));
+					let _ = write!(tmp, r#"NOT SUBJECT "{exs}" "#);
 				}
 			}
 

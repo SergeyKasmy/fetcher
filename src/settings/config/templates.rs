@@ -7,7 +7,7 @@
  */
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 
 use fetcher::error::Error;
 use fetcher::error::Result;
@@ -23,11 +23,11 @@ pub fn find(name: &str) -> Result<Option<Template>> {
 			p.push("templates");
 			p
 		})
-		.find_map(|p| find_in(p, name).transpose()) // TODO: what da transpose doin? Probs will short circuit as soon as it encounters an error. Is that what we actually want?
+		.find_map(|p| find_in(&p, name).transpose()) // TODO: what da transpose doin? Probs will short circuit as soon as it encounters an error. Is that what we actually want?
 		.transpose()
 }
 
-pub fn find_in(templates_path: PathBuf, name: &str) -> Result<Option<Template>> {
+pub fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>> {
 	tracing::trace!("Searching for template in {}", templates_path.display());
 	let path = templates_path.join(name).with_extension(CONFIG_FILE_EXT);
 	if !path.is_file() {

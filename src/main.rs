@@ -92,13 +92,13 @@ async fn run(once: bool) -> Result<()> {
 	if tasks.is_empty() {
 		tracing::warn!("No enabled tasks provided");
 		return Ok(());
-	} else {
-		tracing::debug!(
-			"Found {num} enabled tasks: {names:?}",
-			num = tasks.len(),
-			names = tasks.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(),
-		);
 	}
+
+	tracing::debug!(
+		"Found {num} enabled tasks: {names:?}",
+		num = tasks.len(),
+		names = tasks.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(),
+	);
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
 

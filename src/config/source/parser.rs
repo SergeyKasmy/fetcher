@@ -15,6 +15,7 @@ pub mod rss;
 
 use self::html::Html;
 
+#[allow(clippy::large_enum_variant)] // this enum is very short-lived, I don't think boxing is worth the trouble
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Parser {

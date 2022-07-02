@@ -61,10 +61,10 @@ pub async fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result
 
 #[tracing::instrument(skip(settings))]
 pub async fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<Task>> {
-	tracing::trace!("Parsing a task from file");
 	fn name(path: &Path) -> Option<String> {
 		Some(path.file_stem()?.to_str()?.to_owned())
 	}
+	tracing::trace!("Parsing a task from file");
 
 	let templates: TemplatesField = Figment::new()
 		.merge(Yaml::file(&path))
