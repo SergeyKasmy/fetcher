@@ -13,7 +13,7 @@ use std::io::Write;
 
 use self::newer::Newer;
 use self::not_present::NotPresent;
-// use crate::config;	FIXME: CONFIG TMP
+use crate::config;
 use crate::entry::Entry;
 use crate::error::{Error, Result};
 
@@ -88,32 +88,19 @@ impl ReadFilter {
 			NotPresentInReadList(x) => x.mark_as_read(id),
 		}
 
-		/*
-		// FIXME: CONFIG TMP
 		match config::read_filter::ReadFilter::unparse(self) {
 			Some(filter_conf) => {
 				let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
 
-				// TODO: is this even worth it?
-				// UPD: probably not
-				{
-					let mut w = std::mem::replace(&mut self.external_save, Box::new(Vec::new()));
-
-					let mut w = tokio::task::spawn_blocking(move || {
-						w.write_all(s.as_bytes())
-							.map_err(Error::LocalIoWriteReadFilterData)?;
-						Ok::<_, Error>(w)
-					})
-					.await
-					.unwrap()?; // unwrap NOTE: crash the app if the thread crashed
-
-					std::mem::swap(&mut w, &mut self.external_save);
-				}
+				// NOTE: yes, it blocks for a bit but spawning a blocking tokio task is too much of a hastle and a readability concern
+				// to the point that I think it's just not worth it. Maybe there's a better way to avoid blocking without getting hands dirty
+				// with tokio::spawn_blocking() and std::mem::replace() (because the task has to have a 'static lifetime)
+				self.external_save
+					.write_all(s.as_bytes())
+					.map_err(Error::LocalIoWriteReadFilterData)?;
 			}
 			None => (),
 		}
-		*/
-
 		Ok(())
 	}
 }
