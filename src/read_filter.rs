@@ -59,6 +59,7 @@ impl ReadFilter {
 		}
 	}
 
+	#[allow(dead_code)] // TODO
 	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
@@ -68,6 +69,7 @@ impl ReadFilter {
 		}
 	}
 
+	#[allow(dead_code)] // TODO
 	pub(crate) fn to_kind(&self) -> Kind {
 		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 

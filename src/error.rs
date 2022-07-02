@@ -20,10 +20,11 @@ pub enum Error {
 	LocalIoRead(#[source] io::Error, PathBuf),
 
 	#[error(
-		"Bad path {0}. It probably contains bad/non-unicode characters or is just isn't compatible"
+		"Bad path {0}. It probably contains bad/non-unicode characters or just isn't compatible"
 	)]
 	BadPath(PathBuf),
 
+	// TODO: should these io errors even be in the library crate if config parsing is done in the binary?
 	#[error("Error writing into {1}")]
 	LocalIoWrite(#[source] io::Error, PathBuf),
 

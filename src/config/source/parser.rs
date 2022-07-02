@@ -25,7 +25,7 @@ pub(crate) enum Parser {
 impl Parser {
 	pub(crate) fn parse(self) -> source::parser::Parser {
 		match self {
-			Parser::Rss => todo!(),
+			Parser::Rss => source::parser::Parser::Rss(source::parser::Rss {}),
 			Parser::Html(x) => source::parser::Parser::Html(x.parse()),
 		}
 	}

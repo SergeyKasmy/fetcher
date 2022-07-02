@@ -19,7 +19,7 @@ use self::parser::Parser;
 pub use self::twitter::Twitter;
 
 use crate::entry::Entry;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::read_filter::ReadFilter;
 
 #[derive(Debug)]
@@ -63,9 +63,14 @@ pub enum WithCustomReadFilter {
 
 impl WithSharedReadFilter {
 	#[must_use]
-	pub fn new(sources: Vec<WithSharedReadFilterInner>, read_filter: ReadFilter) -> Self {
+	pub fn new(sources: Vec<WithSharedReadFilterInner>, read_filter: ReadFilter) -> Result<Self> {
 		match sources.len() {
-			0 => todo!("Source vec can't be empty"),
+			0 => {
+				return Err(Error::IncompatibleConfigValues(
+					"A task can't have 0 sources (path is not applicable)",
+					std::path::PathBuf::new(),
+				))
+			}
 			1 => (),
 			// assert that all source types are of the same enum variant
 			_ => {
@@ -79,10 +84,10 @@ impl WithSharedReadFilter {
 			}
 		}
 
-		Self {
+		Ok(Self {
 			read_filter,
 			sources,
-		}
+		})
 	}
 
 	pub async fn get(&mut self, parsers: Option<&[Parser]>) -> Result<Vec<Entry>> {

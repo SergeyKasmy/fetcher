@@ -76,7 +76,7 @@ impl Source {
 					(settings.read_filter)(name.to_owned(), default_read_filter_kind)
 						.await?
 						.unwrap(), // unwrap FIXME: remove when settings::read_filter::get gets updated
-				))
+				)?)
 			}
 			Source::WithCustomReadFilter(s) => match s {
 				WithCustomReadFilter::Email(x) => source::Source::WithCustomReadFilter(
