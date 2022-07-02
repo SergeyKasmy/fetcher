@@ -37,7 +37,7 @@ pub struct Html {
 
 impl Html {
 	#[tracing::instrument(skip_all)]
-	pub async fn parse(
+	pub fn parse(
 		&self,
 		entries: Vec<Entry>,
 		// _read_filter: &ReadFilter,

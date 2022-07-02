@@ -20,6 +20,10 @@ pub struct TemplatesField {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+// TODO: add
+// #[serde(deny_unknown_fields)]
+// but allow templates templates field
+// that's used elsewhere
 pub struct Task {
 	disabled: Option<bool>,
 	#[serde(rename = "read_filter_type")]

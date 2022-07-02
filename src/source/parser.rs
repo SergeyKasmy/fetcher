@@ -22,10 +22,11 @@ pub enum Parser {
 }
 
 impl Parser {
-	pub async fn parse(&self, entries: Vec<Entry>) -> Result<Vec<Entry>> {
+	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>> {
 		match self {
-			Parser::Html(x) => x.parse(entries).await,
-			Parser::Rss(x) => x.parse(entries),
+			// Parser::Html(x) => x.parse(entry).await,	// FIXME
+			Parser::Html(_) => todo!(),
+			Parser::Rss(x) => x.parse(entry),
 		}
 	}
 }
