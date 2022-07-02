@@ -23,8 +23,6 @@ pub mod task;
 
 use sink::Sink;
 use source::Source;
-use std::time::Duration;
-use tokio::time::sleep;
 
 use crate::entry::Entry;
 use crate::error::Error;
@@ -32,26 +30,23 @@ use crate::error::Result;
 use crate::task::Task;
 
 pub async fn run_task(t: &mut Task) -> Result<()> {
-	loop {
-		tracing::trace!("Running...");
+	tracing::trace!("Running task...");
 
-		let fetch = async {
-			for entry in t.source.get(t.parsers.as_deref()).await? {
-				process_entry(&mut t.sink, entry, t.tag.as_deref(), &mut t.source).await?;
-			}
-
-			Ok::<(), Error>(())
-		};
-
-		match fetch.await {
-			Ok(_) => (),
-			Err(e @ Error::NoConnection(_)) => tracing::warn!("{:?}", color_eyre::eyre::eyre!(e)),
-			Err(e) => return Err(e),
+	let fetch = async {
+		for entry in t.source.get(t.parsers.as_deref()).await? {
+			process_entry(&mut t.sink, entry, t.tag.as_deref(), &mut t.source).await?;
 		}
 
-		tracing::debug!("Sleeping for {time}m", time = t.refresh);
-		sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
+		Ok::<(), Error>(())
+	};
+
+	match fetch.await {
+		Ok(_) => (),
+		Err(e @ Error::NoConnection(_)) => tracing::warn!("{:?}", color_eyre::eyre::eyre!(e)),
+		Err(e) => return Err(e),
 	}
+
+	Ok(())
 }
 
 #[tracing::instrument(name = "entry", skip_all, fields(id = entry.id.as_str()))]

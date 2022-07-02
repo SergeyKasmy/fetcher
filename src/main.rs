@@ -25,8 +25,10 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
+use tokio::time::sleep;
 use tokio::{select, sync::watch::Receiver};
 use tracing::Instrument;
 use tracing_subscriber::EnvFilter;
@@ -62,14 +64,16 @@ async fn main() -> color_eyre::Result<()> {
 		Some("--gen-secret-google-password") => settings::data::generate_google_password().await?,
 		Some("--gen-secret-telegram") => settings::data::generate_telegram().await?,
 		Some("--gen-secret-twitter") => settings::data::generate_twitter_auth().await?,
-		None => run().await?,
+
+		Some("--once") => run(true).await?,
+		None => run(false).await?,
 		Some(_) => panic!("error"),
 	};
 
 	Ok(())
 }
 
-async fn run() -> Result<()> {
+async fn run(once: bool) -> Result<()> {
 	let tasks = settings::config::tasks::get_all(&DataSettings {
 		twitter_auth: settings::data::twitter().await?,
 		google_oauth2: settings::data::google_oauth2().await?,
@@ -128,7 +132,7 @@ async fn run() -> Result<()> {
 		Ok::<(), Error>(())
 	});
 
-	run_tasks(tasks, shutdown_rx).await?;
+	run_tasks(tasks, shutdown_rx, once).await?;
 
 	sig_handle.close(); // TODO: figure out wtf this is and why
 	sig_task
@@ -137,7 +141,7 @@ async fn run() -> Result<()> {
 	Ok(())
 }
 
-async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
+async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Result<()> {
 	let mut running_tasks = Vec::new();
 	for mut t in tasks {
 		let name = t.name.clone(); // TODO: ehhh
@@ -149,7 +153,20 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
 				// 	settings::read_filter::get(&name, t.read_filter_kind()).await?;
 
 				select! {
-					res = run_task(&mut t) => res,
+					res = async {
+						loop {
+							run_task(&mut t).await?;
+
+							if once {
+								break;
+							}
+
+							tracing::debug!("Sleeping for {time}m", time = t.refresh);
+							sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
+						}
+
+						Ok::<(), Error>(())
+					} => res,
 					_ = shutdown_rx.changed() => Ok(()),
 				}
 			}
