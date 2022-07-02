@@ -12,7 +12,6 @@ pub(crate) mod query;
 
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use html5ever::rcdom::Handle;
-use itertools::Itertools;
 use soup::{NodeExt, QueryBuilderExt, Soup};
 use url::Url;
 
@@ -36,24 +35,12 @@ pub struct Html {
 }
 
 impl Html {
-	#[tracing::instrument(skip_all)]
-	pub fn parse(
-		&self,
-		entries: Vec<Entry>,
-		// _read_filter: &ReadFilter,
-	) -> Result<Vec<Entry>> {
-		tracing::debug!("Parsing HTML");
-
-		entries
-			.into_iter()
-			.map(|x| self.parse_entry(x))
-			.flatten_ok()
-			.collect::<Result<Vec<Entry>>>()
-	}
-
 	#[allow(clippy::too_many_lines)] // FIXME
 	#[allow(clippy::needless_pass_by_value)] // FIXME
-	fn parse_entry(&self, entry: Entry) -> Result<Vec<Entry>> {
+	#[tracing::instrument(skip_all)]
+	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>> {
+		tracing::debug!("Parsing HTML");
+
 		let soup = Soup::new(entry.msg.body.as_str());
 		let items = Self::find_chain(&soup, &self.itemq);
 
