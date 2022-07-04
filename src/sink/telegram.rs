@@ -22,26 +22,37 @@ use teloxide::{
 
 use crate::{
 	error::{Error, Result},
-	sink::{message::LinkLocation, Media, Message},
+	sink::{Media, Message},
 };
 
 const MAX_MSG_LEN: usize = 4096;
+
+/// Either embed the link into the title or put it as a separate "Link" button at the botton of the message.
+/// `PreferTitle` falls back to `Bottom` if Message.title is None
+#[derive(Clone, Copy, Default, Debug)]
+pub enum LinkLocation {
+	PreferTitle,
+	#[default]
+	Bottom,
+}
 
 pub struct Telegram {
 	// bot: Throttle<Bot>,
 	bot: Bot,
 	chat_id: ChatId,
+	link_location: LinkLocation,
 }
 
 impl Telegram {
 	#[must_use]
-	pub fn new(bot: Bot, chat_id: impl Into<ChatId>) -> Self {
+	pub fn new(bot: Bot, chat_id: impl Into<ChatId>, link_location: LinkLocation) -> Self {
 		Self {
 			// TODO: THIS BLOCKS. WHY??????
 			// #2 throttle() spawns a tokio task but we are in sync. Maybe that causes the hangup?
 			// bot: bot.throttle(Limits::default()),
 			bot,
 			chat_id: chat_id.into(),
+			link_location,
 		}
 	}
 
@@ -71,22 +82,19 @@ impl Telegram {
 
 		let text = {
 			let mut text = match (&title, &link) {
-				(Some(title), Some(link)) => match link.loc {
+				(Some(title), Some(link)) => match self.link_location {
 					LinkLocation::PreferTitle => {
-						format!("<a href=\"{url}\">{title}</a>\n{body}", url = link.url,)
+						format!("<a href=\"{link}\">{title}</a>\n{body}")
 					}
 					LinkLocation::Bottom => {
-						format!(
-							"{title}\n{body}\n<a href=\"{url}\">Link</a>",
-							url = link.url
-						)
+						format!("{title}\n{body}\n<a href=\"{link}\">Link</a>",)
 					}
 				},
 				(Some(title), None) => {
 					format!("{title}\n{body}")
 				}
 				(None, Some(link)) => {
-					format!("{body}\n<a href=\"{url}\">Link</a>", url = link.url)
+					format!("{body}\n<a href=\"{link}\">Link</a>")
 				}
 				(None, None) => body,
 			};

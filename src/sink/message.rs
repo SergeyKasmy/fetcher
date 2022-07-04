@@ -10,34 +10,23 @@ use std::fmt::Debug;
 
 use url::Url;
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct Message {
 	pub title: Option<String>,
 	pub body: String,
-	pub link: Option<Link>,
+	pub link: Option<Url>,
 	pub media: Option<Vec<Media>>,
 }
 
-pub struct Link {
-	pub url: Url,
-	pub loc: LinkLocation,
-}
-
-impl Debug for Link {
+impl Debug for Message {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("Link")
-			.field("url", &self.url.as_str())
-			.field("loc", &self.loc)
+		f.debug_struct("Message")
+			.field("title", &self.title)
+			.field("body", &self.body)
+			.field("link", &self.link.as_ref().map(Url::as_str))
+			.field("media", &self.media)
 			.finish()
 	}
-}
-
-/// Either embed the link into the title or put it as a separate "Link" button at the botton of the message.
-/// `PreferTitle` falls back to `Bottom` if Message.title is None
-#[derive(Clone, Copy, Debug)]
-pub enum LinkLocation {
-	PreferTitle,
-	Bottom,
 }
 
 pub enum Media {

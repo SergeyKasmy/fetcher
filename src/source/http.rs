@@ -11,7 +11,6 @@ use url::Url;
 
 use crate::entry::Entry;
 use crate::error::Result;
-use crate::sink::message::{Link, LinkLocation};
 use crate::sink::Message;
 
 pub struct Http {
@@ -30,10 +29,7 @@ impl Http {
 			msg: Message {
 				title: None,
 				body: page,
-				link: Some(Link {
-					url: self.url.clone(),
-					loc: LinkLocation::Bottom,
-				}),
+				link: Some(self.url.clone()),
 				media: None,
 			},
 		}])

@@ -15,10 +15,29 @@ use crate::{
 	sink,
 };
 
+/// Refer to [`crate::sink::message::LinkLocation`]
+#[derive(Deserialize, Serialize, Debug)]
+// #[serde(rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
+#[serde(rename_all = "snake_case")]
+pub enum LinkLocation {
+	PreferTitle,
+	Bottom,
+}
+
+impl LinkLocation {
+	pub(crate) fn parse(self) -> sink::telegram::LinkLocation {
+		match self {
+			LinkLocation::PreferTitle => sink::telegram::LinkLocation::PreferTitle,
+			LinkLocation::Bottom => sink::telegram::LinkLocation::Bottom,
+		}
+	}
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 pub(crate) struct Telegram {
 	chat_id: ChatId,
+	link_location: LinkLocation,
 }
 
 impl Telegram {
@@ -35,6 +54,7 @@ impl Telegram {
 				.cloned()
 				.ok_or_else(|| Error::ServiceNotReady("Telegram bot token".to_owned()))?,
 			chat_id,
+			self.link_location.parse(),
 		))
 	}
 }

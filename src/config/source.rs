@@ -18,7 +18,6 @@ use crate::{read_filter, source};
 
 use self::email::Email;
 use self::http::Http;
-// use self::rss::Rss;
 use self::twitter::Twitter;
 
 use super::{DataSettings, OneOrMultiple};

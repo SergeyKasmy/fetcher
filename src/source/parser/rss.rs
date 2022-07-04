@@ -10,8 +10,6 @@ use rss::Channel;
 
 use crate::entry::Entry;
 use crate::error::Result;
-use crate::sink::message::Link;
-use crate::sink::message::LinkLocation;
 use crate::sink::Message;
 
 #[derive(Debug)]
@@ -36,10 +34,7 @@ impl Rss {
 						// unwrap NOTE: "safe", these are required fields
 						title: Some(x.title.unwrap()),
 						body: x.description.unwrap(),
-						link: Some(Link {
-							url: x.link.unwrap().as_str().try_into().unwrap(),
-							loc: LinkLocation::PreferTitle,
-						}), // unwrap FIXME: may be an invalid url
+						link: Some(x.link.unwrap().as_str().try_into().unwrap()),
 						media: None,
 					},
 				}

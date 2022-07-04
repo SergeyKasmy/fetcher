@@ -174,6 +174,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 				if let Err(e) = &res {
 					if !cfg!(debug_assertions) {
 						// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
+						use fetcher::sink::telegram::LinkLocation;
 						use fetcher::sink::Message;
 						use fetcher::sink::Telegram;
 
@@ -193,9 +194,13 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 								body: err_str,
 								..Default::default()
 							};
-							Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned())
-								.send(msg, Some(&name))
-								.await?;
+							Telegram::new(
+								bot,
+								std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned(),
+								LinkLocation::default(),
+							)
+							.send(msg, Some(&name))
+							.await?;
 							Ok::<(), Error>(())
 						};
 						if let Err(e) = send_job.await {

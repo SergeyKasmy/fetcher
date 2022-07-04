@@ -7,8 +7,8 @@
  */
 
 pub mod message;
-mod stdout;
-mod telegram;
+pub(crate) mod stdout;
+pub mod telegram;
 
 pub use message::{Media, Message};
 pub use stdout::Stdout;

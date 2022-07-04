@@ -21,7 +21,6 @@ use self::query::{
 };
 use crate::entry::Entry;
 use crate::error::{Error, Result};
-use crate::sink::message::Link;
 use crate::sink::{Media, Message};
 
 #[derive(Debug)]
@@ -45,7 +44,7 @@ impl Html {
 		let mut entries = items
 			.map(|item| -> Result<Entry> {
 				let id = extract_id(&item, &self.idq)?;
-				let url = extract_url(&item, &self.linkq)?;
+				let link = extract_url(&item, &self.linkq)?;
 				let title = extract_title(&item, self.titleq.as_ref());
 				let body = extract_body(&item, &self.textq);
 				let img = extract_img(&item, self.imgq.as_ref())?;
@@ -55,10 +54,7 @@ impl Html {
 					msg: Message {
 						title,
 						body,
-						link: Some(Link {
-							url,
-							loc: crate::sink::message::LinkLocation::Bottom,
-						}),
+						link: Some(link),
 						media: img.map(|url| vec![Media::Photo(url)]),
 					},
 				})
