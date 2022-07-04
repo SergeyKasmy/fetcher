@@ -35,110 +35,19 @@ pub struct Html {
 }
 
 impl Html {
-	#[allow(clippy::too_many_lines)] // FIXME
-	#[allow(clippy::needless_pass_by_value)] // FIXME
 	#[tracing::instrument(skip_all)]
 	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>> {
 		tracing::debug!("Parsing HTML");
 
 		let soup = Soup::new(entry.msg.body.as_str());
-		let items = Self::find_chain(&soup, &self.itemq);
+		let items = find_chain(&soup, &self.itemq);
 
 		let mut entries = items
 			.map(|item| -> Result<Entry> {
-				let link = {
-					let mut link = Self::extract_data(
-						&mut Self::find_chain(&item, &self.linkq.inner.query),
-						&self.linkq.inner,
-					)
-					.ok_or(Error::HtmlParse("link not found", None))?
-					.trim()
-					.to_owned();
-
-					if let Some(prepend) = &self.linkq.prepend {
-						link.insert_str(0, prepend);
-					}
-
-					Url::try_from(link.as_str()).map_err(|e| {
-						Error::HtmlParse("The found link is not a valid url", Some(Box::new(e)))
-					})?
-				};
-
-				let id = {
-					let id_str = Self::extract_data(
-						&mut Self::find_chain(&item, &self.idq.inner.query),
-						&self.idq.inner,
-					)
-					.ok_or(Error::HtmlParse("id not found", None))?
-					.trim()
-					.to_owned();
-
-					match &self.idq.kind {
-						IdQueryKind::String => id_str,
-						IdQueryKind::Date => {
-							todo!()
-							// ArticleId::Date(match Self::parse_pretty_date(&id_str) {
-							// 	Ok(d) => d,
-							// 	Err(e) if matches!(e, Error::InvalidDateTimeFormat(_)) => {
-							// 		return None
-							// 	}
-							// 	Err(e) => return Some(Err(e)),
-							// })
-						}
-					}
-				};
-
-				let body = self
-					.textq
-					.iter()
-					.filter_map(|x| {
-						Self::extract_data(&mut Self::find_chain(&item, &x.inner.query), &x.inner)
-							.map(|s| {
-								let mut s = s.trim().to_string();
-								if let Some(prepend) = x.prepend.as_deref() {
-									s.insert_str(0, prepend);
-								}
-
-								s
-							})
-					})
-					.collect::<Vec<_>>()
-					.join("\n\n");
-
-				let img = self
-					.imgq
-					.as_ref()
-					.and_then(|img_query| {
-						let mut img_url = match Self::extract_data(
-							&mut Self::find_chain(&item, &img_query.inner.inner.query), // TODO: check iterator not empty
-							&img_query.inner.inner,                                     // TODO: make less fugly
-						) {
-							Some(s) => s.trim().to_owned(),
-							None => {
-								if img_query.optional {
-									tracing::trace!("Found no image for the provided query but it's optional, skipping...");
-									return None;
-								}
-
-								return Some(Err(Error::HtmlParse(
-									"image not found but it's not optional",
-									None,
-								)));
-							}
-						};
-
-						if let Some(prepend) = &img_query.inner.prepend {
-							img_url.insert_str(0, prepend);
-						}
-
-						Some(Url::try_from(img_url.as_str()).map_err(|e| {
-							Error::HtmlParse(
-								"the found image url is an invalid url",
-								Some(Box::new(e)),
-							)
-						}))
-					})
-					.transpose()?;
+				let link = extract_link(&item, &self.linkq)?;
+				let id = extract_id(&item, &self.idq)?;
+				let body = extract_body(&item, &self.textq);
+				let img = extract_img(&item, self.imgq.as_ref())?;
 
 				Ok(Entry {
 					id,
@@ -160,134 +69,205 @@ impl Html {
 		entries.reverse();
 		Ok(entries)
 	}
+}
+fn extract_link(item: &impl QueryBuilderExt, linkq: &LinkQuery) -> Result<Url> {
+	let mut link = extract_data(&mut find_chain(item, &linkq.inner.query), &linkq.inner)
+		.ok_or(Error::HtmlParse("link not found", None))?
+		.trim()
+		.to_owned();
 
-	/// Find items matching the query in the provided HTML part
-	fn find<'a>(
-		qb: &impl QueryBuilderExt,
-		q: &'a QueryKind,
-		ignore: &'a [QueryKind],
-	) -> Box<dyn Iterator<Item = Handle> + 'a> {
-		Box::new(
-			match q {
-				QueryKind::Tag { value } => qb.tag(value.as_str()).find_all(),
-				QueryKind::Class { value } => qb.class(value.as_str()).find_all(),
-				QueryKind::Attr { name, value } => {
-					qb.attr(name.as_str(), value.as_str()).find_all()
-				}
-			}
-			.filter(|found| {
-				for i in ignore.iter() {
-					let should_be_ignored = match i {
-						QueryKind::Tag { value: tag } => found.name() == tag,
-						QueryKind::Class { value: class } => {
-							found.get("class").map_or(false, |c| &c == class)
-						}
-						QueryKind::Attr { name, value } => {
-							found.get(name).map_or(false, |a| &a == value)
-						}
-					};
-
-					if should_be_ignored {
-						return false;
-					}
-				}
-
-				true
-			}),
-		)
+	if let Some(prepend) = &linkq.prepend {
+		link.insert_str(0, prepend);
 	}
 
-	/// Find all items matching the query in all the provided HTML parts
-	fn find_chain<'a>(
-		qb: &impl QueryBuilderExt,
-		qs: &'a [Query],
-	) -> Box<dyn Iterator<Item = Handle> + 'a> {
-		// debug_assert!(!qs.is_empty());
-		let mut handles: Option<Box<dyn Iterator<Item = Handle>>> = None;
-
-		for q in qs {
-			handles = Some(match handles {
-				None => Self::find(qb, &q.kind, &q.ignore),
-				Some(handles) => {
-					Box::new(handles.flat_map(|hndl| Self::find(&hndl, &q.kind, &q.ignore)))
-				}
-			});
-		}
-
-		handles.unwrap() // unwrap NOTE: safe *if* there are more than 0 query kinds which should be always... hopefully... // TODO: make sure there are more than 0 qks
-	}
-
-	/// Extract data from the provided HTML tags and join them
-	fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &QueryData) -> Option<String> {
-		// debug_assert!(
-		// 	h.peekable().peek().is_some(),
-		// 	"No HTML tags to extract data from"
-		// );
-
-		let data = h
-			.map(|hndl| match &q.data_location {
-				DataLocation::Text => Some(hndl.text()),
-				DataLocation::Attr { value } => hndl.get(value),
-			})
-			.collect::<Option<Vec<_>>>();
-
-		data.map(|s| s.join("\n\n"))
-	}
-
-	// TODO: rewrite the entire fn to use today/Yesterday words and date formats from the config per source and not global
-	#[allow(dead_code)]
-	fn parse_pretty_date(mut date_str: &str) -> Result<DateTime<Utc>> {
-		enum DateTimeKind {
-			Today,
-			Yesterday,
-			Other,
-		}
-
-		// TODO: properly parse different languages
-		const TODAY_WORDS: &[&str] = &["Today", "Heute", "Сегодня"];
-		const YESTERDAY_WORDS: &[&str] = &["Yesterday", "Gestern", "Вчера"];
-
-		date_str = date_str.trim();
-		let mut datetime_kind = DateTimeKind::Other;
-
-		for w in TODAY_WORDS {
-			if date_str.starts_with(w) {
-				date_str = &date_str[w.len()..];
-				datetime_kind = DateTimeKind::Today;
-			}
-		}
-
-		for w in YESTERDAY_WORDS {
-			if date_str.starts_with(w) {
-				date_str = &date_str[w.len()..];
-				datetime_kind = DateTimeKind::Yesterday;
-			}
-		}
-
-		date_str = date_str.trim_matches(',');
-		date_str = date_str.trim();
-
-		Ok(match datetime_kind {
-			DateTimeKind::Today => {
-				let time = NaiveTime::parse_from_str(date_str, "%H:%M")?;
-				Local::today().and_time(time).unwrap().into() // unwrap NOTE: no idea why it returns an option so I'll just assume it's safe and hope for the best
-			}
-			DateTimeKind::Yesterday => {
-				let time = NaiveTime::parse_from_str(date_str, "%H:%M")?;
-				Local::today().pred().and_time(time).unwrap().into() // unwrap NOTE: same as above
-			}
-			DateTimeKind::Other => Utc
-				.from_local_datetime(
-					&NaiveDate::parse_from_str(date_str, "%d.%m.%Y")?.and_hms(0, 0, 0),
-				)
-				.unwrap(), // unwrap NOTE: same as above
-		})
-	}
+	Url::try_from(link.as_str())
+		.map_err(|e| Error::HtmlParse("The found link is not a valid url", Some(Box::new(e))))
 }
 
-// // TODO: mb move to source and make it generic for every source?
-// #[derive(Debug)]
-// enum ArticleId {
-// 	String(String),
-// 	Date(DateTime<Utc>),
-// }
+fn extract_id(item: &impl QueryBuilderExt, idq: &IdQuery) -> Result<String> {
+	let id_str = extract_data(&mut find_chain(item, &idq.inner.query), &idq.inner)
+		.ok_or(Error::HtmlParse("id not found", None))?
+		.trim()
+		.to_owned();
+
+	Ok(match &idq.kind {
+		IdQueryKind::String => id_str,
+		IdQueryKind::Date => {
+			todo!()
+			// ArticleId::Date(match parse_pretty_date(&id_str) {
+			// 	Ok(d) => d,
+			// 	Err(e) if matches!(e, Error::InvalidDateTimeFormat(_)) => {
+			// 		return None
+			// 	}
+			// 	Err(e) => return Some(Err(e)),
+			// })
+		}
+	})
+}
+
+fn extract_body(item: &impl QueryBuilderExt, textq: &[TextQuery]) -> String {
+	textq
+		.iter()
+		.filter_map(|x| {
+			extract_data(&mut find_chain(item, &x.inner.query), &x.inner).map(|s| {
+				let mut s = s.trim().to_string();
+				if let Some(prepend) = x.prepend.as_deref() {
+					s.insert_str(0, prepend);
+				}
+
+				s
+			})
+		})
+		.collect::<Vec<_>>()
+		.join("\n\n")
+}
+
+fn extract_img(item: &impl QueryBuilderExt, imgq: Option<&ImageQuery>) -> Result<Option<Url>> {
+	imgq.and_then(|img_query| {
+		let mut img_url = match extract_data(
+			&mut find_chain(item, &img_query.inner.inner.query), // TODO: check iterator not empty
+			&img_query.inner.inner,                              // TODO: make less fugly
+		) {
+			Some(s) => s.trim().to_owned(),
+			None => {
+				if img_query.optional {
+					tracing::trace!(
+						"Found no image for the provided query but it's optional, skipping..."
+					);
+					return None;
+				}
+
+				return Some(Err(Error::HtmlParse(
+					"image not found but it's not optional",
+					None,
+				)));
+			}
+		};
+
+		if let Some(prepend) = &img_query.inner.prepend {
+			img_url.insert_str(0, prepend);
+		}
+
+		Some(Url::try_from(img_url.as_str()).map_err(|e| {
+			Error::HtmlParse("the found image url is an invalid url", Some(Box::new(e)))
+		}))
+	})
+	.transpose()
+}
+
+/// Find items matching the query in the provided HTML part
+fn find<'a>(
+	qb: &impl QueryBuilderExt,
+	q: &'a QueryKind,
+	ignore: &'a [QueryKind],
+) -> Box<dyn Iterator<Item = Handle> + 'a> {
+	Box::new(
+		match q {
+			QueryKind::Tag { value } => qb.tag(value.as_str()).find_all(),
+			QueryKind::Class { value } => qb.class(value.as_str()).find_all(),
+			QueryKind::Attr { name, value } => qb.attr(name.as_str(), value.as_str()).find_all(),
+		}
+		.filter(|found| {
+			for i in ignore.iter() {
+				let should_be_ignored = match i {
+					QueryKind::Tag { value: tag } => found.name() == tag,
+					QueryKind::Class { value: class } => {
+						found.get("class").map_or(false, |c| &c == class)
+					}
+					QueryKind::Attr { name, value } => {
+						found.get(name).map_or(false, |a| &a == value)
+					}
+				};
+
+				if should_be_ignored {
+					return false;
+				}
+			}
+
+			true
+		}),
+	)
+}
+
+/// Find all items matching the query in all the provided HTML parts
+fn find_chain<'a>(
+	qb: &impl QueryBuilderExt,
+	qs: &'a [Query],
+) -> Box<dyn Iterator<Item = Handle> + 'a> {
+	// debug_assert!(!qs.is_empty());
+	let mut handles: Option<Box<dyn Iterator<Item = Handle>>> = None;
+
+	for q in qs {
+		handles = Some(match handles {
+			None => find(qb, &q.kind, &q.ignore),
+			Some(handles) => Box::new(handles.flat_map(|hndl| find(&hndl, &q.kind, &q.ignore))),
+		});
+	}
+
+	handles.unwrap() // unwrap NOTE: safe *if* there are more than 0 query kinds which should be always... hopefully... // TODO: make sure there are more than 0 qks
+}
+
+/// Extract data from the provided HTML tags and join them
+fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &QueryData) -> Option<String> {
+	// debug_assert!(
+	// 	h.peekable().peek().is_some(),
+	// 	"No HTML tags to extract data from"
+	// );
+
+	let data = h
+		.map(|hndl| match &q.data_location {
+			DataLocation::Text => Some(hndl.text()),
+			DataLocation::Attr { value } => hndl.get(value),
+		})
+		.collect::<Option<Vec<_>>>();
+
+	data.map(|s| s.join("\n\n"))
+}
+
+// TODO: rewrite the entire fn to use today/Yesterday words and date formats from the config per source and not global
+#[allow(dead_code)]
+fn parse_pretty_date(mut date_str: &str) -> Result<DateTime<Utc>> {
+	enum DateTimeKind {
+		Today,
+		Yesterday,
+		Other,
+	}
+
+	// TODO: properly parse different languages
+	const TODAY_WORDS: &[&str] = &["Today", "Heute", "Сегодня"];
+	const YESTERDAY_WORDS: &[&str] = &["Yesterday", "Gestern", "Вчера"];
+
+	date_str = date_str.trim();
+	let mut datetime_kind = DateTimeKind::Other;
+
+	for w in TODAY_WORDS {
+		if date_str.starts_with(w) {
+			date_str = &date_str[w.len()..];
+			datetime_kind = DateTimeKind::Today;
+		}
+	}
+
+	for w in YESTERDAY_WORDS {
+		if date_str.starts_with(w) {
+			date_str = &date_str[w.len()..];
+			datetime_kind = DateTimeKind::Yesterday;
+		}
+	}
+
+	date_str = date_str.trim_matches(',');
+	date_str = date_str.trim();
+
+	Ok(match datetime_kind {
+		DateTimeKind::Today => {
+			let time = NaiveTime::parse_from_str(date_str, "%H:%M")?;
+			Local::today().and_time(time).unwrap().into() // unwrap NOTE: no idea why it returns an option so I'll just assume it's safe and hope for the best
+		}
+		DateTimeKind::Yesterday => {
+			let time = NaiveTime::parse_from_str(date_str, "%H:%M")?;
+			Local::today().pred().and_time(time).unwrap().into() // unwrap NOTE: same as above
+		}
+		DateTimeKind::Other => Utc
+			.from_local_datetime(&NaiveDate::parse_from_str(date_str, "%d.%m.%Y")?.and_hms(0, 0, 0))
+			.unwrap(), // unwrap NOTE: same as above
+	})
+}
