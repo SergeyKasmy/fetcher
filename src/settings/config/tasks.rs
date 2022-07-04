@@ -93,6 +93,8 @@ pub async fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<(Strin
 
 	let name = name(&path).ok_or_else(|| Error::BadPath(path.clone()))?;
 	let task = task.parse(&name, settings).await?;
+
+	// TODO: move that check up above and skip all parsing if the task's disabled to avoid terminating if a disabled task's config is corrupted
 	if task.disabled {
 		tracing::trace!("Task is disabled, skipping...");
 		return Ok(None);

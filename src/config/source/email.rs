@@ -22,7 +22,7 @@ use crate::{
 };
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(deny_unknown_fields)]
+// #[serde(deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 pub(crate) struct Email {
 	imap: String,
 	email: String,

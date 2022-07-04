@@ -32,6 +32,9 @@ pub(crate) struct QueryData {
 }
 
 #[derive(Debug)]
+pub(crate) struct TitleQuery(pub(crate) QueryData);
+
+#[derive(Debug)]
 pub(crate) struct TextQuery {
 	pub(crate) prepend: Option<String>,
 	pub(crate) inner: QueryData,
@@ -50,7 +53,7 @@ pub(crate) struct IdQuery {
 }
 
 #[derive(Debug)]
-pub(crate) struct LinkQuery {
+pub(crate) struct UrlQuery {
 	pub(crate) prepend: Option<String>,
 	pub(crate) inner: QueryData,
 }
@@ -58,5 +61,5 @@ pub(crate) struct LinkQuery {
 #[derive(Debug)]
 pub(crate) struct ImageQuery {
 	pub(crate) optional: bool,
-	pub(crate) inner: LinkQuery,
+	pub(crate) url: UrlQuery,
 }

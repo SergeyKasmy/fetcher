@@ -34,7 +34,7 @@ impl Debug for Link {
 
 /// Either embed the link into the title or put it as a separate "Link" button at the botton of the message.
 /// `PreferTitle` falls back to `Bottom` if Message.title is None
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum LinkLocation {
 	PreferTitle,
 	Bottom,

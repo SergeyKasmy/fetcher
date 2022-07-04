@@ -16,7 +16,8 @@ use crate::error::Result;
 use crate::sink;
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+// #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub(crate) enum Sink {
 	Telegram(Telegram),
 	Stdout,

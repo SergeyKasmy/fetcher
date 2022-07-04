@@ -16,21 +16,21 @@ use soup::{NodeExt, QueryBuilderExt, Soup};
 use url::Url;
 
 use self::query::{
-	DataLocation, IdQuery, IdQueryKind, ImageQuery, LinkQuery, Query, QueryData, QueryKind,
-	TextQuery,
+	DataLocation, IdQuery, IdQueryKind, ImageQuery, Query, QueryData, QueryKind, TextQuery,
+	TitleQuery, UrlQuery,
 };
 use crate::entry::Entry;
 use crate::error::{Error, Result};
-use crate::sink::message::{Link, LinkLocation};
+use crate::sink::message::Link;
 use crate::sink::{Media, Message};
 
 #[derive(Debug)]
 pub struct Html {
 	pub(crate) itemq: Vec<Query>,
-	// TODO: make a separate title_query: Option<TextQuery> and allow to put a link into it
+	pub(crate) titleq: Option<TitleQuery>,
 	pub(crate) textq: Vec<TextQuery>, // allow to find multiple paragraphs and join them together
 	pub(crate) idq: IdQuery,
-	pub(crate) linkq: LinkQuery,
+	pub(crate) linkq: UrlQuery,
 	pub(crate) imgq: Option<ImageQuery>,
 }
 
@@ -44,19 +44,20 @@ impl Html {
 
 		let mut entries = items
 			.map(|item| -> Result<Entry> {
-				let link = extract_link(&item, &self.linkq)?;
 				let id = extract_id(&item, &self.idq)?;
+				let url = extract_url(&item, &self.linkq)?;
+				let title = extract_title(&item, self.titleq.as_ref());
 				let body = extract_body(&item, &self.textq);
 				let img = extract_img(&item, self.imgq.as_ref())?;
 
 				Ok(Entry {
 					id,
 					msg: Message {
-						title: None,
+						title,
 						body,
 						link: Some(Link {
-							url: link,
-							loc: LinkLocation::Bottom,
+							url,
+							loc: crate::sink::message::LinkLocation::Bottom,
 						}),
 						media: img.map(|url| vec![Media::Photo(url)]),
 					},
@@ -70,13 +71,13 @@ impl Html {
 		Ok(entries)
 	}
 }
-fn extract_link(item: &impl QueryBuilderExt, linkq: &LinkQuery) -> Result<Url> {
-	let mut link = extract_data(&mut find_chain(item, &linkq.inner.query), &linkq.inner)
-		.ok_or(Error::HtmlParse("link not found", None))?
+fn extract_url(item: &impl QueryBuilderExt, urlq: &UrlQuery) -> Result<Url> {
+	let mut link = extract_data(&mut find_chain(item, &urlq.inner.query), &urlq.inner)
+		.ok_or(Error::HtmlParse("url not found", None))?
 		.trim()
 		.to_owned();
 
-	if let Some(prepend) = &linkq.prepend {
+	if let Some(prepend) = &urlq.prepend {
 		link.insert_str(0, prepend);
 	}
 
@@ -105,6 +106,10 @@ fn extract_id(item: &impl QueryBuilderExt, idq: &IdQuery) -> Result<String> {
 	})
 }
 
+fn extract_title(item: &impl QueryBuilderExt, titleq: Option<&TitleQuery>) -> Option<String> {
+	titleq.and_then(|titleq| extract_data(&mut find_chain(item, &titleq.0.query), &titleq.0))
+}
+
 fn extract_body(item: &impl QueryBuilderExt, textq: &[TextQuery]) -> String {
 	textq
 		.iter()
@@ -125,8 +130,8 @@ fn extract_body(item: &impl QueryBuilderExt, textq: &[TextQuery]) -> String {
 fn extract_img(item: &impl QueryBuilderExt, imgq: Option<&ImageQuery>) -> Result<Option<Url>> {
 	imgq.and_then(|img_query| {
 		let mut img_url = match extract_data(
-			&mut find_chain(item, &img_query.inner.inner.query), // TODO: check iterator not empty
-			&img_query.inner.inner,                              // TODO: make less fugly
+			&mut find_chain(item, &img_query.url.inner.query), // TODO: check iterator not empty
+			&img_query.url.inner,                              // TODO: make less fugly
 		) {
 			Some(s) => s.trim().to_owned(),
 			None => {
@@ -144,7 +149,7 @@ fn extract_img(item: &impl QueryBuilderExt, imgq: Option<&ImageQuery>) -> Result
 			}
 		};
 
-		if let Some(prepend) = &img_query.inner.prepend {
+		if let Some(prepend) = &img_query.url.prepend {
 			img_url.insert_str(0, prepend);
 		}
 

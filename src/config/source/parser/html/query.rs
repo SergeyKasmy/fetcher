@@ -11,7 +11,8 @@ use serde::{Deserialize, Serialize};
 use crate::source;
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+// #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub(crate) enum QueryKind {
 	Tag { value: String },
 	Class { value: String },
@@ -31,7 +32,8 @@ impl QueryKind {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+// #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub(crate) enum DataLocation {
 	Text,
 	Attr { value: String },
@@ -83,6 +85,15 @@ impl QueryData {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+pub(crate) struct TitleQuery(pub(crate) QueryData);
+
+impl TitleQuery {
+	pub(crate) fn parse(self) -> source::parser::html::query::TitleQuery {
+		source::parser::html::query::TitleQuery(self.0.parse())
+	}
+}
+
+#[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct TextQuery {
 	pub(crate) prepend: Option<String>,
 	#[serde(flatten)]
@@ -99,7 +110,8 @@ impl TextQuery {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
+// #[serde(rename_all = "snake_case", deny_unknown_fields)]	// TODO: check if deny_unknown_fields can be used here, esp with flatten
+#[serde(rename_all = "snake_case")]
 pub(crate) enum IdQueryKind {
 	String,
 	Date,
@@ -131,15 +143,15 @@ impl IdQuery {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct LinkQuery {
+pub(crate) struct UrlQuery {
 	pub(crate) prepend: Option<String>,
 	#[serde(flatten)]
 	pub(crate) inner: QueryData,
 }
 
-impl LinkQuery {
-	pub(crate) fn parse(self) -> source::parser::html::query::LinkQuery {
-		source::parser::html::query::LinkQuery {
+impl UrlQuery {
+	pub(crate) fn parse(self) -> source::parser::html::query::UrlQuery {
+		source::parser::html::query::UrlQuery {
 			prepend: self.prepend,
 			inner: self.inner.parse(),
 		}
@@ -150,14 +162,14 @@ impl LinkQuery {
 pub(crate) struct ImageQuery {
 	optional: Option<bool>,
 	#[serde(flatten)]
-	inner: LinkQuery,
+	url: UrlQuery,
 }
 
 impl ImageQuery {
 	pub(crate) fn parse(self) -> source::parser::html::query::ImageQuery {
 		source::parser::html::query::ImageQuery {
 			optional: self.optional.unwrap_or(false),
-			inner: self.inner.parse(),
+			url: self.url.parse(),
 		}
 	}
 }
