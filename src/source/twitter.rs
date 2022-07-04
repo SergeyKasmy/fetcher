@@ -12,7 +12,6 @@ use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 use crate::entry::Entry;
 use crate::error::Result;
 use crate::read_filter::ReadFilter;
-use crate::sink::message::{Link, LinkLocation};
 use crate::sink::Media;
 use crate::sink::Message;
 
@@ -49,9 +48,8 @@ impl Twitter {
 		tracing::debug!("Getting tweets");
 		if self.token.is_none() {
 			self.token = Some(
-				bearer_token(&KeyPair::new(self.api_key.clone(), self.api_secret.clone())).await?
-					// .await
-					// .map_err(Error::TwitterAuth)?,
+				bearer_token(&KeyPair::new(self.api_key.clone(), self.api_secret.clone())).await?, // .await
+				                                                                                   // .map_err(Error::TwitterAuth)?,
 			);
 		}
 		// unwrap NOTE: initialized just above, should be safe
@@ -82,8 +80,8 @@ impl Twitter {
 					msg: Message {
 						title: None,
 						body: tweet.text.clone(),
-						link: Some(Link {
-							url: format!(
+						link: Some(
+							format!(
 								"https://twitter.com/{handle}/status/{id}",
 								handle = self.handle,
 								id = tweet.id
@@ -91,8 +89,7 @@ impl Twitter {
 							.as_str()
 							.try_into()
 							.unwrap(),
-							loc: LinkLocation::Bottom,
-						}),
+						),
 						media: tweet.entities.media.as_ref().and_then(|x| {
 							x.iter()
 								.map(|x| match x.media_type {

@@ -6,28 +6,33 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-mod telegram;
-
 use serde::{Deserialize, Serialize};
 
-use self::telegram::Telegram;
-use super::DataSettings;
-use crate::error::Result;
-use crate::sink;
+use crate::source;
 
+pub mod html;
+pub mod rss;
+
+use self::html::Html;
+
+#[allow(clippy::large_enum_variant)] // this enum is very short-lived, I don't think boxing is worth the trouble
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum Sink {
-	Telegram(Telegram),
-	Stdout,
+pub(crate) enum Parser {
+	Html(Html),
+	Rss,
+
+	Caps,
 }
 
-impl Sink {
-	pub(crate) fn parse(self, settings: &DataSettings) -> Result<sink::Sink> {
-		Ok(match self {
-			Sink::Telegram(x) => sink::Sink::Telegram(x.parse(settings)?),
-			Sink::Stdout => sink::Sink::Stdout(sink::Stdout {}),
-		})
+impl Parser {
+	pub(crate) fn parse(self) -> source::parser::Parser {
+		match self {
+			Parser::Html(x) => source::parser::Parser::Html(x.parse()),
+			Parser::Rss => source::parser::Parser::Rss(source::parser::Rss {}),
+
+			Parser::Caps => source::parser::Parser::Caps(source::parser::Caps {}),
+		}
 	}
 }

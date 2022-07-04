@@ -8,54 +8,58 @@
 
 // TODO: create a type that wraps the Error enum with the name of the task at the task level
 
-use std::{error::Error as StdError, io, path::PathBuf};
-
-type BoxError = Box<dyn StdError + Send + Sync>;
+use std::{error::Error as StdError, fmt, io, path::PathBuf};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+pub(crate) type BoxError = Box<dyn StdError + Send + Sync>;
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-	// disk io stuff
+	#[error("Error reading {1}")]
+	LocalIoRead(#[source] io::Error, PathBuf),
+
+	#[error(
+		"Bad path {0}. It probably contains bad/non-unicode characters or just isn't compatible"
+	)]
+	BadPath(PathBuf),
+
+	// TODO: should these io errors even be in the library crate if config parsing is done in the binary?
+	#[error("Error writing into {1}")]
+	LocalIoWrite(#[source] io::Error, PathBuf),
+
+	#[error("Error saving read filter data")]
+	LocalIoWriteReadFilterData(#[source] io::Error),
+
 	#[error("XDG error")]
 	Xdg(#[from] xdg::BaseDirectoriesError),
 
-	#[error("Inaccessible config file ({1})")]
-	InaccessibleConfig(#[source] io::Error, PathBuf),
+	#[error("File {1} is corrupted")]
+	CorruptedFile(#[source] serde_json::error::Error, PathBuf),
 
-	#[error("Inaccessible data file ({1})")]
-	InaccessibleData(#[source] io::Error, PathBuf),
-
-	#[error("Corrupted data file ({1})")]
-	CorruptedData(#[source] serde_json::error::Error, PathBuf),
-
-	#[error("Error writing into {1}")]
-	Write(#[source] io::Error, PathBuf),
-
-	#[error("Invalid config {1}")]
-	InvalidConfig(#[source] figment::error::Error, PathBuf),
+	#[error("Config {1} has invalid format")]
+	InvalidConfigFormat(#[source] figment::error::Error, PathBuf),
 
 	#[error("Incompatible config values in {1}: {0}")]
 	IncompatibleConfigValues(&'static str, PathBuf),
 
-	#[error("Template {0} not found")]
-	TemplateNotFound(PathBuf),
+	#[error("Template {0} not found (from {1})")]
+	TemplateNotFound(String, PathBuf),
 
-	// stdin & stdout stuff
+	#[error("{0} hasn't been set up and thus can't be used")]
+	ServiceNotReady(String), // user didn't setup auth/other data for a service before using it
+
 	#[error("stdin error")]
 	Stdin(#[source] io::Error),
+
 	#[error("stdout error")]
 	Stdout(#[source] io::Error),
 
-	// network stuff
-	#[error("Network error")]
-	Network(#[source] BoxError),
+	#[error("No internet connection")]
+	NoConnection(#[source] BoxError),
 
 	#[error("Google auth error: {0}")]
 	GoogleAuth(String),
-
-	#[error("Email parse error")]
-	EmailParse(#[from] mailparse::MailParseError),
 
 	#[error("IMAP error")]
 	Email(#[source] Box<imap::Error>), // box to avoid big uneven enum size
@@ -66,29 +70,38 @@ pub enum Error {
 	#[error("RSS error")]
 	Rss(#[from] rss::Error),
 
-	#[error("HTML error: {0}")]
-	Html(&'static str), // TODO: add more context
+	#[error("Error parsing HTML: {0} ({1:?})")]
+	HtmlParse(
+		&'static str,
+		/* additional info */ Option<Box<dyn fmt::Debug + Send + Sync>>,
+	),
 
-	#[error("Telegram request error\nMessage: {1:?}")]
+	#[error("Telegram error\nMessage: {1:?}")]
 	Telegram(
 		#[source] teloxide::RequestError,
-		Box<dyn std::fmt::Debug + Send + Sync>,
+		Box<dyn fmt::Debug + Send + Sync>,
 	),
+
+	#[error("Error parsing email")]
+	EmailParse(#[from] mailparse::MailParseError),
 
 	#[error("Invalid DateTime format")]
 	InvalidDateTimeFormat(#[from] chrono::format::ParseError),
+
+	#[error("Other error: {0}")]
+	Other(String),
 }
 
 impl From<reqwest::Error> for Error {
 	fn from(e: reqwest::Error) -> Self {
-		Self::Network(Box::new(e))
+		Self::NoConnection(Box::new(e))
 	}
 }
 
 impl From<imap::Error> for Error {
 	fn from(e: imap::Error) -> Self {
 		match e {
-			imap::Error::Io(io_err) => Error::Network(Box::new(io_err)),
+			imap::Error::Io(io_err) => Error::NoConnection(Box::new(io_err)),
 			e => Self::Email(Box::new(e)),
 		}
 	}
@@ -97,7 +110,7 @@ impl From<imap::Error> for Error {
 impl From<egg_mode::error::Error> for Error {
 	fn from(e: egg_mode::error::Error) -> Self {
 		match e {
-			egg_mode::error::Error::NetError(e) => Self::Network(Box::new(e)),
+			egg_mode::error::Error::NetError(e) => Self::NoConnection(Box::new(e)),
 			e => Self::Twitter(e),
 		}
 	}

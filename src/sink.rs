@@ -7,9 +7,11 @@
  */
 
 pub mod message;
-mod telegram;
+pub(crate) mod stdout;
+pub mod telegram;
 
 pub use message::{Media, Message};
+pub use stdout::Stdout;
 pub use telegram::Telegram;
 
 use crate::error::Result;
@@ -17,13 +19,15 @@ use crate::error::Result;
 #[derive(Debug)]
 pub enum Sink {
 	Telegram(Telegram),
+	Stdout(Stdout),
 }
 
 impl Sink {
 	#[allow(clippy::missing_errors_doc)] // TODO
-	pub async fn send(&self, message: Message) -> Result<()> {
+	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<()> {
 		match self {
-			Self::Telegram(t) => t.send(message).await,
+			Self::Telegram(t) => t.send(message, tag).await,
+			Self::Stdout(s) => s.send(message, tag).await,
 		}
 	}
 }

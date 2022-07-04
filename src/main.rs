@@ -6,41 +6,43 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+// TODO: proper argument parser. Something like clap or argh or something
+
+mod settings;
+
+use fetcher::error::Result;
 use fetcher::{
-	config,
+	config::{self, DataSettings},
 	error::Error,
-	error::Result,
 	run_task,
-	settings::{
-		self, generate_google_oauth2, generate_google_password, generate_telegram,
-		generate_twitter_auth,
-	},
 	task::Tasks,
-};
-use figment::{
-	providers::{Format, Yaml},
-	Figment,
 };
 use futures::future::join_all;
 use futures::StreamExt;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
+use tokio::time::sleep;
 use tokio::{select, sync::watch::Receiver};
 use tracing::Instrument;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> color_eyre::Result<()> {
 	tracing_subscriber::fmt()
+		.pretty()
 		.with_env_filter(
 			EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::from("fetcher=info")), // TODO: that doesn't look right. Isn't there a better way to use info by default?
 		)
-		.without_time()
+		// .without_time()
 		.init();
+	color_eyre::install()?;
 
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
@@ -58,75 +60,48 @@ async fn main() -> anyhow::Result<()> {
 
 	// TODO: add option to send to optional global debug chat to test first
 	match std::env::args().nth(1).as_deref() {
-		Some("--gen-secret-google-oauth2") => generate_google_oauth2().await?,
-		Some("--gen-secret-google-password") => generate_google_password()?,
-		Some("--gen-secret-telegram") => generate_telegram()?,
-		Some("--gen-secret-twitter") => generate_twitter_auth()?,
-		None => run().await?,
+		Some("--gen-secret-google-oauth2") => settings::data::generate_google_oauth2().await?,
+		Some("--gen-secret-google-password") => settings::data::generate_google_password().await?,
+		Some("--gen-secret-telegram") => settings::data::generate_telegram().await?,
+		Some("--gen-secret-twitter") => settings::data::generate_twitter_auth().await?,
+
+		Some("--once") => run(true).await?,
+		None => run(false).await?,
 		Some(_) => panic!("error"),
 	};
 
 	Ok(())
 }
 
-async fn run() -> Result<()> {
-	let tasks = settings::config::tasks()?
-		.into_iter()
-		.map(|(contents, path)| {
-			tracing::debug!("Found task: {path:?}");
-			let templates: config::Templates = Figment::new()
-				.merge(Yaml::string(&contents))
-				.extract()
-				.map_err(|e| Error::InvalidConfig(e, path.clone()))?;
-
-			let mut conf = Figment::new();
-
-			if let Some(templates) = templates.templates {
-				for tmpl_path in templates {
-					let (tmpl, tmpl_full_path) = settings::config::template(&tmpl_path)?;
-
-					tracing::debug!("Using template: {:?}", tmpl_full_path);
-
-					conf = conf.merge(Yaml::string(&tmpl));
-				}
-			}
-
-			let task: config::Task = conf
-				.merge(Yaml::string(&contents))
-				.extract()
-				.map_err(|e| Error::InvalidConfig(e, path.clone()))?;
-
-			Ok((
-				path.file_stem()
-					.expect("Somehow the config file found before wasn't an actual config file after all...")
-					.to_str()
-					.expect("Config file name isn't a valid unicode")
-					.to_string(),
-				task.parse(&path)?,
-			))
-		})
-		.filter(|task_res| {
-			// ignore the task only if it's not an error and is marked as disabled
-			task_res
-				.as_ref()
-				.map(|(_, task)| !task.disabled)
-				.unwrap_or(true)
-		})
-		.collect::<Result<Tasks>>()?;
+async fn run(once: bool) -> Result<()> {
+	let tasks = settings::config::tasks::get_all(&DataSettings {
+		twitter_auth: settings::data::twitter().await?,
+		google_oauth2: settings::data::google_oauth2().await?,
+		google_password: settings::data::google_password().await?,
+		telegram: settings::data::telegram().await?,
+		read_filter: Box::new(
+			|name: String,
+			 default: Option<fetcher::read_filter::Kind>|
+			 -> Pin<Box<dyn Future<Output = Result<Option<fetcher::read_filter::ReadFilter>>>>> {
+				Box::pin(async move { settings::read_filter::get(&name, default).await })
+			},
+		),
+	})
+	.await?;
 
 	if tasks.is_empty() {
 		tracing::warn!("No enabled tasks provided");
 		return Ok(());
-	} else {
-		tracing::debug!(
-			"Found {num} enabled tasks: {names:?}",
-			num = tasks.len(),
-			names = tasks
-				.iter()
-				.map(|(name, _)| name.as_str())
-				.collect::<Vec<_>>(),
-		);
 	}
+
+	tracing::debug!(
+		"Found {num} enabled tasks: {names:?}",
+		num = tasks.len(),
+		names = tasks
+			.iter()
+			.map(|(name, _)| name.as_str())
+			.collect::<Vec<_>>(),
+	);
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
 
@@ -142,8 +117,9 @@ async fn run() -> Result<()> {
 			1, /* exit status */
 			Arc::clone(&sig_term_now),
 		)
-		.expect("Error registering signal handler");
+		.expect("Error registering signal handler"); // unwrap NOTE: crash if even signal handlers can't be set up
 
+		// unwrap NOTE: crash if even signal handlers can't be set up
 		flag::register(*s, Arc::clone(&sig_term_now)).expect("Error registering signal handler");
 	}
 
@@ -159,7 +135,7 @@ async fn run() -> Result<()> {
 		Ok::<(), Error>(())
 	});
 
-	run_tasks(tasks, shutdown_rx).await?;
+	run_tasks(tasks, shutdown_rx, once).await?;
 
 	sig_handle.close(); // TODO: figure out wtf this is and why
 	sig_task
@@ -168,60 +144,101 @@ async fn run() -> Result<()> {
 	Ok(())
 }
 
-async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>) -> Result<()> {
+async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Result<()> {
 	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
-		if t.disabled {
-			continue;
-		}
-
+		let name2 = name.clone(); // TODO: ehhh. Is there a way to avoid cloning?
 		let mut shutdown_rx = shutdown_rx.clone();
 
-		// TODO: create a tracing span for each task with task name param
-		let fut = tokio::spawn(async move {
-			async {
-				select! {
-					res = run_task(&name, &mut t) => {
-						if let Err(e) = res {
-							// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
-							use fetcher::sink::Telegram;
-							use fetcher::sink::Message;
-							use fetcher::settings;
+		let fut = tokio::spawn(
+			async move {
+				let res: Result<()> = select! {
+					res = async {
+						loop {
+							run_task(&mut t).await?;
 
-							let err_str = format!("{:?}", anyhow::anyhow!(e));
-							tracing::error!(%err_str);
-							if !cfg!(debug_assertions) {
-								let send_job = async {
-									let bot = settings::telegram()?;
-									let msg = Message {
-										body: err_str,
-										..Default::default()
-									};
-									Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned()).send(msg).await?;
-									Ok::<(), Error>(())
-								};
-								if let Err(e) = send_job.await {
-									tracing::error!("Unable to send error report to the admin: {:?}", anyhow::anyhow!(e));
-								}
+							if once {
+								break;
 							}
+
+							tracing::debug!("Sleeping for {time}m", time = t.refresh);
+							sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
+						}
+
+						Ok(())
+					} => res,
+					_ = shutdown_rx.changed() => Ok(()),
+				};
+
+				// production error reporting
+				if let Err(e) = &res {
+					if !cfg!(debug_assertions) {
+						// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
+						use fetcher::sink::telegram::LinkLocation;
+						use fetcher::sink::Message;
+						use fetcher::sink::Telegram;
+
+						// let err_str = format!("{:?}", color_eyre::eyre::eyre!(e));
+						let err_str = format!("{:?}", e); // TODO: make it pretier like eyre
+						tracing::error!("{}", err_str);
+						let send_job = async {
+							let bot = match settings::data::telegram().await? {
+								Some(b) => b,
+								None => {
+									let s = "Unable to send error report to the admin: telegram bot token is not provided".to_owned();
+									tracing::error!(%s);
+									return Err(Error::Other(s)); // TODO: this kinda sucks
+								}
+							};
+							let msg = Message {
+								body: err_str,
+								..Default::default()
+							};
+							Telegram::new(
+								bot,
+								std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID")
+									.parse::<i64>()
+									.expect("DEBUG_ADMIN_CHAT_ID is not a valid i64"),
+								LinkLocation::default(),
+							)
+							.send(msg, Some(&name))
+							.await?;
+							Ok::<(), Error>(())
+						};
+						if let Err(e) = send_job.await {
+							tracing::error!(
+								"Unable to send error report to the admin: {:?}",
+								// color_eyre::eyre::eyre!(e)
+								e
+							);
 						}
 					}
-					_ = shutdown_rx.changed() => (),
 				}
 
 				tracing::info!("Shutting down...");
-				#[allow(unreachable_code)]
-				Ok::<(), Error>(())
+				res
 			}
-			.instrument(tracing::info_span!("task", name = name.as_str()))
-			.await
-		});
+			.instrument(tracing::info_span!("task", name = name2.as_str())),
+		);
 
 		running_tasks.push(flatten_task(fut));
 	}
 
-	let _ = join_all(running_tasks).await;
-	Ok(())
+	// print every error but return only the first
+	let mut first_err = None;
+	for res in join_all(running_tasks).await {
+		if let Err(e) = res {
+			tracing::error!("{:?}", e);
+			if first_err.is_none() {
+				first_err = Some(e);
+			}
+		}
+	}
+
+	match first_err {
+		None => Ok(()),
+		Some(e) => Err(e),
+	}
 }
 
 async fn flatten_task<T>(h: JoinHandle<Result<T>>) -> Result<T> {

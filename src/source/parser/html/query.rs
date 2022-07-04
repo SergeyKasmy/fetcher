@@ -8,15 +8,15 @@
 
 #[derive(Clone, Debug)]
 pub(crate) enum QueryKind {
-	Tag { value: String },
-	Class { value: String },
+	Tag(String),
+	Class(String),
 	Attr { name: String, value: String },
 }
 
 #[derive(Debug)]
 pub(crate) enum DataLocation {
 	Text,
-	Attr { value: String },
+	Attr(String),
 }
 
 #[derive(Debug)]
@@ -30,6 +30,9 @@ pub(crate) struct QueryData {
 	pub(crate) query: Vec<Query>,
 	pub(crate) data_location: DataLocation,
 }
+
+#[derive(Debug)]
+pub(crate) struct TitleQuery(pub(crate) QueryData);
 
 #[derive(Debug)]
 pub(crate) struct TextQuery {
@@ -50,7 +53,7 @@ pub(crate) struct IdQuery {
 }
 
 #[derive(Debug)]
-pub(crate) struct LinkQuery {
+pub(crate) struct UrlQuery {
 	pub(crate) prepend: Option<String>,
 	pub(crate) inner: QueryData,
 }
@@ -58,5 +61,5 @@ pub(crate) struct LinkQuery {
 #[derive(Debug)]
 pub(crate) struct ImageQuery {
 	pub(crate) optional: bool,
-	pub(crate) inner: LinkQuery,
+	pub(crate) url: UrlQuery,
 }

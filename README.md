@@ -32,7 +32,7 @@ The final binary will be located in `target/release/fetcher` which you can then 
 
 ## Setup
 
-The main unit of execution in fetcher is a task. A task consists of a source where to fetch some kind of data from and a sink where to send that data to. To create a task, create a `foo.yaml` file in `$XDG_CONFIG_HOME/fetcher/tasks` or `/etc/xdg/fetcher/tasks` where `foo` is the name you want that task to have. A proper task config file looks something like this:
+The main unit of execution in fetcher is a task. A task consists of a source where to fetch some kind of data from, (a) parser(s) which process the data, and a sink where to send that data to. To create a task, create a `foo.yaml` file in `$XDG_CONFIG_HOME/fetcher/tasks` or `/etc/xdg/fetcher/tasks` where `foo` is the name you want that task to have. A proper task config file looks something like this:
 
 ```yaml
 # optional
@@ -41,25 +41,32 @@ disabled: true
 refresh: 30	 # in minutes
 read_filter_type: newer_than_read
 source:
-  type: rss
-  url: <your_rss_feed_url>
+  http:
+	url: <your_rss_feed_url>
+parse:
+  - rss
 sink:
-  type: telegram
-  chat_id: <your_telegram_chat_id>
+  telegram:
+	chat_id: <your_telegram_chat_id>
 ```
 
 Currently available source types:
 
-* rss
 * email
 * twitter
+* http
+
+parser types:
+
 * html
+* rss
 
 sink types:
 
 * telegram
+* stdout
 
-Since a lot of these fields are dependent on the particular source and sink types and since fetcher is in heavy development at the moment, there isn't any template or example config files but fetcher will notify you if there are missing fields and what values they can have, so it's not that difficult to make one by trial and error even without reading the source code.
+Since a lot of these fields are dependent on the particular source, parser, and sink types and since fetcher is in heavy development at the moment, there isn't any template or example config files but fetcher will notify you if there are missing fields and what values they can have, so it's not that difficult to make one by trial and error even without reading the source code.
 
 ### Login credentials
 

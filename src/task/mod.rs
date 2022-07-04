@@ -6,19 +6,11 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use serde::{Deserialize, Serialize};
-use url::Url;
+#[allow(clippy::module_inception)]
+pub mod task;
+pub mod template;
 
-use crate::source;
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct Rss {
-	url: Url,
-}
-
-impl Rss {
-	pub(crate) fn parse(self) -> source::Rss {
-		source::Rss::new(self.url.to_string())
-	}
-}
+pub use self::{
+	task::{Task, Tasks},
+	template::Template,
+};

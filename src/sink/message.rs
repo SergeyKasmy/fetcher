@@ -6,32 +6,39 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+use std::fmt::Debug;
+
 use url::Url;
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct Message {
 	pub title: Option<String>,
 	pub body: String,
-	pub link: Option<Link>,
+	pub link: Option<Url>,
 	pub media: Option<Vec<Media>>,
 }
 
-#[derive(Debug)]
-pub struct Link {
-	pub url: Url,
-	pub loc: LinkLocation,
+impl Debug for Message {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Message")
+			.field("title", &self.title)
+			.field("body", &self.body)
+			.field("link", &self.link.as_ref().map(Url::as_str))
+			.field("media", &self.media)
+			.finish()
+	}
 }
 
-/// Either embed the link into the title or put it as a separate "Link" button at the botton of the message.
-/// `PreferTitle` falls back to `Bottom` if Message.title is None
-#[derive(Debug)]
-pub enum LinkLocation {
-	PreferTitle,
-	Bottom,
-}
-
-#[derive(Debug)]
 pub enum Media {
 	Photo(Url),
 	Video(Url),
+}
+
+impl Debug for Media {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Photo(x) => f.debug_tuple("Photo").field(&x.as_str()).finish(),
+			Self::Video(x) => f.debug_tuple("Video").field(&x.as_str()).finish(),
+		}
+	}
 }

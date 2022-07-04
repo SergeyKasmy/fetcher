@@ -9,15 +9,23 @@
 pub(crate) mod newer;
 pub(crate) mod not_present;
 
+use std::io::Write;
+
 use self::newer::Newer;
 use self::not_present::NotPresent;
+use crate::config;
 use crate::entry::Entry;
-use crate::error::Result;
-use crate::settings;
+use crate::error::{Error, Result};
 
-#[allow(clippy::module_name_repetitions)]
+pub type Writer = Box<dyn Write + Send + Sync>;
+
+pub struct ReadFilter {
+	pub(crate) inner: ReadFilterInner,
+	pub(crate) external_save: Writer,
+}
+
 #[derive(Debug)]
-pub enum ReadFilter {
+pub enum ReadFilterInner {
 	NewerThanLastRead(Newer),
 	NotPresentInReadList(NotPresent),
 }
@@ -29,67 +37,77 @@ pub enum Kind {
 }
 
 impl ReadFilter {
-	// TODO: properly migrate types if the one on the disk is of one type and the provided one is of different type
-	pub(crate) fn read_from_fs(name: String, default_type: Kind) -> Result<Self> {
-		settings::read_filter::get(name).map(|x| {
-			x.unwrap_or_else(|| match default_type {
-				Kind::NewerThanLastRead => ReadFilter::NewerThanLastRead(Newer::default()),
-				Kind::NotPresentInReadList => {
-					ReadFilter::NotPresentInReadList(NotPresent::default())
-				}
-			})
-		})
-	}
+	#[must_use]
+	pub fn new(kind: Kind, external_save: Writer) -> Self {
+		let inner = match kind {
+			Kind::NewerThanLastRead => ReadFilterInner::NewerThanLastRead(Newer::new()),
+			Kind::NotPresentInReadList => ReadFilterInner::NotPresentInReadList(NotPresent::new()),
+		};
 
-	pub(crate) fn delete_from_fs(self) -> Result<()> {
-		settings::read_filter::delete(&self)
-	}
-
-	pub(crate) fn name(&self) -> &str {
-		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
-
-		match self {
-			NewerThanLastRead(x) => &x.name,
-			NotPresentInReadList(x) => &x.name,
+		Self {
+			inner,
+			external_save,
 		}
 	}
 
 	pub(crate) fn last_read(&self) -> Option<&str> {
-		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
-		match &self {
+		match &self.inner {
 			NewerThanLastRead(x) => x.last_read(),
 			NotPresentInReadList(x) => x.last_read(),
 		}
 	}
 
 	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
-		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
-		match &self {
+		match &self.inner {
 			NewerThanLastRead(x) => x.remove_read_from(list),
 			NotPresentInReadList(x) => x.remove_read_from(list),
 		}
 	}
 
-	#[allow(clippy::missing_errors_doc)] // TODO
-	pub(crate) fn mark_as_read(&mut self, id: &str) -> Result<()> {
-		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
+	#[allow(dead_code)] // TODO
+	pub(crate) fn to_kind(&self) -> Kind {
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
-		match self {
+		match &self.inner {
+			NewerThanLastRead(_) => Kind::NewerThanLastRead,
+			NotPresentInReadList(_) => Kind::NotPresentInReadList,
+		}
+	}
+
+	#[allow(clippy::missing_errors_doc)] // TODO
+	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<()> {
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+
+		match &mut self.inner {
 			NewerThanLastRead(x) => x.mark_as_read(id),
 			NotPresentInReadList(x) => x.mark_as_read(id),
 		}
 
-		settings::read_filter::save(self)
-	}
+		match config::read_filter::ReadFilter::unparse(self) {
+			Some(filter_conf) => {
+				let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
 
-	pub(crate) fn to_kind(&self) -> Kind {
-		use ReadFilter::{NewerThanLastRead, NotPresentInReadList};
-
-		match &self {
-			NewerThanLastRead(_) => Kind::NewerThanLastRead,
-			NotPresentInReadList(_) => Kind::NotPresentInReadList,
+				// NOTE: yes, it blocks for a bit but spawning a blocking tokio task is too much of a hastle and a readability concern
+				// to the point that I think it's just not worth it. Maybe there's a better way to avoid blocking without getting hands dirty
+				// with tokio::spawn_blocking() and std::mem::replace() (because the task has to have a 'static lifetime)
+				self.external_save
+					.write_all(s.as_bytes())
+					.map_err(Error::LocalIoWriteReadFilterData)?;
+			}
+			None => (),
 		}
+		Ok(())
+	}
+}
+
+impl std::fmt::Debug for ReadFilter {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("ReadFilter")
+			.field("inner", &self.inner)
+			.finish_non_exhaustive()
 	}
 }

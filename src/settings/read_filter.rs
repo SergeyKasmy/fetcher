@@ -6,24 +6,26 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use std::fs;
 use std::path::PathBuf;
+use tokio::fs;
 
 use super::PREFIX;
 use crate::config;
-use crate::error::Error;
-use crate::error::Result;
-use crate::read_filter::ReadFilter;
+use fetcher::{
+	error::{Error, Result},
+	read_filter::{ReadFilter, Writer},
+};
 
 const READ_DATA_DIR: &str = "read";
 
 fn read_filter_path(name: &str) -> Result<PathBuf> {
+	debug_assert!(!name.is_empty());
 	Ok(if cfg!(debug_assertions) {
-		PathBuf::from(format!("debug_data/read/{name}")) // FIXME
+		PathBuf::from(format!("debug_data/read/{name}"))
 	} else {
 		xdg::BaseDirectories::with_profile(PREFIX, READ_DATA_DIR)?
 			.place_data_file(name)
-			.map_err(|e| Error::InaccessibleData(e, format!("READ_DATA_DIR/{name}").into()))?
+			.map_err(|e| Error::LocalIoRead(e, format!("READ_DATA_DIR/{name}").into()))?
 	})
 }
 
@@ -32,41 +34,71 @@ fn read_filter_path(name: &str) -> Result<PathBuf> {
 /// # Errors
 /// * if the file is inaccessible
 /// * if the file is corrupted
-pub fn get(name: String) -> Result<Option<ReadFilter>> {
-	let path = read_filter_path(&name)?;
-	fs::read_to_string(&path)
-		.ok()
-		.map(|s| {
-			let read_filter_conf: config::read_filter::ReadFilter = serde_json::from_str(&s)?;
-			Ok(read_filter_conf.parse(name))
-		})
-		.transpose()
-		.map_err(|e| Error::CorruptedData(e, path))
-}
-
-/// Save the provided read filter to the fs or remove it from the fs if it's empty
-///
-/// # Errors
-/// * if the default read filter save file path is inaccessible
-/// * if the write failed
-/// * if the remove failed
-#[allow(clippy::missing_panics_doc)]
-pub fn save(filter: &ReadFilter) -> Result<()> {
-	let path = read_filter_path(filter.name())?;
-	let filter_conf = config::read_filter::ReadFilter::unparse(filter);
-
-	match filter_conf {
-		Some(data) => {
-			fs::write(&path, serde_json::to_string(&data).unwrap()) // unwrap NOTE: safe, serialization of such a simple struct should never fail
-				.map_err(|e| Error::Write(e, path))
-		}
-		None => delete(filter),
+#[tracing::instrument(skip(default))]
+pub async fn get(
+	name: &str,
+	// TODO: remove option
+	default: Option<fetcher::read_filter::Kind>,
+) -> Result<Option<ReadFilter>> {
+	struct TruncatingFileWriter {
+		file: std::fs::File,
 	}
-}
 
-pub fn delete(filter: &ReadFilter) -> Result<()> {
-	let path = read_filter_path(filter.name())?;
+	impl std::io::Write for TruncatingFileWriter {
+		fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+			use std::io::Seek;
 
-	// TODO: don't error if file doesn't exist
-	fs::remove_file(&path).map_err(|e| Error::Write(e, path))
+			self.file.set_len(0)?;
+			self.file.rewind()?;
+			self.file.write(buf)
+		}
+
+		fn flush(&mut self) -> std::io::Result<()> {
+			self.file.flush()
+		}
+	}
+
+	let writer = || -> Result<Writer> {
+		let path = read_filter_path(name)?;
+		if let Some(parent) = path.parent() {
+			std::fs::create_dir_all(parent).map_err(Error::LocalIoWriteReadFilterData)?;
+		}
+
+		let file = std::fs::OpenOptions::new()
+			.create(true)
+			.write(true)
+			.open(&path)
+			.map_err(|e| Error::LocalIoWrite(e, path.clone()))?;
+
+		Ok(Box::new(TruncatingFileWriter { file }))
+	};
+
+	let path = read_filter_path(name)?;
+
+	let filter = match fs::read_to_string(&path).await.ok() {
+		None => {
+			tracing::trace!("Read filter save file doesn't exist");
+			None
+		}
+		Some(filter_str) => match filter_str.len() {
+			0 => {
+				tracing::trace!("Read filter save file exists but is empty");
+				None
+			}
+			l => {
+				tracing::trace!("Read filter save file exists and is {} bytes long", l);
+
+				let read_filter_conf: config::read_filter::ReadFilter =
+					serde_json::from_str(&filter_str).map_err(|e| Error::CorruptedFile(e, path))?;
+				Some(read_filter_conf.parse(writer()?))
+			}
+		},
+	};
+
+	match filter {
+		f @ Some(_) => Ok(f),
+		None => default
+			.map(|k| Ok(ReadFilter::new(k, Box::new(writer()?))))
+			.transpose(),
+	}
 }

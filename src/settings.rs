@@ -10,9 +10,4 @@ pub mod config;
 pub mod data;
 pub mod read_filter;
 
-pub use self::data::{
-	generate_google_oauth2, generate_google_password, generate_telegram, generate_twitter_auth,
-	google_oauth2, google_password, telegram, twitter,
-};
-
 const PREFIX: &str = "fetcher";

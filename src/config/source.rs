@@ -6,37 +6,84 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-pub(crate) mod email;
-pub(crate) mod html;
-pub(crate) mod rss;
-pub(crate) mod twitter;
+pub mod email;
+pub mod http;
+pub mod parser;
+pub mod twitter;
 
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
-use crate::source;
+use crate::{read_filter, source};
 
 use self::email::Email;
-use self::html::Html;
-use self::rss::Rss;
+use self::http::Http;
 use self::twitter::Twitter;
 
+use super::{DataSettings, OneOrMultiple};
+
+#[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+#[serde(untagged)]
 pub(crate) enum Source {
-	Email(Email),
-	Html(Html),
-	Rss(Rss),
+	WithSharedReadFilter(OneOrMultiple<WithSharedReadFilter>),
+	WithCustomReadFilter(WithCustomReadFilter),
+}
+
+#[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
+#[derive(Deserialize, Serialize, Debug)]
+// #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum WithSharedReadFilter {
+	Http(Http),
+	// Rss(Rss),
 	Twitter(Twitter),
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+// #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum WithCustomReadFilter {
+	Email(Email),
+}
+
 impl Source {
-	pub(crate) fn parse(self) -> Result<source::Source> {
+	pub(crate) async fn parse(
+		self,
+		name: &str,
+		settings: &DataSettings,
+		default_read_filter_kind: Option<read_filter::Kind>,
+	) -> Result<source::Source> {
 		Ok(match self {
-			Source::Email(x) => source::Source::Email(x.parse()?),
-			Source::Html(x) => source::Source::Html(x.parse()),
-			Source::Rss(x) => source::Source::Rss(x.parse()),
-			Source::Twitter(x) => source::Source::Twitter(x.parse()?),
+			Source::WithSharedReadFilter(v) => {
+				let v: Vec<WithSharedReadFilter> = v.into();
+
+				let inner = v
+					.into_iter()
+					.map(|x| {
+						Ok(match x {
+							WithSharedReadFilter::Http(x) => {
+								source::WithSharedReadFilterInner::Http(x.parse())
+							}
+							WithSharedReadFilter::Twitter(x) => {
+								source::WithSharedReadFilterInner::Twitter(x.parse(settings)?)
+							}
+						})
+					})
+					.collect::<Result<Vec<_>>>()?;
+
+				source::Source::WithSharedReadFilter(source::WithSharedReadFilter::new(
+					inner,
+					(settings.read_filter)(name.to_owned(), default_read_filter_kind)
+						.await?
+						.unwrap(), // unwrap FIXME: remove when settings::read_filter::get gets updated
+				)?)
+			}
+			Source::WithCustomReadFilter(s) => match s {
+				WithCustomReadFilter::Email(x) => source::Source::WithCustomReadFilter(
+					source::WithCustomReadFilter::Email(x.parse(settings)?),
+				),
+			},
 		})
 	}
 }

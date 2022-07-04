@@ -19,13 +19,13 @@ struct GoogleOAuth2Responce {
 	expires_in: u64,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct AccessToken {
 	token: String,
 	expires: Instant,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Google {
 	client_id: String,
 	client_secret: String,

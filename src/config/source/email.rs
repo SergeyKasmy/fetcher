@@ -15,10 +15,14 @@ use serde::{Deserialize, Serialize};
 use self::auth::Auth;
 use self::filters::Filters;
 use self::view_mode::ViewMode;
-use crate::{error::Result, settings, source};
+use crate::{
+	config::DataSettings,
+	error::{Error, Result},
+	source,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(deny_unknown_fields)]
+// #[serde(deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 pub(crate) struct Email {
 	imap: String,
 	email: String,
@@ -29,12 +33,14 @@ pub(crate) struct Email {
 }
 
 impl Email {
-	pub(crate) fn parse(self) -> Result<source::Email> {
+	pub(crate) fn parse(self, settings: &DataSettings) -> Result<source::Email> {
 		Ok(match self.auth {
 			Auth::GoogleOAuth2 => source::Email::with_google_oauth2(
 				self.imap,
 				self.email,
-				settings::google_oauth2()?,
+				settings.google_oauth2.as_ref().cloned().ok_or_else(|| {
+					Error::ServiceNotReady("Google authentication via OAuth2".to_owned())
+				})?,
 				self.filters.parse(),
 				self.view_mode.parse(),
 				self.footer,
@@ -42,7 +48,9 @@ impl Email {
 			Auth::Password => source::Email::with_password(
 				self.imap,
 				self.email,
-				settings::google_password()?,
+				settings.google_password.as_ref().cloned().ok_or_else(|| {
+					Error::ServiceNotReady("Google authentication via password".to_owned())
+				})?,
 				self.filters.parse(),
 				self.view_mode.parse(),
 				self.footer,

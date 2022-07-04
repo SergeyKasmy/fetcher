@@ -9,17 +9,17 @@
 pub(crate) mod query;
 
 use serde::{Deserialize, Serialize};
-use url::Url;
 
+use self::query::{IdQuery, ImageQuery, Query, TextQuery, TitleQuery, UrlQuery};
 use crate::source;
-
-use self::query::{IdQuery, ImageQuery, LinkQuery, Query, TextQuery};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct Html {
-	pub(crate) url: Url,
 	#[serde(rename = "item_query")]
 	pub(crate) itemq: Vec<Query>,
+
+	#[serde(rename = "title_query")]
+	pub(crate) titleq: Option<TitleQuery>,
 
 	#[serde(rename = "text_query")]
 	pub(crate) textq: Vec<TextQuery>,
@@ -28,17 +28,17 @@ pub(crate) struct Html {
 	pub(crate) idq: IdQuery,
 
 	#[serde(rename = "link_query")]
-	pub(crate) linkq: LinkQuery,
+	pub(crate) linkq: UrlQuery,
 
 	#[serde(rename = "img_query")]
 	pub(crate) imgq: Option<ImageQuery>,
 }
 
 impl Html {
-	pub(crate) fn parse(self) -> source::Html {
-		source::Html {
-			url: self.url,
+	pub(crate) fn parse(self) -> source::parser::Html {
+		source::parser::Html {
 			itemq: self.itemq.into_iter().map(Query::parse).collect(),
+			titleq: self.titleq.map(TitleQuery::parse),
 			textq: self.textq.into_iter().map(TextQuery::parse).collect(),
 			idq: self.idq.parse(),
 			linkq: self.linkq.parse(),

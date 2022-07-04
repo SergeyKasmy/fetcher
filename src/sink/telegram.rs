@@ -22,51 +22,43 @@ use teloxide::{
 
 use crate::{
 	error::{Error, Result},
-	sink::{message::LinkLocation, Media, Message},
+	sink::{Media, Message},
 };
+
+const MAX_MSG_LEN: usize = 4096;
+
+/// Either embed the link into the title or put it as a separate "Link" button at the botton of the message.
+/// `PreferTitle` falls back to `Bottom` if Message.title is None
+#[derive(Clone, Copy, Default, Debug)]
+pub enum LinkLocation {
+	PreferTitle,
+	#[default]
+	Bottom,
+}
 
 pub struct Telegram {
 	// bot: Throttle<Bot>,
 	bot: Bot,
 	chat_id: ChatId,
-}
-
-/// Make the message text more logging friendly:
-/// 1. Remove the opening html tag if it begins with one
-/// 2. Shorten the message to 150 chars
-fn fmt_comment_msg_text(s: &str) -> String {
-	let s = if s.starts_with('<') {
-		if let Some(tag_end) = s.find('>') {
-			&s[tag_end..]
-		} else {
-			s
-		}
-	} else {
-		s
-	};
-
-	s.chars().take(/* shorten to */ 40 /* chars */).collect()
+	link_location: LinkLocation,
 }
 
 impl Telegram {
 	#[must_use]
-	pub fn new(bot: Bot, chat_id: impl Into<ChatId>) -> Self {
+	pub fn new(bot: Bot, chat_id: i64, link_location: LinkLocation) -> Self {
 		Self {
 			// TODO: THIS BLOCKS. WHY??????
 			// #2 throttle() spawns a tokio task but we are in sync. Maybe that causes the hangup?
 			// bot: bot.throttle(Limits::default()),
 			bot,
-			chat_id: chat_id.into(),
+			chat_id: ChatId(chat_id),
+			link_location,
 		}
 	}
 
 	#[allow(clippy::items_after_statements)] // TODO
-	#[tracing::instrument(skip_all,
-	fields(
-		body = fmt_comment_msg_text(&message.body).as_str(),
-		)
-	)]
-	pub async fn send(&self, message: Message) -> Result<()> {
+	#[tracing::instrument(skip_all)]
+	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<()> {
 		let Message {
 			title,
 			body,
@@ -83,48 +75,78 @@ impl Telegram {
 		let body = ammonia::clean(&body);
 
 		tracing::debug!(
-			"Processing message: len: {}, media: {}",
-			body.len(),
-			media.is_some()
+			"Processing message: title: {title:?}, body len: {blen}, media: {m}",
+			blen = body.len(),
+			m = media.is_some(),
 		);
 
-		const PADDING: usize = 10; // how much free space to reserve for new lines and "Link" buttons. 10 should be enough
-		let title_len = title.as_ref().map_or(0, String::len);
-		let approx_msg_len = title_len + body.len() + PADDING;
-		let body = if title_len + body.len() + PADDING > 4096 {
-			// TODO: split the message properly instead of just throwing the rest away
-			tracing::warn!("Message too long ({approx_msg_len})");
-			let (idx, _) = body.char_indices().nth(4096 - title_len - PADDING).unwrap(); // unwrap FIXME: len is measured in bytes while chat_indices is in graphemes. That may cause crashes.
-																			 // It would be just better to split the message in parts and send that instead of trying to fix this
-			let mut m = body[..idx].to_string();
-			m.push_str("...");
-			tracing::debug!("Message body length after trimming: {}", m.len());
-			tracing::debug!("Message full approx len: {}", m.len() + title_len + PADDING);
-			m
-		} else {
-			body
+		let text = {
+			let mut text = match (&title, &link) {
+				(Some(title), Some(link)) => match self.link_location {
+					LinkLocation::PreferTitle => {
+						format!("<a href=\"{link}\">{title}</a>\n{body}")
+					}
+					LinkLocation::Bottom => {
+						format!("{title}\n{body}\n<a href=\"{link}\">Link</a>",)
+					}
+				},
+				(Some(title), None) => {
+					format!("{title}\n{body}")
+				}
+				(None, Some(link)) => {
+					format!("{body}\n<a href=\"{link}\">Link</a>")
+				}
+				(None, None) => body,
+			};
+
+			if let Some(tag) = tag {
+				text.insert_str(0, &format!("#{tag}\n\n"));
+			}
+
+			text
 		};
 
-		let text = match (&title, &link) {
-			(Some(title), Some(link)) => match link.loc {
-				LinkLocation::PreferTitle => {
-					format!("<a href=\"{url}\">{title}</a>\n{body}", url = link.url,)
+		// FIXME: bug: if the message is just a couple of bytes over the limit and ends with a link, it could split in in two, e.g. 1) <a hre 2) f="">Link</a> and thus break it
+		let text = {
+			if text.len() > MAX_MSG_LEN {
+				let mut parts = Vec::new();
+				let mut begin_slice_from = 0;
+
+				loop {
+					if begin_slice_from == text.len() {
+						break;
+					}
+
+					let till = std::cmp::min(begin_slice_from + MAX_MSG_LEN, text.len());
+
+					// this assumes that the string slice is valid which it may not be
+					#[allow(clippy::string_from_utf8_as_bytes)]
+					match std::str::from_utf8(&text.as_bytes()[begin_slice_from..till]) {
+						Ok(s) => {
+							parts.push(s);
+							begin_slice_from = till;
+						}
+						Err(e) => {
+							let valid_up_to = e.valid_up_to();
+							let s = &text[begin_slice_from..valid_up_to];
+							parts.push(s);
+							begin_slice_from = valid_up_to;
+						}
+					}
 				}
-				LinkLocation::Bottom => {
-					format!(
-						"{title}\n{body}\n<a href=\"{url}\">Link</a>",
-						url = link.url
-					)
+
+				let last_part = parts.pop().unwrap();
+				for part in parts {
+					self.send_text(part.to_owned()).await?;
 				}
-			},
-			(Some(title), None) => {
-				format!("{title}\n{body}")
+
+				last_part.to_owned()
+			} else {
+				text
 			}
-			(None, Some(link)) => {
-				format!("{body}\n<a href=\"{url}\">Link</a>", url = link.url)
-			}
-			(None, None) => body,
 		};
+
+		// assert!(text.len() < MAX_MSG_LEN);
 
 		if let Some(media) = media {
 			match self
@@ -168,11 +190,12 @@ impl Telegram {
 	async fn send_text(&self, message: String) -> Result<TelMessage> {
 		loop {
 			tracing::info!("Sending text message");
+			// TODO: move to the Sink::send() despetcher method mb
 			tracing::trace!("Message contents: {message:?}");
 
 			match self
 				.bot
-				.send_message(self.chat_id.clone(), &message)
+				.send_message(self.chat_id, &message)
 				.parse_mode(ParseMode::Html)
 				.disable_web_page_preview(true)
 				.send()
@@ -180,11 +203,11 @@ impl Telegram {
 			{
 				Ok(message) => return Ok(message),
 				Err(RequestError::RetryAfter(retry_after)) => {
-					tracing::warn!("Exceeded rate limit, retrying in {retry_after}s");
-					tokio::time::sleep(Duration::from_secs(retry_after.try_into().expect(
-						"Telegram returned a negative RetryAfter value. How did that even happen?",
-					)))
-					.await;
+					tracing::warn!(
+						"Exceeded rate limit, retrying in {}s",
+						retry_after.as_secs()
+					);
+					tokio::time::sleep(retry_after).await;
 				}
 				Err(e) => {
 					return Err((
@@ -204,17 +227,17 @@ impl Telegram {
 
 			match self
 				.bot
-				.send_media_group(self.chat_id.clone(), media.clone())
+				.send_media_group(self.chat_id, media.clone())
 				.send()
 				.await
 			{
 				Ok(messages) => return Ok(messages),
 				Err(RequestError::RetryAfter(retry_after)) => {
-					tracing::warn!("Exceeded rate limit, retrying in {retry_after}s");
-					tokio::time::sleep(Duration::from_secs(retry_after.try_into().expect(
-						"Telegram returned a negative RetryAfter value. How did that even happen?",
-					)))
-					.await;
+					tracing::warn!(
+						"Exceeded rate limit, retrying in {}s",
+						retry_after.as_secs()
+					);
+					tokio::time::sleep(retry_after).await;
 				}
 				Err(RequestError::Api(ApiError::Unknown(err_str)))
 					if err_str == "Bad Request: failed to get HTTP URL content" =>
@@ -247,6 +270,7 @@ impl std::fmt::Debug for Telegram {
 
 // 	#[tokio::test]
 // 	async fn send_text_too_long() {
+// 		eprintln!("Running");
 // 		let tg = Telegram::new(
 // 			Bot::new(var("BOT_TOKEN").unwrap()),
 // 			var("DEBUG_CHAT_ID").unwrap(),
@@ -265,12 +289,19 @@ impl std::fmt::Debug for Telegram {
 // 			long_text.push('2');
 // 		}
 
-// 		// tg.send_text(too_long_text).await.unwrap();
-// 		tg.send(Message {
-// 			text: long_text,
-// 			media: None,
-// 		})
+// 		eprintln!("Message constructed");
+// 		tg.send(
+// 			Message {
+// 				// title: Some("Testing title".to_owned()),
+// 				title: None,
+// 				body: long_text,
+// 				link: None,
+// 				media: None,
+// 			},
+// 			None,
+// 		)
 // 		.await
 // 		.unwrap();
+// 		eprintln!("Message sent");
 // 	}
 // }

@@ -7,12 +7,17 @@
  */
 
 use serde::{Deserialize, Serialize};
+use url::Url;
+
+use crate::source;
 
 #[derive(Deserialize, Serialize, Debug)]
-// #[serde(rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
-#[serde(rename_all = "snake_case")]
-pub(crate) enum Auth {
-	#[serde(rename = "google_oauth2")]
-	GoogleOAuth2,
-	Password,
+pub(crate) struct Http {
+	pub(crate) url: Url,
+}
+
+impl Http {
+	pub(crate) fn parse(self) -> source::Http {
+		source::Http { url: self.url }
+	}
 }
