@@ -45,13 +45,13 @@ pub struct Telegram {
 
 impl Telegram {
 	#[must_use]
-	pub fn new(bot: Bot, chat_id: impl Into<ChatId>, link_location: LinkLocation) -> Self {
+	pub fn new(bot: Bot, chat_id: i64, link_location: LinkLocation) -> Self {
 		Self {
 			// TODO: THIS BLOCKS. WHY??????
 			// #2 throttle() spawns a tokio task but we are in sync. Maybe that causes the hangup?
 			// bot: bot.throttle(Limits::default()),
 			bot,
-			chat_id: chat_id.into(),
+			chat_id: ChatId(chat_id),
 			link_location,
 		}
 	}
@@ -203,11 +203,11 @@ impl Telegram {
 			{
 				Ok(message) => return Ok(message),
 				Err(RequestError::RetryAfter(retry_after)) => {
-					tracing::warn!("Exceeded rate limit, retrying in {retry_after}s");
-					tokio::time::sleep(Duration::from_secs(retry_after.try_into().expect(
-						"Telegram returned a negative RetryAfter value. How did that even happen?",
-					)))
-					.await;
+					tracing::warn!(
+						"Exceeded rate limit, retrying in {}s",
+						retry_after.as_secs()
+					);
+					tokio::time::sleep(retry_after).await;
 				}
 				Err(e) => {
 					return Err((
@@ -227,17 +227,17 @@ impl Telegram {
 
 			match self
 				.bot
-				.send_media_group(self.chat_id.clone(), media.clone())
+				.send_media_group(self.chat_id, media.clone())
 				.send()
 				.await
 			{
 				Ok(messages) => return Ok(messages),
 				Err(RequestError::RetryAfter(retry_after)) => {
-					tracing::warn!("Exceeded rate limit, retrying in {retry_after}s");
-					tokio::time::sleep(Duration::from_secs(retry_after.try_into().expect(
-						"Telegram returned a negative RetryAfter value. How did that even happen?",
-					)))
-					.await;
+					tracing::warn!(
+						"Exceeded rate limit, retrying in {}s",
+						retry_after.as_secs()
+					);
+					tokio::time::sleep(retry_after).await;
 				}
 				Err(RequestError::Api(ApiError::Unknown(err_str)))
 					if err_str == "Bad Request: failed to get HTTP URL content" =>

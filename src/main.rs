@@ -196,7 +196,9 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 							};
 							Telegram::new(
 								bot,
-								std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned(),
+								std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID")
+									.parse::<i64>()
+									.expect("DEBUG_ADMIN_CHAT_ID is not a valid i64"),
 								LinkLocation::default(),
 							)
 							.send(msg, Some(&name))

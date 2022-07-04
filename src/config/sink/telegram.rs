@@ -7,7 +7,6 @@
  */
 
 use serde::{Deserialize, Serialize};
-use teloxide::types::ChatId;
 
 use crate::{
 	config::DataSettings,
@@ -36,14 +35,15 @@ impl LinkLocation {
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 pub(crate) struct Telegram {
-	chat_id: ChatId,
+	chat_id: i64,
 	link_location: LinkLocation,
 }
 
 impl Telegram {
 	pub(crate) fn parse(self, settings: &DataSettings) -> Result<sink::Telegram> {
 		let chat_id = match std::env::var("FETCHER_DEBUG_CHAT_ID") {
-			Ok(s) => ChatId::try_from(s)
+			Ok(s) => s
+				.parse::<i64>()
 				.map_err(|_| Error::Other("Invalid chat id in FETCHER_DEBUG_CHAT_ID".to_owned()))?,
 			_ => self.chat_id,
 		};
