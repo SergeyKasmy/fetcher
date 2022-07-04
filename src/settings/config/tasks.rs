@@ -17,7 +17,7 @@ use figment::{
 	providers::{Format, Yaml},
 	Figment,
 };
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use super::CONFIG_FILE_EXT;
 use crate::settings;
@@ -48,24 +48,24 @@ pub async fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result
 
 	let mut tasks = Tasks::new();
 	for cfg in cfgs {
-		match cfg {
-			Ok(p) => {
-				get(p, settings)
-					.await?
-					.map(|(name, task)| tasks.insert(name, task));
-			}
-			Err(e) => return Err(Error::LocalIoRead(e.into_error(), tasks_dir.clone())),
-		}
+		let cfg = cfg.map_err(|e| Error::LocalIoRead(e.into_error(), tasks_dir.clone()))?;
+		let name = cfg
+			.strip_prefix(&tasks_dir)
+			.unwrap()
+			.with_extension("")
+			.to_string_lossy()
+			.into_owned();
+
+		get(cfg, &name, settings)
+			.await?
+			.map(|task| tasks.insert(name, task));
 	}
 
 	Ok(tasks)
 }
 
 #[tracing::instrument(skip(settings))]
-pub async fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<(String, Task)>> {
-	fn name(path: &Path) -> Option<String> {
-		Some(path.file_stem()?.to_str()?.to_owned())
-	}
+pub async fn get(path: PathBuf, name: &str, settings: &DataSettings) -> Result<Option<Task>> {
 	tracing::trace!("Parsing a task from file");
 
 	let templates: TemplatesField = Figment::new()
@@ -91,8 +91,7 @@ pub async fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<(Strin
 		.extract()
 		.map_err(|e| Error::InvalidConfigFormat(e, path.clone()))?;
 
-	let name = name(&path).ok_or_else(|| Error::BadPath(path.clone()))?;
-	let task = task.parse(&name, settings).await?;
+	let task = task.parse(name, settings).await?;
 
 	// TODO: move that check up above and skip all parsing if the task's disabled to avoid terminating if a disabled task's config is corrupted
 	if task.disabled {
@@ -100,5 +99,5 @@ pub async fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<(Strin
 		return Ok(None);
 	}
 
-	Ok(Some((name, task)))
+	Ok(Some(task))
 }

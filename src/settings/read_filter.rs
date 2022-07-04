@@ -60,6 +60,9 @@ pub async fn get(
 
 	let writer = || -> Result<Writer> {
 		let path = read_filter_path(name)?;
+		if let Some(parent) = path.parent() {
+			std::fs::create_dir_all(parent).map_err(Error::LocalIoWriteReadFilterData)?;
+		}
 
 		let file = std::fs::OpenOptions::new()
 			.create(true)

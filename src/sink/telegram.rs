@@ -195,7 +195,7 @@ impl Telegram {
 
 			match self
 				.bot
-				.send_message(self.chat_id.clone(), &message)
+				.send_message(self.chat_id, &message)
 				.parse_mode(ParseMode::Html)
 				.disable_web_page_preview(true)
 				.send()
