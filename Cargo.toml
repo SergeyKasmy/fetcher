@@ -1,7 +1,7 @@
 [package]
 name = "fetcher"
 description = "Fetch stuff and send stuff"
-version = "0.5.1"
+version = "0.6.0"
 license = "MPL-2.0"
 repository = "https://github.com/SergeyKasmy/fetcher"
 edition = "2021"
