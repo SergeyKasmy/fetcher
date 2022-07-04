@@ -8,9 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{
-	read_filter, sink::Sink, source::parser::Parser, source::Source, DataSettings, OneOrMultiple,
-};
+use super::{read_filter, sink::Sink, source::parser::Parser, source::Source, DataSettings};
 use crate::{error::Result, task};
 
 #[derive(Deserialize, Debug)]
@@ -30,8 +28,7 @@ pub struct Task {
 	tag: Option<String>,
 	refresh: u64,
 	source: Source,
-	// parse: Option<Vec<Parser>>,
-	parse: Option<OneOrMultiple<Parser>>,
+	parse: Option<Vec<Parser>>,
 	// TODO: several sinks
 	sink: Sink,
 }
@@ -51,10 +48,9 @@ impl Task {
 			refresh: self.refresh,
 			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
 			source,
-			parsers: self.parse.map(|x| {
-				let x: Vec<Parser> = x.into();
-				x.into_iter().map(Parser::parse).collect()
-			}),
+			parsers: self
+				.parse
+				.map(|x| x.into_iter().map(Parser::parse).collect()),
 			sink: self.sink.parse(settings)?,
 		})
 	}

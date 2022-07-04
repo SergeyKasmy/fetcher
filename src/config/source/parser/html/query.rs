@@ -12,10 +12,10 @@ use crate::source;
 
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub(crate) enum QueryKind {
-	Tag { value: String },
-	Class { value: String },
+	Tag(String),
+	Class(String),
 	Attr { name: String, value: String },
 }
 
@@ -24,8 +24,8 @@ impl QueryKind {
 		use QueryKind::{Attr, Class, Tag};
 
 		match self {
-			Tag { value } => source::parser::html::query::QueryKind::Tag { value },
-			Class { value } => source::parser::html::query::QueryKind::Class { value },
+			Tag(val) => source::parser::html::query::QueryKind::Tag(val),
+			Class(val) => source::parser::html::query::QueryKind::Class(val),
 			Attr { name, value } => source::parser::html::query::QueryKind::Attr { name, value },
 		}
 	}
@@ -33,10 +33,10 @@ impl QueryKind {
 
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub(crate) enum DataLocation {
 	Text,
-	Attr { value: String },
+	Attr(String),
 }
 
 impl DataLocation {
@@ -45,7 +45,7 @@ impl DataLocation {
 
 		match self {
 			Text => source::parser::html::query::DataLocation::Text,
-			Attr { value } => source::parser::html::query::DataLocation::Attr { value },
+			Attr(v) => source::parser::html::query::DataLocation::Attr(v),
 		}
 	}
 }
@@ -85,6 +85,7 @@ impl QueryData {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(transparent)]
 pub(crate) struct TitleQuery(pub(crate) QueryData);
 
 impl TitleQuery {
@@ -173,3 +174,26 @@ impl ImageQuery {
 		}
 	}
 }
+
+// #[cfg(test)]
+// mod tests {
+// 	use super::*;
+
+// 	#[test]
+// 	fn query_kind() {
+// 		let q1 = QueryKind::Class("Class".to_owned());
+// 		let q2 = QueryKind::Tag("Tag".to_owned());
+// 		let q3 = QueryKind::Attr {
+// 			name: "Name".to_owned(),
+// 			value: "Value".to_owned(),
+// 		};
+
+// 		eprintln!("{q1:?}\n{q2:?}\n{q3:?}");
+
+// 		let q1 = serde_yaml::to_string(&q1).unwrap();
+// 		let q2 = serde_yaml::to_string(&q2).unwrap();
+// 		let q3 = serde_yaml::to_string(&q3).unwrap();
+
+// 		eprintln!("{q1:?}\n{q2:?}\n{q3:?}");
+// 	}
+// }

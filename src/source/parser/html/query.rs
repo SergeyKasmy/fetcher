@@ -8,15 +8,15 @@
 
 #[derive(Clone, Debug)]
 pub(crate) enum QueryKind {
-	Tag { value: String },
-	Class { value: String },
+	Tag(String),
+	Class(String),
 	Attr { name: String, value: String },
 }
 
 #[derive(Debug)]
 pub(crate) enum DataLocation {
 	Text,
-	Attr { value: String },
+	Attr(String),
 }
 
 #[derive(Debug)]

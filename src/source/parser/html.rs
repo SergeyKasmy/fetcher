@@ -164,17 +164,15 @@ fn find<'a>(
 ) -> Box<dyn Iterator<Item = Handle> + 'a> {
 	Box::new(
 		match q {
-			QueryKind::Tag { value } => qb.tag(value.as_str()).find_all(),
-			QueryKind::Class { value } => qb.class(value.as_str()).find_all(),
+			QueryKind::Tag(val) => qb.tag(val.as_str()).find_all(),
+			QueryKind::Class(val) => qb.class(val.as_str()).find_all(),
 			QueryKind::Attr { name, value } => qb.attr(name.as_str(), value.as_str()).find_all(),
 		}
 		.filter(|found| {
 			for i in ignore.iter() {
 				let should_be_ignored = match i {
-					QueryKind::Tag { value: tag } => found.name() == tag,
-					QueryKind::Class { value: class } => {
-						found.get("class").map_or(false, |c| &c == class)
-					}
+					QueryKind::Tag(tag) => found.name() == tag,
+					QueryKind::Class(class) => found.get("class").map_or(false, |c| &c == class),
 					QueryKind::Attr { name, value } => {
 						found.get(name).map_or(false, |a| &a == value)
 					}
@@ -218,7 +216,7 @@ fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &QueryData) -> Option<St
 	let data = h
 		.map(|hndl| match &q.data_location {
 			DataLocation::Text => Some(hndl.text()),
-			DataLocation::Attr { value } => hndl.get(value),
+			DataLocation::Attr(v) => hndl.get(v),
 		})
 		.collect::<Option<Vec<_>>>();
 
