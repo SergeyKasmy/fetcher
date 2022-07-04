@@ -49,8 +49,10 @@ pub async fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result
 	let mut tasks = Tasks::new();
 	for cfg in cfgs {
 		match cfg {
-			Ok(v) => {
-				get(v, settings).await?.map(|x| tasks.insert(x));
+			Ok(p) => {
+				get(p, settings)
+					.await?
+					.map(|(name, task)| tasks.insert(name, task));
 			}
 			Err(e) => return Err(Error::LocalIoRead(e.into_error(), tasks_dir.clone())),
 		}
@@ -60,7 +62,7 @@ pub async fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result
 }
 
 #[tracing::instrument(skip(settings))]
-pub async fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<Task>> {
+pub async fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<(String, Task)>> {
 	fn name(path: &Path) -> Option<String> {
 		Some(path.file_stem()?.to_str()?.to_owned())
 	}
@@ -90,11 +92,11 @@ pub async fn get(path: PathBuf, settings: &DataSettings) -> Result<Option<Task>>
 		.map_err(|e| Error::InvalidConfigFormat(e, path.clone()))?;
 
 	let name = name(&path).ok_or_else(|| Error::BadPath(path.clone()))?;
-	let task = task.parse(name, path, settings).await?;
+	let task = task.parse(&name, settings).await?;
 	if task.disabled {
 		tracing::trace!("Task is disabled, skipping...");
 		return Ok(None);
 	}
 
-	Ok(Some(task))
+	Ok(Some((name, task)))
 }

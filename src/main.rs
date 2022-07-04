@@ -97,7 +97,10 @@ async fn run(once: bool) -> Result<()> {
 	tracing::debug!(
 		"Found {num} enabled tasks: {names:?}",
 		num = tasks.len(),
-		names = tasks.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(),
+		names = tasks
+			.iter()
+			.map(|(name, _)| name.as_str())
+			.collect::<Vec<_>>(),
 	);
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
@@ -143,8 +146,8 @@ async fn run(once: bool) -> Result<()> {
 
 async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Result<()> {
 	let mut running_tasks = Vec::new();
-	for mut t in tasks {
-		let name = t.name.clone(); // TODO: ehhh
+	for (name, mut t) in tasks {
+		let name2 = name.clone(); // TODO: ehhh. Is there a way to avoid cloning?
 		let mut shutdown_rx = shutdown_rx.clone();
 
 		let fut = tokio::spawn(
@@ -191,7 +194,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 								..Default::default()
 							};
 							Telegram::new(bot, std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID").to_owned())
-								.send(msg, Some(&t.name))
+								.send(msg, Some(&name))
 								.await?;
 							Ok::<(), Error>(())
 						};
@@ -208,7 +211,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 				tracing::info!("Shutting down...");
 				res
 			}
-			.instrument(tracing::info_span!("task", name = name.as_str())),
+			.instrument(tracing::info_span!("task", name = name2.as_str())),
 		);
 
 		running_tasks.push(flatten_task(fut));

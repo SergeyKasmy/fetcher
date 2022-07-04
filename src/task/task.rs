@@ -6,23 +6,18 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use std::{
-	collections::HashSet,
-	hash::{Hash, Hasher},
-	path::PathBuf,
-};
+use std::collections::HashMap;
 
 use crate::{
 	sink::Sink,
 	source::{parser::Parser, Source},
 };
 
-pub type Tasks = HashSet<Task>;
+/// Name -> Task
+pub type Tasks = HashMap<String, Task>;
 
 #[derive(Debug)]
 pub struct Task {
-	pub name: String,
-	pub path: PathBuf,
 	pub disabled: bool,
 	pub refresh: u64,
 	pub tag: Option<String>,
@@ -30,49 +25,6 @@ pub struct Task {
 	pub(crate) parsers: Option<Vec<Parser>>,
 	pub(crate) sink: Sink,
 }
-
-/*
-// FIXME: is this even needed in the public API?
-impl Task {
-	#[allow(clippy::too_many_arguments)] // FIXME
-	#[must_use]
-	pub fn new(
-		name: String,
-		path: PathBuf,
-		disabled: bool,
-		refresh: u64,
-		tag: Option<String>,
-		source: Source,
-		process: Process,
-		sink: Sink,
-	) -> Self {
-		Self {
-			name,
-			path,
-			disabled,
-			refresh,
-			tag,
-			source,
-			process,
-			sink,
-		}
-	}
-}
-*/
-
-impl Hash for Task {
-	fn hash<H: Hasher>(&self, state: &mut H) {
-		self.name.hash(state);
-	}
-}
-
-impl PartialEq for Task {
-	fn eq(&self, other: &Self) -> bool {
-		self.name == other.name
-	}
-}
-
-impl Eq for Task {}
 
 // #[cfg(test)]
 // mod tests {

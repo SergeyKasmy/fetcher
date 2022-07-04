@@ -7,7 +7,6 @@
  */
 
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
 use super::{
 	read_filter, sink::Sink, source::parser::Parser, source::Source, DataSettings, OneOrMultiple,
@@ -38,23 +37,16 @@ pub struct Task {
 }
 
 impl Task {
-	pub async fn parse(
-		self,
-		name: String,
-		path: PathBuf,
-		settings: &DataSettings,
-	) -> Result<task::Task> {
+	pub async fn parse(self, name: &str, settings: &DataSettings) -> Result<task::Task> {
 		let source = self
 			.source
 			.parse(
-				&name,
+				name,
 				settings,
 				self.read_filter_kind.map(read_filter::Kind::parse),
 			)
 			.await?;
 		Ok(task::Task {
-			name,
-			path,
 			disabled: self.disabled.unwrap_or(false),
 			refresh: self.refresh,
 			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
