@@ -6,6 +6,7 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
+use once_cell::sync::Lazy;
 use std::fmt::Debug;
 use url::Url;
 
@@ -13,16 +14,33 @@ use crate::entry::Entry;
 use crate::error::Result;
 use crate::sink::Message;
 
+// TODO: does this leak if later on in the program's life-cycle all Http sources get dropped? If it does, does it matter?
+static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
+
 pub struct Http {
 	pub(crate) url: Url,
+	client: reqwest::Client,
 }
 
 impl Http {
+	#[must_use]
+	pub fn new(url: Url) -> Self {
+		Self {
+			url,
+			client: CLIENT.clone(),
+		}
+	}
+
 	#[tracing::instrument(skip_all)]
 	pub async fn get(&self) -> Result<Vec<Entry>> {
-		tracing::debug!("Fetching HTML source");
+		tracing::debug!("Fetching HTTP source");
 
-		let page = reqwest::get(self.url.as_str()).await?.text().await?;
+		tracing::trace!("Making a request to {:?}", self.url.as_str());
+		let request = self.client.get(self.url.as_str()).send().await?;
+
+		tracing::trace!("Getting text body of the responce");
+		let page = request.text().await?;
+		tracing::trace!("Done");
 
 		Ok(vec![Entry {
 			id: String::new(), // FIXME: use a proper id
@@ -40,6 +58,6 @@ impl Debug for Http {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Http")
 			.field("url", &self.url.as_str())
-			.finish()
+			.finish_non_exhaustive()
 	}
 }

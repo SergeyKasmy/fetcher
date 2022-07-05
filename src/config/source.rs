@@ -76,7 +76,7 @@ impl Source {
 					inner,
 					(settings.read_filter)(name.to_owned(), default_read_filter_kind)
 						.await?
-						.unwrap(), // unwrap FIXME: remove when settings::read_filter::get gets updated
+						.unwrap(), // unwrap FIXME: remove when settings::read_filter::get gets updated. UPD: what does this comment even mean? This crashes if read_filter_kind is corrupted in the config
 				)?)
 			}
 			Source::WithCustomReadFilter(s) => match s {

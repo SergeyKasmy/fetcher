@@ -18,6 +18,6 @@ pub(crate) struct Http {
 
 impl Http {
 	pub(crate) fn parse(self) -> source::Http {
-		source::Http { url: self.url }
+		source::Http::new(self.url)
 	}
 }
