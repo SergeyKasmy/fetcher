@@ -37,7 +37,8 @@ thiserror = "1.0.31"
 tokio = { version = "1.19.2", features = ["full"] }
 tracing = "0.1.35"
 tracing-futures = "0.2.5"
-tracing-subscriber = { version = "0.3.14", features = ["env-filter", "tracing-log"] }
+tracing-journald = "0.3.0"
+tracing-subscriber = { version = "0.3.14", features = ["env-filter", "tracing-log", "time", "local-time"] }
 url = "2.2.2"
 xdg = "2.4.1"
 
