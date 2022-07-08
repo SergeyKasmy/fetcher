@@ -14,8 +14,12 @@ use crate::entry::Entry;
 use crate::error::Result;
 use crate::sink::Message;
 
-// TODO: does this leak if later on in the program's life-cycle all Http sources get dropped? If it does, does it matter?
-static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
+static CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
+	reqwest::ClientBuilder::new()
+		.timeout(std::time::Duration::from_secs(30))
+		.build()
+		.expect("TLS init error") // TODO: fail gracefully
+});
 
 pub struct Http {
 	pub(crate) url: Url,
