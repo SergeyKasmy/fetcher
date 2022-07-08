@@ -114,11 +114,11 @@ async fn run(once: bool) -> Result<()> {
 	.await?;
 
 	if tasks.is_empty() {
-		tracing::warn!("No enabled tasks provided");
+		tracing::info!("No enabled tasks provided");
 		return Ok(());
 	}
 
-	tracing::debug!(
+	tracing::info!(
 		"Found {num} enabled tasks: {names:?}",
 		num = tasks.len(),
 		names = tasks

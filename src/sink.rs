@@ -20,6 +20,7 @@ use crate::error::Result;
 pub enum Sink {
 	Telegram(Telegram),
 	Stdout(Stdout),
+	Null,
 }
 
 impl Sink {
@@ -28,6 +29,7 @@ impl Sink {
 		match self {
 			Self::Telegram(t) => t.send(message, tag).await,
 			Self::Stdout(s) => s.send(message, tag).await,
+			Self::Null => Ok(()),
 		}
 	}
 }
