@@ -22,7 +22,7 @@ pub(crate) enum DataLocation {
 #[derive(Debug)]
 pub(crate) struct Query {
 	pub(crate) kind: QueryKind,
-	pub(crate) ignore: Vec<QueryKind>,
+	pub(crate) ignore: Option<Vec<QueryKind>>,
 }
 
 #[derive(Debug)]

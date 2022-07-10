@@ -63,8 +63,7 @@ impl Query {
 			kind: self.kind.parse(),
 			ignore: self
 				.ignore
-				.map(|v| v.into_iter().map(QueryKind::parse).collect::<Vec<_>>())
-				.unwrap_or_default(),
+				.map(|v| v.into_iter().map(QueryKind::parse).collect::<Vec<_>>()),
 		}
 	}
 }
