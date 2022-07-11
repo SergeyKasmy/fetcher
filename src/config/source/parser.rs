@@ -8,7 +8,6 @@
 
 pub mod html;
 pub mod json;
-pub mod rss;
 
 use serde::{Deserialize, Serialize};
 

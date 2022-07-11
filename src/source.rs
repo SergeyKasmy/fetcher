@@ -64,6 +64,11 @@ impl Source {
 			Source::WithCustomReadFilter(x) => x.remove_read(&mut parsed_entries),
 		}
 
+		parsed_entries = parsed_entries
+			.into_iter()
+			.unique_by(|x| x.id.clone()) // TODO: I don't like this clone...
+			.collect();
+
 		let unread_num = parsed_entries.len();
 		if total_num != unread_num {
 			tracing::debug!(
