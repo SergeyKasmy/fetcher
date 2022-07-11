@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use crate::source;
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(transparent)]
 pub(crate) struct File {
 	path: PathBuf,
 }
