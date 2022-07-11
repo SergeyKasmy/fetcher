@@ -67,7 +67,6 @@ impl Twitter {
 
 		let messages = tweets
 			.iter()
-			.rev()
 			.filter_map(|tweet| {
 				if !self.filter.is_empty()
 					&& !Self::tweet_contains_filters(&tweet.text, self.filter.as_slice())

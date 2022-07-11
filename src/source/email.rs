@@ -151,7 +151,6 @@ impl Email {
 		mails
 			.iter()
 			.filter(|x| x.body().is_some()) // TODO: properly handle error cases and don't just filter them out
-			.rev()
 			.map(|x| {
 				self.parse(
 					&mailparse::parse_mail(x.body().unwrap())?, // unwrap NOTE: temporary but it's safe for now because of the check above

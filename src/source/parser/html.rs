@@ -41,7 +41,7 @@ impl Html {
 		let soup = Soup::new(entry.msg.body.as_str());
 		let items = find_chain(&soup, &self.itemq);
 
-		let mut entries = items
+		let entries = items
 			.map(|item| -> Result<Entry> {
 				let id = self
 					.idq
@@ -78,7 +78,6 @@ impl Html {
 
 		tracing::debug!("Found {num} HTML articles total", num = entries.len());
 
-		entries.reverse();
 		Ok(entries)
 	}
 }
