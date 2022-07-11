@@ -21,7 +21,7 @@ impl Stdout {
 			"------------------------------\nMessage:\nTitle: {title}\n\nBody:\n{body}\n\nLink: {link:?}\nMedia: {media}\nTag: {tag}\n------------------------------",
 			title = msg.title.as_deref().unwrap_or("None"),
 			body = msg.body,
-			link = msg.link,
+			link = msg.link.map(|url| url.as_str().to_owned()),
 			media = msg.media.is_some(),
 			tag = tag.unwrap_or("None")
 		).as_bytes()).await.map_err(Error::Stdout)
