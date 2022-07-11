@@ -31,19 +31,43 @@ use tokio::task::JoinHandle;
 use tokio::time::sleep;
 use tokio::{select, sync::watch::Receiver};
 use tracing::Instrument;
-use tracing_subscriber::EnvFilter;
 
-#[tokio::main]
-async fn main() -> color_eyre::Result<()> {
-	tracing_subscriber::fmt()
-		.pretty()
-		.with_env_filter(
-			EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::from("fetcher=info")), // TODO: that doesn't look right. Isn't there a better way to use info by default?
-		)
-		// .without_time()
-		.init();
+fn main() -> color_eyre::Result<()> {
+	{
+		use tracing_subscriber::fmt::time::OffsetTime;
+		use tracing_subscriber::layer::SubscriberExt;
+		use tracing_subscriber::EnvFilter;
+		use tracing_subscriber::Layer;
+
+		let env_filter = EnvFilter::try_from_env("FETCHER_LOG")
+			.unwrap_or_else(|_| EnvFilter::from("fetcher=info"));
+		let stdout = tracing_subscriber::fmt::layer()
+			.pretty()
+			// hide source code/debug info on release builds
+			.with_file(cfg!(debug_assertions))
+			.with_line_number(cfg!(debug_assertions))
+			.with_timer(OffsetTime::local_rfc_3339().expect("could not get local time offset"));
+
+		// enable journald logging only on release to avoid log spam on dev machines
+		let journald = if !cfg!(debug_assertions) {
+			tracing_journald::layer().ok()
+		} else {
+			None
+		};
+
+		let subscriber = tracing_subscriber::registry()
+			.with(journald.with_filter(tracing_subscriber::filter::LevelFilter::INFO))
+			.with(stdout.with_filter(env_filter));
+		tracing::subscriber::set_global_default(subscriber).unwrap();
+	}
+
 	color_eyre::install()?;
 
+	async_main()
+}
+
+#[tokio::main]
+async fn async_main() -> color_eyre::Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -90,11 +114,11 @@ async fn run(once: bool) -> Result<()> {
 	.await?;
 
 	if tasks.is_empty() {
-		tracing::warn!("No enabled tasks provided");
+		tracing::info!("No enabled tasks provided");
 		return Ok(());
 	}
 
-	tracing::debug!(
+	tracing::info!(
 		"Found {num} enabled tasks: {names:?}",
 		num = tasks.len(),
 		names = tasks

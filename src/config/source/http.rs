@@ -12,6 +12,7 @@ use url::Url;
 use crate::source;
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(transparent)]
 pub(crate) struct Http {
 	pub(crate) url: Url,
 }

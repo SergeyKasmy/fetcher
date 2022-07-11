@@ -14,6 +14,9 @@ use crate::entry::Entry;
 use crate::error::Result;
 use crate::sink::Message;
 
+const USER_AGENT: &str =
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0";
+
 static CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
 	reqwest::ClientBuilder::new()
 		.timeout(std::time::Duration::from_secs(30))
@@ -40,7 +43,12 @@ impl Http {
 		tracing::debug!("Fetching HTTP source");
 
 		tracing::trace!("Making a request to {:?}", self.url.as_str());
-		let request = self.client.get(self.url.as_str()).send().await?;
+		let request = self
+			.client
+			.get(self.url.as_str())
+			.header(reqwest::header::USER_AGENT, USER_AGENT)
+			.send()
+			.await?;
 
 		tracing::trace!("Getting text body of the responce");
 		let page = request.text().await?;

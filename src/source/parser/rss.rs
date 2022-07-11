@@ -39,7 +39,6 @@ impl Rss {
 					},
 				}
 			})
-			.rev()
 			.collect::<Vec<_>>();
 
 		Ok(entries)

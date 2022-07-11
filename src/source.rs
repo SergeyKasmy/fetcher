@@ -9,17 +9,19 @@
 // TODO: add google calendar source. Google OAuth2 is already implemented :)
 
 pub mod email;
+pub mod file;
 pub mod http;
 pub mod parser;
 pub mod twitter;
 
-use itertools::Itertools;
-
 pub use self::email::Email;
+pub use self::file::File;
 pub use self::http::Http;
-use self::parser::Parser;
 pub use self::twitter::Twitter;
 
+use itertools::Itertools;
+
+use self::parser::Parser;
 use crate::entry::Entry;
 use crate::error::{Error, Result};
 use crate::read_filter::ReadFilter;
@@ -62,6 +64,11 @@ impl Source {
 			Source::WithCustomReadFilter(x) => x.remove_read(&mut parsed_entries),
 		}
 
+		parsed_entries = parsed_entries
+			.into_iter()
+			.unique_by(|x| x.id.clone()) // TODO: I don't like this clone...
+			.collect();
+
 		let unread_num = parsed_entries.len();
 		if total_num != unread_num {
 			tracing::debug!(
@@ -89,6 +96,7 @@ pub struct WithSharedReadFilter {
 
 #[derive(Debug)]
 pub enum WithSharedReadFilterInner {
+	File(File),
 	Http(Http),
 	Twitter(Twitter),
 }
@@ -131,8 +139,9 @@ impl WithSharedReadFilter {
 
 		for s in &mut self.sources {
 			entries.extend(match s {
-				WithSharedReadFilterInner::Http(x) => x.get().await?,
+				WithSharedReadFilterInner::Http(x) => x.get().await?, // TODO: should HTTP even take a read filter?
 				WithSharedReadFilterInner::Twitter(x) => x.get(&self.read_filter).await?,
+				WithSharedReadFilterInner::File(x) => x.get().await?,
 			});
 		}
 

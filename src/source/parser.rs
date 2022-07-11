@@ -8,10 +8,12 @@
 
 pub mod caps;
 pub mod html;
+pub mod json;
 pub mod rss;
 
 pub use self::caps::Caps;
 pub use self::html::Html;
+pub use self::json::Json;
 pub use self::rss::Rss;
 
 use crate::entry::Entry;
@@ -22,6 +24,7 @@ use crate::error::Result;
 #[derive(Debug)]
 pub enum Parser {
 	Html(Html),
+	Json(Json),
 	Rss(Rss),
 
 	Caps(Caps),
@@ -31,7 +34,9 @@ impl Parser {
 	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>> {
 		match self {
 			Parser::Html(x) => x.parse(entry),
+			Parser::Json(x) => x.parse(entry),
 			Parser::Rss(x) => x.parse(entry),
+
 			Parser::Caps(x) => x.parse(entry),
 		}
 	}

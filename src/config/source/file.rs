@@ -6,8 +6,19 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-pub(crate) mod config;
-pub(crate) mod data;
-pub(crate) mod read_filter;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
-const PREFIX: &str = "fetcher";
+use crate::source;
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(transparent)]
+pub(crate) struct File {
+	path: PathBuf,
+}
+
+impl File {
+	pub(crate) fn parse(self) -> source::File {
+		source::File { path: self.path }
+	}
+}

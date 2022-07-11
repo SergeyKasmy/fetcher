@@ -21,6 +21,7 @@ use crate::sink;
 pub(crate) enum Sink {
 	Telegram(Telegram),
 	Stdout,
+	Null,
 }
 
 impl Sink {
@@ -28,6 +29,7 @@ impl Sink {
 		Ok(match self {
 			Sink::Telegram(x) => sink::Sink::Telegram(x.parse(settings)?),
 			Sink::Stdout => sink::Sink::Stdout(sink::Stdout {}),
+			Sink::Null => sink::Sink::Null,
 		})
 	}
 }

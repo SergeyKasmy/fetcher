@@ -7,20 +7,20 @@
  */
 
 pub mod email;
+pub mod file;
 pub mod http;
 pub mod parser;
 pub mod twitter;
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::Result;
-use crate::{read_filter, source};
-
 use self::email::Email;
+use self::file::File;
 use self::http::Http;
 use self::twitter::Twitter;
-
 use super::{DataSettings, OneOrMultiple};
+use crate::error::Result;
+use crate::{read_filter, source};
 
 #[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
 #[derive(Deserialize, Serialize, Debug)]
@@ -36,8 +36,8 @@ pub(crate) enum Source {
 #[serde(rename_all = "snake_case")]
 pub(crate) enum WithSharedReadFilter {
 	Http(Http),
-	// Rss(Rss),
 	Twitter(Twitter),
+	File(File),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -67,6 +67,9 @@ impl Source {
 							}
 							WithSharedReadFilter::Twitter(x) => {
 								source::WithSharedReadFilterInner::Twitter(x.parse(settings)?)
+							}
+							WithSharedReadFilter::File(x) => {
+								source::WithSharedReadFilterInner::File(x.parse())
 							}
 						})
 					})

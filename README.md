@@ -42,12 +42,12 @@ refresh: 30	 # in minutes
 read_filter_type: newer_than_read
 source:
   http:
-	url: <your_rss_feed_url>
+    url: <your_rss_feed_url>
 parse:
   - rss
 sink:
   telegram:
-	chat_id: <your_telegram_chat_id>
+    chat_id: <your_telegram_chat_id>
 ```
 
 Currently available source types:
@@ -55,11 +55,13 @@ Currently available source types:
 * email
 * twitter
 * http
+* file
 
 parser types:
 
 * html
 * rss
+* json
 
 sink types:
 
