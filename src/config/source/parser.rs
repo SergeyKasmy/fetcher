@@ -6,14 +6,15 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use serde::{Deserialize, Serialize};
-
-use crate::source;
-
 pub mod html;
+pub mod json;
 pub mod rss;
 
+use serde::{Deserialize, Serialize};
+
 use self::html::Html;
+use self::json::Json;
+use crate::source;
 
 #[allow(clippy::large_enum_variant)] // this enum is very short-lived, I don't think boxing is worth the trouble
 #[derive(Deserialize, Serialize, Debug)]
@@ -21,6 +22,7 @@ use self::html::Html;
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Parser {
 	Html(Html),
+	Json(Json),
 	Rss,
 
 	Caps,
@@ -30,6 +32,7 @@ impl Parser {
 	pub(crate) fn parse(self) -> source::parser::Parser {
 		match self {
 			Parser::Html(x) => source::parser::Parser::Html(x.parse()),
+			Parser::Json(x) => source::parser::Parser::Json(x.parse()),
 			Parser::Rss => source::parser::Parser::Rss(source::parser::Rss {}),
 
 			Parser::Caps => source::parser::Parser::Caps(source::parser::Caps {}),

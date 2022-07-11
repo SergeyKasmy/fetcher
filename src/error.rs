@@ -10,6 +10,8 @@
 
 use std::{error::Error as StdError, fmt, io, path::PathBuf};
 
+// pub mod parser;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub(crate) type BoxError = Box<dyn StdError + Send + Sync>;
@@ -84,6 +86,22 @@ pub enum Error {
 
 	#[error("Error parsing email")]
 	EmailParse(#[from] mailparse::MailParseError),
+
+	#[error("Invalid JSON")]
+	JsonParseInvalid(#[from] serde_json::error::Error),
+
+	#[error("JSON key {0} not found")]
+	JsonParseKeyNotFound(String),
+
+	#[error("JSON key {key} wrong format: expected {expected_type}, found {found_type}")]
+	JsonParseKeyWrongType {
+		key: String,
+		expected_type: &'static str,
+		found_type: String,
+	},
+
+	#[error("Invalid URL ({1:?})")]
+	UrlInvalid(#[source] url::ParseError, String),
 
 	#[error("Invalid DateTime format")]
 	InvalidDateTimeFormat(#[from] chrono::format::ParseError),
