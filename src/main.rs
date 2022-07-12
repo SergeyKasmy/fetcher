@@ -194,47 +194,55 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 					_ = shutdown_rx.changed() => Ok(()),
 				};
 
-				// production error reporting
 				if let Err(e) = &res {
-					if !cfg!(debug_assertions) {
-						// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
-						use fetcher::sink::telegram::LinkLocation;
-						use fetcher::sink::Message;
-						use fetcher::sink::Telegram;
+					// let err_str = format!("{:?}", color_eyre::eyre::eyre!(e));
+					let err_str = format!("{:?}", e); // TODO: make it pretier like eyre
+					tracing::error!("{}", err_str);
 
-						// let err_str = format!("{:?}", color_eyre::eyre::eyre!(e));
-						let err_str = format!("{:?}", e); // TODO: make it pretier like eyre
-						tracing::error!("{}", err_str);
-						let send_job = async {
-							let bot = match settings::data::telegram().await? {
-								Some(b) => b,
-								None => {
-									let s = "Unable to send error report to the admin: telegram bot token is not provided".to_owned();
+					// production error reporting
+					// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
+					if !cfg!(debug_assertions) {
+						if let Ok(admin_chat_id) = std::env::var("FETCHER_LOG_ADMIN_CHAT_ID") {
+							use fetcher::sink::telegram::LinkLocation;
+							use fetcher::sink::Message;
+							use fetcher::sink::Telegram;
+
+							let admin_chat_id = match admin_chat_id.parse::<i64>() {
+								Ok(num) => num,
+								Err(e) => {
+									let s = format!(
+										"Unable to send error report to the admin: FETCHER_LOG_ADMIN_CHAT_ID isn't a valid chat id ({e})"
+									);
 									tracing::error!(%s);
 									return Err(Error::Other(s)); // TODO: this kinda sucks
 								}
 							};
-							let msg = Message {
-								body: err_str,
-								..Default::default()
+
+							let send_job = async {
+								let bot = match settings::data::telegram().await? {
+									Some(b) => b,
+									None => {
+										let s = "Unable to send error report to the admin: telegram bot token is not provided".to_owned();
+										tracing::error!(%s);
+										return Err(Error::Other(s)); // TODO: this kinda sucks
+									}
+								};
+								let msg = Message {
+									body: err_str,
+									..Default::default()
+								};
+								Telegram::new(bot, admin_chat_id, LinkLocation::default())
+									.send(msg, Some(&name))
+									.await?;
+								Ok::<(), Error>(())
 							};
-							Telegram::new(
-								bot,
-								std::env!("FETCHER_DEBUG_ADMIN_CHAT_ID")
-									.parse::<i64>()
-									.expect("DEBUG_ADMIN_CHAT_ID is not a valid i64"),
-								LinkLocation::default(),
-							)
-							.send(msg, Some(&name))
-							.await?;
-							Ok::<(), Error>(())
-						};
-						if let Err(e) = send_job.await {
-							tracing::error!(
-								"Unable to send error report to the admin: {:?}",
-								// color_eyre::eyre::eyre!(e)
-								e
-							);
+							if let Err(e) = send_job.await {
+								tracing::error!(
+									"Unable to send error report to the admin: {:?}",
+									// color_eyre::eyre::eyre!(e)
+									e
+								);
+							}
 						}
 					}
 				}
