@@ -8,20 +8,24 @@
 
 use once_cell::sync::Lazy;
 use std::fmt::Debug;
+use std::sync::RwLock;
 use url::Url;
 
 use crate::entry::Entry;
-use crate::error::Result;
+use crate::error::source::HttpError;
 use crate::sink::Message;
 
 const USER_AGENT: &str =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0";
 
-static CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
-	reqwest::ClientBuilder::new()
-		.timeout(std::time::Duration::from_secs(30))
-		.build()
-		.expect("TLS init error") // TODO: fail gracefully
+// option because tls init could've failed and we took out the Err()
+static CLIENT: Lazy<RwLock<Option<Result<reqwest::Client, HttpError>>>> = Lazy::new(|| {
+	RwLock::new(Some(
+		reqwest::ClientBuilder::new()
+			.timeout(std::time::Duration::from_secs(30))
+			.build()
+			.map_err(|e| HttpError::TlsInitFailed(e)),
+	))
 });
 
 pub struct Http {
@@ -31,15 +35,30 @@ pub struct Http {
 
 impl Http {
 	#[must_use]
-	pub fn new(url: Url) -> Self {
-		Self {
-			url,
-			client: CLIENT.clone(),
-		}
+	pub fn new(url: Url) -> Result<Self, HttpError> {
+		// take out the error out of the option if there was an error, otherwise just clone the Client
+		let client = if let Ok(client) = CLIENT // if there was no error building the client
+			.read()
+			.expect("RwLock has been poisoned")
+			.as_ref()
+			// there was an error building the client and the error has already been extracted
+			.ok_or(HttpError::ClientNotInitialized)?
+		{
+			client.clone()
+		} else {
+			return Err(CLIENT
+				.write()
+				.expect("RwLock has been poisoned")
+				.take()
+				.unwrap()
+				.unwrap_err()); // should always be Some and Err because we .ok_or?'ed it up above
+		};
+
+		Ok(Self { url, client })
 	}
 
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&self) -> Result<Vec<Entry>> {
+	pub async fn get(&self) -> Result<Vec<Entry>, HttpError> {
 		tracing::debug!("Fetching HTTP source");
 
 		tracing::trace!("Making a request to {:?}", self.url.as_str());
@@ -48,10 +67,14 @@ impl Http {
 			.get(self.url.as_str())
 			.header(reqwest::header::USER_AGENT, USER_AGENT)
 			.send()
-			.await?;
+			.await
+			.map_err(|e| HttpError::Get(e, self.url.to_string()))?;
 
 		tracing::trace!("Getting text body of the responce");
-		let page = request.text().await?;
+		let page = request
+			.text()
+			.await
+			.map_err(|e| HttpError::Get(e, self.url.to_string()))?;
 		tracing::trace!("Done");
 
 		Ok(vec![Entry {

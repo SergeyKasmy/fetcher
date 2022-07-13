@@ -20,7 +20,7 @@ use self::query::{
 	TitleQuery, UrlQuery,
 };
 use crate::entry::Entry;
-use crate::error::{Error, Result};
+use crate::error::source::parse::HtmlError;
 use crate::sink::{Media, Message};
 
 #[derive(Debug)]
@@ -35,14 +35,14 @@ pub struct Html {
 
 impl Html {
 	#[tracing::instrument(skip_all)]
-	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>> {
+	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>, HtmlError> {
 		tracing::debug!("Parsing HTML");
 
 		let soup = Soup::new(entry.msg.body.as_str());
 		let items = find_chain(&soup, &self.itemq);
 
 		let entries = items
-			.map(|item| -> Result<Entry> {
+			.map(|item| -> Result<Entry, HtmlError> {
 				let id = self
 					.idq
 					.as_ref()
@@ -74,16 +74,16 @@ impl Html {
 					},
 				})
 			})
-			.collect::<Result<Vec<_>>>()?;
+			.collect::<Result<Vec<_>, HtmlError>>()?;
 
 		tracing::debug!("Found {num} HTML articles total", num = entries.len());
 
 		Ok(entries)
 	}
 }
-fn extract_url(item: &impl QueryBuilderExt, urlq: &UrlQuery) -> Result<Url> {
+fn extract_url(item: &impl QueryBuilderExt, urlq: &UrlQuery) -> Result<Url, HtmlError> {
 	let mut link = extract_data(&mut find_chain(item, &urlq.inner.query), &urlq.inner)
-		.ok_or(Error::HtmlParse("url not found", None))?
+		.ok_or(HtmlError::UrlNotFound)?
 		.trim()
 		.to_owned();
 
@@ -91,13 +91,12 @@ fn extract_url(item: &impl QueryBuilderExt, urlq: &UrlQuery) -> Result<Url> {
 		link.insert_str(0, prepend);
 	}
 
-	Url::try_from(link.as_str())
-		.map_err(|e| Error::HtmlParse("The found link is not a valid url", Some(Box::new(e))))
+	Ok(Url::try_from(link.as_str())?)
 }
 
-fn extract_id(item: &impl QueryBuilderExt, idq: &IdQuery) -> Result<String> {
+fn extract_id(item: &impl QueryBuilderExt, idq: &IdQuery) -> Result<String, HtmlError> {
 	let id_str = extract_data(&mut find_chain(item, &idq.inner.query), &idq.inner)
-		.ok_or(Error::HtmlParse("id not found", None))?
+		.ok_or(HtmlError::IdNotFound)?
 		.trim()
 		.to_owned();
 
@@ -137,7 +136,7 @@ fn extract_body(item: &impl QueryBuilderExt, textq: &[TextQuery]) -> String {
 		.join("\n\n")
 }
 
-fn extract_img(item: &impl QueryBuilderExt, imgq: &ImageQuery) -> Result<Option<Url>> {
+fn extract_img(item: &impl QueryBuilderExt, imgq: &ImageQuery) -> Result<Option<Url>, HtmlError> {
 	let mut img_url = match extract_data(
 		&mut find_chain(item, &imgq.url.inner.query), // TODO: check iterator not empty
 		&imgq.url.inner,                              // TODO: make less fugly
@@ -151,10 +150,7 @@ fn extract_img(item: &impl QueryBuilderExt, imgq: &ImageQuery) -> Result<Option<
 				return Ok(None);
 			}
 
-			return Err(Error::HtmlParse(
-				"image not found but it's not optional",
-				None,
-			));
+			return Err(HtmlError::ImageNotFound);
 		}
 	};
 
@@ -162,12 +158,7 @@ fn extract_img(item: &impl QueryBuilderExt, imgq: &ImageQuery) -> Result<Option<
 		img_url.insert_str(0, prepend);
 	}
 
-	Some(
-		Url::try_from(img_url.as_str()).map_err(|e| {
-			Error::HtmlParse("the found image url is an invalid url", Some(Box::new(e)))
-		}),
-	)
-	.transpose()
+	Ok(Some(Url::try_from(img_url.as_str())?))
 }
 
 /// Find items matching the query in the provided HTML part
@@ -245,7 +236,7 @@ fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &QueryData) -> Option<St
 
 // TODO: rewrite the entire fn to use today/Yesterday words and date formats from the config per source and not global
 #[allow(dead_code)]
-fn parse_pretty_date(mut date_str: &str) -> Result<DateTime<Utc>> {
+fn parse_pretty_date(mut date_str: &str) -> Result<DateTime<Utc>, HtmlError> {
 	enum DateTimeKind {
 		Today,
 		Yesterday,
@@ -273,8 +264,7 @@ fn parse_pretty_date(mut date_str: &str) -> Result<DateTime<Utc>> {
 		}
 	}
 
-	date_str = date_str.trim_matches(',');
-	date_str = date_str.trim();
+	date_str = date_str.trim_matches(',').trim();
 
 	Ok(match datetime_kind {
 		DateTimeKind::Today => {

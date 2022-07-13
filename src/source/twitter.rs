@@ -10,13 +10,13 @@ use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
 
 use crate::entry::Entry;
-use crate::error::Result;
+use crate::error::source::TwitterError;
 use crate::read_filter::ReadFilter;
 use crate::sink::Media;
 use crate::sink::Message;
 
 pub struct Twitter {
-	pretty_name: String, // used for hashtags
+	pretty_name: String, // used for hashtags	// TODO: not needed anymore (at least I don't think so)
 	handle: String,
 	api_key: String,
 	api_secret: String,
@@ -44,15 +44,16 @@ impl Twitter {
 	}
 
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Entry>> {
+	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Entry>, TwitterError> {
 		tracing::debug!("Getting tweets");
 		if self.token.is_none() {
 			self.token = Some(
-				bearer_token(&KeyPair::new(self.api_key.clone(), self.api_secret.clone())).await?, // .await
-				                                                                                   // .map_err(Error::TwitterAuth)?,
+				bearer_token(&KeyPair::new(self.api_key.clone(), self.api_secret.clone()))
+					.await
+					.map_err(TwitterError::Auth)?,
 			);
 		}
-		// unwrap NOTE: initialized just above, should be safe
+		// unwrap NOTE: initialized just above, should be safe	// TODO: make this unwrap not required
 		let token = self.token.as_ref().unwrap();
 
 		// TODO: keep a tweet id -> message id hashmap and handle enable with_replies from below

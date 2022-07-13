@@ -7,7 +7,6 @@
  */
 
 use crate::entry::Entry;
-use crate::error::Result;
 use crate::sink::Message;
 
 #[derive(Debug)]
@@ -15,8 +14,8 @@ pub struct Caps;
 
 impl Caps {
 	#[tracing::instrument(skip_all)]
-	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>> {
-		Ok(vec![Entry {
+	pub fn parse(&self, entry: Entry) -> Vec<Entry> {
+		vec![Entry {
 			id: entry.id,
 			msg: Message {
 				title: entry.msg.title.map(|s| s.to_uppercase()),
@@ -24,6 +23,6 @@ impl Caps {
 				link: entry.msg.link,
 				media: entry.msg.media,
 			},
-		}])
+		}]
 	}
 }

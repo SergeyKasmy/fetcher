@@ -9,15 +9,15 @@
 pub mod tasks;
 pub mod templates;
 
-use fetcher::error::Result;
 use std::path::PathBuf;
 
 use super::PREFIX;
+use fetcher::error::config::Error as ConfigError;
 
 const CONFIG_FILE_EXT: &str = "yaml";
 
 // TODO: use directories instead of xdg
-fn cfg_dirs() -> Result<Vec<PathBuf>> {
+fn cfg_dirs() -> Result<Vec<PathBuf>, ConfigError> {
 	Ok(if cfg!(debug_assertions) {
 		vec![PathBuf::from("debug_data/cfg".to_string())]
 	} else {

@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{read_filter, sink::Sink, source::parser::Parser, source::Source, DataSettings};
-use crate::{error::Result, task};
+use crate::{error::Error, task};
 
 #[derive(Deserialize, Debug)]
 pub struct TemplatesField {
@@ -34,7 +34,7 @@ pub struct Task {
 }
 
 impl Task {
-	pub async fn parse(self, name: &str, settings: &DataSettings) -> Result<task::Task> {
+	pub async fn parse(self, name: &str, settings: &DataSettings) -> Result<task::Task, Error> {
 		let source = self
 			.source
 			.parse(

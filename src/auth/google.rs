@@ -9,7 +9,7 @@
 use serde::Deserialize;
 use std::time::{Duration, Instant};
 
-use crate::error::{Error, Result};
+use crate::error::GoogleOAuth2Error;
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
 
@@ -49,7 +49,7 @@ impl Google {
 		client_id: &str,
 		client_secret: &str,
 		access_code: &str,
-	) -> Result<String> {
+	) -> Result<String, GoogleOAuth2Error> {
 		let body = [
 			("client_id", client_id),
 			("client_secret", client_secret),
@@ -62,9 +62,11 @@ impl Google {
 			.post(GOOGLE_AUTH_URL)
 			.form(&body)
 			.send()
-			.await?
+			.await
+			.map_err(GoogleOAuth2Error::Post)?
 			.text()
-			.await?;
+			.await
+			.map_err(GoogleOAuth2Error::Post)?;
 
 		// TODO: find a better way to get a string without a temporary struct or a million of ok_or()'s
 		#[derive(Deserialize)]
@@ -73,7 +75,7 @@ impl Google {
 		}
 
 		let Response { refresh_token } =
-			serde_json::from_str(&resp).map_err(|_| Error::GoogleAuth(resp))?;
+			serde_json::from_str(&resp).map_err(|_| GoogleOAuth2Error::Auth(resp))?;
 		Ok(refresh_token)
 	}
 
@@ -81,7 +83,7 @@ impl Google {
 		client_id: &str,
 		client_secret: &str,
 		refresh_token: &str,
-	) -> Result<GoogleOAuth2Responce> {
+	) -> Result<GoogleOAuth2Responce, GoogleOAuth2Error> {
 		let body = [
 			("client_id", client_id),
 			("client_secret", client_secret),
@@ -94,15 +96,17 @@ impl Google {
 			.post(GOOGLE_AUTH_URL)
 			.form(&body)
 			.send()
-			.await?
+			.await
+			.map_err(GoogleOAuth2Error::Post)?
 			.text()
-			.await?;
+			.await
+			.map_err(GoogleOAuth2Error::Post)?;
 
 		// TODO: maybe use the result from serde instead of the responce itself?
-		serde_json::from_str(&resp).map_err(|_| Error::GoogleAuth(resp))
+		serde_json::from_str(&resp).map_err(|_| GoogleOAuth2Error::Auth(resp))
 	}
 
-	async fn validate_access_token(&mut self) -> Result<()> {
+	async fn validate_access_token(&mut self) -> Result<(), GoogleOAuth2Error> {
 		let GoogleOAuth2Responce {
 			access_token,
 			expires_in,
@@ -117,7 +121,7 @@ impl Google {
 		Ok(())
 	}
 
-	pub async fn access_token(&mut self) -> Result<&str> {
+	pub async fn access_token(&mut self) -> Result<&str, GoogleOAuth2Error> {
 		// FIXME: for some reason the token sometimes expires by itself and should be renewed manually
 		// Update the token if:
 		// we haven't done that yet

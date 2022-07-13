@@ -12,20 +12,20 @@ use tokio::fs;
 use super::PREFIX;
 use crate::config;
 use fetcher::{
-	error::{Error, Result},
+	error::config::Error as ConfigError,
 	read_filter::{ReadFilter, Writer},
 };
 
 const READ_DATA_DIR: &str = "read";
 
-fn read_filter_path(name: &str) -> Result<PathBuf> {
+fn read_filter_path(name: &str) -> Result<PathBuf, ConfigError> {
 	debug_assert!(!name.is_empty());
 	Ok(if cfg!(debug_assertions) {
 		PathBuf::from(format!("debug_data/read/{name}"))
 	} else {
 		xdg::BaseDirectories::with_profile(PREFIX, READ_DATA_DIR)?
 			.place_data_file(name)
-			.map_err(|e| Error::LocalIoRead(e, format!("READ_DATA_DIR/{name}").into()))?
+			.map_err(|e| ConfigError::Read(e, format!("READ_DATA_DIR/{name}").into()))?
 	})
 }
 
@@ -39,7 +39,7 @@ pub async fn get(
 	name: &str,
 	// TODO: remove option
 	default: Option<fetcher::read_filter::Kind>,
-) -> Result<Option<ReadFilter>> {
+) -> Result<Option<ReadFilter>, ConfigError> {
 	struct TruncatingFileWriter {
 		file: std::fs::File,
 	}
@@ -58,17 +58,18 @@ pub async fn get(
 		}
 	}
 
-	let writer = || -> Result<Writer> {
+	let writer = || -> Result<Writer, ConfigError> {
 		let path = read_filter_path(name)?;
 		if let Some(parent) = path.parent() {
-			std::fs::create_dir_all(parent).map_err(Error::LocalIoWriteReadFilterData)?;
+			std::fs::create_dir_all(parent)
+				.map_err(|e| ConfigError::Write(e, parent.to_owned()))?;
 		}
 
 		let file = std::fs::OpenOptions::new()
 			.create(true)
 			.write(true)
 			.open(&path)
-			.map_err(|e| Error::LocalIoWrite(e, path.clone()))?;
+			.map_err(|e| ConfigError::Write(e, path.clone()))?;
 
 		Ok(Box::new(TruncatingFileWriter { file }))
 	};
@@ -89,7 +90,8 @@ pub async fn get(
 				tracing::trace!("Read filter save file exists and is {} bytes long", l);
 
 				let read_filter_conf: config::read_filter::ReadFilter =
-					serde_json::from_str(&filter_str).map_err(|e| Error::CorruptedFile(e, path))?;
+					serde_json::from_str(&filter_str)
+						.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path))?;
 				Some(read_filter_conf.parse(writer()?))
 			}
 		},

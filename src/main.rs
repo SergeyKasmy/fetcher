@@ -10,7 +10,6 @@
 
 mod settings;
 
-use fetcher::error::Result;
 use fetcher::{
 	config::{self, DataSettings},
 	error::Error,
@@ -97,18 +96,25 @@ async fn async_main() -> color_eyre::Result<()> {
 	Ok(())
 }
 
-async fn run(once: bool) -> Result<()> {
+async fn run(once: bool) -> Result<(), Error> {
 	let tasks = settings::config::tasks::get_all(&DataSettings {
 		twitter_auth: settings::data::twitter().await?,
 		google_oauth2: settings::data::google_oauth2().await?,
-		google_password: settings::data::google_password().await?,
+		email_password: settings::data::google_password().await?,
 		telegram: settings::data::telegram().await?,
 		read_filter: Box::new(
 			|name: String,
 			 default: Option<fetcher::read_filter::Kind>|
-			 -> Pin<Box<dyn Future<Output = Result<Option<fetcher::read_filter::ReadFilter>>>>> {
-				Box::pin(async move { settings::read_filter::get(&name, default).await })
-			},
+			 -> Pin<
+				Box<
+					dyn Future<
+						Output = Result<
+							Option<fetcher::read_filter::ReadFilter>,
+							fetcher::error::config::Error,
+						>,
+					>,
+				>,
+			> { Box::pin(async move { settings::read_filter::get(&name, default).await }) },
 		),
 	})
 	.await?;
@@ -168,7 +174,7 @@ async fn run(once: bool) -> Result<()> {
 	Ok(())
 }
 
-async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Result<()> {
+async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Result<(), Error> {
 	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
 		let name2 = name.clone(); // TODO: ehhh. Is there a way to avoid cloning?
@@ -176,7 +182,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 
 		let fut = tokio::spawn(
 			async move {
-				let res: Result<()> = select! {
+				let res: Result<(), Error> = select! {
 					res = async {
 						loop {
 							run_task(&mut t).await?;
@@ -273,7 +279,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 	}
 }
 
-async fn flatten_task<T>(h: JoinHandle<Result<T>>) -> Result<T> {
+async fn flatten_task<T, E: std::error::Error>(h: JoinHandle<Result<T, E>>) -> Result<T, E> {
 	match h.await {
 		Ok(Ok(res)) => Ok(res),
 		Ok(Err(err)) => Err(err),

@@ -8,11 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-	config::DataSettings,
-	error::{Error, Result},
-	sink,
-};
+use crate::{config::DataSettings, error::config::Error as ConfigError, sink};
 
 /// Refer to [`crate::sink::message::LinkLocation`]
 #[derive(Deserialize, Serialize, Debug)]
@@ -40,20 +36,20 @@ pub(crate) struct Telegram {
 }
 
 impl Telegram {
-	pub(crate) fn parse(self, settings: &DataSettings) -> Result<sink::Telegram> {
-		let chat_id = match std::env::var("FETCHER_DEBUG_CHAT_ID") {
-			Ok(s) => s
-				.parse::<i64>()
-				.map_err(|_| Error::Other("Invalid chat id in FETCHER_DEBUG_CHAT_ID".to_owned()))?,
-			_ => self.chat_id,
-		};
+	pub(crate) fn parse(self, settings: &DataSettings) -> Result<sink::Telegram, ConfigError> {
+		// let chat_id = match std::env::var("FETCHER_DEBUG_CHAT_ID") {
+		// 	Ok(s) => s
+		// 		.parse::<i64>()
+		// 		.map_err(|_| Error::Other("Invalid chat id in FETCHER_DEBUG_CHAT_ID".to_owned()))?,
+		// 	_ => self.chat_id,
+		// };
 		Ok(sink::Telegram::new(
 			settings
 				.telegram
 				.as_ref()
 				.cloned()
-				.ok_or_else(|| Error::ServiceNotReady("Telegram bot token".to_owned()))?,
-			chat_id,
+				.ok_or(ConfigError::TelegramBotTokenMissing)?,
+			self.chat_id,
 			self.link_location.parse(),
 		))
 	}

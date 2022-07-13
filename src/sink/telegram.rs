@@ -21,7 +21,7 @@ use teloxide::{
 };
 
 use crate::{
-	error::{Error, Result},
+	error::sink::Error as SinkError,
 	sink::{Media, Message},
 };
 
@@ -58,7 +58,7 @@ impl Telegram {
 
 	#[allow(clippy::items_after_statements)] // TODO
 	#[tracing::instrument(skip_all)]
-	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<()> {
+	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError> {
 		let Message {
 			title,
 			body,
@@ -169,9 +169,11 @@ impl Telegram {
 				)
 				.await
 			{
-				Err(Error::Telegram(RequestError::Api(ApiError::Unknown(e)), _))
-					if e.contains("Failed to get HTTP URL content")
-						|| e.contains("Wrong file identifier/HTTP URL specified") =>
+				Err(SinkError::Telegram {
+					source: RequestError::Api(ApiError::Unknown(e)),
+					msg: _,
+				}) if e.contains("Failed to get HTTP URL content")
+					|| e.contains("Wrong file identifier/HTTP URL specified") =>
 				{
 					// TODO: reupload the image manually if this happens
 					tracing::warn!("Telegram disapproved of the media URL ({e}), sending the message as pure text");
@@ -188,7 +190,7 @@ impl Telegram {
 	}
 
 	// TODO: move error handling out to dedup send_text & send_media
-	async fn send_text(&self, message: String) -> Result<TelMessage> {
+	async fn send_text(&self, message: String) -> Result<TelMessage, SinkError> {
 		loop {
 			tracing::info!("Sending text message");
 			// TODO: move to the Sink::send() despetcher method mb
@@ -211,17 +213,16 @@ impl Telegram {
 					tokio::time::sleep(retry_after).await;
 				}
 				Err(e) => {
-					return Err((
-						e,
-						Box::new(message) as Box<dyn std::fmt::Debug + Send + Sync>,
-					)
-						.into())
+					return Err(SinkError::Telegram {
+						source: e,
+						msg: Box::new(message),
+					});
 				}
 			}
 		}
 	}
 
-	async fn send_media(&self, media: Vec<InputMedia>) -> Result<Vec<TelMessage>> {
+	async fn send_media(&self, media: Vec<InputMedia>) -> Result<Vec<TelMessage>, SinkError> {
 		loop {
 			tracing::info!("Sending media message");
 			tracing::trace!("Message contents: {media:?}");
@@ -247,9 +248,10 @@ impl Telegram {
 					tokio::time::sleep(Duration::from_secs(30)).await;
 				}
 				Err(e) => {
-					return Err(
-						(e, Box::new(media) as Box<dyn std::fmt::Debug + Send + Sync>).into(),
-					)
+					return Err(SinkError::Telegram {
+						source: e,
+						msg: Box::new(media),
+					});
 				}
 			}
 		}

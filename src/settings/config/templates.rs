@@ -9,14 +9,13 @@
 use std::fs;
 use std::path::Path;
 
-use fetcher::error::Error;
-use fetcher::error::Result;
+use fetcher::error::config::Error as ConfigError;
 use fetcher::task::template::Template;
 
 use super::CONFIG_FILE_EXT;
 
 #[tracing::instrument(name = "template")]
-pub fn find(name: &str) -> Result<Option<Template>> {
+pub fn find(name: &str) -> Result<Option<Template>, ConfigError> {
 	super::cfg_dirs()?
 		.into_iter()
 		.map(|mut p| {
@@ -27,7 +26,7 @@ pub fn find(name: &str) -> Result<Option<Template>> {
 		.transpose()
 }
 
-pub fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>> {
+pub fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>, ConfigError> {
 	tracing::trace!("Searching for template in {}", templates_path.display());
 	let path = templates_path.join(name).with_extension(CONFIG_FILE_EXT);
 	if !path.is_file() {
@@ -36,7 +35,7 @@ pub fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>> {
 		return Ok(None);
 	}
 
-	let contents = fs::read_to_string(&path).map_err(|e| Error::LocalIoRead(e, path.clone()))?;
+	let contents = fs::read_to_string(&path).map_err(|e| ConfigError::Read(e, path.clone()))?;
 
 	Ok(Some(Template {
 		name: name.to_owned(),

@@ -9,7 +9,7 @@
 use rss::Channel;
 
 use crate::entry::Entry;
-use crate::error::Result;
+use crate::error::source::parse::Error as ParseError;
 use crate::sink::Message;
 
 #[derive(Debug)]
@@ -17,7 +17,7 @@ pub struct Rss;
 
 impl Rss {
 	#[tracing::instrument(skip_all)]
-	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>> {
+	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>, ParseError> {
 		tracing::debug!("Parsing RSS articles");
 
 		let feed = Channel::read_from(entry.msg.body.as_bytes())?;

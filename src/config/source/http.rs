@@ -18,7 +18,7 @@ pub(crate) struct Http {
 }
 
 impl Http {
-	pub(crate) fn parse(self) -> source::Http {
+	pub(crate) fn parse(self) -> Result<source::Http, crate::error::source::HttpError> {
 		source::Http::new(self.url)
 	}
 }

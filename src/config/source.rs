@@ -19,8 +19,7 @@ use self::file::File;
 use self::http::Http;
 use self::twitter::Twitter;
 use super::{DataSettings, OneOrMultiple};
-use crate::error::Result;
-use crate::{read_filter, source};
+use crate::{error::Error, read_filter, source};
 
 #[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
 #[derive(Deserialize, Serialize, Debug)]
@@ -53,7 +52,7 @@ impl Source {
 		name: &str,
 		settings: &DataSettings,
 		default_read_filter_kind: Option<read_filter::Kind>,
-	) -> Result<source::Source> {
+	) -> Result<source::Source, Error> {
 		Ok(match self {
 			Source::WithSharedReadFilter(v) => {
 				let v: Vec<WithSharedReadFilter> = v.into();
@@ -63,7 +62,9 @@ impl Source {
 					.map(|x| {
 						Ok(match x {
 							WithSharedReadFilter::Http(x) => {
-								source::WithSharedReadFilterInner::Http(x.parse())
+								source::WithSharedReadFilterInner::Http(
+									x.parse().map_err(crate::error::source::Error::Http)?,
+								)
 							}
 							WithSharedReadFilter::Twitter(x) => {
 								source::WithSharedReadFilterInner::Twitter(x.parse(settings)?)
@@ -73,7 +74,7 @@ impl Source {
 							}
 						})
 					})
-					.collect::<Result<Vec<_>>>()?;
+					.collect::<Result<Vec<_>, Error>>()?;
 
 				source::Source::WithSharedReadFilter(source::WithSharedReadFilter::new(
 					inner,

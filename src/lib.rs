@@ -26,10 +26,9 @@ use source::Source;
 
 use crate::entry::Entry;
 use crate::error::Error;
-use crate::error::Result;
 use crate::task::Task;
 
-pub async fn run_task(t: &mut Task) -> Result<()> {
+pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 	tracing::trace!("Running task: {:#?}", t);
 
 	let fetch = async {
@@ -42,8 +41,14 @@ pub async fn run_task(t: &mut Task) -> Result<()> {
 
 	match fetch.await {
 		Ok(_) => (),
-		Err(e @ Error::NoConnection(_)) => tracing::warn!("{:?}", color_eyre::eyre::eyre!(e)),
-		Err(e) => return Err(e),
+		Err(e) => {
+			if let Some(network_err) = e.is_connection_error() {
+				// tracing::warn!("{:?}", color_eyre::eyre::eyre!(network_err));
+				tracing::warn!("{network_err:?}");
+			} else {
+				return Err(e);
+			}
+		}
 	}
 
 	Ok(())
@@ -55,7 +60,7 @@ async fn process_entry(
 	entry: Entry,
 	tag: Option<&str>,
 	mark_as_read: &mut Source,
-) -> Result<()> {
+) -> Result<(), Error> {
 	tracing::trace!("Processing entry: {entry:?}");
 
 	sink.send(entry.msg, tag).await?;

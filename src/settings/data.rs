@@ -6,10 +6,7 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use fetcher::{
-	auth, config,
-	error::{Error, Result},
-};
+use fetcher::{auth, config, error::config::Error as ConfigError};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use teloxide::Bot;
@@ -30,44 +27,34 @@ struct TwitterAuthSaveFormat {
 	api_secret: String,
 }
 
-fn data_path(name: &str) -> Result<PathBuf> {
+fn data_path(name: &str) -> Result<PathBuf, ConfigError> {
 	Ok(if cfg!(debug_assertions) {
 		PathBuf::from(format!("debug_data/{name}"))
 	} else {
 		xdg::BaseDirectories::with_prefix(PREFIX)?
 			.place_data_file(name)
-			.map_err(|e| Error::LocalIoRead(e, name.into()))?
+			.map_err(|e| ConfigError::Read(e, name.into()))?
 	})
 }
 
-// fn input(prompt: &str, expected_input_len: usize) -> Result<String> {
-// 	use std::io::{stdin, stdout, Write};
-
-// 	print!("{prompt}");
-// 	stdout().flush().map_err(Error::Stdout)?;
-
-// 	let mut buf = String::with_capacity(expected_input_len);
-// 	stdin().read_line(&mut buf).map_err(Error::Stdin)?;
-
-// 	Ok(buf.trim().to_string())
-// }
-
-async fn input(prompt: &str, expected_input_len: usize) -> Result<String> {
+async fn input(prompt: &str, expected_input_len: usize) -> Result<String, ConfigError> {
 	use std::io::Write;
 
 	print!("{prompt}");
-	std::io::stdout().flush().map_err(Error::Stdout)?; // TODO: why can't I use tokio version?
+	std::io::stdout()
+		.flush()
+		.map_err(ConfigError::StdoutWrite)?; // TODO: why can't I use tokio version?
 
 	let mut buf = String::with_capacity(expected_input_len);
 	BufReader::new(io::stdin())
 		.read_line(&mut buf)
 		.await
-		.map_err(Error::Stdin)?;
+		.map_err(ConfigError::StdinRead)?;
 
 	Ok(buf.trim().to_string())
 }
 
-pub async fn data(name: &str) -> Result<Option<String>> {
+pub async fn data(name: &str) -> Result<Option<String>, ConfigError> {
 	let f = data_path(name)?;
 	if !f.is_file() {
 		return Ok(None);
@@ -76,7 +63,7 @@ pub async fn data(name: &str) -> Result<Option<String>> {
 	Some(
 		fs::read_to_string(&f)
 			.await
-			.map_err(|e| Error::LocalIoRead(e, f)),
+			.map_err(|e| ConfigError::Read(e, f)),
 	)
 	.transpose()
 }
@@ -87,24 +74,24 @@ pub async fn data(name: &str) -> Result<Option<String>> {
 /// # Errors
 /// * if the file is inaccessible
 /// * if the file is corrupted
-pub async fn google_oauth2() -> Result<Option<auth::Google>> {
+pub async fn google_oauth2() -> Result<Option<auth::Google>, ConfigError> {
 	let data = match data(GOOGLE_OAUTH2).await? {
 		Some(d) => d,
 		None => return Ok(None),
 	};
 
-	let conf: config::auth::Google =
-		serde_json::from_str(&data).map_err(|e| Error::CorruptedFile(e, GOOGLE_OAUTH2.into()))?;
+	let conf: config::auth::Google = serde_json::from_str(&data)
+		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), GOOGLE_OAUTH2.into()))?;
 
 	Ok(Some(conf.parse()))
 }
 
 /// TODO: rename to email password
-pub async fn google_password() -> Result<Option<String>> {
+pub async fn google_password() -> Result<Option<String>, ConfigError> {
 	data(GOOGLE_PASS).await
 }
 
-pub async fn twitter() -> Result<Option<(String, String)>> {
+pub async fn twitter() -> Result<Option<(String, String)>, ConfigError> {
 	let data = match data(TWITTER).await? {
 		Some(d) => d,
 		None => return Ok(None),
@@ -113,23 +100,24 @@ pub async fn twitter() -> Result<Option<(String, String)>> {
 	let TwitterAuthSaveFormat {
 		api_key,
 		api_secret,
-	} = serde_json::from_str(&data).map_err(|e| Error::CorruptedFile(e, TWITTER.into()))?;
+	} = serde_json::from_str(&data)
+		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), TWITTER.into()))?;
 
 	Ok(Some((api_key, api_secret)))
 }
 
-pub async fn telegram() -> Result<Option<Bot>> {
+pub async fn telegram() -> Result<Option<Bot>, ConfigError> {
 	Ok(data(TELEGRAM).await?.map(Bot::new))
 }
 
-async fn save_data(name: &str, data: &str) -> Result<()> {
+async fn save_data(name: &str, data: &str) -> Result<(), ConfigError> {
 	let p = data_path(name)?;
 	fs::write(&p, data)
 		.await
-		.map_err(|e| Error::LocalIoWrite(e, p))
+		.map_err(|e| ConfigError::Write(e, p))
 }
 
-pub async fn generate_google_oauth2() -> Result<()> {
+pub async fn generate_google_oauth2() -> Result<(), ConfigError> {
 	const SCOPE: &str = "https://mail.google.com/";
 
 	let client_id = input("Google OAuth2 client id: ", 100).await?;
@@ -151,13 +139,13 @@ pub async fn generate_google_oauth2() -> Result<()> {
 }
 
 // TODO: maybe "generate" isn't the best word?
-pub async fn generate_google_password() -> Result<()> {
+pub async fn generate_google_password() -> Result<(), ConfigError> {
 	let pass = input("Google app password", 25).await?;
 
 	save_data(GOOGLE_PASS, &pass).await
 }
 
-pub async fn generate_twitter_auth() -> Result<()> {
+pub async fn generate_twitter_auth() -> Result<(), ConfigError> {
 	let api_key = input("Twitter API key: ", 25).await?;
 	let api_secret = input("Twitter API secret: ", 50).await?;
 
@@ -172,7 +160,7 @@ pub async fn generate_twitter_auth() -> Result<()> {
 	.await
 }
 
-pub async fn generate_telegram() -> Result<()> {
+pub async fn generate_telegram() -> Result<(), ConfigError> {
 	let key = input("Telegram bot API key: ", 50).await?;
 	save_data("telegram.txt", &key).await
 }

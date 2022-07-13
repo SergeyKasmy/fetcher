@@ -10,7 +10,7 @@
 
 use fetcher::{
 	config::{self, DataSettings, TemplatesField},
-	error::{Error, Result},
+	error::config::Error as ConfigError,
 	task::{Task, Tasks},
 };
 use figment::{
@@ -24,7 +24,7 @@ use crate::settings;
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]
 #[tracing::instrument(skip(settings))]
-pub async fn get_all(settings: &DataSettings) -> Result<Tasks> {
+pub async fn get_all(settings: &DataSettings) -> Result<Tasks, ConfigError> {
 	let mut tasks = Tasks::new();
 	for dir in super::cfg_dirs()?.into_iter().map(|mut p| {
 		p.push("tasks");
@@ -36,19 +36,20 @@ pub async fn get_all(settings: &DataSettings) -> Result<Tasks> {
 	Ok(tasks)
 }
 
-pub async fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result<Tasks> {
+pub async fn get_all_from(
+	tasks_dir: PathBuf,
+	settings: &DataSettings,
+) -> Result<Tasks, ConfigError> {
 	let glob_str = format!(
 		"{tasks_dir}/**/*.{CONFIG_FILE_EXT}",
-		tasks_dir = tasks_dir
-			.to_str()
-			.ok_or_else(|| Error::BadPath(tasks_dir.clone()))?
+		tasks_dir = tasks_dir.to_str().expect("Path is illegal UTF-8") // .ok_or_else(|| ConfigError::BadPath(tasks_dir.clone()))?
 	);
 
 	let cfgs = glob::glob(&glob_str).unwrap(); // unwrap NOTE: should be safe if the glob pattern is correct
 
 	let mut tasks = Tasks::new();
 	for cfg in cfgs {
-		let cfg = cfg.map_err(|e| Error::LocalIoRead(e.into_error(), tasks_dir.clone()))?;
+		let cfg = cfg.map_err(|e| ConfigError::Read(e.into_error(), tasks_dir.clone()))?;
 		let name = cfg
 			.strip_prefix(&tasks_dir)
 			.unwrap()
@@ -65,20 +66,28 @@ pub async fn get_all_from(tasks_dir: PathBuf, settings: &DataSettings) -> Result
 }
 
 #[tracing::instrument(skip(settings))]
-pub async fn get(path: PathBuf, name: &str, settings: &DataSettings) -> Result<Option<Task>> {
+pub async fn get(
+	path: PathBuf,
+	name: &str,
+	settings: &DataSettings,
+) -> Result<Option<Task>, ConfigError> {
 	tracing::trace!("Parsing a task from file");
 
 	let templates: TemplatesField = Figment::new()
 		.merge(Yaml::file(&path))
 		.extract()
-		.map_err(|e| Error::InvalidConfigFormat(e, path.clone()))?;
+		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
 
 	let mut conf = Figment::new();
 
 	if let Some(templates) = templates.templates {
 		for tmpl_name in templates {
-			let tmpl = settings::config::templates::find(&tmpl_name)?
-				.ok_or_else(|| Error::TemplateNotFound(tmpl_name.clone(), path.clone()))?;
+			let tmpl = settings::config::templates::find(&tmpl_name)?.ok_or_else(|| {
+				ConfigError::TemplateNotFound {
+					template: tmpl_name.clone(),
+					from_task: name.to_owned(),
+				}
+			})?;
 
 			tracing::trace!("Using template: {:?}", tmpl.path);
 
@@ -89,9 +98,12 @@ pub async fn get(path: PathBuf, name: &str, settings: &DataSettings) -> Result<O
 	let task: config::Task = conf
 		.merge(Yaml::file(&path))
 		.extract()
-		.map_err(|e| Error::InvalidConfigFormat(e, path.clone()))?;
+		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
 
-	let task = task.parse(name, settings).await?;
+	let task = task
+		.parse(name, settings)
+		.await
+		.map_err(|e| ConfigError::Parse(Box::new(e)))?;
 
 	// TODO: move that check up above and skip all parsing if the task's disabled to avoid terminating if a disabled task's config is corrupted
 	if task.disabled {

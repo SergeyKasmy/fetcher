@@ -15,7 +15,7 @@ use self::newer::Newer;
 use self::not_present::NotPresent;
 use crate::config;
 use crate::entry::Entry;
-use crate::error::{Error, Result};
+use crate::error::Error;
 
 pub type Writer = Box<dyn Write + Send + Sync>;
 
@@ -79,7 +79,7 @@ impl ReadFilter {
 	}
 
 	#[allow(clippy::missing_errors_doc)] // TODO
-	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<()> {
+	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
 		match &mut self.inner {
@@ -96,7 +96,7 @@ impl ReadFilter {
 				// with tokio::spawn_blocking() and std::mem::replace() (because the task has to have a 'static lifetime)
 				self.external_save
 					.write_all(s.as_bytes())
-					.map_err(Error::LocalIoWriteReadFilterData)?;
+					.map_err(Error::ReadFilterExternalWrite)?;
 			}
 			None => (),
 		}

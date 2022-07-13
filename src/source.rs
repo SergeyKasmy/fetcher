@@ -23,7 +23,9 @@ use itertools::Itertools;
 
 use self::parser::Parser;
 use crate::entry::Entry;
-use crate::error::{Error, Result};
+use crate::error::source::parse::Error as ParseError;
+use crate::error::source::Error as SourceError;
+use crate::error::Error;
 use crate::read_filter::ReadFilter;
 
 #[derive(Debug)]
@@ -33,7 +35,7 @@ pub enum Source {
 }
 
 impl Source {
-	pub async fn get(&mut self, parsers: Option<&[Parser]>) -> Result<Vec<Entry>> {
+	pub async fn get(&mut self, parsers: Option<&[Parser]>) -> Result<Vec<Entry>, SourceError> {
 		let unparsed_entries = match self {
 			Source::WithSharedReadFilter(x) => x.get().await?,
 			Source::WithCustomReadFilter(x) => x.get().await?,
@@ -49,7 +51,7 @@ impl Source {
 						.into_iter()
 						.map(|e| parser.parse(e))
 						.flatten_ok()
-						.collect::<Result<Vec<_>>>()?;
+						.collect::<Result<Vec<_>, ParseError>>()?;
 				}
 
 				parsed_entries.extend(entries_to_parse);
@@ -80,10 +82,10 @@ impl Source {
 		Ok(parsed_entries)
 	}
 
-	pub async fn mark_as_read(&mut self, id: &str) -> Result<()> {
+	pub async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		match self {
 			Self::WithSharedReadFilter(x) => x.mark_as_read(id).await,
-			Self::WithCustomReadFilter(x) => x.mark_as_read(id).await,
+			Self::WithCustomReadFilter(x) => x.mark_as_read(id).await.map_err(Error::Source),
 		}
 	}
 }
@@ -107,14 +109,12 @@ pub enum WithCustomReadFilter {
 }
 
 impl WithSharedReadFilter {
-	pub fn new(sources: Vec<WithSharedReadFilterInner>, read_filter: ReadFilter) -> Result<Self> {
+	pub fn new(
+		sources: Vec<WithSharedReadFilterInner>,
+		read_filter: ReadFilter,
+	) -> Result<Self, SourceError> {
 		match sources.len() {
-			0 => {
-				return Err(Error::IncompatibleConfigValues(
-					"A task can't have 0 sources (path is not applicable)",
-					std::path::PathBuf::new(),
-				))
-			}
+			0 => return Err(SourceError::EmptySourceList),
 			1 => (),
 			// assert that all source types are of the same enum variant
 			_ => {
@@ -134,7 +134,7 @@ impl WithSharedReadFilter {
 		})
 	}
 
-	pub async fn get(&mut self) -> Result<Vec<Entry>> {
+	pub async fn get(&mut self) -> Result<Vec<Entry>, SourceError> {
 		let mut entries = Vec::new();
 
 		for s in &mut self.sources {
@@ -148,7 +148,7 @@ impl WithSharedReadFilter {
 		Ok(entries)
 	}
 
-	pub async fn mark_as_read(&mut self, id: &str) -> Result<()> {
+	pub async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		self.read_filter.mark_as_read(id).await
 	}
 
@@ -158,16 +158,19 @@ impl WithSharedReadFilter {
 }
 
 impl WithCustomReadFilter {
-	pub async fn get(&mut self) -> Result<Vec<Entry>> {
+	pub async fn get(&mut self) -> Result<Vec<Entry>, SourceError> {
 		Ok(match self {
 			Self::Email(x) => x.get().await?,
 		})
 	}
 
-	pub async fn mark_as_read(&mut self, id: &str) -> Result<()> {
-		match self {
-			Self::Email(x) => x.mark_as_read(id).await,
-		}
+	pub async fn mark_as_read(&mut self, id: &str) -> Result<(), SourceError> {
+		Ok(match self {
+			Self::Email(x) => x
+				.mark_as_read(id)
+				.await
+				.map_err(crate::error::source::EmailError::Imap)?,
+		})
 	}
 
 	#[allow(clippy::ptr_arg)]

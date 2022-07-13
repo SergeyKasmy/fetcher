@@ -14,7 +14,7 @@ pub use message::{Media, Message};
 pub use stdout::Stdout;
 pub use telegram::Telegram;
 
-use crate::error::Result;
+use crate::error::sink::Error as SinkError;
 
 #[derive(Debug)]
 pub enum Sink {
@@ -25,7 +25,7 @@ pub enum Sink {
 
 impl Sink {
 	#[allow(clippy::missing_errors_doc)] // TODO
-	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<()> {
+	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError> {
 		match self {
 			Self::Telegram(t) => t.send(message, tag).await,
 			Self::Stdout(s) => s.send(message, tag).await,

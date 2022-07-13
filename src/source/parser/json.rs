@@ -10,7 +10,7 @@ use serde_json::Value;
 use url::Url;
 
 use crate::entry::Entry;
-use crate::error::{Error, Result};
+use crate::error::source::parse::JsonError;
 use crate::sink::{Media, Message};
 
 #[derive(Debug)]
@@ -33,12 +33,12 @@ pub struct Json {
 
 impl Json {
 	#[tracing::instrument(skip_all)]
-	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>> {
+	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>, JsonError> {
 		let json: Value = serde_json::from_str(&entry.msg.body)?;
 
 		let items = self.itemq.iter().try_fold(&json, |acc, x| {
 			acc.get(x.as_str())
-				.ok_or_else(|| Error::JsonParseKeyNotFound(x.clone()))
+				.ok_or_else(|| JsonError::JsonParseKeyNotFound(x.clone()))
 		})?;
 
 		let items_iter: Box<dyn Iterator<Item = &Value>> = if let Some(items) = items.as_array() {
@@ -47,7 +47,7 @@ impl Json {
 			// ignore map keys, iterate over values only
 			Box::new(items.iter().map(|(_, v)| v))
 		} else {
-			return Err(Error::JsonParseKeyWrongType {
+			return Err(JsonError::JsonParseKeyWrongType {
 				key: self.itemq.last().unwrap().clone(),
 				expected_type: "iterator (array, map)",
 				found_type: format!("{items:?}"),
@@ -69,13 +69,13 @@ impl Json {
 					.iter()
 					.map(|query| {
 						let mut text_str = {
-							let text_val = item
-								.get(&query.string)
-								.ok_or_else(|| Error::JsonParseKeyNotFound(query.string.clone()))?;
+							let text_val = item.get(&query.string).ok_or_else(|| {
+								JsonError::JsonParseKeyNotFound(query.string.clone())
+							})?;
 
 							text_val
 								.as_str()
-								.ok_or_else(|| Error::JsonParseKeyWrongType {
+								.ok_or_else(|| JsonError::JsonParseKeyWrongType {
 									key: query.string.clone(),
 									expected_type: "string",
 									found_type: format!("{text_val:?}"),
@@ -95,13 +95,13 @@ impl Json {
 
 						Ok(text_str)
 					})
-					.collect::<Result<Vec<String>>>()?
+					.collect::<Result<Vec<String>, JsonError>>()?
 					.join("\n\n");
 
 				let id = {
 					let id_val = item
 						.get(&self.idq)
-						.ok_or_else(|| Error::JsonParseKeyNotFound(self.idq.clone()))?;
+						.ok_or_else(|| JsonError::JsonParseKeyNotFound(self.idq.clone()))?;
 
 					if let Some(id) = id_val.as_str() {
 						id.to_owned()
@@ -110,7 +110,7 @@ impl Json {
 					} else if let Some(id) = id_val.as_u64() {
 						id.to_string()
 					} else {
-						return Err(Error::JsonParseKeyWrongType {
+						return Err(JsonError::JsonParseKeyWrongType {
 							key: self.idq.clone(),
 							expected_type: "string/i64/u64",
 							found_type: format!("{id_val:?}"),
@@ -124,10 +124,10 @@ impl Json {
 					.map(|linkq| {
 						let link_val = item
 							.get(&linkq.string)
-							.ok_or_else(|| Error::JsonParseKeyNotFound(linkq.string.clone()))?;
+							.ok_or_else(|| JsonError::JsonParseKeyNotFound(linkq.string.clone()))?;
 						let mut link_str = link_val
 							.as_str()
-							.ok_or_else(|| Error::JsonParseKeyWrongType {
+							.ok_or_else(|| JsonError::JsonParseKeyWrongType {
 								key: linkq.string.clone(),
 								expected_type: "string",
 								found_type: format!("{link_val:?}"),
@@ -143,8 +143,7 @@ impl Json {
 							);
 						}
 
-						Url::try_from(link_str.as_str())
-							.map_err(|e| Error::UrlInvalid(e, link_str.clone()))
+						Ok::<Url, JsonError>(Url::try_from(link_str.as_str())?)
 					})
 					.transpose()?;
 
@@ -154,24 +153,23 @@ impl Json {
 					.map(|imgq| {
 						let first = item
 							.get(&imgq[0])
-							.ok_or_else(|| Error::JsonParseKeyNotFound(imgq[0].clone()))?;
+							.ok_or_else(|| JsonError::JsonParseKeyNotFound(imgq[0].clone()))?;
 
 						let img_val = imgq.iter().skip(1).try_fold(first, |val, x| {
 							val.get(x)
-								.ok_or_else(|| Error::JsonParseKeyNotFound(x.clone()))
+								.ok_or_else(|| JsonError::JsonParseKeyNotFound(x.clone()))
 						})?;
 
 						let img_str = img_val
 							.as_str()
-							.ok_or_else(|| Error::JsonParseKeyWrongType {
+							.ok_or_else(|| JsonError::JsonParseKeyWrongType {
 								key: imgq.last().unwrap().clone(),
 								expected_type: "string",
 								found_type: format!("{img_val:?}"),
 							})?
 							.to_owned();
 
-						Url::try_from(img_str.as_str())
-							.map_err(|e| Error::UrlInvalid(e, img_str.clone()))
+						Ok::<Url, JsonError>(Url::try_from(img_str.as_str())?)
 					})
 					.transpose()?;
 
@@ -185,6 +183,6 @@ impl Json {
 					},
 				})
 			})
-			.collect::<Result<Vec<Entry>>>()
+			.collect::<Result<Vec<Entry>, JsonError>>()
 	}
 }

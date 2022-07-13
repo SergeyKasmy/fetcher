@@ -20,7 +20,8 @@ use self::auth::GoogleAuthExt;
 use self::filters::Filters;
 use crate::auth::Google as GoogleAuth;
 use crate::entry::Entry;
-use crate::error::{Error, Result};
+use crate::error::source::EmailError;
+use crate::error::source::ImapError;
 use crate::sink::Message;
 
 const IMAP_PORT: u16 = 993;
@@ -78,30 +79,37 @@ impl Email {
 	/// It should be used with spawn_blocking probs
 	/// TODO: make it async lol
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&mut self) -> Result<Vec<Entry>> {
+	pub async fn get(&mut self) -> Result<Vec<Entry>, EmailError> {
 		tracing::debug!("Fetching emails");
-		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT).rustls()?;
+		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT)
+			.rustls()
+			.map_err(ImapError::TlsInitFailed)?;
 
+		// TODO: dedup this with up the same up above
 		let mut session = match &mut self.auth {
 			Auth::GoogleAuth(auth) => {
 				tracing::trace!("Logging in to IMAP with Google OAuth2");
 
 				client
-					.authenticate("XOAUTH2", &auth.as_imap_oauth2(&self.email).await?)
-					// .map_err(|(e, _)| Error::EmailAuth(e))?
-					.map_err(|(e, _)| Error::from(e))?
+					.authenticate(
+						"XOAUTH2",
+						&auth
+							.as_imap_oauth2(&self.email)
+							.await
+							.map_err(|e| ImapError::GoogleAuth(Box::new(e)))?,
+					)
+					.map_err(|(e, _)| ImapError::Auth(e))?
 			}
 			Auth::Password(password) => {
 				tracing::warn!("Logging in to IMAP with a password, this is insecure");
 
 				client
 					.login(&self.email, password)
-					// .map_err(|(e, _)| Error::EmailAuth(e))?
-					.map_err(|(e, _)| Error::from(e))?
+					.map_err(|(e, _)| ImapError::Auth(e))?
 			}
 		};
 
-		session.examine("INBOX")?;
+		session.examine("INBOX").map_err(ImapError::Other)?;
 
 		let search_string = {
 			let mut tmp = "UNSEEN ".to_string();
@@ -126,7 +134,8 @@ impl Email {
 		};
 
 		let mail_ids = session
-			.uid_search(&search_string)?
+			.uid_search(&search_string)
+			.map_err(ImapError::Other)?
 			.into_iter()
 			.map(|x| x.to_string())
 			.collect::<Vec<_>>()
@@ -145,8 +154,10 @@ impl Email {
 			return Ok(Vec::new());
 		}
 
-		let mails = session.uid_fetch(&mail_ids, "BODY[]")?;
-		session.logout()?;
+		let mails = session
+			.uid_fetch(&mail_ids, "BODY[]")
+			.map_err(ImapError::Other)?;
+		session.logout().map_err(ImapError::Other)?;
 
 		mails
 			.iter()
@@ -157,10 +168,10 @@ impl Email {
 					x.uid.unwrap().to_string(),
 				)
 			})
-			.collect::<Result<Vec<Entry>>>()
+			.collect::<Result<Vec<Entry>, EmailError>>()
 	}
 
-	fn parse(&self, mail: &ParsedMail, id: String) -> Result<Entry> {
+	fn parse(&self, mail: &ParsedMail, id: String) -> Result<Entry, EmailError> {
 		let subject = mail.headers.iter().find_map(|x| {
 			if x.get_key_ref() == "Subject" {
 				Some(x.get_value())
@@ -200,28 +211,34 @@ impl Email {
 	// }
 
 	// FIXME: doesn't actually work for some reason
-	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<()> {
+	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<(), ImapError> {
 		if let ViewMode::ReadOnly = self.view_mode {
 			return Ok(());
 		}
 
-		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT).rustls()?;
+		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT)
+			.rustls()
+			.map_err(|e| ImapError::TlsInitFailed(e))?;
 		let mut session = match &mut self.auth {
 			Auth::GoogleAuth(auth) => {
 				tracing::trace!("Logging in to IMAP with Google OAuth2");
 
 				client
-					.authenticate("XOAUTH2", &auth.as_imap_oauth2(&self.email).await?)
-					// .map_err(|(e, _)| Error::EmailAuth(e))?
-					.map_err(|(e, _)| Error::from(e))?
+					.authenticate(
+						"XOAUTH2",
+						&auth
+							.as_imap_oauth2(&self.email)
+							.await
+							.map_err(|e| ImapError::GoogleAuth(Box::new(e)))?,
+					)
+					.map_err(|(e, _)| ImapError::Auth(e))?
 			}
 			Auth::Password(password) => {
 				tracing::warn!("Logging in to IMAP with a password, this is insecure");
 
 				client
 					.login(&self.email, password)
-					// .map_err(|(e, _)| Error::EmailAuth(e))?
-					.map_err(|(e, _)| Error::from(e))?
+					.map_err(|(e, _)| ImapError::Auth(e))?
 			}
 		};
 
@@ -240,7 +257,7 @@ impl Email {
 			ViewMode::ReadOnly => unreachable!(),
 		};
 
-		session.logout()?;
+		session.logout().map_err(ImapError::Other)?;
 
 		Ok(())
 	}

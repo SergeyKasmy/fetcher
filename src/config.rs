@@ -23,20 +23,20 @@ use serde::Serialize;
 
 pub use self::task::Task;
 pub use self::task::TemplatesField;
-use crate::error::Result;
+use crate::error::config::Error as ConfigError;
 use crate::read_filter::ReadFilter;
 
 pub type ReadFilterGetter = Box<
 	dyn Fn(
 		String,
 		Option<crate::read_filter::Kind>,
-	) -> Pin<Box<dyn Future<Output = Result<Option<ReadFilter>>>>>,
+	) -> Pin<Box<dyn Future<Output = Result<Option<ReadFilter>, ConfigError>>>>,
 >;
 
 pub struct DataSettings {
 	pub twitter_auth: Option<(String, String)>,
 	pub google_oauth2: Option<crate::auth::Google>,
-	pub google_password: Option<String>,
+	pub email_password: Option<String>,
 	pub telegram: Option<teloxide::Bot>,
 	pub read_filter: ReadFilterGetter,
 }
