@@ -8,7 +8,7 @@
 
 use std::path::PathBuf;
 
-use super::GoogleOAuth2Error;
+use fetcher_core::error::GoogleOAuth2Error;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -53,4 +53,10 @@ pub enum Error {
 
 	#[error("Parsing error")]
 	Parse(#[source] Box<crate::error::Error>),
+
+	#[error("Error setting up an HTTP connection")]
+	FetcherCoreHttp(#[from] fetcher_core::error::source::HttpError),
+
+	#[error("Error setting up a read filter")]
+	FetcherCoreReadFilter(#[source] fetcher_core::error::source::Error),
 }

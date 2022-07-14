@@ -19,10 +19,8 @@ use self::file::File;
 use self::http::Http;
 use self::twitter::Twitter;
 use super::{DataSettings, OneOrMultiple};
-use fetcher_core::{
-	error::{self, Error},
-	read_filter, source,
-};
+use crate::error::config::Error as ConfigError;
+use fetcher_core::{read_filter, source};
 
 #[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
 #[derive(Deserialize, Serialize, Debug)]
@@ -55,7 +53,7 @@ impl Source {
 		name: &str,
 		settings: &DataSettings,
 		default_read_filter_kind: Option<read_filter::Kind>,
-	) -> Result<source::Source, Error> {
+	) -> Result<source::Source, ConfigError> {
 		Ok(match self {
 			Source::WithSharedReadFilter(v) => {
 				let v: Vec<WithSharedReadFilter> = v.into();
@@ -65,9 +63,7 @@ impl Source {
 					.map(|x| {
 						Ok(match x {
 							WithSharedReadFilter::Http(x) => {
-								source::WithSharedReadFilterInner::Http(
-									x.parse().map_err(error::source::Error::Http)?,
-								)
+								source::WithSharedReadFilterInner::Http(x.parse()?)
 							}
 							WithSharedReadFilter::Twitter(x) => {
 								source::WithSharedReadFilterInner::Twitter(x.parse(settings)?)
@@ -77,14 +73,17 @@ impl Source {
 							}
 						})
 					})
-					.collect::<Result<Vec<_>, Error>>()?;
+					.collect::<Result<Vec<_>, ConfigError>>()?;
 
-				source::Source::WithSharedReadFilter(source::WithSharedReadFilter::new(
-					inner,
-					(settings.read_filter)(name.to_owned(), default_read_filter_kind)
-						.await?
-						.unwrap(), // unwrap FIXME: remove when settings::read_filter::get gets updated. UPD: what does this comment even mean? This crashes if read_filter_kind is corrupted in the config
-				)?)
+				source::Source::WithSharedReadFilter(
+					source::WithSharedReadFilter::new(
+						inner,
+						(settings.read_filter)(name.to_owned(), default_read_filter_kind)
+							.await?
+							.unwrap(), // unwrap FIXME: remove when settings::read_filter::get gets updated. UPD: what does this comment even mean? This crashes if read_filter_kind is corrupted in the config
+					)
+					.map_err(ConfigError::FetcherCoreReadFilter)?,
+				)
 			}
 			Source::WithCustomReadFilter(s) => match s {
 				WithCustomReadFilter::Email(x) => source::Source::WithCustomReadFilter(

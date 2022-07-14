@@ -11,10 +11,8 @@ use tokio::fs;
 
 use super::PREFIX;
 use crate::config;
-use fetcher_core::{
-	error::config::Error as ConfigError,
-	read_filter::{ReadFilter, Writer},
-};
+use crate::error::config::Error as ConfigError;
+use fetcher_core::read_filter::{ReadFilter, Writer};
 
 const READ_DATA_DIR: &str = "read";
 

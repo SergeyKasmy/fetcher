@@ -10,7 +10,8 @@ use std::fs;
 use std::path::Path;
 
 use super::CONFIG_FILE_EXT;
-use fetcher_core::{error::config::Error as ConfigError, task::template::Template};
+use crate::error::config::Error as ConfigError;
+use fetcher_core::task::template::Template;
 
 #[tracing::instrument(name = "template")]
 pub fn find(name: &str) -> Result<Option<Template>, ConfigError> {

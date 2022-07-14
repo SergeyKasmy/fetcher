@@ -16,11 +16,9 @@ use std::path::PathBuf;
 
 use super::CONFIG_FILE_EXT;
 use crate::config::{self, DataSettings, TemplatesField};
+use crate::error::config::Error as ConfigError;
 use crate::settings;
-use fetcher_core::{
-	error::config::Error as ConfigError,
-	task::{Task, Tasks},
-};
+use fetcher_core::task::{Task, Tasks};
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]
 #[tracing::instrument(skip(settings))]

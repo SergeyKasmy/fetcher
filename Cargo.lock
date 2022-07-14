@@ -591,6 +591,7 @@ dependencies = [
  "signal-hook",
  "signal-hook-tokio",
  "teloxide",
+ "thiserror",
  "tokio",
  "tracing",
  "tracing-futures",

@@ -9,7 +9,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::config::DataSettings;
-use fetcher_core::{error::config::Error as ConfigError, sink};
+use crate::error::config::Error as ConfigError;
+use fetcher_core::sink;
 
 /// Refer to [`crate::sink::message::LinkLocation`]
 #[derive(Deserialize, Serialize, Debug)]

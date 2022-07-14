@@ -23,7 +23,7 @@ use serde::Serialize;
 
 pub use self::task::Task;
 pub use self::task::TemplatesField;
-use fetcher_core::error::config::Error as ConfigError;
+use crate::error::config::Error as ConfigError;
 use fetcher_core::read_filter::ReadFilter;
 
 pub type ReadFilterGetter = Box<

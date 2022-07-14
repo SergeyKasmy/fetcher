@@ -8,7 +8,6 @@
 
 use std::error::Error as StdError;
 
-pub mod config;
 pub mod sink;
 pub mod source;
 
@@ -23,14 +22,12 @@ pub enum Error {
 	#[error("Google authentication error")]
 	GoogleOAuth2(#[from] GoogleOAuth2Error),
 
-	#[error("Config error")]
-	Config(#[from] config::Error),
-
+	// #[error("Config error")]
+	// Config(#[from] config::Error),
 	#[error("Error writing to the external read filter")]
 	ReadFilterExternalWrite(#[source] std::io::Error),
-
-	#[error("{0}")]
-	Other(String),
+	// #[error("{0}")]
+	// Other(String),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -71,9 +68,9 @@ impl Error {
 				GoogleOAuth2Error::Post(post_err) => Some(post_err),
 				GoogleOAuth2Error::Auth(_) => None,
 			},
-			Error::Config(_) => None,
+			// Error::Config(_) => None,
 			Error::ReadFilterExternalWrite(_) => None,
-			Error::Other(_) => None,
+			// Error::Other(_) => None,
 		}
 	}
 }

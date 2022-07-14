@@ -9,11 +9,10 @@
 // TODO: proper argument parser. Something like clap or argh or something
 
 mod config;
+mod error;
 mod settings;
 
-use crate::config::DataSettings;
-
-use fetcher_core::{error::Error, run_task, task::Tasks};
+use fetcher_core::{run_task, task::Tasks};
 use futures::future::join_all;
 use futures::StreamExt;
 use signal_hook::consts::TERM_SIGNALS;
@@ -28,6 +27,9 @@ use tokio::task::JoinHandle;
 use tokio::time::sleep;
 use tokio::{select, sync::watch::Receiver};
 use tracing::Instrument;
+
+use crate::config::DataSettings;
+use crate::error::Error;
 
 fn main() -> color_eyre::Result<()> {
 	{
@@ -108,7 +110,7 @@ async fn run(once: bool) -> Result<(), Error> {
 					dyn Future<
 						Output = Result<
 							Option<fetcher_core::read_filter::ReadFilter>,
-							fetcher_core::error::config::Error,
+							crate::error::config::Error,
 						>,
 					>,
 				>,
@@ -237,7 +239,8 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 								};
 								Telegram::new(bot, admin_chat_id, LinkLocation::default())
 									.send(msg, Some(&name))
-									.await?;
+									.await
+									.map_err(fetcher_core::error::Error::Sink)?;
 								Ok::<(), Error>(())
 							};
 							if let Err(e) = send_job.await {
