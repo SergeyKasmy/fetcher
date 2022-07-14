@@ -8,14 +8,14 @@
 
 // TODO: add trace logging, e.g. all config dirs, all config files, stuff like that
 
-use fetcher::{
-	config::{self, DataSettings, TemplatesField},
-	error::config::Error as ConfigError,
-	task::{Task, Tasks},
-};
 use figment::{
 	providers::{Format, Yaml},
 	Figment,
+};
+use fetcher_core::{
+	config::{self, DataSettings, TemplatesField},
+	error::config::Error as ConfigError,
+	task::{Task, Tasks},
 };
 use std::path::PathBuf;
 

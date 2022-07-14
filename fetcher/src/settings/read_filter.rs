@@ -11,7 +11,7 @@ use tokio::fs;
 
 use super::PREFIX;
 use crate::config;
-use fetcher::{
+use fetcher_core::{
 	error::config::Error as ConfigError,
 	read_filter::{ReadFilter, Writer},
 };
@@ -38,7 +38,7 @@ fn read_filter_path(name: &str) -> Result<PathBuf, ConfigError> {
 pub async fn get(
 	name: &str,
 	// TODO: remove option
-	default: Option<fetcher::read_filter::Kind>,
+	default: Option<fetcher_core::read_filter::Kind>,
 ) -> Result<Option<ReadFilter>, ConfigError> {
 	struct TruncatingFileWriter {
 		file: std::fs::File,

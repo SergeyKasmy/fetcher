@@ -6,7 +6,7 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use fetcher::{auth, config, error::config::Error as ConfigError};
+use fetcher_core::{auth, config, error::config::Error as ConfigError};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use teloxide::Bot;

@@ -10,7 +10,7 @@
 
 mod settings;
 
-use fetcher::{
+use fetcher_core::{
 	config::{self, DataSettings},
 	error::Error,
 	run_task,
@@ -104,13 +104,13 @@ async fn run(once: bool) -> Result<(), Error> {
 		telegram: settings::data::telegram().await?,
 		read_filter: Box::new(
 			|name: String,
-			 default: Option<fetcher::read_filter::Kind>|
+			 default: Option<fetcher_core::read_filter::Kind>|
 			 -> Pin<
 				Box<
 					dyn Future<
 						Output = Result<
-							Option<fetcher::read_filter::ReadFilter>,
-							fetcher::error::config::Error,
+							Option<fetcher_core::read_filter::ReadFilter>,
+							fetcher_core::error::config::Error,
 						>,
 					>,
 				>,
@@ -209,9 +209,9 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 					// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
 					if !cfg!(debug_assertions) {
 						if let Ok(admin_chat_id) = std::env::var("FETCHER_LOG_ADMIN_CHAT_ID") {
-							use fetcher::sink::telegram::LinkLocation;
-							use fetcher::sink::Message;
-							use fetcher::sink::Telegram;
+							use fetcher_core::sink::telegram::LinkLocation;
+							use fetcher_core::sink::Message;
+							use fetcher_core::sink::Telegram;
 
 							let admin_chat_id = match admin_chat_id.parse::<i64>() {
 								Ok(num) => num,

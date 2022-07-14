@@ -9,8 +9,7 @@
 use std::fs;
 use std::path::Path;
 
-use fetcher::error::config::Error as ConfigError;
-use fetcher::task::template::Template;
+use fetcher_core::{error::config::Error as ConfigError, task::template::Template};
 
 use super::CONFIG_FILE_EXT;
 
