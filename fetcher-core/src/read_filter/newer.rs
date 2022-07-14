@@ -10,7 +10,7 @@ use crate::entry::Entry;
 
 #[derive(Debug)]
 pub struct Newer {
-	pub(crate) last_read_id: Option<String>,
+	pub last_read_id: Option<String>,
 }
 
 impl Newer {

@@ -15,7 +15,7 @@ const MAX_LIST_LEN: usize = 500;
 
 #[derive(Debug)]
 pub struct NotPresent {
-	pub(crate) read_list: VecDeque<(String, DateTime<Utc>)>,
+	pub read_list: VecDeque<(String, DateTime<Utc>)>,
 }
 
 impl NotPresent {

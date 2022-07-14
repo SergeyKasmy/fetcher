@@ -7,59 +7,59 @@
  */
 
 #[derive(Clone, Debug)]
-pub(crate) enum QueryKind {
+pub enum QueryKind {
 	Tag(String),
 	Class(String),
 	Attr { name: String, value: String },
 }
 
 #[derive(Debug)]
-pub(crate) enum DataLocation {
+pub enum DataLocation {
 	Text,
 	Attr(String),
 }
 
 #[derive(Debug)]
-pub(crate) struct Query {
-	pub(crate) kind: QueryKind,
-	pub(crate) ignore: Option<Vec<QueryKind>>,
+pub struct Query {
+	pub kind: QueryKind,
+	pub ignore: Option<Vec<QueryKind>>,
 }
 
 #[derive(Debug)]
-pub(crate) struct QueryData {
-	pub(crate) query: Vec<Query>,
-	pub(crate) data_location: DataLocation,
+pub struct QueryData {
+	pub query: Vec<Query>,
+	pub data_location: DataLocation,
 }
 
 #[derive(Debug)]
-pub(crate) struct TitleQuery(pub(crate) QueryData);
+pub struct TitleQuery(pub QueryData);
 
 #[derive(Debug)]
-pub(crate) struct TextQuery {
-	pub(crate) prepend: Option<String>,
-	pub(crate) inner: QueryData,
+pub struct TextQuery {
+	pub prepend: Option<String>,
+	pub inner: QueryData,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum IdQueryKind {
+pub enum IdQueryKind {
 	String,
 	Date,
 }
 
 #[derive(Debug)]
-pub(crate) struct IdQuery {
-	pub(crate) kind: IdQueryKind,
-	pub(crate) inner: QueryData,
+pub struct IdQuery {
+	pub kind: IdQueryKind,
+	pub inner: QueryData,
 }
 
 #[derive(Debug)]
-pub(crate) struct UrlQuery {
-	pub(crate) prepend: Option<String>,
-	pub(crate) inner: QueryData,
+pub struct UrlQuery {
+	pub prepend: Option<String>,
+	pub inner: QueryData,
 }
 
 #[derive(Debug)]
-pub(crate) struct ImageQuery {
-	pub(crate) optional: bool,
-	pub(crate) url: UrlQuery,
+pub struct ImageQuery {
+	pub optional: bool,
+	pub url: UrlQuery,
 }

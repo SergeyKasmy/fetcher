@@ -9,7 +9,7 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::read_filter;
+use fetcher_core::read_filter;
 
 // TODO: add None as an option and make the read filter optional throughout the app
 #[derive(Deserialize, Serialize, Debug)]

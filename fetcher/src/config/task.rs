@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{read_filter, sink::Sink, source::parser::Parser, source::Source, DataSettings};
-use crate::{error::Error, task};
+use fetcher_core::{error::Error, task};
 
 #[derive(Deserialize, Debug)]
 pub struct TemplatesField {

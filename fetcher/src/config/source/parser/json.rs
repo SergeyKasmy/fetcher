@@ -8,7 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::source;
+use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct TextQuery {

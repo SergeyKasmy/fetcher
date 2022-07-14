@@ -8,7 +8,7 @@
 // TODO: better handle invalid config values
 // TODO: make sure read_filter_type not_present_in_read_list only works with id_query.kind = id
 
-pub(crate) mod query;
+pub mod query;
 
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use html5ever::rcdom::Handle;
@@ -25,12 +25,12 @@ use crate::sink::{Media, Message};
 
 #[derive(Debug)]
 pub struct Html {
-	pub(crate) itemq: Vec<Query>,
-	pub(crate) titleq: Option<TitleQuery>,
-	pub(crate) textq: Vec<TextQuery>, // allow to find multiple paragraphs and join them together
-	pub(crate) idq: Option<IdQuery>,
-	pub(crate) linkq: Option<UrlQuery>,
-	pub(crate) imgq: Option<ImageQuery>,
+	pub itemq: Vec<Query>,
+	pub titleq: Option<TitleQuery>,
+	pub textq: Vec<TextQuery>, // allow to find multiple paragraphs and join them together
+	pub idq: Option<IdQuery>,
+	pub linkq: Option<UrlQuery>,
+	pub imgq: Option<ImageQuery>,
 }
 
 impl Html {

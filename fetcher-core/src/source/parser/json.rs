@@ -14,21 +14,21 @@ use crate::error::source::parse::JsonError;
 use crate::sink::{Media, Message};
 
 #[derive(Debug)]
-pub(crate) struct TextQuery {
-	pub(crate) string: String,
-	pub(crate) prepend: Option<String>,
-	pub(crate) append: Option<String>,
+pub struct TextQuery {
+	pub string: String,
+	pub prepend: Option<String>,
+	pub append: Option<String>,
 }
 
 // TODO: differantiate between nested and adjecent fields more clearly, here and in HTML parser, too
 #[derive(Debug)]
 pub struct Json {
-	pub(crate) itemq: Vec<String>,
-	pub(crate) titleq: Option<String>,
-	pub(crate) textq: Vec<TextQuery>, // adjecent
-	pub(crate) idq: String,
-	pub(crate) linkq: Option<TextQuery>,
-	pub(crate) imgq: Option<Vec<String>>, // nested
+	pub itemq: Vec<String>,
+	pub titleq: Option<String>,
+	pub textq: Vec<TextQuery>, // adjecent
+	pub idq: String,
+	pub linkq: Option<TextQuery>,
+	pub imgq: Option<Vec<String>>, // nested
 }
 
 impl Json {

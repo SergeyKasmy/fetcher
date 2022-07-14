@@ -580,6 +580,7 @@ dependencies = [
 name = "fetcher"
 version = "0.7.0"
 dependencies = [
+ "chrono",
  "color-eyre",
  "fetcher-core",
  "figment",
@@ -595,6 +596,7 @@ dependencies = [
  "tracing-futures",
  "tracing-journald",
  "tracing-subscriber",
+ "url",
  "vergen",
  "xdg",
 ]

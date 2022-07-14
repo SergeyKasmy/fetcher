@@ -14,7 +14,7 @@ use crate::sink::Message;
 
 #[derive(Debug)]
 pub struct File {
-	pub(crate) path: PathBuf,
+	pub path: PathBuf,
 }
 
 impl File {

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use self::html::Html;
 use self::json::Json;
-use crate::source;
+use fetcher_core::source;
 
 #[allow(clippy::large_enum_variant)] // this enum is very short-lived, I don't think boxing is worth the trouble
 #[derive(Deserialize, Serialize, Debug)]

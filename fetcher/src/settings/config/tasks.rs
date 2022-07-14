@@ -12,15 +12,15 @@ use figment::{
 	providers::{Format, Yaml},
 	Figment,
 };
-use fetcher_core::{
-	config::{self, DataSettings, TemplatesField},
-	error::config::Error as ConfigError,
-	task::{Task, Tasks},
-};
 use std::path::PathBuf;
 
 use super::CONFIG_FILE_EXT;
+use crate::config::{self, DataSettings, TemplatesField};
 use crate::settings;
+use fetcher_core::{
+	error::config::Error as ConfigError,
+	task::{Task, Tasks},
+};
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]
 #[tracing::instrument(skip(settings))]

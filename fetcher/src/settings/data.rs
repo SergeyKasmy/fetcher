@@ -6,15 +6,15 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use fetcher_core::{auth, config, error::config::Error as ConfigError};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use teloxide::Bot;
-// use tokio::io::AsyncWriteExt;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::{fs, io};
 
 use super::PREFIX;
+use crate::config;
+use fetcher_core::{auth, error::config::Error as ConfigError};
 
 const GOOGLE_OAUTH2: &str = "google_oauth2.json";
 const GOOGLE_PASS: &str = "google_pass.txt";

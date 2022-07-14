@@ -7,22 +7,18 @@
  */
 
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
-use crate::source;
+use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct Filters {
-	sender: Option<String>,
-	subjects: Option<Vec<String>>,
-	exclude_subjects: Option<Vec<String>>,
+#[serde(transparent)]
+pub(crate) struct File {
+	path: PathBuf,
 }
 
-impl Filters {
-	pub(crate) fn parse(self) -> source::email::filters::Filters {
-		source::email::filters::Filters {
-			sender: self.sender,
-			subjects: self.subjects,
-			exclude_subjects: self.exclude_subjects,
-		}
+impl File {
+	pub(crate) fn parse(self) -> source::File {
+		source::File { path: self.path }
 	}
 }

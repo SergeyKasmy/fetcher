@@ -7,18 +7,19 @@
  */
 
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use url::Url;
 
-use crate::source;
+use fetcher_core::error;
+use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(transparent)]
-pub(crate) struct File {
-	path: PathBuf,
+pub(crate) struct Http {
+	pub(crate) url: Url,
 }
 
-impl File {
-	pub(crate) fn parse(self) -> source::File {
-		source::File { path: self.path }
+impl Http {
+	pub(crate) fn parse(self) -> Result<source::Http, error::source::HttpError> {
+		source::Http::new(self.url)
 	}
 }

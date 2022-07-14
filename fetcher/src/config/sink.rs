@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use self::telegram::Telegram;
 use super::DataSettings;
-use crate::{error::Error, sink};
+use fetcher_core::{error::Error, sink};
 
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]

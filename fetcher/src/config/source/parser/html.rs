@@ -11,7 +11,7 @@ pub(crate) mod query;
 use serde::{Deserialize, Serialize};
 
 use self::query::{IdQuery, ImageQuery, Query, TextQuery, TitleQuery, UrlQuery};
-use crate::source;
+use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct Html {

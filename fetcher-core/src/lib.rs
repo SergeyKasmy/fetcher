@@ -13,7 +13,7 @@
 // TODO: more tests
 
 pub mod auth;
-pub mod config;
+// pub mod config;
 pub mod entry;
 pub mod error;
 pub mod read_filter;

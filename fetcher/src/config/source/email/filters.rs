@@ -7,18 +7,22 @@
  */
 
 use serde::{Deserialize, Serialize};
-use url::Url;
 
-use crate::source;
+use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(transparent)]
-pub(crate) struct Http {
-	pub(crate) url: Url,
+pub(crate) struct Filters {
+	sender: Option<String>,
+	subjects: Option<Vec<String>>,
+	exclude_subjects: Option<Vec<String>>,
 }
 
-impl Http {
-	pub(crate) fn parse(self) -> Result<source::Http, crate::error::source::HttpError> {
-		source::Http::new(self.url)
+impl Filters {
+	pub(crate) fn parse(self) -> source::email::filters::Filters {
+		source::email::filters::Filters {
+			sender: self.sender,
+			subjects: self.subjects,
+			exclude_subjects: self.exclude_subjects,
+		}
 	}
 }

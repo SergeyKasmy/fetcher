@@ -19,7 +19,10 @@ use self::file::File;
 use self::http::Http;
 use self::twitter::Twitter;
 use super::{DataSettings, OneOrMultiple};
-use crate::{error::Error, read_filter, source};
+use fetcher_core::{
+	error::{self, Error},
+	read_filter, source,
+};
 
 #[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
 #[derive(Deserialize, Serialize, Debug)]
@@ -63,7 +66,7 @@ impl Source {
 						Ok(match x {
 							WithSharedReadFilter::Http(x) => {
 								source::WithSharedReadFilterInner::Http(
-									x.parse().map_err(crate::error::source::Error::Http)?,
+									x.parse().map_err(error::source::Error::Http)?,
 								)
 							}
 							WithSharedReadFilter::Twitter(x) => {

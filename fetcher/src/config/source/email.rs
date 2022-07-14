@@ -15,7 +15,8 @@ use serde::{Deserialize, Serialize};
 use self::auth::Auth;
 use self::filters::Filters;
 use self::view_mode::ViewMode;
-use crate::{config::DataSettings, error::config::Error as ConfigError, source};
+use crate::config::DataSettings;
+use fetcher_core::{error::config::Error as ConfigError, source};
 
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]

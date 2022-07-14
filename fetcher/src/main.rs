@@ -8,14 +8,12 @@
 
 // TODO: proper argument parser. Something like clap or argh or something
 
+mod config;
 mod settings;
 
-use fetcher_core::{
-	config::{self, DataSettings},
-	error::Error,
-	run_task,
-	task::Tasks,
-};
+use crate::config::DataSettings;
+
+use fetcher_core::{error::Error, run_task, task::Tasks};
 use futures::future::join_all;
 use futures::StreamExt;
 use signal_hook::consts::TERM_SIGNALS;
@@ -220,7 +218,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 										"Unable to send error report to the admin: FETCHER_LOG_ADMIN_CHAT_ID isn't a valid chat id ({e})"
 									);
 									tracing::error!(%s);
-									return Err(Error::Other(s)); // TODO: this kinda sucks
+									todo!() // return Err(Error::Other(s)); // TODO: this kinda sucks
 								}
 							};
 
@@ -230,7 +228,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 									None => {
 										let s = "Unable to send error report to the admin: telegram bot token is not provided".to_owned();
 										tracing::error!(%s);
-										return Err(Error::Other(s)); // TODO: this kinda sucks
+										todo!() // return Err(Error::Other(s)); // TODO: this kinda sucks
 									}
 								};
 								let msg = Message {

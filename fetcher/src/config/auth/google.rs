@@ -8,7 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::auth;
+use fetcher_core::auth;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Google {
