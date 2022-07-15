@@ -19,7 +19,7 @@ use self::file::File;
 use self::http::Http;
 use self::twitter::Twitter;
 use super::{DataSettings, OneOrMultiple};
-use crate::error::config::Error as ConfigError;
+use crate::error::ConfigError;
 use fetcher_core::{read_filter, source};
 
 #[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot

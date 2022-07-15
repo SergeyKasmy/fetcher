@@ -16,13 +16,13 @@ use std::path::PathBuf;
 
 use super::CONFIG_FILE_EXT;
 use crate::config::{self, DataSettings, TemplatesField};
-use crate::error::config::Error as ConfigError;
+use crate::error::ConfigError;
 use crate::settings;
 use fetcher_core::task::{Task, Tasks};
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]
 #[tracing::instrument(skip(settings))]
-pub async fn get_all(settings: &DataSettings) -> Result<Tasks, ConfigError> {
+pub(crate) async fn get_all(settings: &DataSettings) -> Result<Tasks, ConfigError> {
 	let mut tasks = Tasks::new();
 	for dir in super::cfg_dirs()?.into_iter().map(|mut p| {
 		p.push("tasks");
@@ -34,7 +34,7 @@ pub async fn get_all(settings: &DataSettings) -> Result<Tasks, ConfigError> {
 	Ok(tasks)
 }
 
-pub async fn get_all_from(
+pub(crate) async fn get_all_from(
 	tasks_dir: PathBuf,
 	settings: &DataSettings,
 ) -> Result<Tasks, ConfigError> {
@@ -64,7 +64,7 @@ pub async fn get_all_from(
 }
 
 #[tracing::instrument(skip(settings))]
-pub async fn get(
+pub(crate) async fn get(
 	path: PathBuf,
 	name: &str,
 	settings: &DataSettings,
@@ -98,10 +98,7 @@ pub async fn get(
 		.extract()
 		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
 
-	let task = task
-		.parse(name, settings)
-		.await
-		.map_err(|e| ConfigError::Parse(Box::new(e)))?;
+	let task = task.parse(name, settings).await?;
 
 	// TODO: move that check up above and skip all parsing if the task's disabled to avoid terminating if a disabled task's config is corrupted
 	if task.disabled {

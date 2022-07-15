@@ -10,11 +10,11 @@ use std::fs;
 use std::path::Path;
 
 use super::CONFIG_FILE_EXT;
-use crate::error::config::Error as ConfigError;
+use crate::error::ConfigError;
 use fetcher_core::task::template::Template;
 
 #[tracing::instrument(name = "template")]
-pub fn find(name: &str) -> Result<Option<Template>, ConfigError> {
+pub(crate) fn find(name: &str) -> Result<Option<Template>, ConfigError> {
 	super::cfg_dirs()?
 		.into_iter()
 		.map(|mut p| {
@@ -25,7 +25,7 @@ pub fn find(name: &str) -> Result<Option<Template>, ConfigError> {
 		.transpose()
 }
 
-pub fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>, ConfigError> {
+pub(crate) fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>, ConfigError> {
 	tracing::trace!("Searching for template in {}", templates_path.display());
 	let path = templates_path.join(name).with_extension(CONFIG_FILE_EXT);
 	if !path.is_file() {

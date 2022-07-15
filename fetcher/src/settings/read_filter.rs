@@ -11,7 +11,7 @@ use tokio::fs;
 
 use super::PREFIX;
 use crate::config;
-use crate::error::config::Error as ConfigError;
+use crate::error::ConfigError;
 use fetcher_core::read_filter::{ReadFilter, Writer};
 
 const READ_DATA_DIR: &str = "read";
@@ -33,7 +33,7 @@ fn read_filter_path(name: &str) -> Result<PathBuf, ConfigError> {
 /// * if the file is inaccessible
 /// * if the file is corrupted
 #[tracing::instrument(skip(default))]
-pub async fn get(
+pub(crate) async fn get(
 	name: &str,
 	// TODO: remove option
 	default: Option<fetcher_core::read_filter::Kind>,

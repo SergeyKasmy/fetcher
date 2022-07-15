@@ -12,7 +12,7 @@ pub mod templates;
 use std::path::PathBuf;
 
 use super::PREFIX;
-use crate::error::config::Error as ConfigError;
+use crate::error::ConfigError;
 
 const CONFIG_FILE_EXT: &str = "yaml";
 

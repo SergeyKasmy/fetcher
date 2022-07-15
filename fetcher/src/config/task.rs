@@ -9,7 +9,6 @@
 use serde::{Deserialize, Serialize};
 
 use super::{read_filter, sink::Sink, source::parser::Parser, source::Source, DataSettings};
-use crate::error::Error;
 use fetcher_core::task;
 
 #[derive(Deserialize, Debug)]
@@ -39,7 +38,7 @@ impl Task {
 		self,
 		name: &str,
 		settings: &DataSettings,
-	) -> Result<task::Task, Error> {
+	) -> Result<task::Task, crate::error::ConfigError> {
 		let source = self
 			.source
 			.parse(

@@ -16,7 +16,7 @@ use self::auth::Auth;
 use self::filters::Filters;
 use self::view_mode::ViewMode;
 use crate::config::DataSettings;
-use crate::error::config::Error as ConfigError;
+use crate::error::ConfigError;
 use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]

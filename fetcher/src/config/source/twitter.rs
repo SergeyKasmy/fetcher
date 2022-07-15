@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::config::DataSettings;
-use crate::error::config::Error as ConfigError;
+use crate::error::ConfigError;
 use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]

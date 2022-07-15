@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use self::telegram::Telegram;
 use super::DataSettings;
-use crate::error::config::Error as ConfigError;
+use crate::error::ConfigError;
 use fetcher_core::sink;
 
 #[derive(Deserialize, Serialize, Debug)]

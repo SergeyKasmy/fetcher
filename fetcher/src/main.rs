@@ -12,6 +12,7 @@ mod config;
 mod error;
 mod settings;
 
+use color_eyre::{Report, Result};
 use fetcher_core::{run_task, task::Tasks};
 use futures::future::join_all;
 use futures::StreamExt;
@@ -29,9 +30,8 @@ use tokio::{select, sync::watch::Receiver};
 use tracing::Instrument;
 
 use crate::config::DataSettings;
-use crate::error::Error;
 
-fn main() -> color_eyre::Result<()> {
+fn main() -> Result<()> {
 	{
 		use tracing_subscriber::fmt::time::OffsetTime;
 		use tracing_subscriber::layer::SubscriberExt;
@@ -66,7 +66,7 @@ fn main() -> color_eyre::Result<()> {
 }
 
 #[tokio::main]
-async fn async_main() -> color_eyre::Result<()> {
+async fn async_main() -> Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -96,7 +96,7 @@ async fn async_main() -> color_eyre::Result<()> {
 	Ok(())
 }
 
-async fn run(once: bool) -> Result<(), Error> {
+async fn run(once: bool) -> Result<()> {
 	let tasks = settings::config::tasks::get_all(&DataSettings {
 		twitter_auth: settings::data::twitter().await?,
 		google_oauth2: settings::data::google_oauth2().await?,
@@ -110,7 +110,7 @@ async fn run(once: bool) -> Result<(), Error> {
 					dyn Future<
 						Output = Result<
 							Option<fetcher_core::read_filter::ReadFilter>,
-							crate::error::config::Error,
+							crate::error::ConfigError,
 						>,
 					>,
 				>,
@@ -162,7 +162,7 @@ async fn run(once: bool) -> Result<(), Error> {
 				.expect("Error broadcasting signal to tasks");
 		}
 
-		Ok::<(), Error>(())
+		Ok::<(), Report>(())
 	});
 
 	run_tasks(tasks, shutdown_rx, once).await?;
@@ -174,7 +174,7 @@ async fn run(once: bool) -> Result<(), Error> {
 	Ok(())
 }
 
-async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Result<(), Error> {
+async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Result<()> {
 	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
 		let name2 = name.clone(); // TODO: ehhh. Is there a way to avoid cloning?
@@ -182,7 +182,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 
 		let fut = tokio::spawn(
 			async move {
-				let res: Result<(), Error> = select! {
+				let res: Result<(), Report> = select! {
 					res = async {
 						loop {
 							run_task(&mut t).await?;
@@ -241,7 +241,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 									.send(msg, Some(&name))
 									.await
 									.map_err(fetcher_core::error::Error::Sink)?;
-								Ok::<(), Error>(())
+								Ok::<(), Report>(())
 							};
 							if let Err(e) = send_job.await {
 								tracing::error!(
@@ -280,7 +280,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 	}
 }
 
-async fn flatten_task<T, E: std::error::Error>(h: JoinHandle<Result<T, E>>) -> Result<T, E> {
+async fn flatten_task<T>(h: JoinHandle<Result<T>>) -> Result<T> {
 	match h.await {
 		Ok(Ok(res)) => Ok(res),
 		Ok(Err(err)) => Err(err),
