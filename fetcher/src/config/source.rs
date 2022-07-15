@@ -82,7 +82,7 @@ impl Source {
 							.await?
 							.unwrap(), // unwrap FIXME: remove when settings::read_filter::get gets updated. UPD: what does this comment even mean? This crashes if read_filter_kind is corrupted in the config
 					)
-					.map_err(ConfigError::FetcherCoreReadFilter)?,
+					.map_err(|e| ConfigError::FetcherCoreReadFilter(e.into()))?,
 				)
 			}
 			Source::WithCustomReadFilter(s) => match s {

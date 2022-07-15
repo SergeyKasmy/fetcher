@@ -19,7 +19,7 @@ pub enum Error {
 	Http(#[from] HttpError),
 
 	#[error("Email error")]
-	Email(#[from] EmailError),
+	Email(#[from] Box<EmailError>),
 
 	#[error("Twitter error")]
 	Twitter(#[from] TwitterError),
@@ -37,6 +37,7 @@ pub enum HttpError {
 	ClientNotInitialized,
 }
 
+#[allow(clippy::large_enum_variant)] // the entire enum is already boxed up above
 #[derive(thiserror::Error, Debug)]
 pub enum EmailError {
 	#[error("IMAP connection error")]

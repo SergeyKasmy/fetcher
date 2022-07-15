@@ -24,7 +24,7 @@ static CLIENT: Lazy<RwLock<Option<Result<reqwest::Client, HttpError>>>> = Lazy::
 		reqwest::ClientBuilder::new()
 			.timeout(std::time::Duration::from_secs(30))
 			.build()
-			.map_err(|e| HttpError::TlsInitFailed(e)),
+			.map_err(HttpError::TlsInitFailed),
 	))
 });
 
@@ -34,7 +34,6 @@ pub struct Http {
 }
 
 impl Http {
-	#[must_use]
 	pub fn new(url: Url) -> Result<Self, HttpError> {
 		// take out the error out of the option if there was an error, otherwise just clone the Client
 		let client = if let Ok(client) = CLIENT // if there was no error building the client

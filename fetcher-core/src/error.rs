@@ -49,8 +49,12 @@ impl Error {
 				source::Error::EmptySourceList => None,
 				source::Error::FileRead(_, _) => None,
 				source::Error::Http(http_err) => Some(http_err),
-				source::Error::Email(source::EmailError::Imap(imap_err)) => Some(imap_err),
-				source::Error::Email(_) => None,
+				// I know it will match any future variants automatically but I actually want it to do that anyways
+				#[allow(clippy::match_wildcard_for_single_variants)]
+				source::Error::Email(email_err) => match &**email_err {
+					source::EmailError::Imap(imap_err) => Some(imap_err),
+					_ => None,
+				},
 				source::Error::Twitter(source::TwitterError::Other(other_twitter_err)) => {
 					Some(other_twitter_err)
 				}

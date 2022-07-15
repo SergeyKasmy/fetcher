@@ -55,5 +55,5 @@ pub(crate) enum ConfigError {
 	FetcherCoreHttp(#[from] fetcher_core::error::source::HttpError),
 
 	#[error("Error setting up a read filter")]
-	FetcherCoreReadFilter(#[source] fetcher_core::error::source::Error),
+	FetcherCoreReadFilter(#[source] Box<fetcher_core::error::source::Error>),
 }

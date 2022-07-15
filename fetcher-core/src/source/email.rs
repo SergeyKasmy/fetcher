@@ -218,7 +218,7 @@ impl Email {
 
 		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT)
 			.rustls()
-			.map_err(|e| ImapError::TlsInitFailed(e))?;
+			.map_err(ImapError::TlsInitFailed)?;
 		let mut session = match &mut self.auth {
 			Auth::GoogleAuth(auth) => {
 				tracing::trace!("Logging in to IMAP with Google OAuth2");

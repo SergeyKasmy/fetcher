@@ -24,7 +24,7 @@ use itertools::Itertools;
 use self::parser::Parser;
 use crate::entry::Entry;
 use crate::error::source::parse::Error as ParseError;
-use crate::error::source::Error as SourceError;
+use crate::error::source::{EmailError, Error as SourceError};
 use crate::error::Error;
 use crate::read_filter::ReadFilter;
 
@@ -160,17 +160,19 @@ impl WithSharedReadFilter {
 impl WithCustomReadFilter {
 	pub async fn get(&mut self) -> Result<Vec<Entry>, SourceError> {
 		Ok(match self {
-			Self::Email(x) => x.get().await?,
+			Self::Email(x) => x.get().await.map_err(Box::new)?,
 		})
 	}
 
 	pub async fn mark_as_read(&mut self, id: &str) -> Result<(), SourceError> {
-		Ok(match self {
+		match self {
 			Self::Email(x) => x
 				.mark_as_read(id)
 				.await
-				.map_err(crate::error::source::EmailError::Imap)?,
-		})
+				.map_err(|e| Box::new(EmailError::Imap(e)))?,
+		};
+
+		Ok(())
 	}
 
 	#[allow(clippy::ptr_arg)]
