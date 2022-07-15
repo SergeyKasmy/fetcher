@@ -55,10 +55,8 @@ impl Email {
 		}
 	}
 
-	// FIXME: google oauth2 is only available to gmail.com, remove the imap field
 	#[must_use]
 	pub fn with_google_oauth2(
-		imap: String,
 		email: String,
 		auth: GoogleAuth,
 		filters: Filters,
@@ -66,7 +64,7 @@ impl Email {
 		footer: Option<String>,
 	) -> Self {
 		Self {
-			imap,
+			imap: "imap.google.com".to_owned(),
 			email,
 			auth: Auth::GoogleAuth(auth),
 			filters,

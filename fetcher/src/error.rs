@@ -21,6 +21,9 @@ pub(crate) enum ConfigError {
 	#[error("Email password isn't set up")]
 	EmailPasswordMissing,
 
+	#[error("Email imap field is missing and it's not clear what it should be")]
+	EmailImapFieldMissing,
+
 	#[error("Telegram bot token isn't set up")]
 	TelegramBotTokenMissing,
 
