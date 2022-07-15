@@ -12,58 +12,64 @@ mod config;
 mod error;
 mod settings;
 
-use color_eyre::eyre::eyre;
-use color_eyre::{Report, Result};
-use fetcher_core::{run_task, task::Tasks};
-use futures::future::join_all;
-use futures::StreamExt;
+use color_eyre::{eyre::eyre, Report, Result};
+use futures::{future::join_all, StreamExt};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::watch;
-use tokio::task::JoinHandle;
-use tokio::time::sleep;
-use tokio::{select, sync::watch::Receiver};
+use std::{
+	future::Future,
+	pin::Pin,
+	sync::{atomic::AtomicBool, Arc},
+	time::Duration,
+};
+use tokio::{
+	select,
+	sync::watch::{self, Receiver},
+	task::JoinHandle,
+	time::sleep,
+};
 use tracing::Instrument;
 
 use crate::config::DataSettings;
+use fetcher_core::{
+	read_filter::Kind as ReadFilterKind,
+	task::{Task, Tasks},
+};
 
 fn main() -> Result<()> {
-	{
-		use tracing_subscriber::fmt::time::OffsetTime;
-		use tracing_subscriber::layer::SubscriberExt;
-		use tracing_subscriber::EnvFilter;
-		use tracing_subscriber::Layer;
+	set_up_logging()?;
+	async_main()
+}
 
-		let env_filter = EnvFilter::try_from_env("FETCHER_LOG")
-			.unwrap_or_else(|_| EnvFilter::from("fetcher=info"));
-		let stdout = tracing_subscriber::fmt::layer()
-			.pretty()
-			// hide source code/debug info on release builds
-			.with_file(cfg!(debug_assertions))
-			.with_line_number(cfg!(debug_assertions))
-			.with_timer(OffsetTime::local_rfc_3339().expect("could not get local time offset"));
+fn set_up_logging() -> Result<()> {
+	use tracing_subscriber::fmt::time::OffsetTime;
+	use tracing_subscriber::layer::SubscriberExt;
+	use tracing_subscriber::EnvFilter;
+	use tracing_subscriber::Layer;
 
-		// enable journald logging only on release to avoid log spam on dev machines
-		let journald = if !cfg!(debug_assertions) {
-			tracing_journald::layer().ok()
-		} else {
-			None
-		};
+	let env_filter =
+		EnvFilter::try_from_env("FETCHER_LOG").unwrap_or_else(|_| EnvFilter::from("fetcher=info"));
+	let stdout = tracing_subscriber::fmt::layer()
+		.pretty()
+		// hide source code/debug info on release builds
+		.with_file(cfg!(debug_assertions))
+		.with_line_number(cfg!(debug_assertions))
+		.with_timer(OffsetTime::local_rfc_3339().expect("could not get local time offset"));
 
-		let subscriber = tracing_subscriber::registry()
-			.with(journald.with_filter(tracing_subscriber::filter::LevelFilter::INFO))
-			.with(stdout.with_filter(env_filter));
-		tracing::subscriber::set_global_default(subscriber).unwrap();
-	}
+	// enable journald logging only on release to avoid log spam on dev machines
+	let journald = if !cfg!(debug_assertions) {
+		tracing_journald::layer().ok()
+	} else {
+		None
+	};
+
+	let subscriber = tracing_subscriber::registry()
+		.with(journald.with_filter(tracing_subscriber::filter::LevelFilter::INFO))
+		.with(stdout.with_filter(env_filter));
+	tracing::subscriber::set_global_default(subscriber).unwrap();
 
 	color_eyre::install()?;
-
-	async_main()
+	Ok(())
 }
 
 #[tokio::main]
@@ -98,27 +104,20 @@ async fn async_main() -> Result<()> {
 }
 
 async fn run(once: bool) -> Result<()> {
-	let tasks = settings::config::tasks::get_all(&DataSettings {
+	let read_filter_getter =
+		|name: String, default: Option<ReadFilterKind>| -> Pin<Box<dyn Future<Output = _>>> {
+			Box::pin(async move { settings::read_filter::get(&name, default).await })
+		};
+
+	let data_settings = DataSettings {
 		twitter_auth: settings::data::twitter().await?,
 		google_oauth2: settings::data::google_oauth2().await?,
 		email_password: settings::data::google_password().await?,
 		telegram: settings::data::telegram().await?,
-		read_filter: Box::new(
-			|name: String,
-			 default: Option<fetcher_core::read_filter::Kind>|
-			 -> Pin<
-				Box<
-					dyn Future<
-						Output = Result<
-							Option<fetcher_core::read_filter::ReadFilter>,
-							crate::error::ConfigError,
-						>,
-					>,
-				>,
-			> { Box::pin(async move { settings::read_filter::get(&name, default).await }) },
-		),
-	})
-	.await?;
+		read_filter: Box::new(read_filter_getter),
+	};
+
+	let tasks = settings::config::tasks::get_all(&data_settings).await?;
 
 	if tasks.is_empty() {
 		tracing::info!("No enabled tasks provided");
@@ -178,26 +177,13 @@ async fn run(once: bool) -> Result<()> {
 async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Result<()> {
 	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
-		let name2 = name.clone(); // TODO: ehhh. Is there a way to avoid cloning?
+		let name2 = name.clone();
 		let mut shutdown_rx = shutdown_rx.clone();
 
-		let fut = tokio::spawn(
+		let task_handle = tokio::spawn(
 			async move {
-				let res: Result<()> = select! {
-					res = async {
-						loop {
-							run_task(&mut t).await?;
-
-							if once {
-								break;
-							}
-
-							tracing::debug!("Sleeping for {time}m", time = t.refresh);
-							sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
-						}
-
-						Ok(())
-					} => res,
+				let res = select! {
+					r = task_loop(&mut t, once) => r,
 					_ = shutdown_rx.changed() => Ok(()),
 				};
 
@@ -219,7 +205,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 			.instrument(tracing::info_span!("task", name = name2.as_str())),
 		);
 
-		running_tasks.push(flatten_task(fut));
+		running_tasks.push(flatten_task_result(task_handle));
 	}
 
 	// return the first error
@@ -238,12 +224,19 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 	}
 }
 
-async fn flatten_task<T>(h: JoinHandle<Result<T>>) -> Result<T> {
-	match h.await {
-		Ok(Ok(res)) => Ok(res),
-		Ok(Err(err)) => Err(err),
-		e => e.unwrap(), // unwrap NOTE: crash (for now) if there was an error joining the thread
+async fn task_loop(t: &mut Task, once: bool) -> Result<()> {
+	loop {
+		fetcher_core::run_task(t).await?;
+
+		if once {
+			break;
+		}
+
+		tracing::debug!("Sleeping for {time}m", time = t.refresh);
+		sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
 	}
+
+	Ok(())
 }
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
@@ -274,4 +267,12 @@ async fn report_error(task_name: &str, err: &str) -> color_eyre::Result<()> {
 		.map_err(fetcher_core::error::Error::Sink)?;
 
 	Ok(())
+}
+
+async fn flatten_task_result<T>(h: JoinHandle<Result<T>>) -> Result<T> {
+	match h.await {
+		Ok(Ok(res)) => Ok(res),
+		Ok(Err(err)) => Err(err),
+		e => e.unwrap(), // unwrap NOTE: crash if there was an error joining the thread
+	}
 }
