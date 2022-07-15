@@ -12,6 +12,7 @@ mod config;
 mod error;
 mod settings;
 
+use color_eyre::eyre::eyre;
 use color_eyre::{Report, Result};
 use fetcher_core::{run_task, task::Tasks};
 use futures::future::join_all;
@@ -182,7 +183,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 
 		let fut = tokio::spawn(
 			async move {
-				let res: Result<(), Report> = select! {
+				let res: Result<()> = select! {
 					res = async {
 						loop {
 							run_task(&mut t).await?;
@@ -200,56 +201,14 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 					_ = shutdown_rx.changed() => Ok(()),
 				};
 
-				if let Err(e) = &res {
-					// let err_str = format!("{:?}", color_eyre::eyre::eyre!(e));
-					let err_str = format!("{:?}", e); // TODO: make it pretier like eyre
+				if let Err(err) = &res {
+					let err_str = format!("{:?}", err); // TODO: make it pretier like with eyre
 					tracing::error!("{}", err_str);
 
 					// production error reporting
-					// TODO: temporary, move that to a tracing layer that sends all WARN and higher logs automatically
 					if !cfg!(debug_assertions) {
-						if let Ok(admin_chat_id) = std::env::var("FETCHER_LOG_ADMIN_CHAT_ID") {
-							use fetcher_core::sink::telegram::LinkLocation;
-							use fetcher_core::sink::Message;
-							use fetcher_core::sink::Telegram;
-
-							let admin_chat_id = match admin_chat_id.parse::<i64>() {
-								Ok(num) => num,
-								Err(e) => {
-									let s = format!(
-										"Unable to send error report to the admin: FETCHER_LOG_ADMIN_CHAT_ID isn't a valid chat id ({e})"
-									);
-									tracing::error!(%s);
-									todo!() // return Err(Error::Other(s)); // TODO: this kinda sucks
-								}
-							};
-
-							let send_job = async {
-								let bot = match settings::data::telegram().await? {
-									Some(b) => b,
-									None => {
-										let s = "Unable to send error report to the admin: telegram bot token is not provided".to_owned();
-										tracing::error!(%s);
-										todo!() // return Err(Error::Other(s)); // TODO: this kinda sucks
-									}
-								};
-								let msg = Message {
-									body: err_str,
-									..Default::default()
-								};
-								Telegram::new(bot, admin_chat_id, LinkLocation::default())
-									.send(msg, Some(&name))
-									.await
-									.map_err(fetcher_core::error::Error::Sink)?;
-								Ok::<(), Report>(())
-							};
-							if let Err(e) = send_job.await {
-								tracing::error!(
-									"Unable to send error report to the admin: {:?}",
-									// color_eyre::eyre::eyre!(e)
-									e
-								);
-							}
+						if let Err(e) = report_error(&name, &err_str).await {
+							tracing::error!("Unable to send error report to the admin: {e:?}",);
 						}
 					}
 				}
@@ -263,11 +222,10 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 		running_tasks.push(flatten_task(fut));
 	}
 
-	// print every error but return only the first
+	// return the first error
 	let mut first_err = None;
 	for res in join_all(running_tasks).await {
 		if let Err(e) = res {
-			tracing::error!("{:?}", e);
 			if first_err.is_none() {
 				first_err = Some(e);
 			}
@@ -286,4 +244,34 @@ async fn flatten_task<T>(h: JoinHandle<Result<T>>) -> Result<T> {
 		Ok(Err(err)) => Err(err),
 		e => e.unwrap(), // unwrap NOTE: crash (for now) if there was an error joining the thread
 	}
+}
+
+// TODO: move that to a tracing layer that sends all WARN and higher logs automatically
+async fn report_error(task_name: &str, err: &str) -> color_eyre::Result<()> {
+	use fetcher_core::sink::telegram::LinkLocation;
+	use fetcher_core::sink::Message;
+	use fetcher_core::sink::Telegram;
+
+	let admin_chat_id = match std::env::var("FETCHER_ADMIN_CHAT_ID")?.parse::<i64>() {
+		Ok(num) => num,
+		Err(e) => {
+			return Err(eyre!("FETCHER_ADMIN_CHAT_ID isn't a valid chat id ({e})"));
+		}
+	};
+	let bot = match settings::data::telegram().await? {
+		Some(b) => b,
+		None => {
+			return Err(eyre!("Telegram bot token not provided"));
+		}
+	};
+	let msg = Message {
+		body: err.to_owned(),
+		..Default::default()
+	};
+	Telegram::new(bot, admin_chat_id, LinkLocation::default())
+		.send(msg, Some(task_name))
+		.await
+		.map_err(fetcher_core::error::Error::Sink)?;
+
+	Ok(())
 }
