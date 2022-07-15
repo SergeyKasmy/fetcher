@@ -16,7 +16,6 @@ use crate::sink::Media;
 use crate::sink::Message;
 
 pub struct Twitter {
-	pretty_name: String, // used for hashtags	// TODO: not needed anymore (at least I don't think so)
 	handle: String,
 	api_key: String,
 	api_secret: String,
@@ -26,15 +25,8 @@ pub struct Twitter {
 
 impl Twitter {
 	#[must_use]
-	pub fn new(
-		pretty_name: String,
-		handle: String,
-		api_key: String,
-		api_secret: String,
-		filter: Vec<String>,
-	) -> Self {
+	pub fn new(handle: String, api_key: String, api_secret: String, filter: Vec<String>) -> Self {
 		Self {
-			pretty_name,
 			handle,
 			api_key,
 			api_secret,
@@ -139,7 +131,6 @@ impl Twitter {
 impl std::fmt::Debug for Twitter {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Twitter")
-			.field("pretty_name", &self.pretty_name)
 			.field("handle", &self.handle)
 			.field("filter", &self.filter)
 			.finish_non_exhaustive()
