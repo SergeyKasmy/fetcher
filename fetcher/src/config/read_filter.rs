@@ -37,7 +37,10 @@ pub enum ReadFilter {
 
 impl ReadFilter {
 	#[must_use]
-	pub fn parse(self, external_save: read_filter::Writer) -> read_filter::ReadFilter {
+	pub fn parse(
+		self,
+		external_save: Box<dyn read_filter::ExternalSave + Send + Sync>,
+	) -> read_filter::ReadFilter {
 		let inner = match self {
 			ReadFilter::NewerThanRead(x) => {
 				read_filter::ReadFilterInner::NewerThanLastRead(x.parse())
@@ -53,8 +56,8 @@ impl ReadFilter {
 		}
 	}
 
-	pub(crate) fn unparse(read_filter: &read_filter::ReadFilter) -> Option<Self> {
-		Some(match &read_filter.inner {
+	pub(crate) fn unparse(read_filter: &read_filter::ReadFilterInner) -> Option<Self> {
+		Some(match &read_filter {
 			read_filter::ReadFilterInner::NewerThanLastRead(x) => {
 				ReadFilter::NewerThanRead(Newer::unparse(x)?)
 			}

@@ -9,18 +9,18 @@
 pub mod newer;
 pub mod not_present;
 
-use std::io::Write;
-
 use self::newer::Newer;
 use self::not_present::NotPresent;
 use crate::entry::Entry;
 use crate::error::Error;
 
-pub type Writer = Box<dyn Write + Send + Sync>;
+pub trait ExternalSave {
+	fn save(&mut self, read_filter: &ReadFilterInner) -> std::io::Result<()>;
+}
 
 pub struct ReadFilter {
 	pub inner: ReadFilterInner,
-	pub external_save: Writer,
+	pub external_save: Box<dyn ExternalSave + Send + Sync>,
 }
 
 #[derive(Debug)]
@@ -37,7 +37,7 @@ pub enum Kind {
 
 impl ReadFilter {
 	#[must_use]
-	pub fn new(kind: Kind, external_save: Writer) -> Self {
+	pub fn new(kind: Kind, external_save: Box<dyn ExternalSave + Send + Sync>) -> Self {
 		let inner = match kind {
 			Kind::NewerThanLastRead => ReadFilterInner::NewerThanLastRead(Newer::new()),
 			Kind::NotPresentInReadList => ReadFilterInner::NotPresentInReadList(NotPresent::new()),
@@ -86,7 +86,6 @@ impl ReadFilter {
 			NotPresentInReadList(x) => x.mark_as_read(id),
 		}
 
-		// FIXME
 		// match config::read_filter::ReadFilter::unparse(self) {
 		// 	Some(filter_conf) => {
 		// 		let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
@@ -101,7 +100,10 @@ impl ReadFilter {
 		// 	None => (),
 		// }
 		// Ok(())
-		todo!()
+		// self.external_save(self).map_err(Error::ReadFilterExternalWrite)
+		self.external_save
+			.save(&self.inner)
+			.map_err(Error::ReadFilterExternalWrite)
 	}
 }
 

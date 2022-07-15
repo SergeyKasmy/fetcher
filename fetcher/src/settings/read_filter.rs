@@ -6,13 +6,13 @@
  * Copyright (C) 2022, Sergey Kasmynin (https://github.com/SergeyKasmy)
  */
 
-use std::path::PathBuf;
+use std::{io::Write, path::PathBuf};
 use tokio::fs;
 
 use super::PREFIX;
 use crate::config;
 use crate::error::ConfigError;
-use fetcher_core::read_filter::{ReadFilter, Writer};
+use fetcher_core::read_filter::{ExternalSave, ReadFilter};
 
 const READ_DATA_DIR: &str = "read";
 
@@ -56,7 +56,22 @@ pub(crate) async fn get(
 		}
 	}
 
-	let writer = || -> Result<Writer, ConfigError> {
+	impl ExternalSave for TruncatingFileWriter {
+		fn save(
+			&mut self,
+			read_filter: &fetcher_core::read_filter::ReadFilterInner,
+		) -> std::io::Result<()> {
+			if let Some(filter_conf) = crate::config::read_filter::ReadFilter::unparse(read_filter)
+			{
+				let s = serde_json::to_string(&filter_conf).unwrap();
+				return self.write_all(s.as_bytes());
+			}
+
+			Ok(())
+		}
+	}
+
+	let writer = || -> Result<TruncatingFileWriter, ConfigError> {
 		let path = read_filter_path(name)?;
 		if let Some(parent) = path.parent() {
 			std::fs::create_dir_all(parent)
@@ -69,7 +84,7 @@ pub(crate) async fn get(
 			.open(&path)
 			.map_err(|e| ConfigError::Write(e, path.clone()))?;
 
-		Ok(Box::new(TruncatingFileWriter { file }))
+		Ok(TruncatingFileWriter { file })
 	};
 
 	let path = read_filter_path(name)?;
@@ -90,7 +105,7 @@ pub(crate) async fn get(
 				let read_filter_conf: config::read_filter::ReadFilter =
 					serde_json::from_str(&filter_str)
 						.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path))?;
-				Some(read_filter_conf.parse(writer()?))
+				Some(read_filter_conf.parse(Box::new(writer()?)))
 			}
 		},
 	};
