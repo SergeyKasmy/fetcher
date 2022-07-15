@@ -51,6 +51,7 @@ impl Http {
 				.take()
 				.unwrap()
 				.unwrap_err()); // should always be Some and Err because we .ok_or?'ed it up above
+			    // TODO: remove these unwraps
 		};
 
 		Ok(Self { url, client })

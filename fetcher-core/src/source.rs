@@ -92,7 +92,7 @@ impl Source {
 
 #[derive(Debug)]
 pub struct WithSharedReadFilter {
-	read_filter: ReadFilter,
+	read_filter: Option<ReadFilter>,
 	sources: Vec<WithSharedReadFilterInner>,
 }
 
@@ -111,7 +111,7 @@ pub enum WithCustomReadFilter {
 impl WithSharedReadFilter {
 	pub fn new(
 		sources: Vec<WithSharedReadFilterInner>,
-		read_filter: ReadFilter,
+		read_filter: Option<ReadFilter>,
 	) -> Result<Self, SourceError> {
 		match sources.len() {
 			0 => return Err(SourceError::EmptySourceList),
@@ -140,7 +140,7 @@ impl WithSharedReadFilter {
 		for s in &mut self.sources {
 			entries.extend(match s {
 				WithSharedReadFilterInner::Http(x) => x.get().await?, // TODO: should HTTP even take a read filter?
-				WithSharedReadFilterInner::Twitter(x) => x.get(&self.read_filter).await?,
+				WithSharedReadFilterInner::Twitter(x) => x.get(self.read_filter.as_ref()).await?,
 				WithSharedReadFilterInner::File(x) => x.get().await?,
 			});
 		}
@@ -149,11 +149,17 @@ impl WithSharedReadFilter {
 	}
 
 	pub async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
-		self.read_filter.mark_as_read(id).await
+		if let Some(rf) = self.read_filter.as_mut() {
+			rf.mark_as_read(id).await?;
+		}
+
+		Ok(())
 	}
 
 	pub fn remove_read(&self, entries: &mut Vec<Entry>) {
-		self.read_filter.remove_read_from(entries);
+		if let Some(rf) = self.read_filter.as_ref() {
+			rf.remove_read_from(entries);
+		}
 	}
 }
 

@@ -44,7 +44,10 @@ impl Twitter {
 	}
 
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&mut self, read_filter: &ReadFilter) -> Result<Vec<Entry>, TwitterError> {
+	pub async fn get(
+		&mut self,
+		read_filter: Option<&ReadFilter>,
+	) -> Result<Vec<Entry>, TwitterError> {
 		tracing::debug!("Getting tweets");
 		if self.token.is_none() {
 			self.token = Some(
@@ -57,8 +60,12 @@ impl Twitter {
 		let token = self.token.as_ref().unwrap();
 
 		// TODO: keep a tweet id -> message id hashmap and handle enable with_replies from below
-		let (_, tweets) = user_timeline(self.handle.clone(), false, true, token) // TODO: remove clone
-			.older(read_filter.last_read().and_then(|x| x.parse().ok()))
+		let (_, tweets) = user_timeline(self.handle.clone(), false, true, token)
+			.older(
+				read_filter
+					.and_then(ReadFilter::last_read)
+					.and_then(|x| x.parse().ok()),
+			)
 			.await?;
 
 		tracing::debug!(

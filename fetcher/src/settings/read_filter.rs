@@ -27,6 +27,38 @@ fn read_filter_path(name: &str) -> Result<PathBuf, ConfigError> {
 	})
 }
 
+struct TruncatingFileWriter {
+	file: std::fs::File,
+}
+
+impl std::io::Write for TruncatingFileWriter {
+	fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+		use std::io::Seek;
+
+		self.file.set_len(0)?;
+		self.file.rewind()?;
+		self.file.write(buf)
+	}
+
+	fn flush(&mut self) -> std::io::Result<()> {
+		self.file.flush()
+	}
+}
+
+impl ExternalSave for TruncatingFileWriter {
+	fn save(
+		&mut self,
+		read_filter: &fetcher_core::read_filter::ReadFilterInner,
+	) -> std::io::Result<()> {
+		if let Some(filter_conf) = crate::config::read_filter::ReadFilter::unparse(read_filter) {
+			let s = serde_json::to_string(&filter_conf).unwrap();
+			return self.write_all(s.as_bytes());
+		}
+
+		Ok(())
+	}
+}
+
 /// Returns a read filter for the task name from the filesystem.
 ///
 /// # Errors
@@ -38,41 +70,9 @@ pub(crate) async fn get(
 	// TODO: remove option
 	default: Option<fetcher_core::read_filter::Kind>,
 ) -> Result<Option<ReadFilter>, ConfigError> {
-	struct TruncatingFileWriter {
-		file: std::fs::File,
-	}
+	let path = read_filter_path(name)?;
 
-	impl std::io::Write for TruncatingFileWriter {
-		fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-			use std::io::Seek;
-
-			self.file.set_len(0)?;
-			self.file.rewind()?;
-			self.file.write(buf)
-		}
-
-		fn flush(&mut self) -> std::io::Result<()> {
-			self.file.flush()
-		}
-	}
-
-	impl ExternalSave for TruncatingFileWriter {
-		fn save(
-			&mut self,
-			read_filter: &fetcher_core::read_filter::ReadFilterInner,
-		) -> std::io::Result<()> {
-			if let Some(filter_conf) = crate::config::read_filter::ReadFilter::unparse(read_filter)
-			{
-				let s = serde_json::to_string(&filter_conf).unwrap();
-				return self.write_all(s.as_bytes());
-			}
-
-			Ok(())
-		}
-	}
-
-	let writer = || -> Result<TruncatingFileWriter, ConfigError> {
-		let path = read_filter_path(name)?;
+	let filter_external_save = || -> Result<_, ConfigError> {
 		if let Some(parent) = path.parent() {
 			std::fs::create_dir_all(parent)
 				.map_err(|e| ConfigError::Write(e, parent.to_owned()))?;
@@ -87,8 +87,7 @@ pub(crate) async fn get(
 		Ok(TruncatingFileWriter { file })
 	};
 
-	let path = read_filter_path(name)?;
-
+	// return a valid read filter if there is one
 	let filter = match fs::read_to_string(&path).await.ok() {
 		None => {
 			tracing::trace!("Read filter save file doesn't exist");
@@ -104,16 +103,17 @@ pub(crate) async fn get(
 
 				let read_filter_conf: config::read_filter::ReadFilter =
 					serde_json::from_str(&filter_str)
-						.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path))?;
-				Some(read_filter_conf.parse(Box::new(writer()?)))
+						.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
+				Some(read_filter_conf.parse(Box::new(filter_external_save()?)))
 			}
 		},
 	};
 
+	// create a new one if there's none
 	match filter {
 		f @ Some(_) => Ok(f),
 		None => default
-			.map(|k| Ok(ReadFilter::new(k, Box::new(writer()?))))
+			.map(|k| Ok(ReadFilter::new(k, Box::new(filter_external_save()?))))
 			.transpose(),
 	}
 }

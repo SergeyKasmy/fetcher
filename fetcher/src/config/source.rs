@@ -75,14 +75,12 @@ impl Source {
 					})
 					.collect::<Result<Vec<_>, ConfigError>>()?;
 
+				let read_filter =
+					(settings.read_filter)(name.to_owned(), default_read_filter_kind).await?;
+
 				source::Source::WithSharedReadFilter(
-					source::WithSharedReadFilter::new(
-						inner,
-						(settings.read_filter)(name.to_owned(), default_read_filter_kind)
-							.await?
-							.unwrap(), // unwrap FIXME: remove when settings::read_filter::get gets updated. UPD: what does this comment even mean? This crashes if read_filter_kind is corrupted in the config
-					)
-					.map_err(|e| ConfigError::FetcherCoreReadFilter(e.into()))?,
+					source::WithSharedReadFilter::new(inner, read_filter)
+						.map_err(|e| ConfigError::FetcherCoreSource(e.into()))?,
 				)
 			}
 			Source::WithCustomReadFilter(s) => match s {

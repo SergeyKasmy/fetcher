@@ -51,9 +51,9 @@ pub(crate) enum ConfigError {
 	#[error("Wrong Google OAuth2 token")]
 	GoogleOAuth2WrongToken(#[from] GoogleOAuth2Error),
 
-	#[error("Error setting up an HTTP connection")]
+	#[error("Error setting up HTTP client")]
 	FetcherCoreHttp(#[from] fetcher_core::error::source::HttpError),
 
-	#[error("Error setting up a read filter")]
-	FetcherCoreReadFilter(#[source] Box<fetcher_core::error::source::Error>),
+	#[error("Error setting up a source")]
+	FetcherCoreSource(#[source] Box<fetcher_core::error::source::Error>),
 }
