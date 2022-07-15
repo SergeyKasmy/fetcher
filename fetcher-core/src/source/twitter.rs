@@ -75,7 +75,7 @@ impl Twitter {
 				}
 
 				Some(Entry {
-					id: tweet.id.to_string(),
+					id: Some(tweet.id.to_string()),
 					msg: Message {
 						title: None,
 						body: tweet.text.clone(),
@@ -109,7 +109,7 @@ impl Twitter {
 
 		let unread_num = messages.len();
 		if unread_num > 0 {
-			tracing::info!("Got {unread_num} unread filtered tweets");
+			tracing::debug!("Got {unread_num} unread filtered tweets");
 		} else {
 			tracing::debug!("All tweets have already been read, none remaining to send");
 		}

@@ -29,7 +29,7 @@ impl Rss {
 			.into_iter()
 			.map(|x| {
 				Entry {
-					id: x.guid.as_ref().unwrap().value.clone(), // unwrap NOTE: same as above
+					id: Some(x.guid.as_ref().unwrap().value.clone()), // unwrap NOTE: same as above
 					msg: Message {
 						// unwrap NOTE: "safe", these are required fields
 						title: Some(x.title.unwrap()),

@@ -626,7 +626,6 @@ dependencies = [
  "tokio",
  "tracing",
  "url",
- "xdg",
 ]
 
 [[package]]

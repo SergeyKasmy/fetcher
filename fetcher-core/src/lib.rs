@@ -54,7 +54,7 @@ pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 	Ok(())
 }
 
-#[tracing::instrument(name = "entry", skip_all, fields(id = entry.id.as_str()))]
+#[tracing::instrument(name = "entry", skip_all, fields(id = entry.id))]
 async fn process_entry(
 	sink: &mut Sink,
 	entry: Entry,
@@ -64,7 +64,10 @@ async fn process_entry(
 	tracing::trace!("Processing entry: {entry:?}");
 
 	sink.send(entry.msg, tag).await?;
-	mark_as_read.mark_as_read(&entry.id).await?;
+
+	if let Some(id) = &entry.id {
+		mark_as_read.mark_as_read(id).await?;
+	}
 
 	Ok::<(), Error>(())
 }

@@ -31,10 +31,16 @@ impl NotPresent {
 
 	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		list.retain(|elem| {
+			// retain elements with no id
+			let id = match &elem.id {
+				Some(id) => id,
+				None => return true,
+			};
+
 			!self
 				.read_list
 				.iter()
-				.any(|(read_elem_id, _)| read_elem_id == &elem.id)
+				.any(|(read_elem_id, _)| read_elem_id == id)
 		});
 	}
 

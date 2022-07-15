@@ -78,7 +78,7 @@ impl Http {
 		tracing::trace!("Done");
 
 		Ok(vec![Entry {
-			id: String::new(), // FIXME: use a proper id
+			id: None,
 			msg: Message {
 				title: None,
 				body: page,

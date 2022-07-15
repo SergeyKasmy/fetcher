@@ -199,7 +199,7 @@ impl Email {
 		};
 
 		Ok(Entry {
-			id,
+			id: Some(id),
 			msg: Message {
 				title: subject,
 				body,

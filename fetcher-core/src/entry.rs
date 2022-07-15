@@ -9,9 +9,8 @@
 use crate::sink::Message;
 
 // TODO: add message history via responce id -> message id hashmap
-// TODO: add pretty name/hashtag and link here instead of doing it manually
 #[derive(Debug)]
 pub struct Entry {
-	pub id: String, // TODO: add date id type
+	pub id: Option<String>, // TODO: add date id type
 	pub msg: Message,
 }

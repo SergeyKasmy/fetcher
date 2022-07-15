@@ -174,7 +174,7 @@ impl Json {
 					.transpose()?;
 
 				Ok(Entry {
-					id,
+					id: Some(id),
 					msg: Message {
 						title,
 						body: text,

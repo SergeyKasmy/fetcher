@@ -28,4 +28,3 @@ thiserror = "1.0.31"
 tokio = { version = "1.19.2", features = ["full"] }
 tracing = "0.1.35"
 url = "2.2.2"
-xdg = "2.4.1"	# FIXME: temporary, move to the binary

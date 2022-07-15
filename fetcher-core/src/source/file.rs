@@ -26,7 +26,7 @@ impl File {
 			.map_err(|e| SourceError::FileRead(e, self.path.clone()))?;
 
 		Ok(vec![Entry {
-			id: String::new(),
+			id: None,
 			msg: Message {
 				title: None,
 				body: text,

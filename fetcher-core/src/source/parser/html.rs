@@ -65,7 +65,7 @@ impl Html {
 				};
 
 				Ok(Entry {
-					id: id.unwrap_or_default(),
+					id,
 					msg: Message {
 						title,
 						body,
