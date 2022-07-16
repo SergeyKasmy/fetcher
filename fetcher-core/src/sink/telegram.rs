@@ -78,73 +78,49 @@ impl Telegram {
 			m = media.is_some(),
 		);
 
-		let text = {
-			let mut text = match (&title, &link) {
-				(Some(title), Some(link)) => match self.link_location {
-					LinkLocation::PreferTitle => {
-						format!("<a href=\"{link}\">{title}</a>\n{body}")
-					}
-					LinkLocation::Bottom => {
-						format!("{title}\n{body}\n<a href=\"{link}\">Link</a>",)
-					}
-				},
-				(Some(title), None) => {
-					format!("{title}\n{body}")
+		// tried using Option here but ended up using unwrap_or_default() later anyways, so I'd thought why not use empty strings directly.
+		// Sadly they aren't ZST but 24 bytes but that shouldn't be ~too~ much...
+		let (mut head, tail) = match (&title, &link) {
+			// if title and link are both presend
+			(Some(title), Some(link)) => match self.link_location {
+				// and the link should be in the title, then combine them
+				LinkLocation::PreferTitle => {
+					(format!("<a href=\"{link}\">{title}</a>\n"), String::new())
 				}
-				(None, Some(link)) => {
-					format!("{body}\n<a href=\"{link}\">Link</a>")
-				}
-				(None, None) => body,
-			};
-
-			if let Some(tag) = tag {
-				text.insert_str(0, &format!("#{tag}\n\n"));
-			}
-
-			text
+				// even it should be at the bottom, return both separately
+				LinkLocation::Bottom => (
+					format!("{title}\n"),
+					format!("\n<a href=\"{link}\">Link</a>"),
+				),
+			},
+			// if only the title is presend, just print itself with an added newline
+			(Some(title), None) => (format!("{title}\n"), String::new()),
+			// and if only the link is present, but it at the bottom of the message, even if it should try to be in the title
+			(None, Some(link)) => (
+				String::new(),
+				format!("{body}\n<a href=\"{link}\">Link</a>"),
+			),
+			(None, None) => (String::new(), String::new()),
 		};
 
-		// FIXME: bug: if the message is just a couple of bytes over the limit and ends with a link, it could split in in two, e.g. 1) <a hre 2) f="">Link</a> and thus break it
+		if let Some(tag) = tag {
+			head.insert_str(0, &format!("#{tag}\n\n"));
+		}
+
 		let text = {
-			if text.len() > MAX_MSG_LEN {
-				let mut parts = Vec::new();
-				let mut begin_slice_from = 0;
+			if body.chars().count() + head.chars().count() + tail.chars().count() > MAX_MSG_LEN {
+				let mut msg_parts = split_into_multiple_msg(head, body, tail);
+				let last = msg_parts.pop().unwrap(); // unwrap NOTE: we confirmed the entire message is too long, thus we should have at least one part
 
-				loop {
-					if begin_slice_from == text.len() {
-						break;
-					}
-
-					let till = std::cmp::min(begin_slice_from + MAX_MSG_LEN, text.len());
-
-					// this assumes that the string slice is valid which it may not be
-					#[allow(clippy::string_from_utf8_as_bytes)]
-					match std::str::from_utf8(&text.as_bytes()[begin_slice_from..till]) {
-						Ok(s) => {
-							parts.push(s);
-							begin_slice_from = till;
-						}
-						Err(e) => {
-							let valid_up_to = e.valid_up_to();
-							let s = &text[begin_slice_from..valid_up_to];
-							parts.push(s);
-							begin_slice_from = valid_up_to;
-						}
-					}
+				for msg_part in msg_parts {
+					self.send_text(msg_part).await?;
 				}
 
-				let last_part = parts.pop().unwrap();
-				for part in parts {
-					self.send_text(part.to_owned()).await?;
-				}
-
-				last_part.to_owned()
+				last
 			} else {
-				text
+				format!("{head}{body}{tail}")
 			}
 		};
-
-		// assert!(text.len() < MAX_MSG_LEN);
 
 		if let Some(media) = media {
 			match self
@@ -264,45 +240,107 @@ impl std::fmt::Debug for Telegram {
 	}
 }
 
-// #[cfg(test)]
-// mod tests {
-// 	use super::*;
-// 	use std::env::var;
+#[allow(clippy::needless_pass_by_value)] // I want to take ownership of the msg parts to avoid using them later by mistake
+fn split_into_multiple_msg(head: String, body: String, tail: String) -> Vec<String> {
+	let body_char_num = body.chars().count();
+	let head_char_num = head.chars().count();
+	let tail_char_num = tail.chars().count();
 
-// 	#[tokio::test]
-// 	async fn send_text_too_long() {
-// 		eprintln!("Running");
-// 		let tg = Telegram::new(
-// 			Bot::new(var("BOT_TOKEN").unwrap()),
-// 			var("DEBUG_CHAT_ID").unwrap(),
-// 		);
-// 		let mut long_text = String::with_capacity(8392);
+	assert!(head_char_num < MAX_MSG_LEN);
+	assert!(tail_char_num < MAX_MSG_LEN);
 
-// 		for _ in 0..4096 {
-// 			long_text.push('0');
-// 		}
+	let mut parts: Vec<String> = Vec::new();
 
-// 		for _ in 0..4096 {
-// 			long_text.push('1');
-// 		}
+	// first part with head and as much body as we can fit
+	let send_till = MAX_MSG_LEN - head.chars().count();
+	let body_first_part = body.chars().take(send_till).collect::<String>();
+	parts.push(format!("{head}{body_first_part}"));
 
-// 		for _ in 0..200 {
-// 			long_text.push('2');
-// 		}
+	let mut next_body_part_from = send_till + 1;
 
-// 		eprintln!("Message constructed");
-// 		tg.send(
-// 			Message {
-// 				// title: Some("Testing title".to_owned()),
-// 				title: None,
-// 				body: long_text,
-// 				link: None,
-// 				media: None,
-// 			},
-// 			None,
-// 		)
-// 		.await
-// 		.unwrap();
-// 		eprintln!("Message sent");
-// 	}
-// }
+	// split the rest of body into parts
+	loop {
+		if next_body_part_from >= body_char_num {
+			break;
+		}
+
+		let next_body_part_chars_count =
+			std::cmp::min(MAX_MSG_LEN, body_char_num - next_body_part_from);
+
+		parts.push(
+			body.chars()
+				.skip(next_body_part_from)
+				.take(MAX_MSG_LEN)
+				.collect::<String>(),
+		);
+		next_body_part_from += next_body_part_chars_count;
+	}
+
+	// put tail into the last part of body if it fits, otherwise put it into it's owm part
+	if let Some(last) = parts.last_mut() {
+		if last.chars().count() < MAX_MSG_LEN - tail_char_num {
+			last.push_str(&tail);
+		} else {
+			parts.push(tail);
+		}
+	} else {
+		parts.push(tail);
+	}
+
+	parts
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	const MSG_COUNT: usize = 3;
+
+	#[test]
+	fn split_msg_empty_head_tail() {
+		let head = String::new();
+
+		let mut body = String::new();
+		for _ in 0..MAX_MSG_LEN * MSG_COUNT {
+			body.push('b');
+		}
+
+		let tail = String::new();
+
+		let v = split_into_multiple_msg(head, body, tail);
+		assert_eq!(v.len(), MSG_COUNT);
+	}
+
+	#[test]
+	fn split_msg_long_head() {
+		let mut head = String::new();
+		for _ in 0..150 {
+			head.push('h');
+		}
+
+		let mut body = String::new();
+		for _ in 0..MAX_MSG_LEN * MSG_COUNT {
+			body.push('b');
+		}
+
+		let tail = String::new();
+
+		let v = split_into_multiple_msg(head, body, tail);
+		assert_eq!(v.len(), MSG_COUNT + 1);
+	}
+
+	#[test]
+	fn split_msg_with_tail_almost_fitting() {
+		let head = String::new();
+
+		let mut body = String::new();
+		// body is 1 char from max msg len
+		for _ in 0..MAX_MSG_LEN * MSG_COUNT - 1 {
+			body.push('b');
+		}
+
+		let tail = "tt".to_owned(); // and tail is 2 char
+
+		let v = split_into_multiple_msg(head, body, tail);
+		assert_eq!(v.len(), MSG_COUNT + 1); // tail shouldn't be split and thus should be put into it's own msg
+	}
+}
