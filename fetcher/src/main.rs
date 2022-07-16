@@ -188,8 +188,8 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 				};
 
 				if let Err(err) = &res {
-					let err_str = format!("{:?}", err); // TODO: make it pretier like with eyre
-					tracing::error!("{}", err_str);
+					let err_str = format!("{:?}", err);
+					tracing::error!("{err_str}");
 
 					// production error reporting
 					if !cfg!(debug_assertions) {

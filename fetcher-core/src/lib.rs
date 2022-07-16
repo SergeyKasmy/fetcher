@@ -13,7 +13,6 @@
 // TODO: more tests
 
 pub mod auth;
-// pub mod config;
 pub mod entry;
 pub mod error;
 pub mod read_filter;
@@ -21,11 +20,11 @@ pub mod sink;
 pub mod source;
 pub mod task;
 
-use sink::Sink;
-use source::Source;
-
 use crate::entry::Entry;
 use crate::error::Error;
+use crate::error::ErrorChainExt;
+use crate::sink::Sink;
+use crate::source::Source;
 use crate::task::Task;
 
 pub async fn run_task(t: &mut Task) -> Result<(), Error> {
@@ -43,8 +42,7 @@ pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 		Ok(_) => (),
 		Err(e) => {
 			if let Some(network_err) = e.is_connection_error() {
-				// tracing::warn!("{:?}", color_eyre::eyre::eyre!(network_err));
-				tracing::warn!("{network_err:?}");
+				tracing::warn!("Network error: {}", network_err.display_chain());
 			} else {
 				return Err(e);
 			}

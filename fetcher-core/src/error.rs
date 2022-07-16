@@ -7,6 +7,7 @@
  */
 
 use std::error::Error as StdError;
+use std::fmt::Write as _;
 
 pub mod sink;
 pub mod source;
@@ -22,12 +23,8 @@ pub enum Error {
 	#[error("Google authentication error")]
 	GoogleOAuth2(#[from] GoogleOAuth2Error),
 
-	// #[error("Config error")]
-	// Config(#[from] config::Error),
 	#[error("Error writing to the external read filter")]
 	ReadFilterExternalWrite(#[source] std::io::Error),
-	// #[error("{0}")]
-	// Other(String),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -42,7 +39,8 @@ pub enum GoogleOAuth2Error {
 impl Error {
 	/// Return some network connection error if it is some, otherwise return None
 	#[allow(clippy::match_same_arms)]
-	pub(crate) fn is_connection_error(&self) -> Option<&(dyn StdError + Send + Sync)> {
+	#[must_use]
+	pub fn is_connection_error(&self) -> Option<&(dyn StdError + Send + Sync)> {
 		match self {
 			Error::Source(source_err) => match source_err {
 				source::Error::Parse(_) => None,
@@ -72,9 +70,32 @@ impl Error {
 				GoogleOAuth2Error::Post(post_err) => Some(post_err),
 				GoogleOAuth2Error::Auth(_) => None,
 			},
-			// Error::Config(_) => None,
 			Error::ReadFilterExternalWrite(_) => None,
-			// Error::Other(_) => None,
 		}
+	}
+}
+
+pub trait ErrorChainExt {
+	fn display_chain(&self) -> String;
+}
+
+impl<T: StdError> ErrorChainExt for T {
+	#[must_use]
+	fn display_chain(&self) -> String {
+		let mut current_err: &dyn StdError = self;
+		let mut counter = 0;
+		let mut output = format!("{current_err}");
+
+		while let Some(source) = StdError::source(current_err) {
+			current_err = source;
+			counter += 1;
+			if counter == 1 {
+				let _ = write!(output, "\n\nCaused by:");
+			}
+
+			let _ = write!(output, "\n\t{counter}: {current_err}");
+		}
+
+		output
 	}
 }
