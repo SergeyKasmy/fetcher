@@ -89,17 +89,14 @@ impl Telegram {
 				}
 				// even it should be at the bottom, return both separately
 				LinkLocation::Bottom => (
-					format!("{title}\n"),
+					format!("{title}\n\n"),
 					format!("\n<a href=\"{link}\">Link</a>"),
 				),
 			},
 			// if only the title is presend, just print itself with an added newline
-			(Some(title), None) => (format!("{title}\n"), String::new()),
+			(Some(title), None) => (format!("{title}\n\n"), String::new()),
 			// and if only the link is present, but it at the bottom of the message, even if it should try to be in the title
-			(None, Some(link)) => (
-				String::new(),
-				format!("{body}\n<a href=\"{link}\">Link</a>"),
-			),
+			(None, Some(link)) => (String::new(), format!("\n<a href=\"{link}\">Link</a>")),
 			(None, None) => (String::new(), String::new()),
 		};
 
