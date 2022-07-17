@@ -578,7 +578,7 @@ dependencies = [
 
 [[package]]
 name = "fetcher"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "chrono",
  "color-eyre",
@@ -604,7 +604,7 @@ dependencies = [
 
 [[package]]
 name = "fetcher-core"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "ammonia",
  "async-trait",

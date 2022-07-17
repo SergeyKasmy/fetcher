@@ -1,13 +1,13 @@
 [package]
 name = "fetcher"
 description = "Fetch stuff and send stuff"
-version = "0.8.0"
+version = "0.8.1"
 license = "MPL-2.0"
 repository = "https://github.com/SergeyKasmy/fetcher"
 edition = "2021"
 
 [dependencies]
-fetcher-core = { version = "0.8.0", path = "../fetcher-core" }
+fetcher-core = { version = "0.8.1", path = "../fetcher-core" }
 color-eyre = "0.6.1"
 chrono = "0.4.19"
 figment = { version = "0.10.6", features = ["yaml"] }
