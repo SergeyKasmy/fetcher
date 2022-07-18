@@ -42,7 +42,13 @@ impl Google {
 		}
 	}
 
-	#[allow(clippy::items_after_statements)] // TODO
+	#[allow(clippy::doc_markdown)]
+	/// Generate a new Google OAuth2 refresh token using the `client_id`, `client_secret`, and `access_code`
+	///
+	/// # Errors
+	/// * if there was a network connection error
+	/// * if the responce isn't a valid refresh_token
+	#[allow(clippy::items_after_statements)]
 	pub async fn generate_refresh_token(
 		client_id: &str,
 		client_secret: &str,
@@ -119,6 +125,11 @@ impl Google {
 		Ok(())
 	}
 
+	/// Return a previously gotten `access_token` or fetch a new one
+	///
+	/// # Errors
+	/// This function calls [`generate_refresh_token`] if the saved `access_token` has expired or isn't valid, and thus may error for the same reason as it.
+	#[allow(clippy::missing_panics_doc)] // this should never panic
 	pub async fn access_token(&mut self) -> Result<&str, GoogleOAuth2Error> {
 		// FIXME: for some reason the token sometimes expires by itself and should be renewed manually
 		// Update the token if:

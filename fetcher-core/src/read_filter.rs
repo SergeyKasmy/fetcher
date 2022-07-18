@@ -12,7 +12,13 @@ use self::not_present::NotPresent;
 use crate::entry::Entry;
 use crate::error::Error;
 
+/// This trait represent some kind of external save destination.
+/// A way to preserve the state of a read filter, i.e. what has and has not been read, across restarts.
 pub trait ExternalSave {
+	/// This function will be called every time something has been marked as read and should be saved externally
+	///
+	/// # Errors
+	/// It may return an error if there has been issues saving, e.g. writing to disk
 	fn save(&mut self, read_filter: &ReadFilterInner) -> std::io::Result<()>;
 }
 

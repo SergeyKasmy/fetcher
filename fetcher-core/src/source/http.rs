@@ -32,6 +32,13 @@ pub struct Http {
 }
 
 impl Http {
+	/// Create a new Http client
+	///
+	/// # Errors
+	/// if TLS couldn't be initialized
+	///
+	/// # Panics
+	/// This function may panic if a different thread crashes when calling this function
 	pub fn new(url: Url) -> Result<Self, HttpError> {
 		// take out the error out of the option if there was an error, otherwise just clone the Client
 		let client = if let Ok(client) = CLIENT // if there was no error building the client

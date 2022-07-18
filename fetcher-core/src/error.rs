@@ -43,6 +43,7 @@ impl Error {
 			Error::Source(source_err) => match source_err {
 				source::Error::Parse(_) => None,
 				source::Error::EmptySourceList => None,
+				source::Error::SourceListHasDifferentVariants => None,
 				source::Error::FileRead(_, _) => None,
 				source::Error::Http(http_err) => Some(http_err),
 				// I know it will match any future variants automatically but I actually want it to do that anyways

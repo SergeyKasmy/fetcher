@@ -13,6 +13,10 @@ use crate::sink::Message;
 pub struct Stdout;
 
 impl Stdout {
+	/// Send a message with a tag to stdout
+	///
+	/// # Errors
+	/// if there was an error writing to stdout
 	pub async fn send(&self, msg: Message, tag: Option<&str>) -> Result<(), SinkError> {
 		tokio::io::stdout().write_all(format!(
 			"------------------------------\nMessage:\nTitle: {title}\n\nBody:\n{body}\n\nLink: {link:?}\nMedia: {media}\nTag: {tag}\n------------------------------",

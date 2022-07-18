@@ -33,6 +33,11 @@ pub enum Source {
 }
 
 impl Source {
+	/// Get all available entries from the source and run them through the parsers
+	///
+	/// # Errors
+	/// * if there was an error fetching from the source
+	/// * if there was an error parsing the just fetched entries
 	pub async fn get(&mut self, parsers: Option<&[Parser]>) -> Result<Vec<Entry>, SourceError> {
 		let unparsed_entries = match self {
 			Source::WithSharedReadFilter(x) => x.get().await?,
@@ -59,10 +64,7 @@ impl Source {
 		}
 
 		let total_num = parsed_entries.len();
-		match self {
-			Source::WithSharedReadFilter(x) => x.remove_read(&mut parsed_entries),
-			Source::WithCustomReadFilter(x) => x.remove_read(&mut parsed_entries),
-		}
+		self.remove_read(&mut parsed_entries);
 
 		parsed_entries = parsed_entries
 			.into_iter()
@@ -80,10 +82,24 @@ impl Source {
 		Ok(parsed_entries)
 	}
 
+	/// Mark the id as read
+	///
+	/// # Errors
+	/// if there was an error writing the id to the permanent storage
 	pub async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		match self {
 			Self::WithSharedReadFilter(x) => x.mark_as_read(id).await,
 			Self::WithCustomReadFilter(x) => x.mark_as_read(id).await.map_err(Error::Source),
+		}
+	}
+
+	/// Remove all read entries from the list of entries
+	///
+	/// Uses the id and the read filter to find and remove read entries
+	pub fn remove_read(&self, entries: &mut Vec<Entry>) {
+		match self {
+			Source::WithSharedReadFilter(x) => x.remove_read(entries),
+			Source::WithCustomReadFilter(x) => x.remove_read(entries),
 		}
 	}
 }
@@ -107,6 +123,11 @@ pub enum WithCustomReadFilter {
 }
 
 impl WithSharedReadFilter {
+	/// Create a new source struct that may contain one or several pure sources of the same type
+	///
+	/// # Errors
+	/// * if the source list is empty
+	/// * if the several sources that were provided are of different `WithStaredReadFilterInner` variants
 	pub fn new(
 		sources: Vec<WithSharedReadFilterInner>,
 		read_filter: Option<ReadFilter>,
@@ -116,13 +137,16 @@ impl WithSharedReadFilter {
 			1 => (),
 			// assert that all source types are of the same enum variant
 			_ => {
-				assert!(sources.windows(2).fold(true, |is_same, x| {
+				// TODO: make a try_fold and shortcircuit of a different variant was found
+				if !sources.windows(2).fold(true, |is_same, x| {
 					if is_same {
 						std::mem::discriminant(&x[0]) == std::mem::discriminant(&x[1])
 					} else {
 						is_same
 					}
-				}));
+				}) {
+					return Err(SourceError::SourceListHasDifferentVariants);
+				}
 			}
 		}
 
@@ -132,6 +156,10 @@ impl WithSharedReadFilter {
 		})
 	}
 
+	/// Get all entries from the sources
+	///
+	/// # Errors
+	/// if there was an error fetching from a source
 	pub async fn get(&mut self) -> Result<Vec<Entry>, SourceError> {
 		let mut entries = Vec::new();
 
@@ -146,6 +174,8 @@ impl WithSharedReadFilter {
 		Ok(entries)
 	}
 
+	/// Delegate for [`Source::mark_as_read`]
+	#[allow(clippy::missing_errors_doc)]
 	pub async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		if let Some(rf) = self.read_filter.as_mut() {
 			rf.mark_as_read(id).await?;
@@ -154,6 +184,7 @@ impl WithSharedReadFilter {
 		Ok(())
 	}
 
+	/// Delegate for [`Source::remove_read`]
 	pub fn remove_read(&self, entries: &mut Vec<Entry>) {
 		if let Some(rf) = self.read_filter.as_ref() {
 			rf.remove_read_from(entries);
@@ -162,12 +193,18 @@ impl WithSharedReadFilter {
 }
 
 impl WithCustomReadFilter {
+	/// Fetch all entries from the source
+	///
+	/// # Errors
+	/// if there was an error fetching from the source (such as a network connection error or maybe even an authentication error)
 	pub async fn get(&mut self) -> Result<Vec<Entry>, SourceError> {
 		Ok(match self {
 			Self::Email(x) => x.get().await.map_err(Box::new)?,
 		})
 	}
 
+	/// Delegate for [`Source::mark_as_read`]
+	#[allow(clippy::missing_errors_doc)]
 	pub async fn mark_as_read(&mut self, id: &str) -> Result<(), SourceError> {
 		match self {
 			Self::Email(x) => x
@@ -179,6 +216,7 @@ impl WithCustomReadFilter {
 		Ok(())
 	}
 
+	/// Delegate for [`Source::remove_read`]
 	#[allow(clippy::ptr_arg)]
 	pub fn remove_read(&self, _entries: &mut Vec<Entry>) {
 		match self {

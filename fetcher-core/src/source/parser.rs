@@ -17,6 +17,8 @@ pub use self::rss::Rss;
 use crate::entry::Entry;
 use crate::error::source::parse::Error as ParseError;
 
+/// Type that allows transformation of a single [`Entry`] into one or multiple separate entries.
+/// That includes everything from parsing a markdown format like JSON to simple transformations like making all text uppercase
 // NOTE: Rss (and probs others in the future) is a ZST, so there's always going to be some amount of variance of enum sices but is trying to avoid that worth the hasle of a Box? TODO: Find out
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -29,6 +31,10 @@ pub enum Parser {
 }
 
 impl Parser {
+	/// Transform the entry `entry` into one or more entries
+	///
+	/// # Errors
+	/// if there was an error parsing the entry
 	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>, ParseError> {
 		Ok(match self {
 			Parser::Html(x) => x.parse(entry)?,

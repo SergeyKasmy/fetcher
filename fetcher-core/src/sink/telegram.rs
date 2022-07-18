@@ -100,6 +100,7 @@ impl Telegram {
 			(None, None) => (String::new(), String::new()),
 		};
 
+		// TODO: sanitize tag to work properly with hashtags, e.g. replace / with _
 		if let Some(tag) = tag {
 			head.insert_str(0, &format!("#{tag}\n\n"));
 		}
