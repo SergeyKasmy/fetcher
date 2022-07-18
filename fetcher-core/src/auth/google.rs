@@ -128,7 +128,8 @@ impl Google {
 	/// Return a previously gotten `access_token` or fetch a new one
 	///
 	/// # Errors
-	/// This function calls [`generate_refresh_token`] if the saved `access_token` has expired or isn't valid, and thus may error for the same reason as it.
+	/// * if there was a network connection error
+	/// * if the responce isn't a valid `refresh_token`
 	#[allow(clippy::missing_panics_doc)] // this should never panic
 	pub async fn access_token(&mut self) -> Result<&str, GoogleOAuth2Error> {
 		// FIXME: for some reason the token sometimes expires by itself and should be renewed manually

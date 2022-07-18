@@ -3,16 +3,24 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
+//! fetcher core    // TODO
 #![warn(clippy::pedantic)]
-// #![warn(missing_docs)]
+#![warn(missing_docs)]
 #![allow(clippy::module_name_repetitions)]
 
+/// Everything concerning some kind of non-primitive authentication
 pub mod auth;
+/// Contains [`Entry`] - a struct that contains a message that can be fed into a [`Sink`] and an id that can be used with a [`ReadFilter`](`read_filter::ReadFilter`)
 pub mod entry;
+/// Every error this crate and any of its modules may return, plus some helper functions
 pub mod error;
+/// Filtering already read entries and marking what entries have already been read
 pub mod read_filter;
+/// Sending fetched data
 pub mod sink;
+/// Fetching data
 pub mod source;
+/// Contains [`Task`] - a struct that combines everything from the above into a one coherent entity
 pub mod task;
 
 use crate::entry::Entry;

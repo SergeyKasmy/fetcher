@@ -7,9 +7,12 @@
 use std::error::Error as StdError;
 use std::fmt::Write as _;
 
+/// Errors that can happen in [`Sinks`](`crate::sink`)
 pub mod sink;
+/// Errors that can happen in [`Sources`](`crate::source`)
 pub mod source;
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error("Can't fetch data")]
@@ -25,17 +28,19 @@ pub enum Error {
 	ReadFilterExternalWrite(#[source] std::io::Error),
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum GoogleOAuth2Error {
 	#[error("Error contacting Google servers for authentication")]
 	Post(#[source] reqwest::Error), // TODO: maybe integrate with source::HttpError?
 
+	/// An error received from Google, whatever it is
 	#[error("{0}")]
 	Auth(String),
 }
 
 impl Error {
-	/// Return some network connection error if it is some, otherwise return None
+	/// Check if the current error is somehow related to network connection and return it if it is
 	#[allow(clippy::match_same_arms)]
 	#[must_use]
 	pub fn is_connection_error(&self) -> Option<&(dyn StdError + Send + Sync)> {
@@ -74,7 +79,9 @@ impl Error {
 	}
 }
 
+/// Extention trait for [`std::error::Error`] to print the entire chain of the error
 pub trait ErrorChainExt {
+	/// Return a string intented for logging or printing that formats an error's entire error source chain
 	fn display_chain(&self) -> String;
 }
 
