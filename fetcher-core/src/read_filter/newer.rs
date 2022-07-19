@@ -39,7 +39,7 @@ impl Newer {
 	/// Check if `current_id` is unread
 	/// Make sure `id_list` is sorted newest to oldest
 	#[allow(dead_code)] // TODO
-	pub(crate) fn is_unread(&self, current_id: &str, id_list: &[&str]) -> bool {
+	fn is_unread(&self, current_id: &str, id_list: &[&str]) -> bool {
 		if let Some(last_read_id) = &self.last_read_id {
 			if current_id == last_read_id {
 				return false;
@@ -69,5 +69,98 @@ impl Newer {
 
 	pub(crate) fn mark_as_read(&mut self, id: &str) {
 		self.last_read_id = Some(id.to_owned());
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn mark_as_read() {
+		let mut rf = Newer::new();
+
+		rf.mark_as_read("13");
+		assert_eq!(rf.last_read_id.as_deref().unwrap(), "13");
+
+		rf.mark_as_read("1002");
+		assert_eq!(rf.last_read_id.as_deref().unwrap(), "1002");
+	}
+
+	#[test]
+	fn last_read() {
+		let mut rf = Newer::new();
+		assert_eq!(None, rf.last_read());
+
+		rf.mark_as_read("0");
+		rf.mark_as_read("1");
+		rf.mark_as_read("2");
+		assert_eq!(Some("2"), rf.last_read());
+
+		rf.mark_as_read("4");
+		assert_eq!(Some("4"), rf.last_read());
+
+		rf.mark_as_read("100");
+		rf.mark_as_read("101");
+		rf.mark_as_read("200");
+		assert_eq!(Some("200"), rf.last_read());
+	}
+
+	#[test]
+	fn remove_read() {
+		let mut rf = Newer::new();
+		rf.mark_as_read("3");
+
+		let mut entries = vec![
+			Entry {
+				id: None,
+				msg: crate::sink::Message::default(),
+			},
+			Entry {
+				id: Some("5".to_owned()),
+				msg: crate::sink::Message::default(),
+			},
+			Entry {
+				id: Some("4".to_owned()),
+				msg: crate::sink::Message::default(),
+			},
+			Entry {
+				id: None,
+				msg: crate::sink::Message::default(),
+			},
+			Entry {
+				id: Some("0".to_owned()),
+				msg: crate::sink::Message::default(),
+			},
+			Entry {
+				id: Some("1".to_owned()),
+				msg: crate::sink::Message::default(),
+			},
+			Entry {
+				id: Some("3".to_owned()),
+				msg: crate::sink::Message::default(),
+			},
+			Entry {
+				id: None,
+				msg: crate::sink::Message::default(),
+			},
+			Entry {
+				id: Some("6".to_owned()),
+				msg: crate::sink::Message::default(),
+			},
+			Entry {
+				id: Some("8".to_owned()),
+				msg: crate::sink::Message::default(),
+			},
+		];
+
+		rf.remove_read_from(&mut entries);
+
+		// remove msgs
+		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
+		assert_eq!(
+			&entries,
+			&[None, Some("5"), Some("4"), None, Some("0"), Some("1")]
+		);
 	}
 }
