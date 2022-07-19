@@ -13,21 +13,30 @@ const MAX_LIST_LEN: usize = 500;
 
 #[derive(Debug)]
 pub struct NotPresent {
-	pub read_list: VecDeque<(String, DateTime<Utc>)>,
+	read_list: VecDeque<(String, DateTime<Utc>)>,
 }
 
 impl NotPresent {
-	pub(crate) fn new() -> Self {
+	pub fn new() -> Self {
 		Self {
 			read_list: VecDeque::default(),
 		}
 	}
 
-	pub(crate) fn last_read(&self) -> Option<&str> {
+	pub fn mark_as_read(&mut self, id: &str) {
+		self.read_list
+			.push_back((id.to_owned(), chrono::Utc::now()));
+
+		while self.read_list.len() > MAX_LIST_LEN {
+			self.read_list.pop_front();
+		}
+	}
+
+	pub fn last_read(&self) -> Option<&str> {
 		self.read_list.back().map(|(s, _)| s.as_str())
 	}
 
-	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
+	pub fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		list.retain(|elem| {
 			// retain elements with no id
 			let id = match &elem.id {
@@ -42,13 +51,26 @@ impl NotPresent {
 		});
 	}
 
-	pub(crate) fn mark_as_read(&mut self, id: &str) {
-		self.read_list
-			.push_back((id.to_owned(), chrono::Utc::now()));
+	pub fn iter(&self) -> impl Iterator<Item = &(String, DateTime<Utc>)> {
+		self.read_list.iter()
+	}
 
-		while self.read_list.len() > MAX_LIST_LEN {
-			self.read_list.pop_front();
+	pub fn is_empty(&self) -> bool {
+		self.read_list.is_empty()
+	}
+}
+
+impl FromIterator<(String, DateTime<Utc>)> for NotPresent {
+	fn from_iter<I: IntoIterator<Item = (String, DateTime<Utc>)>>(iter: I) -> Self {
+		Self {
+			read_list: iter.into_iter().collect(),
 		}
+	}
+}
+
+impl Default for NotPresent {
+	fn default() -> Self {
+		Self::new()
 	}
 }
 
