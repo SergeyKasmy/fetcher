@@ -6,6 +6,11 @@
 
 // TODO: proper argument parser. Something like clap or argh or something
 
+#![warn(clippy::pedantic)]
+#![allow(clippy::missing_panics_doc)] // TODO
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::module_name_repetitions)]
+
 mod config;
 mod error;
 mod settings;
@@ -55,10 +60,10 @@ fn set_up_logging() -> Result<()> {
 		.with_timer(OffsetTime::local_rfc_3339().expect("could not get local time offset"));
 
 	// enable journald logging only on release to avoid log spam on dev machines
-	let journald = if !cfg!(debug_assertions) {
-		tracing_journald::layer().ok()
-	} else {
+	let journald = if cfg!(debug_assertions) {
 		None
+	} else {
+		tracing_journald::layer().ok()
 	};
 
 	let subscriber = tracing_subscriber::registry()

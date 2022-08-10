@@ -12,7 +12,13 @@ use self::not_present::NotPresent;
 use crate::entry::Entry;
 use crate::error::Error;
 
+/// This trait represent some kind of external save destination.
+/// A way to preserve the state of a read filter, i.e. what has and has not been read, across restarts.
 pub trait ExternalSave {
+	/// This function will be called every time something has been marked as read and should be saved externally
+	///
+	/// # Errors
+	/// It may return an error if there has been issues saving, e.g. writing to disk
 	fn save(&mut self, read_filter: &ReadFilterInner) -> std::io::Result<()>;
 }
 
@@ -84,21 +90,6 @@ impl ReadFilter {
 			NotPresentInReadList(x) => x.mark_as_read(id),
 		}
 
-		// match config::read_filter::ReadFilter::unparse(self) {
-		// 	Some(filter_conf) => {
-		// 		let s = serde_json::to_string(&filter_conf).unwrap(); // unwrap NOTE: safe, serialization of such a simple struct should never fail
-
-		// 		// NOTE: yes, it blocks for a bit but spawning a blocking tokio task is too much of a hastle and a readability concern
-		// 		// to the point that I think it's just not worth it. Maybe there's a better way to avoid blocking without getting hands dirty
-		// 		// with tokio::spawn_blocking() and std::mem::replace() (because the task has to have a 'static lifetime)
-		// 		self.external_save
-		// 			.write_all(s.as_bytes())
-		// 			.map_err(Error::ReadFilterExternalWrite)?;
-		// 	}
-		// 	None => (),
-		// }
-		// Ok(())
-		// self.external_save(self).map_err(Error::ReadFilterExternalWrite)
 		self.external_save
 			.save(&self.inner)
 			.map_err(Error::ReadFilterExternalWrite)

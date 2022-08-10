@@ -11,87 +11,24 @@ use crate::{
 	source::{parser::Parser, Source},
 };
 
-/// Name -> Task
+/// A hashmap of tasks that maps Name -> Task
 pub type Tasks = HashMap<String, Task>;
 
+/// A core primitive of [`fetcher`](`crate`).
+/// Contains everything from a [`Source`] that allows to fetch some data, to a [`Sink`] that takes that data and sends it somewhere.
+/// It also contains any parsers
 #[derive(Debug)]
 pub struct Task {
-	pub disabled: bool,
+	/// TODO: move these 2 out of this
+	pub disabled: bool, //
+	/// TODO
 	pub refresh: u64,
+	/// An optional tag that may be put near a message body to differentiate this task from others that may be similar
 	pub tag: Option<String>,
+	/// The source where to fetch some data from
 	pub source: Source,
+	/// A list of optional parsers which to run the data received from the source through
 	pub parsers: Option<Vec<Parser>>,
+	/// The sink where to send the data to
 	pub sink: Sink,
 }
-
-// #[cfg(test)]
-// mod tests {
-// 	mod source_types {
-// 		use teloxide::Bot;
-
-// 		use super::super::Task;
-// 		use crate::source::email::ViewMode;
-// 		use crate::{
-// 			sink::Sink,
-// 			sink::Telegram,
-// 			source::Rss,
-// 			source::Source,
-// 			source::{email::filters::Filters, Email},
-// 		};
-
-// 		#[test]
-// 		fn one_type() {
-// 			let _x = Task::new(
-// 				false,
-// 				1,
-// 				None,
-// 				Sink::Telegram(Telegram::new(Bot::new("null"), 0)),
-// 				vec![Source::Rss(Rss::new("null".to_owned()))],
-// 			);
-// 		}
-
-// 		#[test]
-// 		fn same_types() {
-// 			let _x = Task::new(
-// 				false,
-// 				1,
-// 				None,
-// 				Sink::Telegram(Telegram::new(Bot::new("null"), 0)),
-// 				vec![
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 				],
-// 			);
-// 		}
-
-// 		#[test]
-// 		#[should_panic]
-// 		fn different_types() {
-// 			let _x = Task::new(
-// 				false,
-// 				1,
-// 				None,
-// 				Sink::Telegram(Telegram::new(Bot::new("null"), 0)),
-// 				vec![
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 					Source::Email(Email::with_password(
-// 						"null".to_owned(),
-// 						"null".to_owned(),
-// 						"null".to_owned(),
-// 						Filters {
-// 							sender: None,
-// 							subjects: None,
-// 							exclude_subjects: None,
-// 						},
-// 						ViewMode::ReadOnly,
-// 						None,
-// 					)),
-// 				],
-// 			);
-// 		}
-// 	}
-// }

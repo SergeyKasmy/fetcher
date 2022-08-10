@@ -6,6 +6,8 @@
 
 use std::fmt::Debug;
 
+/// An error that happened while sending to a sink
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error("Error writing to stdout")]

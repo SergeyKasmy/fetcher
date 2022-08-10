@@ -18,6 +18,9 @@ pub enum Error {
 	#[error("Can't create a source with an empty source list")]
 	EmptySourceList,
 
+	#[error("Can't create a source with a source list that contains different source variants")]
+	SourceListHasDifferentVariants,
+
 	#[error("Can't read file {}", .1.to_string_lossy())]
 	FileRead(#[source] std::io::Error, PathBuf),
 
