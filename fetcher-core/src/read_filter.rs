@@ -22,6 +22,7 @@ pub trait ExternalSave {
 	fn save(&mut self, read_filter: &ReadFilterInner) -> std::io::Result<()>;
 }
 
+// TODO: add field `since` that marks the first time that read filter was used and ignores everything before
 pub struct ReadFilter {
 	pub inner: ReadFilterInner,
 	pub external_save: Box<dyn ExternalSave + Send + Sync>,

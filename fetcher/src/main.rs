@@ -52,8 +52,8 @@ fn set_up_logging() -> color_eyre::Result<()> {
 	use tracing_subscriber::EnvFilter;
 	use tracing_subscriber::Layer;
 
-	let env_filter =
-		EnvFilter::try_from_env("FETCHER_LOG").unwrap_or_else(|_| EnvFilter::from("fetcher=info"));
+	let env_filter = EnvFilter::try_from_env("FETCHER_LOG")
+		.unwrap_or_else(|_| EnvFilter::from("fetcher=info,fetcher_core=info"));
 	let stdout = tracing_subscriber::fmt::layer()
 		.pretty()
 		// hide source code/debug info on release builds
@@ -93,7 +93,6 @@ async fn async_main() -> color_eyre::Result<()> {
 	};
 	tracing::info!("Running fetcher {}", version);
 
-	// TODO: add option to send to optional global debug chat to test first
 	match std::env::args().nth(1).as_deref() {
 		Some("--gen-secret-google-oauth2") => settings::data::generate_google_oauth2().await?,
 		Some("--gen-secret-google-password") => settings::data::generate_google_password().await?,
@@ -263,10 +262,12 @@ async fn report_error(task_name: &str, err: &str) -> color_eyre::Result<()> {
 	use fetcher_core::sink::Message;
 	use fetcher_core::sink::Telegram;
 
-	let admin_chat_id = match std::env::var("FETCHER_ADMIN_CHAT_ID")?.parse::<i64>() {
+	let admin_chat_id = match std::env::var("FETCHER_TELEGRAM_ADMIN_CHAT_ID")?.parse::<i64>() {
 		Ok(num) => num,
 		Err(e) => {
-			return Err(eyre!("FETCHER_ADMIN_CHAT_ID isn't a valid chat id ({e})"));
+			return Err(eyre!(
+				"FETCHER_TELEGRAM_ADMIN_CHAT_ID isn't a valid chat id ({e})"
+			));
 		}
 	};
 	let bot = match settings::data::telegram().await? {
