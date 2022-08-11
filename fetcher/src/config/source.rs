@@ -56,34 +56,38 @@ impl Source {
 			Source::WithSharedReadFilter(v) => {
 				let v: Vec<WithSharedReadFilter> = v.into();
 
-				let inner = v
+				let sources = v
 					.into_iter()
 					.map(|x| {
 						Ok(match x {
 							WithSharedReadFilter::Http(x) => {
-								source::WithSharedReadFilterInner::Http(x.parse()?)
+								source::with_shared_rf::Kind::Http(x.parse()?)
 							}
 							WithSharedReadFilter::Twitter(x) => {
-								source::WithSharedReadFilterInner::Twitter(x.parse(settings)?)
+								source::with_shared_rf::Kind::Twitter(x.parse(settings)?)
 							}
 							WithSharedReadFilter::File(x) => {
-								source::WithSharedReadFilterInner::File(x.parse())
+								source::with_shared_rf::Kind::File(x.parse())
 							}
 						})
 					})
-					.collect::<Result<Vec<_>, ConfigError>>()?;
+					.collect::<Result<Vec<_>, ConfigError>>()?
+					.try_into()
+					.map_err(|e: fetcher_core::error::source::Error| {
+						ConfigError::FetcherCoreSource(e.into())
+					})?;
 
 				let read_filter =
 					(settings.read_filter)(name.to_owned(), default_read_filter_kind).await?;
 
-				source::Source::WithSharedReadFilter(
-					source::WithSharedReadFilter::new(inner, read_filter)
-						.map_err(|e| ConfigError::FetcherCoreSource(e.into()))?,
-				)
+				source::Source::WithSharedReadFilter(source::with_shared_rf::Source::new(
+					sources,
+					read_filter,
+				))
 			}
 			Source::WithCustomReadFilter(s) => match s {
 				WithCustomReadFilter::Email(x) => source::Source::WithCustomReadFilter(
-					source::WithCustomReadFilter::Email(x.parse(settings)?),
+					source::with_custom_rf::Source::Email(x.parse(settings)?),
 				),
 			},
 		})

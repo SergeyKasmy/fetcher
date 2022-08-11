@@ -16,8 +16,8 @@ pub(crate) struct Filters {
 }
 
 impl Filters {
-	pub(crate) fn parse(self) -> source::email::filters::Filters {
-		source::email::filters::Filters {
+	pub(crate) fn parse(self) -> source::with_custom_rf::email::filters::Filters {
+		source::with_custom_rf::email::filters::Filters {
 			sender: self.sender,
 			subjects: self.subjects,
 			exclude_subjects: self.exclude_subjects,

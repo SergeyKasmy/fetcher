@@ -18,13 +18,13 @@ pub(crate) enum ViewMode {
 }
 
 impl ViewMode {
-	pub(crate) fn parse(self) -> source::email::ViewMode {
+	pub(crate) fn parse(self) -> source::with_custom_rf::email::ViewMode {
 		use ViewMode::{Delete, MarkAsRead, ReadOnly};
 
 		match self {
-			ReadOnly => source::email::ViewMode::ReadOnly,
-			MarkAsRead => source::email::ViewMode::MarkAsRead,
-			Delete => source::email::ViewMode::Delete,
+			ReadOnly => source::with_custom_rf::email::ViewMode::ReadOnly,
+			MarkAsRead => source::with_custom_rf::email::ViewMode::MarkAsRead,
+			Delete => source::with_custom_rf::email::ViewMode::Delete,
 		}
 	}
 }

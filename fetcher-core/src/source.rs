@@ -6,30 +6,28 @@
 
 // TODO: add google calendar source. Google OAuth2 is already implemented :)
 
-pub mod email;
-pub mod file;
-pub mod http;
-pub mod parser;
-pub mod twitter;
+pub mod with_custom_rf;
+pub mod with_shared_rf;
 
-pub use self::email::Email;
-pub use self::file::File;
-pub use self::http::Http;
-pub use self::twitter::Twitter;
+pub mod parser;
+
+pub use self::with_custom_rf::email::Email;
+pub use self::with_shared_rf::file::File;
+pub use self::with_shared_rf::http::Http;
+pub use self::with_shared_rf::twitter::Twitter;
 
 use itertools::Itertools;
 
 use self::parser::Parser;
 use crate::entry::Entry;
 use crate::error::source::parse::Error as ParseError;
-use crate::error::source::{EmailError, Error as SourceError};
+use crate::error::source::Error as SourceError;
 use crate::error::Error;
-use crate::read_filter::ReadFilter;
 
 #[derive(Debug)]
 pub enum Source {
-	WithSharedReadFilter(WithSharedReadFilter),
-	WithCustomReadFilter(WithCustomReadFilter),
+	WithSharedReadFilter(with_shared_rf::Source),
+	WithCustomReadFilter(with_custom_rf::Source),
 }
 
 impl Source {
@@ -100,127 +98,6 @@ impl Source {
 		match self {
 			Source::WithSharedReadFilter(x) => x.remove_read(entries),
 			Source::WithCustomReadFilter(x) => x.remove_read(entries),
-		}
-	}
-}
-
-#[derive(Debug)]
-pub struct WithSharedReadFilter {
-	read_filter: Option<ReadFilter>,
-	sources: Vec<WithSharedReadFilterInner>,
-}
-
-#[derive(Debug)]
-pub enum WithSharedReadFilterInner {
-	File(File),
-	Http(Http),
-	Twitter(Twitter),
-}
-
-#[derive(Debug)]
-pub enum WithCustomReadFilter {
-	Email(Email),
-}
-
-impl WithSharedReadFilter {
-	/// Create a new source struct that may contain one or several pure sources of the same type
-	///
-	/// # Errors
-	/// * if the source list is empty
-	/// * if the several sources that were provided are of different `WithStaredReadFilterInner` variants
-	pub fn new(
-		sources: Vec<WithSharedReadFilterInner>,
-		read_filter: Option<ReadFilter>,
-	) -> Result<Self, SourceError> {
-		match sources.len() {
-			0 => return Err(SourceError::EmptySourceList),
-			1 => (),
-			// assert that all source types are of the same enum variant
-			_ => {
-				// TODO: make a try_fold and shortcircuit of a different variant was found
-				if !sources.windows(2).fold(true, |is_same, x| {
-					if is_same {
-						std::mem::discriminant(&x[0]) == std::mem::discriminant(&x[1])
-					} else {
-						is_same
-					}
-				}) {
-					return Err(SourceError::SourceListHasDifferentVariants);
-				}
-			}
-		}
-
-		Ok(Self {
-			read_filter,
-			sources,
-		})
-	}
-
-	/// Get all entries from the sources
-	///
-	/// # Errors
-	/// if there was an error fetching from a source
-	pub async fn get(&mut self) -> Result<Vec<Entry>, SourceError> {
-		let mut entries = Vec::new();
-
-		for s in &mut self.sources {
-			entries.extend(match s {
-				WithSharedReadFilterInner::Http(x) => x.get().await?, // TODO: should HTTP even take a read filter?
-				WithSharedReadFilterInner::Twitter(x) => x.get(self.read_filter.as_ref()).await?,
-				WithSharedReadFilterInner::File(x) => x.get().await?,
-			});
-		}
-
-		Ok(entries)
-	}
-
-	/// Delegate for [`Source::mark_as_read`]
-	#[allow(clippy::missing_errors_doc)]
-	pub async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
-		if let Some(rf) = self.read_filter.as_mut() {
-			rf.mark_as_read(id).await?;
-		}
-
-		Ok(())
-	}
-
-	/// Delegate for [`Source::remove_read`]
-	pub fn remove_read(&self, entries: &mut Vec<Entry>) {
-		if let Some(rf) = self.read_filter.as_ref() {
-			rf.remove_read_from(entries);
-		}
-	}
-}
-
-impl WithCustomReadFilter {
-	/// Fetch all entries from the source
-	///
-	/// # Errors
-	/// if there was an error fetching from the source (such as a network connection error or maybe even an authentication error)
-	pub async fn get(&mut self) -> Result<Vec<Entry>, SourceError> {
-		Ok(match self {
-			Self::Email(x) => x.get().await.map_err(Box::new)?,
-		})
-	}
-
-	/// Delegate for [`Source::mark_as_read`]
-	#[allow(clippy::missing_errors_doc)]
-	pub async fn mark_as_read(&mut self, id: &str) -> Result<(), SourceError> {
-		match self {
-			Self::Email(x) => x
-				.mark_as_read(id)
-				.await
-				.map_err(|e| Box::new(EmailError::Imap(e)))?,
-		};
-
-		Ok(())
-	}
-
-	/// Delegate for [`Source::remove_read`]
-	#[allow(clippy::ptr_arg)]
-	pub fn remove_read(&self, _entries: &mut Vec<Entry>) {
-		match self {
-			Self::Email(_) => (), // NO-OP, emails should already be unread only when fetching
 		}
 	}
 }

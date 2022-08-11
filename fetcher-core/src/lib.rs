@@ -46,7 +46,7 @@ pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 	};
 
 	match fetch.await {
-		Ok(_) => (),
+		Ok(()) => (),
 		Err(e) => {
 			if let Some(network_err) = e.is_connection_error() {
 				tracing::warn!("Network error: {}", network_err.display_chain());
