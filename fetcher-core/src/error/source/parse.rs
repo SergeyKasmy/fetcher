@@ -4,8 +4,18 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use crate::entry::Entry;
+
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+#[error("{kind}\nOriginal entry: {original_entry:?}")]
+pub struct Error {
+	#[source]
+	pub kind: Kind,
+	pub original_entry: Entry, // TODO: pick up a better name
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum Kind {
 	#[error("RSS parsing error")]
 	Rss(#[from] rss::Error),
 

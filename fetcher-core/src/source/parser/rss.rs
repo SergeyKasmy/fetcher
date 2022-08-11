@@ -18,7 +18,10 @@ impl Rss {
 	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>, ParseError> {
 		tracing::debug!("Parsing RSS articles");
 
-		let feed = Channel::read_from(entry.msg.body.as_bytes())?;
+		let feed = Channel::read_from(entry.msg.body.as_bytes()).map_err(|e| ParseError {
+			kind: e.into(),
+			original_entry: entry,
+		})?;
 
 		tracing::debug!("Got {num} RSS articles total", num = feed.items.len());
 

@@ -25,7 +25,6 @@ pub mod task;
 
 use crate::entry::Entry;
 use crate::error::Error;
-use crate::error::ErrorChainExt;
 use crate::sink::Sink;
 use crate::source::Source;
 use crate::task::Task;
@@ -37,23 +36,8 @@ use crate::task::Task;
 pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 	tracing::trace!("Running task: {:#?}", t);
 
-	let fetch = async {
-		for entry in t.source.get(t.parsers.as_deref()).await?.into_iter().rev() {
-			process_entry(&mut t.sink, entry, t.tag.as_deref(), &mut t.source).await?;
-		}
-
-		Ok::<(), Error>(())
-	};
-
-	match fetch.await {
-		Ok(()) => (),
-		Err(e) => {
-			if let Some(network_err) = e.is_connection_error() {
-				tracing::warn!("Network error: {}", network_err.display_chain());
-			} else {
-				return Err(e);
-			}
-		}
+	for entry in t.source.get(t.parsers.as_deref()).await?.into_iter().rev() {
+		process_entry(&mut t.sink, entry, t.tag.as_deref(), &mut t.source).await?;
 	}
 
 	Ok(())
