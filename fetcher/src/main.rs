@@ -15,7 +15,7 @@ mod config;
 mod error;
 mod settings;
 
-use color_eyre::{eyre::eyre, Report, Result};
+use color_eyre::{eyre::eyre, Report};
 use futures::{future::join_all, StreamExt};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
@@ -41,12 +41,12 @@ use fetcher_core::{
 	task::{Task, Tasks},
 };
 
-fn main() -> Result<()> {
+fn main() -> color_eyre::Result<()> {
 	set_up_logging()?;
 	async_main()
 }
 
-fn set_up_logging() -> Result<()> {
+fn set_up_logging() -> color_eyre::Result<()> {
 	use tracing_subscriber::fmt::time::OffsetTime;
 	use tracing_subscriber::layer::SubscriberExt;
 	use tracing_subscriber::EnvFilter;
@@ -78,7 +78,7 @@ fn set_up_logging() -> Result<()> {
 }
 
 #[tokio::main]
-async fn async_main() -> Result<()> {
+async fn async_main() -> color_eyre::Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -108,7 +108,7 @@ async fn async_main() -> Result<()> {
 	Ok(())
 }
 
-async fn run(once: bool) -> Result<()> {
+async fn run(once: bool) -> color_eyre::Result<()> {
 	let read_filter_getter =
 		|name: String, default: Option<ReadFilterKind>| -> Pin<Box<dyn Future<Output = _>>> {
 			Box::pin(async move { settings::read_filter::get(&name, default).await })
@@ -179,7 +179,7 @@ async fn run(once: bool) -> Result<()> {
 	Ok(())
 }
 
-async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Result<()> {
+async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> color_eyre::Result<()> {
 	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
 		let name2 = name.clone();
@@ -193,7 +193,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 				};
 
 				if let Err(err) = &res {
-					let err_str = format!("{:?}", err);
+					let err_str = err.display_chain();
 					tracing::error!("{err_str}");
 
 					// production error reporting
@@ -223,24 +223,25 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 		}
 	}
 
+	// TODO: aggregate multiple errors into one using color_eyre Section trait
 	match first_err {
 		None => Ok(()),
-		Some(e) => Err(e),
+		Some(e) => Err(e.into()),
 	}
 }
 
-async fn task_loop(t: &mut Task, once: bool) -> Result<()> {
+async fn task_loop(t: &mut Task, once: bool) -> Result<(), Error> {
 	loop {
 		match fetcher_core::run_task(t).await {
 			Ok(()) => (),
 			Err(Error::Source(SourceError::Parse(parse_err))) => {
-				tracing::error!("Parsing error: {parse_err}");
+				tracing::error!("Parsing error: {}", parse_err.display_chain());
 			}
 			Err(e) => {
 				if let Some(network_err) = e.is_connection_error() {
 					tracing::warn!("Network error: {}", network_err.display_chain());
 				} else {
-					return Err(e.into());
+					return Err(e);
 				}
 			}
 		}
@@ -286,7 +287,7 @@ async fn report_error(task_name: &str, err: &str) -> color_eyre::Result<()> {
 	Ok(())
 }
 
-async fn flatten_task_result<T>(h: JoinHandle<Result<T>>) -> Result<T> {
+async fn flatten_task_result<T, E>(h: JoinHandle<Result<T, E>>) -> Result<T, E> {
 	match h.await {
 		Ok(Ok(res)) => Ok(res),
 		Ok(Err(err)) => Err(err),

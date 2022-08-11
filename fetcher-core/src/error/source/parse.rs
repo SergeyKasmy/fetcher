@@ -7,7 +7,7 @@
 use crate::entry::Entry;
 
 #[derive(thiserror::Error, Debug)]
-#[error("{kind}\nOriginal entry: {original_entry:?}")]
+#[error("Original entry: {original_entry:?}")]
 pub struct Error {
 	#[source]
 	pub kind: Kind,

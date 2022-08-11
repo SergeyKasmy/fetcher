@@ -31,6 +31,7 @@ pub struct Html {
 	pub imgq: Option<ImageQuery>,
 }
 
+// TODO: make sure (and add tests!) that it errors if no item was found
 impl Html {
 	#[tracing::instrument(skip_all)]
 	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>, ParseError> {
