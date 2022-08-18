@@ -5,7 +5,8 @@
  */
 //! fetcher core    // TODO
 #![warn(clippy::pedantic)]
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
+// #![warn(clippy::unwrap_used)]
 #![allow(clippy::module_name_repetitions)]
 
 /// Everything concerning some kind of non-primitive authentication

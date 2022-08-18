@@ -41,39 +41,8 @@ impl Html {
 		let items = find_chain(&soup, &self.itemq);
 
 		let entries = items
-			.map(|item| -> Result<Entry, HtmlError> {
-				let id = self
-					.idq
-					.as_ref()
-					.map(|idq| extract_id(&item, idq))
-					.transpose()?;
-				let link = self
-					.linkq
-					.as_ref()
-					.map(|linkq| extract_url(&item, linkq))
-					.transpose()?;
-				let title = self
-					.titleq
-					.as_ref()
-					.and_then(|titleq| extract_title(&item, titleq));
-				let body = extract_body(&item, &self.textq);
-				let img = if let Some(imgq) = self.imgq.as_ref() {
-					extract_img(&item, imgq)?
-				} else {
-					None
-				};
-
-				Ok(Entry {
-					id,
-					msg: Message {
-						title,
-						body,
-						link,
-						media: img.map(|url| vec![Media::Photo(url)]),
-					},
-				})
-			})
-			.collect::<Result<Vec<_>, HtmlError>>()
+			.map(|item| self.extract_entry(&item))
+			.collect::<Result<Vec<_>, _>>()
 			.map_err(|e| ParseError {
 				kind: e.into(),
 				original_entry: entry,
@@ -83,7 +52,41 @@ impl Html {
 
 		Ok(entries)
 	}
+
+	fn extract_entry(&self, item: &impl QueryBuilderExt) -> Result<Entry, HtmlError> {
+		let id = self
+			.idq
+			.as_ref()
+			.map(|idq| extract_id(item, idq))
+			.transpose()?;
+		let link = self
+			.linkq
+			.as_ref()
+			.map(|linkq| extract_url(item, linkq))
+			.transpose()?;
+		let title = self
+			.titleq
+			.as_ref()
+			.and_then(|titleq| extract_title(item, titleq));
+		let body = extract_body(item, &self.textq);
+		let img = if let Some(imgq) = self.imgq.as_ref() {
+			extract_img(item, imgq)?
+		} else {
+			None
+		};
+
+		Ok(Entry {
+			id,
+			msg: Message {
+				title,
+				body,
+				link,
+				media: img.map(|url| vec![Media::Photo(url)]),
+			},
+		})
+	}
 }
+
 fn extract_url(item: &impl QueryBuilderExt, urlq: &UrlQuery) -> Result<Url, HtmlError> {
 	let mut link = extract_data(&mut find_chain(item, &urlq.inner.query), &urlq.inner)
 		.ok_or(HtmlError::UrlNotFound)?
