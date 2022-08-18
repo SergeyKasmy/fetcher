@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use regex::Regex;
+
 #[derive(Clone, Debug)]
 pub enum QueryKind {
 	Tag(String),
@@ -27,6 +29,18 @@ pub struct Query {
 pub struct QueryData {
 	pub query: Vec<Query>,
 	pub data_location: DataLocation,
+	pub regex: Option<Regex>,
+}
+
+impl QueryData {
+	#[must_use]
+	pub fn new(query: Vec<Query>, data_location: DataLocation, re: Option<&str>) -> Self {
+		Self {
+			query,
+			data_location,
+			regex: re.map(|re| Regex::new(re).unwrap()), // FIXME
+		}
+	}
 }
 
 #[derive(Debug)]

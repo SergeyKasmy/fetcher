@@ -67,7 +67,7 @@ impl Source {
 			.into_iter()
 			// TODO: I don't like this clone...
 			// FIXME: removes all entries with no/empty id because "" == "". Maybe move to .remove_read()?
-			.unique_by(|x| x.id.clone())
+			.unique_by(|ent| ent.id.clone())
 			.collect();
 
 		let unread_num = fully_parsed_entries.len();

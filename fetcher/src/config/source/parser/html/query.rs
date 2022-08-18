@@ -70,14 +70,16 @@ impl Query {
 pub(crate) struct QueryData {
 	pub(crate) query: Vec<Query>,
 	pub(crate) data_location: DataLocation,
+	pub(crate) regex: Option<String>,
 }
 
 impl QueryData {
 	fn parse(self) -> source::parser::html::query::QueryData {
-		source::parser::html::query::QueryData {
-			query: self.query.into_iter().map(Query::parse).collect(),
-			data_location: self.data_location.parse(),
-		}
+		source::parser::html::query::QueryData::new(
+			self.query.into_iter().map(Query::parse).collect(),
+			self.data_location.parse(),
+			self.regex.as_deref(),
+		)
 	}
 }
 

@@ -84,7 +84,7 @@ impl Http {
 			.text()
 			.await
 			.map_err(|e| HttpError::Get(e, self.url.to_string()))?;
-		tracing::trace!("Done");
+		tracing::trace!("Done. Body: ----------------------------------------\n{page:?}\n----------------------------------------\n");
 
 		Ok(vec![Entry {
 			id: None,

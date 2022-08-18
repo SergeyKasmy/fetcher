@@ -626,6 +626,7 @@ dependencies = [
  "itertools 0.10.3",
  "mailparse",
  "once_cell",
+ "regex",
  "reqwest",
  "rss",
  "serde",

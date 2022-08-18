@@ -52,6 +52,9 @@ pub enum HtmlError {
 	#[error("Image not found but it's not optional")]
 	ImageNotFound,
 
+	#[error("Missing regex capture group named <s>")]
+	RegexCaptureGroupMissing,
+
 	#[error("Invalid time format")]
 	InvalidTimeFormat(#[from] chrono::ParseError),
 }
