@@ -8,7 +8,6 @@ use serde_json::Value;
 use url::Url;
 
 use crate::entry::Entry;
-use crate::error::source::parse::Error as ParseError;
 use crate::error::source::parse::JsonError;
 use crate::sink::{Media, Message};
 
@@ -32,14 +31,7 @@ pub struct Json {
 
 impl Json {
 	#[tracing::instrument(skip_all)]
-	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>, ParseError> {
-		self.parse_inner(&entry).map_err(|e| ParseError {
-			kind: e.into(),
-			original_entry: entry,
-		})
-	}
-
-	fn parse_inner(&self, entry: &Entry) -> Result<Vec<Entry>, JsonError> {
+	pub fn parse(&self, entry: &Entry) -> Result<Vec<Entry>, JsonError> {
 		let json: Value = serde_json::from_str(&entry.msg.body)?;
 
 		let items = self.itemq.iter().try_fold(&json, |acc, x| {

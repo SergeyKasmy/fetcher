@@ -12,14 +12,14 @@ pub struct Caps;
 
 impl Caps {
 	#[tracing::instrument(skip_all)]
-	pub fn parse(&self, entry: Entry) -> Vec<Entry> {
+	pub fn parse(&self, entry: &Entry) -> Vec<Entry> {
 		vec![Entry {
-			id: entry.id,
+			id: None,
 			msg: Message {
-				title: entry.msg.title.map(|s| s.to_uppercase()),
+				title: entry.msg.title.as_ref().map(|s| s.to_uppercase()),
 				body: entry.msg.body.to_uppercase(),
-				link: entry.msg.link,
-				media: entry.msg.media,
+				link: None,
+				media: None,
 			},
 		}]
 	}

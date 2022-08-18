@@ -18,7 +18,7 @@ use self::query::{
 	TitleQuery, UrlQuery,
 };
 use crate::entry::Entry;
-use crate::error::source::parse::{Error as ParseError, HtmlError};
+use crate::error::source::parse::HtmlError;
 use crate::sink::{Media, Message};
 
 #[derive(Debug)]
@@ -34,7 +34,7 @@ pub struct Html {
 // TODO: make sure (and add tests!) that it errors if no item was found
 impl Html {
 	#[tracing::instrument(skip_all)]
-	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>, ParseError> {
+	pub fn parse(&self, entry: &Entry) -> Result<Vec<Entry>, HtmlError> {
 		tracing::debug!("Parsing HTML");
 
 		let soup = Soup::new(entry.msg.body.as_str());
@@ -42,11 +42,7 @@ impl Html {
 
 		let entries = items
 			.map(|item| self.extract_entry(&item))
-			.collect::<Result<Vec<_>, _>>()
-			.map_err(|e| ParseError {
-				kind: e.into(),
-				original_entry: entry,
-			})?;
+			.collect::<Result<Vec<_>, _>>()?;
 
 		tracing::debug!("Found {num} HTML articles total", num = entries.len());
 
