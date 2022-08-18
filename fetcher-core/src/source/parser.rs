@@ -14,6 +14,7 @@ pub use self::html::Html;
 pub use self::json::Json;
 pub use self::rss::Rss;
 
+use super::Http;
 use crate::entry::Entry;
 use crate::error::source::parse::Error as ParseError;
 use crate::error::source::parse::Kind as ParseErrorKind;
@@ -25,6 +26,7 @@ use crate::sink::Message;
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Parser {
+	Http,
 	Html(Html),
 	Json(Json),
 	Rss(Rss),
@@ -37,12 +39,12 @@ impl Parser {
 	///
 	/// # Errors
 	/// if there was an error parsing the entry
-	pub fn parse(&self, mut entry: Entry) -> Result<Vec<Entry>, ParseError> {
+	pub async fn parse(&self, mut entry: Entry) -> Result<Vec<Entry>, ParseError> {
 		let res: Result<_, ParseErrorKind> = match self {
+			Parser::Http => Http::parse(&entry).await.map_err(Into::into),
 			Parser::Html(x) => x.parse(&entry).map_err(Into::into),
 			Parser::Json(x) => x.parse(&entry).map_err(Into::into),
 			Parser::Rss(x) => x.parse(&entry),
-
 			Parser::Caps(x) => Ok(x.parse(&entry)),
 		};
 

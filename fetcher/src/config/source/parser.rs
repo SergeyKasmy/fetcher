@@ -18,6 +18,7 @@ use fetcher_core::source;
 // #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Parser {
+	Http,
 	Html(Html),
 	Json(Json),
 	Rss,
@@ -28,6 +29,7 @@ pub(crate) enum Parser {
 impl Parser {
 	pub(crate) fn parse(self) -> source::parser::Parser {
 		match self {
+			Parser::Http => source::parser::Parser::Http,
 			Parser::Html(x) => source::parser::Parser::Html(x.parse()),
 			Parser::Json(x) => source::parser::Parser::Json(x.parse()),
 			Parser::Rss => source::parser::Parser::Rss(source::parser::Rss {}),

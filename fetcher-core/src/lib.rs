@@ -5,9 +5,11 @@
  */
 //! fetcher core    // TODO
 #![warn(clippy::pedantic)]
-// #![warn(missing_docs)]
-// #![warn(clippy::unwrap_used)]
 #![allow(clippy::module_name_repetitions)]
+// #![warn(missing_docs)]	// FIXME
+// #![warn(clippy::unwrap_used)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
 
 /// Everything concerning some kind of non-primitive authentication
 pub mod auth;

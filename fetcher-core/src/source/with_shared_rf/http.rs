@@ -10,6 +10,8 @@ use std::sync::RwLock;
 use url::Url;
 
 use crate::entry::Entry;
+use crate::error::source::parse::HttpError as HttpParseError;
+use crate::error::source::parse::Kind as ParseErrorKind;
 use crate::error::source::HttpError;
 use crate::sink::Message;
 
@@ -62,6 +64,8 @@ impl Http {
 		Ok(Self { url, client })
 	}
 
+	// TODO: return a single entry, not a vec
+	// TODO: set title from page title
 	#[tracing::instrument(skip_all)]
 	pub async fn get(&self) -> Result<Vec<Entry>, HttpError> {
 		tracing::debug!("Fetching HTTP source");
@@ -91,6 +95,27 @@ impl Http {
 				media: None,
 			},
 		}])
+	}
+
+	pub async fn parse(entry: &Entry) -> Result<Vec<Entry>, HttpParseError> {
+		let body = match Self::new(entry.msg.link.clone().ok_or(HttpParseError::MissingUrl)?)?
+			.get()
+			.await?
+			.pop()
+		{
+			Some(ent) => ent.msg.body,
+			None => return Ok(Vec::new()), // TODO: is returning an empty vec really the move here
+		};
+
+		let entry = Entry {
+			msg: Message {
+				body,
+				..Default::default()
+			},
+			..Default::default()
+		};
+
+		Ok(vec![entry])
 	}
 }
 
