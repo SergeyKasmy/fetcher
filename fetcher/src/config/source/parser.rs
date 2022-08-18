@@ -9,6 +9,8 @@ pub mod json;
 
 use serde::{Deserialize, Serialize};
 
+use crate::error::ConfigError;
+
 use self::html::Html;
 use self::json::Json;
 use fetcher_core::source;
@@ -27,14 +29,14 @@ pub(crate) enum Parser {
 }
 
 impl Parser {
-	pub(crate) fn parse(self) -> source::parser::Parser {
-		match self {
+	pub(crate) fn parse(self) -> Result<source::parser::Parser, ConfigError> {
+		Ok(match self {
 			Parser::Http => source::parser::Parser::Http,
-			Parser::Html(x) => source::parser::Parser::Html(x.parse()),
+			Parser::Html(x) => source::parser::Parser::Html(x.parse()?),
 			Parser::Json(x) => source::parser::Parser::Json(x.parse()),
 			Parser::Rss => source::parser::Parser::Rss(source::parser::Rss {}),
 
 			Parser::Caps => source::parser::Parser::Caps(source::parser::Caps {}),
-		}
+		})
 	}
 }

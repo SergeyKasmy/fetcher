@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 
 use fetcher_core::source;
 
+use crate::error::ConfigError;
+
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 #[serde(rename_all = "snake_case")]
@@ -74,12 +76,13 @@ pub(crate) struct QueryData {
 }
 
 impl QueryData {
-	fn parse(self) -> source::parser::html::query::QueryData {
+	fn parse(self) -> Result<source::parser::html::query::QueryData, ConfigError> {
 		source::parser::html::query::QueryData::new(
 			self.query.into_iter().map(Query::parse).collect(),
 			self.data_location.parse(),
 			self.regex.as_deref(),
 		)
+		.map_err(Into::into)
 	}
 }
 
@@ -88,8 +91,8 @@ impl QueryData {
 pub(crate) struct TitleQuery(pub(crate) QueryData);
 
 impl TitleQuery {
-	pub(crate) fn parse(self) -> source::parser::html::query::TitleQuery {
-		source::parser::html::query::TitleQuery(self.0.parse())
+	pub(crate) fn parse(self) -> Result<source::parser::html::query::TitleQuery, ConfigError> {
+		Ok(source::parser::html::query::TitleQuery(self.0.parse()?))
 	}
 }
 
@@ -101,11 +104,11 @@ pub(crate) struct TextQuery {
 }
 
 impl TextQuery {
-	pub(crate) fn parse(self) -> source::parser::html::query::TextQuery {
-		source::parser::html::query::TextQuery {
+	pub(crate) fn parse(self) -> Result<source::parser::html::query::TextQuery, ConfigError> {
+		Ok(source::parser::html::query::TextQuery {
 			prepend: self.prepend,
-			inner: self.inner.parse(),
-		}
+			inner: self.inner.parse()?,
+		})
 	}
 }
 
@@ -134,11 +137,11 @@ pub(crate) struct IdQuery {
 }
 
 impl IdQuery {
-	pub(crate) fn parse(self) -> source::parser::html::query::IdQuery {
-		source::parser::html::query::IdQuery {
+	pub(crate) fn parse(self) -> Result<source::parser::html::query::IdQuery, ConfigError> {
+		Ok(source::parser::html::query::IdQuery {
 			kind: self.kind.parse(),
-			inner: self.inner.parse(),
-		}
+			inner: self.inner.parse()?,
+		})
 	}
 }
 
@@ -150,11 +153,11 @@ pub(crate) struct UrlQuery {
 }
 
 impl UrlQuery {
-	pub(crate) fn parse(self) -> source::parser::html::query::UrlQuery {
-		source::parser::html::query::UrlQuery {
+	pub(crate) fn parse(self) -> Result<source::parser::html::query::UrlQuery, ConfigError> {
+		Ok(source::parser::html::query::UrlQuery {
 			prepend: self.prepend,
-			inner: self.inner.parse(),
-		}
+			inner: self.inner.parse()?,
+		})
 	}
 }
 
@@ -166,11 +169,11 @@ pub(crate) struct ImageQuery {
 }
 
 impl ImageQuery {
-	pub(crate) fn parse(self) -> source::parser::html::query::ImageQuery {
-		source::parser::html::query::ImageQuery {
+	pub(crate) fn parse(self) -> Result<source::parser::html::query::ImageQuery, ConfigError> {
+		Ok(source::parser::html::query::ImageQuery {
 			optional: self.optional.unwrap_or(false),
-			url: self.url.parse(),
-		}
+			url: self.url.parse()?,
+		})
 	}
 }
 

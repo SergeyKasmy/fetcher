@@ -52,6 +52,9 @@ pub enum HtmlError {
 	#[error("Image not found but it's not optional")]
 	ImageNotFound,
 
+	#[error("Invalid regex pattern")]
+	InvalidRegexPattern(#[from] regex::Error),
+
 	#[error("Missing regex capture group named <s>")]
 	RegexCaptureGroupMissing,
 

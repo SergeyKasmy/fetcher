@@ -11,7 +11,6 @@ use url::Url;
 
 use crate::entry::Entry;
 use crate::error::source::parse::HttpError as HttpParseError;
-use crate::error::source::parse::Kind as ParseErrorKind;
 use crate::error::source::HttpError;
 use crate::sink::Message;
 

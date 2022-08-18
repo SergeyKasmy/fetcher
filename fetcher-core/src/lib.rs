@@ -57,7 +57,7 @@ async fn process_entry(
 	tag: Option<&str>,
 	mark_as_read: &mut Source,
 ) -> Result<(), Error> {
-	tracing::trace!("Processing entry: {entry:?}");
+	tracing::trace!("Processing entry: {entry:#?}");
 
 	sink.send(entry.msg, tag).await?;
 

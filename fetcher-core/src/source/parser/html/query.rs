@@ -6,6 +6,8 @@
 
 use regex::Regex;
 
+use crate::error::source::parse::HtmlError;
+
 #[derive(Clone, Debug)]
 pub enum QueryKind {
 	Tag(String),
@@ -33,13 +35,19 @@ pub struct QueryData {
 }
 
 impl QueryData {
-	#[must_use]
-	pub fn new(query: Vec<Query>, data_location: DataLocation, re: Option<&str>) -> Self {
-		Self {
+	pub fn new(
+		query: Vec<Query>,
+		data_location: DataLocation,
+		re: Option<&str>,
+	) -> Result<Self, HtmlError> {
+		Ok(Self {
 			query,
 			data_location,
-			regex: re.map(|re| Regex::new(re).unwrap()), // FIXME
-		}
+			regex: match re {
+				Some(re) => Some(Regex::new(re)?),
+				None => None,
+			},
+		})
 	}
 }
 
