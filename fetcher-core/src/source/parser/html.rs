@@ -233,7 +233,7 @@ fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &QueryData) -> Option<St
 		})
 		.collect::<Option<Vec<_>>>();
 
-	data.map(|s| s.join("\n\n"))
+	data.map(|s| s.join("\n\n").trim().to_owned())
 }
 
 // TODO: rewrite the entire fn to use today/Yesterday words and date formats from the config per source and not global
