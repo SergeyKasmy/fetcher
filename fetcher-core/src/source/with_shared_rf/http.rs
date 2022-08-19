@@ -10,8 +10,8 @@ use std::sync::RwLock;
 use url::Url;
 
 use crate::entry::Entry;
-use crate::error::source::parse::HttpError as HttpParseError;
 use crate::error::source::HttpError;
+use crate::error::transform::HttpError as HttpTransformError;
 use crate::sink::Message;
 
 const USER_AGENT: &str =
@@ -96,11 +96,17 @@ impl Http {
 		}])
 	}
 
-	pub async fn parse(entry: &Entry) -> Result<Vec<Entry>, HttpParseError> {
-		let body = match Self::new(entry.msg.link.clone().ok_or(HttpParseError::MissingUrl)?)?
-			.get()
-			.await?
-			.pop()
+	pub async fn transform(entry: &Entry) -> Result<Vec<Entry>, HttpTransformError> {
+		let body = match Self::new(
+			entry
+				.msg
+				.link
+				.clone()
+				.ok_or(HttpTransformError::MissingUrl)?,
+		)?
+		.get()
+		.await?
+		.pop()
 		{
 			Some(ent) => ent.msg.body,
 			None => return Ok(Vec::new()), // TODO: is returning an empty vec really the move here

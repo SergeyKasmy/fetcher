@@ -25,6 +25,7 @@ pub mod sink;
 pub mod source;
 /// Contains [`Task`] - a struct that combines everything from the above into a one coherent entity
 pub mod task;
+pub mod transform;
 
 use crate::entry::Entry;
 use crate::error::Error;
@@ -39,7 +40,13 @@ use crate::task::Task;
 pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 	tracing::trace!("Running task: {:#?}", t);
 
-	for entry in t.source.get(t.parsers.as_deref()).await?.into_iter().rev() {
+	for entry in t
+		.source
+		.get(t.transforms.as_deref())
+		.await?
+		.into_iter()
+		.rev()
+	{
 		process_entry(&mut t.sink, entry, t.tag.as_deref(), &mut t.source).await?;
 	}
 

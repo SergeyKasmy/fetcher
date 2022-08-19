@@ -35,7 +35,7 @@ pub enum HttpError {
 	MissingUrl,
 
 	#[error(transparent)]
-	Other(#[from] super::HttpError),
+	Other(#[from] crate::error::source::HttpError),
 }
 
 #[derive(thiserror::Error, Debug)]

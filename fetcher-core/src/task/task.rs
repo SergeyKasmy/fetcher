@@ -6,10 +6,7 @@
 
 use std::collections::HashMap;
 
-use crate::{
-	sink::Sink,
-	source::{parser::Parser, Source},
-};
+use crate::{sink::Sink, source::Source, transform::Transform};
 
 /// A hashmap of tasks that maps Name -> Task
 pub type Tasks = HashMap<String, Task>;
@@ -27,8 +24,8 @@ pub struct Task {
 	pub tag: Option<String>,
 	/// The source where to fetch some data from
 	pub source: Source,
-	/// A list of optional parsers which to run the data received from the source through
-	pub parsers: Option<Vec<Parser>>,
+	/// A list of optional transformators which to run the data received from the source through
+	pub transforms: Option<Vec<Transform>>,
 	/// The sink where to send the data to
 	pub sink: Sink,
 }

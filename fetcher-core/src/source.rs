@@ -9,8 +9,6 @@
 pub mod with_custom_rf;
 pub mod with_shared_rf;
 
-pub mod parser;
-
 pub use self::with_custom_rf::email::Email;
 pub use self::with_shared_rf::file::File;
 pub use self::with_shared_rf::http::Http;
@@ -18,10 +16,10 @@ pub use self::with_shared_rf::twitter::Twitter;
 
 use itertools::Itertools;
 
-use self::parser::Parser;
 use crate::entry::Entry;
 use crate::error::source::Error as SourceError;
 use crate::error::Error;
+use crate::transform::Transform;
 
 #[derive(Debug)]
 pub enum Source {
@@ -35,7 +33,10 @@ impl Source {
 	/// # Errors
 	/// * if there was an error fetching from the source
 	/// * if there was an error parsing the just fetched entries
-	pub async fn get(&mut self, parsers: Option<&[Parser]>) -> Result<Vec<Entry>, SourceError> {
+	pub async fn get(
+		&mut self,
+		transforms: Option<&[Transform]>,
+	) -> Result<Vec<Entry>, SourceError> {
 		let unparsed_entries = match self {
 			Source::WithSharedReadFilter(x) => x.get().await?,
 			Source::WithCustomReadFilter(x) => x.get().await?,
@@ -43,13 +44,14 @@ impl Source {
 
 		let mut fully_parsed_entries = Vec::new(); // parsed with all parsers
 
-		if let Some(parsers) = parsers {
+		if let Some(transforms) = transforms {
 			for entry in unparsed_entries {
 				let mut entries_to_parse = vec![entry];
-				for parser in parsers {
+				for parser in transforms {
 					let mut partially_parsed_entries = Vec::new(); // parsed only with the current parser
 					for entry_to_parse in entries_to_parse {
-						partially_parsed_entries.extend(parser.parse(entry_to_parse).await?);
+						partially_parsed_entries
+							.extend(parser.transform(entry_to_parse).await.unwrap()); // FIXME
 					}
 					entries_to_parse = partially_parsed_entries;
 				}

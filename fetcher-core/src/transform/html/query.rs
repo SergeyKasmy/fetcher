@@ -6,7 +6,7 @@
 
 use regex::Regex;
 
-use crate::error::source::parse::HtmlError;
+use crate::error::transform::HtmlError;
 
 #[derive(Clone, Debug)]
 pub enum QueryKind {
