@@ -20,7 +20,6 @@ use itertools::Itertools;
 
 use self::parser::Parser;
 use crate::entry::Entry;
-use crate::error::source::parse::Error as ParseError;
 use crate::error::source::Error as SourceError;
 use crate::error::Error;
 
@@ -42,34 +41,36 @@ impl Source {
 			Source::WithCustomReadFilter(x) => x.get().await?,
 		};
 
-		let mut parsed_entries = Vec::new();
+		let mut fully_parsed_entries = Vec::new(); // parsed with all parsers
 
 		if let Some(parsers) = parsers {
 			for entry in unparsed_entries {
 				let mut entries_to_parse = vec![entry];
 				for parser in parsers {
-					entries_to_parse = entries_to_parse
-						.into_iter()
-						.map(|e| parser.parse(e))
-						.flatten_ok()
-						.collect::<Result<Vec<_>, ParseError>>()?;
+					let mut partially_parsed_entries = Vec::new(); // parsed only with the current parser
+					for entry_to_parse in entries_to_parse {
+						partially_parsed_entries.extend(parser.parse(entry_to_parse).await?);
+					}
+					entries_to_parse = partially_parsed_entries;
 				}
 
-				parsed_entries.extend(entries_to_parse);
+				fully_parsed_entries.extend(entries_to_parse);
 			}
 		} else {
-			parsed_entries = unparsed_entries;
+			fully_parsed_entries = unparsed_entries;
 		}
 
-		let total_num = parsed_entries.len();
-		self.remove_read(&mut parsed_entries);
+		let total_num = fully_parsed_entries.len();
+		self.remove_read(&mut fully_parsed_entries);
 
-		parsed_entries = parsed_entries
+		fully_parsed_entries = fully_parsed_entries
 			.into_iter()
-			.unique_by(|x| x.id.clone()) // TODO: I don't like this clone...
+			// TODO: I don't like this clone...
+			// FIXME: removes all entries with no/empty id because "" == "". Maybe move to .remove_read()?
+			.unique_by(|ent| ent.id.clone())
 			.collect();
 
-		let unread_num = parsed_entries.len();
+		let unread_num = fully_parsed_entries.len();
 		if total_num != unread_num {
 			tracing::debug!(
 				"Removed {read_num} read entries, {unread_num} remaining",
@@ -77,7 +78,7 @@ impl Source {
 			);
 		}
 
-		Ok(parsed_entries)
+		Ok(fully_parsed_entries)
 	}
 
 	/// Mark the id as read

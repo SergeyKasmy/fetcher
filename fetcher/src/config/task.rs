@@ -52,7 +52,8 @@ impl Task {
 			source,
 			parsers: self
 				.parse
-				.map(|x| x.into_iter().map(Parser::parse).collect()),
+				.map(|x| x.into_iter().map(Parser::parse).collect::<Result<_, _>>())
+				.transpose()?,
 			sink: self.sink.parse(settings)?,
 		})
 	}

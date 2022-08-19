@@ -5,8 +5,11 @@
  */
 //! fetcher core    // TODO
 #![warn(clippy::pedantic)]
-#![warn(missing_docs)]
 #![allow(clippy::module_name_repetitions)]
+// #![warn(missing_docs)]	// FIXME
+// #![warn(clippy::unwrap_used)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
 
 /// Everything concerning some kind of non-primitive authentication
 pub mod auth;
@@ -54,7 +57,7 @@ async fn process_entry(
 	tag: Option<&str>,
 	mark_as_read: &mut Source,
 ) -> Result<(), Error> {
-	tracing::trace!("Processing entry: {entry:?}");
+	tracing::trace!("Processing entry: {entry:#?}");
 
 	sink.send(entry.msg, tag).await?;
 

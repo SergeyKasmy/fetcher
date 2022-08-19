@@ -19,7 +19,7 @@ impl Stdout {
 	/// if there was an error writing to stdout
 	pub async fn send(&self, msg: Message, tag: Option<&str>) -> Result<(), SinkError> {
 		tokio::io::stdout().write_all(format!(
-			"------------------------------\nMessage:\nTitle: {title}\n\nBody:\n{body}\n\nLink: {link:?}\nMedia: {media}\nTag: {tag}\n------------------------------",
+			"------------------------------\nMessage:\nTitle: {title}\n\nBody:\n{body}\n\nLink: {link:?}\nMedia: {media}\nTag: {tag}\n------------------------------\n",
 			title = msg.title.as_deref().unwrap_or("None"),
 			body = msg.body,
 			link = msg.link.map(|url| url.as_str().to_owned()),

@@ -16,6 +16,9 @@ pub struct Error {
 
 #[derive(thiserror::Error, Debug)]
 pub enum Kind {
+	#[error("HTTP error")]
+	Http(#[from] HttpError),
+
 	#[error("RSS parsing error")]
 	Rss(#[from] rss::Error),
 
@@ -24,6 +27,15 @@ pub enum Kind {
 
 	#[error("JSON parsing error")]
 	Json(#[from] JsonError),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum HttpError {
+	#[error("Missing URL in the message's link field")]
+	MissingUrl,
+
+	#[error(transparent)]
+	Other(#[from] super::HttpError),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -39,6 +51,12 @@ pub enum HtmlError {
 
 	#[error("Image not found but it's not optional")]
 	ImageNotFound,
+
+	#[error("Invalid regex pattern")]
+	InvalidRegexPattern(#[from] regex::Error),
+
+	#[error("Missing regex capture group named <s>")]
+	RegexCaptureGroupMissing,
 
 	#[error("Invalid time format")]
 	InvalidTimeFormat(#[from] chrono::ParseError),

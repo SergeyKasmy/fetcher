@@ -18,7 +18,7 @@ use self::query::{
 	TitleQuery, UrlQuery,
 };
 use crate::entry::Entry;
-use crate::error::source::parse::{Error as ParseError, HtmlError};
+use crate::error::source::parse::HtmlError;
 use crate::sink::{Media, Message};
 
 #[derive(Debug)]
@@ -34,58 +34,60 @@ pub struct Html {
 // TODO: make sure (and add tests!) that it errors if no item was found
 impl Html {
 	#[tracing::instrument(skip_all)]
-	pub fn parse(&self, entry: Entry) -> Result<Vec<Entry>, ParseError> {
+	pub fn parse(&self, entry: &Entry) -> Result<Vec<Entry>, HtmlError> {
 		tracing::debug!("Parsing HTML");
 
 		let soup = Soup::new(entry.msg.body.as_str());
 		let items = find_chain(&soup, &self.itemq);
 
 		let entries = items
-			.map(|item| -> Result<Entry, HtmlError> {
-				let id = self
-					.idq
-					.as_ref()
-					.map(|idq| extract_id(&item, idq))
-					.transpose()?;
-				let link = self
-					.linkq
-					.as_ref()
-					.map(|linkq| extract_url(&item, linkq))
-					.transpose()?;
-				let title = self
-					.titleq
-					.as_ref()
-					.and_then(|titleq| extract_title(&item, titleq));
-				let body = extract_body(&item, &self.textq);
-				let img = if let Some(imgq) = self.imgq.as_ref() {
-					extract_img(&item, imgq)?
-				} else {
-					None
-				};
-
-				Ok(Entry {
-					id,
-					msg: Message {
-						title,
-						body,
-						link,
-						media: img.map(|url| vec![Media::Photo(url)]),
-					},
-				})
-			})
-			.collect::<Result<Vec<_>, HtmlError>>()
-			.map_err(|e| ParseError {
-				kind: e.into(),
-				original_entry: entry,
-			})?;
+			.map(|item| self.extract_entry(&item))
+			.collect::<Result<Vec<_>, _>>()?;
 
 		tracing::debug!("Found {num} HTML articles total", num = entries.len());
 
 		Ok(entries)
 	}
+
+	fn extract_entry(&self, item: &impl QueryBuilderExt) -> Result<Entry, HtmlError> {
+		let id = self
+			.idq
+			.as_ref()
+			.map(|idq| extract_id(item, idq))
+			.transpose()?;
+
+		let link = self
+			.linkq
+			.as_ref()
+			.map(|linkq| extract_url(item, linkq))
+			.transpose()?;
+
+		let title = match &self.titleq {
+			Some(titleq) => extract_title(item, titleq)?,
+			None => None,
+		};
+
+		let body = extract_body(item, &self.textq)?;
+
+		let img = match &self.imgq {
+			Some(imgq) => extract_img(item, imgq)?,
+			None => None,
+		};
+
+		Ok(Entry {
+			id,
+			msg: Message {
+				title,
+				body,
+				link,
+				media: img.map(|url| vec![Media::Photo(url)]),
+			},
+		})
+	}
 }
+
 fn extract_url(item: &impl QueryBuilderExt, urlq: &UrlQuery) -> Result<Url, HtmlError> {
-	let mut link = extract_data(&mut find_chain(item, &urlq.inner.query), &urlq.inner)
+	let mut link = extract_data(item, &urlq.inner)?
 		.ok_or(HtmlError::UrlNotFound)?
 		.trim()
 		.to_owned();
@@ -98,7 +100,7 @@ fn extract_url(item: &impl QueryBuilderExt, urlq: &UrlQuery) -> Result<Url, Html
 }
 
 fn extract_id(item: &impl QueryBuilderExt, idq: &IdQuery) -> Result<String, HtmlError> {
-	let id_str = extract_data(&mut find_chain(item, &idq.inner.query), &idq.inner)
+	let id_str = extract_data(item, &idq.inner)?
 		.ok_or(HtmlError::IdNotFound)?
 		.trim()
 		.to_owned();
@@ -118,32 +120,36 @@ fn extract_id(item: &impl QueryBuilderExt, idq: &IdQuery) -> Result<String, Html
 	})
 }
 
-fn extract_title(item: &impl QueryBuilderExt, titleq: &TitleQuery) -> Option<String> {
-	extract_data(&mut find_chain(item, &titleq.0.query), &titleq.0)
+fn extract_title(
+	item: &impl QueryBuilderExt,
+	titleq: &TitleQuery,
+) -> Result<Option<String>, HtmlError> {
+	extract_data(item, &titleq.0)
 }
 
-fn extract_body(item: &impl QueryBuilderExt, textq: &[TextQuery]) -> String {
-	textq
-		.iter()
-		.filter_map(|x| {
-			extract_data(&mut find_chain(item, &x.inner.query), &x.inner).map(|s| {
-				let mut s = s.trim().to_string();
-				if let Some(prepend) = x.prepend.as_deref() {
+fn extract_body(item: &impl QueryBuilderExt, textq: &[TextQuery]) -> Result<String, HtmlError> {
+	let mut body_parts = Vec::new();
+
+	for query in textq {
+		let s = extract_data(item, &query.inner)?;
+
+		match s {
+			Some(mut s) => {
+				if let Some(prepend) = query.prepend.as_deref() {
 					s.insert_str(0, prepend);
 				}
 
-				s
-			})
-		})
-		.collect::<Vec<_>>()
-		.join("\n\n")
+				body_parts.push(s);
+			}
+			None => (),
+		}
+	}
+
+	Ok(body_parts.join("\n\n"))
 }
 
 fn extract_img(item: &impl QueryBuilderExt, imgq: &ImageQuery) -> Result<Option<Url>, HtmlError> {
-	let mut img_url = match extract_data(
-		&mut find_chain(item, &imgq.url.inner.query), // TODO: check iterator not empty
-		&imgq.url.inner,                              // TODO: make less fugly
-	) {
+	let mut img_url = match extract_data(item, &imgq.url.inner)? {
 		Some(s) => s.trim().to_owned(),
 		None => {
 			if imgq.optional {
@@ -165,19 +171,15 @@ fn extract_img(item: &impl QueryBuilderExt, imgq: &ImageQuery) -> Result<Option<
 }
 
 /// Find items matching the query in the provided HTML part
-fn find<'a>(
-	qb: &impl QueryBuilderExt,
-	q: &'a QueryKind,
-	ignore: Option<&'a [QueryKind]>,
-) -> Box<dyn Iterator<Item = Handle> + 'a> {
+fn find<'a>(qb: &impl QueryBuilderExt, q: &'a Query) -> Box<dyn Iterator<Item = Handle> + 'a> {
 	Box::new(
-		match q {
+		match &q.kind {
 			QueryKind::Tag(val) => qb.tag(val.as_str()).find_all(),
 			QueryKind::Class(val) => qb.class(val.as_str()).find_all(),
 			QueryKind::Attr { name, value } => qb.attr(name.as_str(), value.as_str()).find_all(),
 		}
 		.filter(move |found| {
-			if let Some(ignore) = ignore {
+			if let Some(ignore) = &q.ignore {
 				for i in ignore.iter() {
 					let should_be_ignored = match i {
 						QueryKind::Tag(tag) => found.name() == tag,
@@ -210,10 +212,8 @@ fn find_chain<'a>(
 
 	for q in qs {
 		handles = Some(match handles {
-			None => find(qb, &q.kind, q.ignore.as_deref()),
-			Some(handles) => {
-				Box::new(handles.flat_map(|hndl| find(&hndl, &q.kind, q.ignore.as_deref())))
-			}
+			None => find(qb, q),
+			Some(handles) => Box::new(handles.flat_map(|hndl| find(&hndl, q))),
 		});
 	}
 
@@ -221,20 +221,40 @@ fn find_chain<'a>(
 }
 
 /// Extract data from the provided HTML tags and join them
-fn extract_data(h: &mut dyn Iterator<Item = Handle>, q: &QueryData) -> Option<String> {
-	// debug_assert!(
-	// 	h.peekable().peek().is_some(),
-	// 	"No HTML tags to extract data from"
-	// );
-
-	let data = h
-		.map(|hndl| match &q.data_location {
+fn extract_data(
+	item: &impl QueryBuilderExt,
+	query_data: &QueryData,
+) -> Result<Option<String>, HtmlError> {
+	let data = find_chain(item, &query_data.query)
+		.map(|hndl| match &query_data.data_location {
 			DataLocation::Text => Some(hndl.text()),
 			DataLocation::Attr(v) => hndl.get(v),
 		})
 		.collect::<Option<Vec<_>>>();
 
-	data.map(|s| s.join("\n\n"))
+	let data = match data {
+		Some(x) => x,
+		None => return Ok(None),
+	};
+
+	let s = data.join("\n\n"); // lifetime workaround
+	let s = s.trim();
+
+	let s = if let Some(re) = &query_data.regex {
+		let captures = match re.captures(s) {
+			Some(x) => x,
+			None => return Ok(None),
+		};
+
+		captures
+			.name("s")
+			.ok_or(HtmlError::RegexCaptureGroupMissing)?
+			.as_str()
+	} else {
+		s
+	};
+
+	Ok(Some(s.to_owned()))
 }
 
 // TODO: rewrite the entire fn to use today/Yesterday words and date formats from the config per source and not global
