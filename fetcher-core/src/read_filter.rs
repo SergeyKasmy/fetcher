@@ -87,6 +87,8 @@ impl ReadFilter {
 	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
+		tracing::trace!("Marking {id} as read");
+
 		match &mut self.inner {
 			NewerThanLastRead(x) => x.mark_as_read(id),
 			NotPresentInReadList(x) => x.mark_as_read(id),
@@ -105,6 +107,8 @@ impl ReadFilter {
 	}
 
 	pub(crate) fn transform(&self, entry: &Entry) -> Vec<Entry> {
+		tracing::trace!("Transforming/filtering entry id: {:?}", entry.id);
+
 		match entry.id.as_deref() {
 			Some(id) if self.is_unread(id) => vec![entry.clone()],
 			None => vec![entry.clone()],

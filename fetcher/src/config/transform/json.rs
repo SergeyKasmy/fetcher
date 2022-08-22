@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use fetcher_core::source;
+use fetcher_core::transform;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct TextQuery {
@@ -16,8 +16,8 @@ pub(crate) struct TextQuery {
 }
 
 impl TextQuery {
-	pub(crate) fn parse(self) -> source::parser::json::TextQuery {
-		source::parser::json::TextQuery {
+	pub(crate) fn parse(self) -> transform::json::TextQuery {
+		transform::json::TextQuery {
 			string: self.string,
 			prepend: self.prepend,
 			append: self.append,
@@ -47,8 +47,8 @@ pub(crate) struct Json {
 }
 
 impl Json {
-	pub(crate) fn parse(self) -> source::parser::Json {
-		source::parser::Json {
+	pub(crate) fn parse(self) -> transform::Json {
+		transform::Json {
 			itemq: self.itemq,
 			titleq: self.titleq,
 			textq: self.textq.into_iter().map(TextQuery::parse).collect(),

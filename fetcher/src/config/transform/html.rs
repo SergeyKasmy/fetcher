@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use self::query::{IdQuery, ImageQuery, Query, TextQuery, TitleQuery, UrlQuery};
 use crate::error::ConfigError;
-use fetcher_core::source;
+use fetcher_core::transform::Html as CoreHtml;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct Html {
@@ -34,8 +34,8 @@ pub(crate) struct Html {
 }
 
 impl Html {
-	pub(crate) fn parse(self) -> Result<source::parser::Html, ConfigError> {
-		Ok(source::parser::Html {
+	pub(crate) fn parse(self) -> Result<CoreHtml, ConfigError> {
+		Ok(CoreHtml {
 			itemq: self.itemq.into_iter().map(Query::parse).collect(),
 			titleq: self.titleq.map(TitleQuery::parse).transpose()?,
 			textq: self

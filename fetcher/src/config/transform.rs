@@ -9,34 +9,36 @@ pub mod json;
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::ConfigError;
-
 use self::html::Html;
 use self::json::Json;
-use fetcher_core::source;
+use crate::error::ConfigError;
+use fetcher_core::transform as core_transform;
 
 #[allow(clippy::large_enum_variant)] // this enum is very short-lived, I don't think boxing is worth the trouble
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum Parser {
+pub(crate) enum Transform {
 	Http,
 	Html(Html),
 	Json(Json),
 	Rss,
 
+	ReadFilter,
+
 	Caps,
 }
 
-impl Parser {
-	pub(crate) fn parse(self) -> Result<source::parser::Parser, ConfigError> {
+impl Transform {
+	pub(crate) fn parse(self) -> Result<core_transform::Transform, ConfigError> {
 		Ok(match self {
-			Parser::Http => source::parser::Parser::Http,
-			Parser::Html(x) => source::parser::Parser::Html(x.parse()?),
-			Parser::Json(x) => source::parser::Parser::Json(x.parse()),
-			Parser::Rss => source::parser::Parser::Rss(source::parser::Rss {}),
+			Transform::Http => core_transform::Transform::Http,
+			Transform::Html(x) => core_transform::Transform::Html(x.parse()?),
+			Transform::Json(x) => core_transform::Transform::Json(x.parse()),
+			Transform::Rss => core_transform::Transform::Rss(core_transform::Rss {}),
 
-			Parser::Caps => source::parser::Parser::Caps(source::parser::Caps {}),
+			Transform::ReadFilter => todo!(),
+			Transform::Caps => core_transform::Transform::Caps(core_transform::Caps {}),
 		})
 	}
 }
