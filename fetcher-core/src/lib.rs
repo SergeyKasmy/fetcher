@@ -27,11 +27,14 @@ pub mod source;
 pub mod task;
 pub mod transform;
 
-use crate::entry::Entry;
-use crate::error::Error;
-use crate::sink::Sink;
-use crate::source::Source;
-use crate::task::Task;
+use itertools::Itertools;
+
+use crate::{
+	entry::Entry,
+	error::{transform::Error as TransformError, Error},
+	task::Task,
+	transform::Transform,
+};
 
 /// Run a task (both the source and the sink part) once to completion
 ///
@@ -40,37 +43,55 @@ use crate::task::Task;
 pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 	tracing::trace!("Running task: {:#?}", t);
 
-	for entry in t
-		.source
-		.get(t.transforms.as_deref())
-		.await?
-		.into_iter()
-		.rev()
-	{
-		process_entry(&mut t.sink, entry, t.tag.as_deref(), &mut t.source).await?;
+	let entries = {
+		let untransformed = t.source.get().await?;
+		let transformed = if let Some(transforms) = t.transforms.as_deref() {
+			transform_entries(untransformed, transforms).await?
+		} else {
+			untransformed
+		};
+
+		transformed
+			.into_iter()
+			// TODO: I don't like this clone...
+			// FIXME: removes all entries with no/empty id because "" == "". Maybe move to .remove_read()?
+			.unique_by(|ent| ent.id.clone())
+			.collect::<Vec<_>>()
+	};
+
+	for entry in entries {
+		t.sink.send(entry.msg, t.tag.as_deref()).await?;
+
+		if let Some(id) = &entry.id {
+			if let Some(rf) = &t.rf {
+				rf.write().await.mark_as_read(id).await?;
+			}
+		}
 	}
 
 	Ok(())
 }
 
-/// Send an entry and mark it as read afterwards
-///
-/// # Errors
-/// If there was an error sending the entry or marking it as read
-#[tracing::instrument(name = "entry", skip_all, fields(id = entry.id))]
-async fn process_entry(
-	sink: &mut Sink,
-	entry: Entry,
-	tag: Option<&str>,
-	mark_as_read: &mut Source,
-) -> Result<(), Error> {
-	tracing::trace!("Processing entry: {entry:#?}");
+async fn transform_entries(
+	untransformed: Vec<Entry>,
+	transforms: &[Transform],
+) -> Result<Vec<Entry>, TransformError> {
+	let mut fully_transformed = Vec::new();
+	for entry in untransformed {
+		let mut to_transform = vec![entry];
 
-	sink.send(entry.msg, tag).await?;
+		for transform in transforms {
+			let mut partially_transformed = Vec::new(); // transformed only with the current transformator
 
-	if let Some(id) = &entry.id {
-		mark_as_read.mark_as_read(id).await?;
+			for entry_to_transform in to_transform {
+				partially_transformed.extend(transform.transform(entry_to_transform).await?);
+			}
+
+			to_transform = partially_transformed;
+		}
+
+		fully_transformed.extend(to_transform);
 	}
 
-	Ok::<(), Error>(())
+	Ok(fully_transformed)
 }

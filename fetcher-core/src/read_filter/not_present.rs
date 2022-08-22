@@ -51,6 +51,10 @@ impl NotPresent {
 		});
 	}
 
+	pub fn is_unread(&self, id: &str) -> bool {
+		!self.read_list.iter().any(|(ent_id, _)| ent_id == id)
+	}
+
 	pub fn iter(&self) -> impl Iterator<Item = &(String, DateTime<Utc>)> {
 		self.read_list.iter()
 	}

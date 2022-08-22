@@ -14,9 +14,13 @@ pub use self::html::Html;
 pub use self::json::Json;
 pub use self::rss::Rss;
 
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
 use crate::entry::Entry;
 use crate::error::transform::Error as TransformError;
 use crate::error::transform::Kind as TransformErrorKind;
+use crate::read_filter::ReadFilter;
 use crate::sink::Message;
 use crate::source::Http;
 
@@ -26,11 +30,16 @@ use crate::source::Http;
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Transform {
+	// transform from one data to another
 	Http,
 	Html(Html),
 	Json(Json),
 	Rss(Rss),
 
+	// filter data
+	ReadFilter(Arc<RwLock<ReadFilter>>),
+
+	// modify data in-place
 	Caps(Caps),
 }
 
@@ -45,6 +54,7 @@ impl Transform {
 			Transform::Html(x) => x.transform(&entry).map_err(Into::into),
 			Transform::Json(x) => x.transform(&entry).map_err(Into::into),
 			Transform::Rss(x) => x.transform(&entry),
+			Transform::ReadFilter(rf) => Ok(rf.read().await.transform(&entry)),
 			Transform::Caps(x) => Ok(x.transform(&entry)),
 		};
 

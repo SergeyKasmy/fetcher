@@ -4,6 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub mod mark_as_read;
 pub mod newer;
 pub mod not_present;
 
@@ -94,6 +95,21 @@ impl ReadFilter {
 		self.external_save
 			.save(&self.inner)
 			.map_err(Error::ReadFilterExternalWrite)
+	}
+
+	pub(crate) fn is_unread(&self, id: &str) -> bool {
+		match &self.inner {
+			ReadFilterInner::NewerThanLastRead(_) => todo!(),
+			ReadFilterInner::NotPresentInReadList(x) => x.is_unread(id),
+		}
+	}
+
+	pub(crate) fn transform(&self, entry: &Entry) -> Vec<Entry> {
+		match entry.id.as_deref() {
+			Some(id) if self.is_unread(id) => vec![entry.clone()],
+			None => vec![entry.clone()],
+			_ => Vec::new(),
+		}
 	}
 }
 
