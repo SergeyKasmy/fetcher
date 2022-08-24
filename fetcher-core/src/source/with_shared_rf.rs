@@ -54,11 +54,10 @@ impl Source {
 	pub async fn get(&mut self) -> Result<Vec<Entry>, SourceError> {
 		let mut entries = Vec::new();
 
-		for s in self.0.iter_mut() {
+		for s in &mut self.0 {
 			entries.extend(match s {
 				Kind::Http(x) => x.get().await?, // TODO: should HTTP even take a read filter?
-				// Kind::Twitter(x) => x.get(self.rf.as_ref()).await?,
-				Kind::Twitter(x) => todo!(),
+				Kind::Twitter(x) => x.get().await?,
 				Kind::File(x) => x.get().await?,
 			});
 		}
