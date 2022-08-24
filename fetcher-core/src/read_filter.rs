@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub mod mark_as_read;
+// pub mod mark_as_read;
 pub mod newer;
 pub mod not_present;
 
@@ -98,13 +98,6 @@ impl ReadFilter {
 			.save(&self.inner)
 			.map_err(Error::ReadFilterExternalWrite)
 	}
-
-	// pub(crate) fn is_unread(&self, id: &str) -> bool {
-	// 	match &self.inner {
-	// 		ReadFilterInner::NewerThanLastRead(_) => todo!(),
-	// 		ReadFilterInner::NotPresentInReadList(x) => x.is_unread(id),
-	// 	}
-	// }
 }
 
 impl std::fmt::Debug for ReadFilter {

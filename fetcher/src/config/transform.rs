@@ -37,7 +37,7 @@ impl Transform {
 			Transform::Json(x) => core_transform::Transform::Json(x.parse()),
 			Transform::Rss => core_transform::Transform::Rss(core_transform::Rss {}),
 
-			Transform::ReadFilter => todo!(),
+			Transform::ReadFilter => unreachable!("If the transform was set to ReadFilter, it should've been parsed beforehand and it shouldn't be possible to reach here"),	// TODO: make this a compile-time guarantee probably
 			Transform::Caps => core_transform::Transform::Caps(core_transform::Caps {}),
 		})
 	}

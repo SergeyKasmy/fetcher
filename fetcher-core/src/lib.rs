@@ -63,8 +63,13 @@ pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 		t.sink.send(entry.msg, t.tag.as_deref()).await?;
 
 		if let Some(id) = &entry.id {
-			if let Some(rf) = &t.rf {
-				rf.write().await.mark_as_read(id).await?;
+			match &mut t.source {
+				source::Source::WithSharedReadFilter(_) => {
+					if let Some(rf) = &t.rf {
+						rf.write().await.mark_as_read(id).await?;
+					}
+				}
+				source::Source::WithCustomReadFilter(x) => x.mark_as_read(id).await?,
 			}
 		}
 	}
