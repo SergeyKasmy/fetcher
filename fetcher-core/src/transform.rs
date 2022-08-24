@@ -48,13 +48,30 @@ impl Transform {
 	///
 	/// # Errors
 	/// if there was an error parsing the entry
-	pub async fn transform(&self, mut entry: Entry) -> Result<Vec<Entry>, TransformError> {
+	pub async fn transform(&self, mut entries: Vec<Entry>) -> Result<Vec<Entry>, TransformError> {
+		Ok(if let Transform::ReadFilter(rf) = self {
+			rf.read().await.remove_read_from(&mut entries);
+			entries
+		} else {
+			let mut fully_transformed_entries = Vec::new();
+			for entry in entries {
+				fully_transformed_entries.extend(self.transform_one(entry).await?);
+			}
+
+			fully_transformed_entries
+		})
+	}
+
+	async fn transform_one(&self, mut entry: Entry) -> Result<Vec<Entry>, TransformError> {
 		let res: Result<_, TransformErrorKind> = match self {
 			Transform::Http => Http::transform(&entry).await.map_err(Into::into),
 			Transform::Html(x) => x.transform(&entry).map_err(Into::into),
 			Transform::Json(x) => x.transform(&entry).map_err(Into::into),
 			Transform::Rss(x) => x.transform(&entry),
-			Transform::ReadFilter(rf) => Ok(rf.read().await.transform(&entry)),
+			// Transform::ReadFilter(rf) => Ok(rf.read().await.transform(&entries)),
+			Transform::ReadFilter(_) => {
+				unreachable!("Read filter doesn't support transforming one by one")
+			}
 			Transform::Caps(x) => Ok(x.transform(&entry)),
 		};
 

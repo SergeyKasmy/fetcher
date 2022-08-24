@@ -36,7 +36,7 @@ use tracing::Instrument;
 use crate::config::DataSettings;
 use fetcher_core::{
 	error::Error,
-	error::{source::Error as SourceError, ErrorChainExt},
+	error::ErrorChainExt,
 	read_filter::Kind as ReadFilterKind,
 	task::{Task, Tasks},
 };

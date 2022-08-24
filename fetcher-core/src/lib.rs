@@ -73,9 +73,10 @@ pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 }
 
 async fn transform_entries(
-	untransformed: Vec<Entry>,
+	mut entries: Vec<Entry>,
 	transforms: &[Transform],
 ) -> Result<Vec<Entry>, TransformError> {
+	/*
 	let mut fully_transformed = Vec::new();
 	for entry in untransformed {
 		let mut to_transform = vec![entry];
@@ -94,4 +95,11 @@ async fn transform_entries(
 	}
 
 	Ok(fully_transformed)
+	*/
+
+	for tr in transforms {
+		entries = tr.transform(entries).await?;
+	}
+
+	Ok(entries)
 }

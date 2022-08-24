@@ -99,22 +99,12 @@ impl ReadFilter {
 			.map_err(Error::ReadFilterExternalWrite)
 	}
 
-	pub(crate) fn is_unread(&self, id: &str) -> bool {
-		match &self.inner {
-			ReadFilterInner::NewerThanLastRead(_) => todo!(),
-			ReadFilterInner::NotPresentInReadList(x) => x.is_unread(id),
-		}
-	}
-
-	pub(crate) fn transform(&self, entry: &Entry) -> Vec<Entry> {
-		tracing::trace!("Transforming/filtering entry id: {:?}", entry.id);
-
-		match entry.id.as_deref() {
-			Some(id) if self.is_unread(id) => vec![entry.clone()],
-			None => vec![entry.clone()],
-			_ => Vec::new(),
-		}
-	}
+	// pub(crate) fn is_unread(&self, id: &str) -> bool {
+	// 	match &self.inner {
+	// 		ReadFilterInner::NewerThanLastRead(_) => todo!(),
+	// 		ReadFilterInner::NotPresentInReadList(x) => x.is_unread(id),
+	// 	}
+	// }
 }
 
 impl std::fmt::Debug for ReadFilter {

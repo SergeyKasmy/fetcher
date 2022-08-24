@@ -65,12 +65,11 @@ impl ExternalSave for TruncatingFileWriter {
 #[tracing::instrument(skip(default))]
 pub(crate) async fn get(
 	name: &str,
-	// TODO: remove option
 	default: Option<fetcher_core::read_filter::Kind>,
 ) -> Result<Option<ReadFilter>, ConfigError> {
 	let path = read_filter_path(name)?;
 
-	let filter_external_save = || -> Result<_, ConfigError> {
+	let external_save = || -> Result<_, ConfigError> {
 		if let Some(parent) = path.parent() {
 			std::fs::create_dir_all(parent)
 				.map_err(|e| ConfigError::Write(e, parent.to_owned()))?;
@@ -102,16 +101,17 @@ pub(crate) async fn get(
 				let read_filter_conf: config::read_filter::ReadFilter =
 					serde_json::from_str(&filter_str)
 						.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
-				Some(read_filter_conf.parse(Box::new(filter_external_save()?)))
+				Some(read_filter_conf.parse(Box::new(external_save()?)))
 			}
 		},
 	};
 
 	// create a new one if there's none
 	match filter {
+		// FIXME: move this check up above to disable rf if the default is also disabled. Right now you can't disable read filtering after the read filter external save file has already been created
 		f @ Some(_) => Ok(f),
 		None => default
-			.map(|k| Ok(ReadFilter::new(k, Box::new(filter_external_save()?))))
+			.map(|k| Ok(ReadFilter::new(k, Box::new(external_save()?))))
 			.transpose(),
 	}
 }

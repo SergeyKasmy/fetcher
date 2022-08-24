@@ -9,10 +9,7 @@ pub mod http;
 pub mod twitter;
 
 use self::{file::File, http::Http, twitter::Twitter};
-use crate::{
-	entry::Entry,
-	error::{source::Error as SourceError, Error},
-};
+use crate::{entry::Entry, error::source::Error as SourceError};
 
 /// Always contains a vec with sources of the same type
 #[derive(Debug)]
