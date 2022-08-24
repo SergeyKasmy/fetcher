@@ -8,7 +8,7 @@ use serde_json::Value;
 use url::Url;
 
 use crate::entry::Entry;
-use crate::error::transform::JsonError;
+use crate::error::transform::{InvalidUrlError, JsonError};
 use crate::sink::{Media, Message};
 
 #[derive(Debug)]
@@ -141,7 +141,8 @@ impl Json {
 							);
 						}
 
-						Ok::<Url, JsonError>(Url::try_from(link_str.as_str())?)
+						Url::try_from(link_str.as_str())
+							.map_err(|e| JsonError::from(InvalidUrlError(e, link_str)))
 					})
 					.transpose()?;
 
@@ -167,7 +168,8 @@ impl Json {
 							})?
 							.to_owned();
 
-						Ok::<Url, JsonError>(Url::try_from(img_str.as_str())?)
+						Url::try_from(img_str.as_str())
+							.map_err(|e| JsonError::from(InvalidUrlError(e, img_str)))
 					})
 					.transpose()?;
 

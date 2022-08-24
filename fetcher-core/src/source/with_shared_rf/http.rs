@@ -18,6 +18,7 @@ const USER_AGENT: &str =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0";
 
 // option because tls init could've failed and we took out the Err()
+// TODO: make a Mutex instead
 static CLIENT: Lazy<RwLock<Option<Result<reqwest::Client, HttpError>>>> = Lazy::new(|| {
 	RwLock::new(Some(
 		reqwest::ClientBuilder::new()

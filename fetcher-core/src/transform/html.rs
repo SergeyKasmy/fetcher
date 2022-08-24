@@ -19,6 +19,7 @@ use self::query::{
 };
 use crate::entry::Entry;
 use crate::error::transform::HtmlError;
+use crate::error::transform::InvalidUrlError;
 use crate::sink::{Media, Message};
 
 #[derive(Debug)]
@@ -96,7 +97,7 @@ fn extract_url(item: &impl QueryBuilderExt, urlq: &UrlQuery) -> Result<Url, Html
 		link.insert_str(0, prepend);
 	}
 
-	Ok(Url::try_from(link.as_str())?)
+	Url::try_from(link.as_str()).map_err(|e| InvalidUrlError(e, link).into())
 }
 
 fn extract_id(item: &impl QueryBuilderExt, idq: &IdQuery) -> Result<String, HtmlError> {
@@ -167,7 +168,9 @@ fn extract_img(item: &impl QueryBuilderExt, imgq: &ImageQuery) -> Result<Option<
 		img_url.insert_str(0, prepend);
 	}
 
-	Ok(Some(Url::try_from(img_url.as_str())?))
+	Ok(Some(
+		Url::try_from(img_url.as_str()).map_err(|e| InvalidUrlError(e, img_url))?,
+	))
 }
 
 /// Find items matching the query in the provided HTML part
