@@ -6,10 +6,12 @@
 
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
+// use std::sync::Arc;
+// use tokio::sync::RwLock;
 
 use crate::entry::Entry;
 use crate::error::source::TwitterError;
-use crate::read_filter::ReadFilter;
+// use crate::read_filter::ReadFilter;
 use crate::sink::Media;
 use crate::sink::Message;
 
@@ -19,25 +21,30 @@ pub struct Twitter {
 	api_secret: String,
 	token: Option<Token>,
 	filter: Vec<String>,
+	// read_filter: Option<Arc<RwLock<ReadFilter>>>,
 }
 
 impl Twitter {
 	#[must_use]
-	pub fn new(handle: String, api_key: String, api_secret: String, filter: Vec<String>) -> Self {
+	pub fn new(
+		handle: String,
+		api_key: String,
+		api_secret: String,
+		filter: Vec<String>,
+		// read_filter: Option<Arc<RwLock<ReadFilter>>>,
+	) -> Self {
 		Self {
 			handle,
 			api_key,
 			api_secret,
 			token: None,
 			filter,
+			// read_filter,
 		}
 	}
 
 	#[tracing::instrument(skip_all)]
-	pub async fn get(
-		&mut self,
-		read_filter: Option<&ReadFilter>,
-	) -> Result<Vec<Entry>, TwitterError> {
+	pub async fn get(&mut self) -> Result<Vec<Entry>, TwitterError> {
 		tracing::debug!("Getting tweets");
 		if self.token.is_none() {
 			self.token = Some(
@@ -51,11 +58,24 @@ impl Twitter {
 
 		// TODO: keep a tweet id -> message id hashmap and handle enable with_replies from below
 		let (_, tweets) = user_timeline(self.handle.clone(), false, true, token)
+			/*
+			// TODO: is this doing what I think it is doing or have I gotten it wrong? The docs aren't clear enough
 			.older(
-				read_filter
-					.and_then(ReadFilter::last_read)
-					.and_then(|x| x.parse().ok()),
+				// read_filter
+				// 	.and_then(ReadFilter::last_read)
+				// 	.and_then(|x| x.parse().ok()),
+				if let Some(rf) = &self.read_filter {
+					if let Some(last_read_id) = rf.read().await.last_read() {
+						last_read_id.parse().ok()
+					} else {
+						None
+					}
+				} else {
+					None
+				},
 			)
+			*/
+			.start()
 			.await?;
 
 		tracing::debug!(

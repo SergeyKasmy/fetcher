@@ -7,7 +7,6 @@
 pub mod email;
 pub mod file;
 pub mod http;
-pub mod parser;
 pub mod twitter;
 
 use serde::{Deserialize, Serialize};
@@ -18,7 +17,7 @@ use self::http::Http;
 use self::twitter::Twitter;
 use super::{DataSettings, OneOrMultiple};
 use crate::error::ConfigError;
-use fetcher_core::{read_filter, source};
+use fetcher_core::source;
 
 #[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
 #[derive(Deserialize, Serialize, Debug)]
@@ -48,9 +47,7 @@ pub(crate) enum WithCustomReadFilter {
 impl Source {
 	pub(crate) async fn parse(
 		self,
-		name: &str,
 		settings: &DataSettings,
-		default_read_filter_kind: Option<read_filter::Kind>,
 	) -> Result<source::Source, ConfigError> {
 		Ok(match self {
 			Source::WithSharedReadFilter(v) => {
@@ -71,19 +68,12 @@ impl Source {
 							}
 						})
 					})
-					.collect::<Result<Vec<_>, ConfigError>>()?
-					.try_into()
-					.map_err(|e: fetcher_core::error::source::Error| {
-						ConfigError::FetcherCoreSource(e.into())
-					})?;
+					.collect::<Result<Vec<_>, ConfigError>>()?;
 
-				let read_filter =
-					(settings.read_filter)(name.to_owned(), default_read_filter_kind).await?;
-
-				source::Source::WithSharedReadFilter(source::with_shared_rf::Source::new(
-					sources,
-					read_filter,
-				))
+				source::Source::WithSharedReadFilter(
+					source::with_shared_rf::Source::new(sources)
+						.map_err(|e| ConfigError::FetcherCoreSource(Box::new(e)))?,
+				)
 			}
 			Source::WithCustomReadFilter(s) => match s {
 				WithCustomReadFilter::Email(x) => source::Source::WithCustomReadFilter(

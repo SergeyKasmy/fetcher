@@ -4,19 +4,26 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::error::Error as StdError;
-use std::fmt::Write as _;
-
 /// Errors that can happen in [`Sinks`](`crate::sink`)
 pub mod sink;
 /// Errors that can happen in [`Sources`](`crate::source`)
 pub mod source;
+
+pub mod transform;
+
+use std::error::Error as StdError;
+use std::fmt::Write as _;
+
+use self::transform::Error as TransformError;
 
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error("Can't fetch data")]
 	Source(#[from] source::Error),
+
+	#[error("Can't transform data")]
+	Transform(#[from] TransformError),
 
 	#[error("Can't send data")]
 	Sink(#[from] sink::Error),
@@ -46,7 +53,6 @@ impl Error {
 	pub fn is_connection_error(&self) -> Option<&(dyn StdError + Send + Sync)> {
 		match self {
 			Error::Source(source_err) => match source_err {
-				source::Error::Parse(_) => None,
 				source::Error::EmptySourceList => None,
 				source::Error::SourceListHasDifferentVariants => None,
 				source::Error::FileRead(_, _) => None,
@@ -62,6 +68,7 @@ impl Error {
 				}
 				source::Error::Twitter(_) => None,
 			},
+			Error::Transform(_) => None,
 			Error::Sink(sink_err) => match sink_err {
 				sink::Error::StdoutWrite(_) => None,
 				sink::Error::Telegram {

@@ -8,7 +8,7 @@ use serde_json::Value;
 use url::Url;
 
 use crate::entry::Entry;
-use crate::error::source::parse::JsonError;
+use crate::error::transform::{InvalidUrlError, JsonError};
 use crate::sink::{Media, Message};
 
 #[derive(Debug)]
@@ -31,7 +31,7 @@ pub struct Json {
 
 impl Json {
 	#[tracing::instrument(skip_all)]
-	pub fn parse(&self, entry: &Entry) -> Result<Vec<Entry>, JsonError> {
+	pub fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, JsonError> {
 		let json: Value = serde_json::from_str(&entry.msg.body)?;
 
 		let items = self.itemq.iter().try_fold(&json, |acc, x| {
@@ -141,7 +141,8 @@ impl Json {
 							);
 						}
 
-						Ok::<Url, JsonError>(Url::try_from(link_str.as_str())?)
+						Url::try_from(link_str.as_str())
+							.map_err(|e| JsonError::from(InvalidUrlError(e, link_str)))
 					})
 					.transpose()?;
 
@@ -167,7 +168,8 @@ impl Json {
 							})?
 							.to_owned();
 
-						Ok::<Url, JsonError>(Url::try_from(img_str.as_str())?)
+						Url::try_from(img_str.as_str())
+							.map_err(|e| JsonError::from(InvalidUrlError(e, img_str)))
 					})
 					.transpose()?;
 

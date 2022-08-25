@@ -14,41 +14,68 @@ pub use self::html::Html;
 pub use self::json::Json;
 pub use self::rss::Rss;
 
-use super::Http;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
 use crate::entry::Entry;
-use crate::error::source::parse::Error as ParseError;
-use crate::error::source::parse::Kind as ParseErrorKind;
+use crate::error::transform::Error as TransformError;
+use crate::error::transform::Kind as TransformErrorKind;
+use crate::read_filter::ReadFilter;
 use crate::sink::Message;
+use crate::source::Http;
 
 /// Type that allows transformation of a single [`Entry`] into one or multiple separate entries.
 /// That includes everything from parsing a markdown format like JSON to simple transformations like making all text uppercase
 // NOTE: Rss (and probs others in the future) is a ZST, so there's always going to be some amount of variance of enum sizes but is trying to avoid that worth the hasle of a Box? TODO: Find out
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
-pub enum Parser {
+pub enum Transform {
+	// transform from one data to another
 	Http,
 	Html(Html),
 	Json(Json),
 	Rss(Rss),
 
+	// filter data
+	ReadFilter(Arc<RwLock<ReadFilter>>),
+
+	// modify data in-place
 	Caps(Caps),
 }
 
-impl Parser {
+impl Transform {
 	/// Transform the entry `entry` into one or more entries
 	///
 	/// # Errors
 	/// if there was an error parsing the entry
-	pub async fn parse(&self, mut entry: Entry) -> Result<Vec<Entry>, ParseError> {
-		let res: Result<_, ParseErrorKind> = match self {
-			Parser::Http => Http::parse(&entry).await.map_err(Into::into),
-			Parser::Html(x) => x.parse(&entry).map_err(Into::into),
-			Parser::Json(x) => x.parse(&entry).map_err(Into::into),
-			Parser::Rss(x) => x.parse(&entry),
-			Parser::Caps(x) => Ok(x.parse(&entry)),
+	pub async fn transform(&self, mut entries: Vec<Entry>) -> Result<Vec<Entry>, TransformError> {
+		Ok(if let Transform::ReadFilter(rf) = self {
+			rf.read().await.remove_read_from(&mut entries);
+			entries
+		} else {
+			let mut fully_transformed_entries = Vec::new();
+			for entry in entries {
+				fully_transformed_entries.extend(self.transform_one(entry).await?);
+			}
+
+			fully_transformed_entries
+		})
+	}
+
+	async fn transform_one(&self, mut entry: Entry) -> Result<Vec<Entry>, TransformError> {
+		let res: Result<_, TransformErrorKind> = match self {
+			Transform::Http => Http::transform(&entry).await.map_err(Into::into),
+			Transform::Html(x) => x.transform(&entry).map_err(Into::into),
+			Transform::Json(x) => x.transform(&entry).map_err(Into::into),
+			Transform::Rss(x) => x.transform(&entry),
+			// Transform::ReadFilter(rf) => Ok(rf.read().await.transform(&entries)),
+			Transform::ReadFilter(_) => {
+				unreachable!("Read filter doesn't support transforming one by one")
+			}
+			Transform::Caps(x) => Ok(x.transform(&entry)),
 		};
 
-		res.map_err(|kind| ParseError {
+		res.map_err(|kind| TransformError {
 			kind,
 			original_entry: entry.clone(),
 		})

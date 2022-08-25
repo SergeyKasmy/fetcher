@@ -12,7 +12,7 @@ pub struct Caps;
 
 impl Caps {
 	#[tracing::instrument(skip_all)]
-	pub fn parse(&self, entry: &Entry) -> Vec<Entry> {
+	pub fn transform(&self, entry: &Entry) -> Vec<Entry> {
 		vec![Entry {
 			id: None,
 			msg: Message {

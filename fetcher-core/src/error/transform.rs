@@ -35,7 +35,7 @@ pub enum HttpError {
 	MissingUrl,
 
 	#[error(transparent)]
-	Other(#[from] super::HttpError),
+	Other(#[from] crate::error::source::HttpError),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -43,8 +43,8 @@ pub enum HtmlError {
 	#[error("URL not found")]
 	UrlNotFound,
 
-	#[error("Invalid URL")]
-	InvalidUrl(#[from] url::ParseError),
+	#[error(transparent)]
+	InvalidUrl(#[from] InvalidUrlError),
 
 	#[error("ID not found")]
 	IdNotFound,
@@ -77,6 +77,10 @@ pub enum JsonError {
 		found_type: String,
 	},
 
-	#[error("ID not found")]
-	InvalidUrl(#[from] url::ParseError),
+	#[error(transparent)]
+	InvalidUrl(#[from] InvalidUrlError),
 }
+
+#[derive(thiserror::Error, Debug)]
+#[error("Invalid URL: {1}")]
+pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);

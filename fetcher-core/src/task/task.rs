@@ -4,31 +4,30 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::RwLock;
 
-use crate::{
-	sink::Sink,
-	source::{parser::Parser, Source},
-};
+use crate::{read_filter::ReadFilter, sink::Sink, source::Source, transform::Transform};
 
 /// A hashmap of tasks that maps Name -> Task
 pub type Tasks = HashMap<String, Task>;
 
 /// A core primitive of [`fetcher`](`crate`).
 /// Contains everything from a [`Source`] that allows to fetch some data, to a [`Sink`] that takes that data and sends it somewhere.
-/// It also contains any parsers
+/// It also contains any transformators
 #[derive(Debug)]
 pub struct Task {
-	/// TODO: move these 2 out of this
-	pub disabled: bool, //
-	/// TODO
+	// TODO: move these 2 out of this
+	pub disabled: bool,
+	// TODO
 	pub refresh: u64,
 	/// An optional tag that may be put near a message body to differentiate this task from others that may be similar
 	pub tag: Option<String>,
+	pub rf: Option<Arc<RwLock<ReadFilter>>>,
 	/// The source where to fetch some data from
 	pub source: Source,
-	/// A list of optional parsers which to run the data received from the source through
-	pub parsers: Option<Vec<Parser>>,
+	/// A list of optional transformators which to run the data received from the source through
+	pub transforms: Option<Vec<Transform>>,
 	/// The sink where to send the data to
 	pub sink: Sink,
 }

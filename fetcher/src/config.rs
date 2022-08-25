@@ -12,6 +12,7 @@ pub mod read_filter;
 pub mod sink;
 pub mod source;
 pub mod task;
+pub mod transform;
 
 use std::future::Future;
 use std::pin::Pin;

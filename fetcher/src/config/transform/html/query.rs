@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use fetcher_core::source;
+use fetcher_core::transform;
 
 use crate::error::ConfigError;
 
@@ -20,13 +20,13 @@ pub(crate) enum QueryKind {
 }
 
 impl QueryKind {
-	pub(crate) fn parse(self) -> source::parser::html::query::QueryKind {
+	pub(crate) fn parse(self) -> transform::html::query::QueryKind {
 		use QueryKind::{Attr, Class, Tag};
 
 		match self {
-			Tag(val) => source::parser::html::query::QueryKind::Tag(val),
-			Class(val) => source::parser::html::query::QueryKind::Class(val),
-			Attr { name, value } => source::parser::html::query::QueryKind::Attr { name, value },
+			Tag(val) => transform::html::query::QueryKind::Tag(val),
+			Class(val) => transform::html::query::QueryKind::Class(val),
+			Attr { name, value } => transform::html::query::QueryKind::Attr { name, value },
 		}
 	}
 }
@@ -40,12 +40,12 @@ pub(crate) enum DataLocation {
 }
 
 impl DataLocation {
-	fn parse(self) -> source::parser::html::query::DataLocation {
+	fn parse(self) -> transform::html::query::DataLocation {
 		use DataLocation::{Attr, Text};
 
 		match self {
-			Text => source::parser::html::query::DataLocation::Text,
-			Attr(v) => source::parser::html::query::DataLocation::Attr(v),
+			Text => transform::html::query::DataLocation::Text,
+			Attr(v) => transform::html::query::DataLocation::Attr(v),
 		}
 	}
 }
@@ -58,8 +58,8 @@ pub(crate) struct Query {
 }
 
 impl Query {
-	pub(crate) fn parse(self) -> source::parser::html::query::Query {
-		source::parser::html::query::Query {
+	pub(crate) fn parse(self) -> transform::html::query::Query {
+		transform::html::query::Query {
 			kind: self.kind.parse(),
 			ignore: self
 				.ignore
@@ -76,8 +76,8 @@ pub(crate) struct QueryData {
 }
 
 impl QueryData {
-	fn parse(self) -> Result<source::parser::html::query::QueryData, ConfigError> {
-		source::parser::html::query::QueryData::new(
+	fn parse(self) -> Result<transform::html::query::QueryData, ConfigError> {
+		transform::html::query::QueryData::new(
 			self.query.into_iter().map(Query::parse).collect(),
 			self.data_location.parse(),
 			self.regex.as_deref(),
@@ -91,8 +91,8 @@ impl QueryData {
 pub(crate) struct TitleQuery(pub(crate) QueryData);
 
 impl TitleQuery {
-	pub(crate) fn parse(self) -> Result<source::parser::html::query::TitleQuery, ConfigError> {
-		Ok(source::parser::html::query::TitleQuery(self.0.parse()?))
+	pub(crate) fn parse(self) -> Result<transform::html::query::TitleQuery, ConfigError> {
+		Ok(transform::html::query::TitleQuery(self.0.parse()?))
 	}
 }
 
@@ -104,8 +104,8 @@ pub(crate) struct TextQuery {
 }
 
 impl TextQuery {
-	pub(crate) fn parse(self) -> Result<source::parser::html::query::TextQuery, ConfigError> {
-		Ok(source::parser::html::query::TextQuery {
+	pub(crate) fn parse(self) -> Result<transform::html::query::TextQuery, ConfigError> {
+		Ok(transform::html::query::TextQuery {
 			prepend: self.prepend,
 			inner: self.inner.parse()?,
 		})
@@ -121,10 +121,10 @@ pub(crate) enum IdQueryKind {
 }
 
 impl IdQueryKind {
-	fn parse(self) -> source::parser::html::query::IdQueryKind {
+	fn parse(self) -> transform::html::query::IdQueryKind {
 		match self {
-			IdQueryKind::String => source::parser::html::query::IdQueryKind::String,
-			IdQueryKind::Date => source::parser::html::query::IdQueryKind::Date,
+			IdQueryKind::String => transform::html::query::IdQueryKind::String,
+			IdQueryKind::Date => transform::html::query::IdQueryKind::Date,
 		}
 	}
 }
@@ -137,8 +137,8 @@ pub(crate) struct IdQuery {
 }
 
 impl IdQuery {
-	pub(crate) fn parse(self) -> Result<source::parser::html::query::IdQuery, ConfigError> {
-		Ok(source::parser::html::query::IdQuery {
+	pub(crate) fn parse(self) -> Result<transform::html::query::IdQuery, ConfigError> {
+		Ok(transform::html::query::IdQuery {
 			kind: self.kind.parse(),
 			inner: self.inner.parse()?,
 		})
@@ -153,8 +153,8 @@ pub(crate) struct UrlQuery {
 }
 
 impl UrlQuery {
-	pub(crate) fn parse(self) -> Result<source::parser::html::query::UrlQuery, ConfigError> {
-		Ok(source::parser::html::query::UrlQuery {
+	pub(crate) fn parse(self) -> Result<transform::html::query::UrlQuery, ConfigError> {
+		Ok(transform::html::query::UrlQuery {
 			prepend: self.prepend,
 			inner: self.inner.parse()?,
 		})
@@ -169,8 +169,8 @@ pub(crate) struct ImageQuery {
 }
 
 impl ImageQuery {
-	pub(crate) fn parse(self) -> Result<source::parser::html::query::ImageQuery, ConfigError> {
-		Ok(source::parser::html::query::ImageQuery {
+	pub(crate) fn parse(self) -> Result<transform::html::query::ImageQuery, ConfigError> {
+		Ok(transform::html::query::ImageQuery {
 			optional: self.optional.unwrap_or(false),
 			url: self.url.parse()?,
 		})

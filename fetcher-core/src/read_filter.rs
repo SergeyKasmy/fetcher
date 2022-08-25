@@ -4,6 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+// pub mod mark_as_read;
 pub mod newer;
 pub mod not_present;
 
@@ -85,6 +86,8 @@ impl ReadFilter {
 	#[allow(clippy::missing_errors_doc)] // TODO
 	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+
+		tracing::trace!("Marking {id} as read");
 
 		match &mut self.inner {
 			NewerThanLastRead(x) => x.mark_as_read(id),

@@ -36,7 +36,7 @@ use tracing::Instrument;
 use crate::config::DataSettings;
 use fetcher_core::{
 	error::Error,
-	error::{source::Error as SourceError, ErrorChainExt},
+	error::ErrorChainExt,
 	read_filter::Kind as ReadFilterKind,
 	task::{Task, Tasks},
 };
@@ -233,8 +233,8 @@ async fn task_loop(t: &mut Task, once: bool) -> Result<(), Error> {
 	loop {
 		match fetcher_core::run_task(t).await {
 			Ok(()) => (),
-			Err(Error::Source(SourceError::Parse(parse_err))) => {
-				tracing::error!("Parsing error: {}", parse_err.display_chain());
+			Err(Error::Transform(transform_err)) => {
+				tracing::error!("Transform error: {}", transform_err.display_chain());
 			}
 			Err(e) => {
 				if let Some(network_err) = e.is_connection_error() {

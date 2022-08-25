@@ -23,6 +23,7 @@ use crate::{
 	sink::{Media, Message},
 };
 
+// FIXME: it's 1024 for media captions
 const MAX_MSG_LEN: usize = 4096;
 
 /// Either embed the link into the title or put it as a separate "Link" button at the botton of the message.
@@ -105,9 +106,11 @@ impl Telegram {
 			head.insert_str(0, &format!("#{tag}\n\n"));
 		}
 
+		// TODO: send media with the first message
+		// TODO: maybe add an option to make all consecutive messages reply to the prev ones
 		let text = {
 			if body.chars().count() + head.chars().count() + tail.chars().count() > MAX_MSG_LEN {
-				let mut msg_parts = split_into_multiple_msg(head, body, tail);
+				let mut msg_parts = split_msg_into_parts(head, body, tail);
 				let last = msg_parts.pop().unwrap(); // unwrap NOTE: we confirmed the entire message is too long, thus we should have at least one part
 
 				for msg_part in msg_parts {
@@ -239,7 +242,7 @@ impl std::fmt::Debug for Telegram {
 }
 
 #[allow(clippy::needless_pass_by_value)] // I want to take ownership of the msg parts to avoid using them later by mistake
-fn split_into_multiple_msg(head: String, body: String, tail: String) -> Vec<String> {
+fn split_msg_into_parts(head: String, body: String, tail: String) -> Vec<String> {
 	let body_char_num = body.chars().count();
 	let head_char_num = head.chars().count();
 	let tail_char_num = tail.chars().count();
@@ -304,7 +307,7 @@ mod tests {
 
 		let tail = String::new();
 
-		let v = split_into_multiple_msg(head, body, tail);
+		let v = split_msg_into_parts(head, body, tail);
 		assert_eq!(v.len(), MSG_COUNT);
 	}
 
@@ -322,7 +325,7 @@ mod tests {
 
 		let tail = String::new();
 
-		let v = split_into_multiple_msg(head, body, tail);
+		let v = split_msg_into_parts(head, body, tail);
 		assert_eq!(v.len(), MSG_COUNT + 1);
 	}
 
@@ -338,7 +341,7 @@ mod tests {
 
 		let tail = "tt".to_owned(); // and tail is 2 char
 
-		let v = split_into_multiple_msg(head, body, tail);
+		let v = split_msg_into_parts(head, body, tail);
 		assert_eq!(v.len(), MSG_COUNT + 1); // tail shouldn't be split and thus should be put into it's own msg
 	}
 }
