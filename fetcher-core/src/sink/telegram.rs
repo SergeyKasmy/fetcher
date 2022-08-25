@@ -23,8 +23,8 @@ use crate::{
 	sink::{Media, Message},
 };
 
-// FIXME: it's 1024 for media captions
-const MAX_MSG_LEN: usize = 4096;
+// FIXME: it's 1024 for media captions and 4096 for normal messages
+const MAX_MSG_LEN: usize = 1024;
 
 /// Either embed the link into the title or put it as a separate "Link" button at the botton of the message.
 /// `PreferTitle` falls back to `Bottom` if Message.title is None
