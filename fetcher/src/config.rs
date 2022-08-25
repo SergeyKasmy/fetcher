@@ -27,8 +27,8 @@ use fetcher_core::read_filter::ReadFilter;
 
 pub(crate) type ReadFilterGetter = Box<
 	dyn Fn(
-		String,
 		Option<fetcher_core::read_filter::Kind>,
+		String,
 	) -> Pin<Box<dyn Future<Output = Result<Option<ReadFilter>, ConfigError>>>>,
 >;
 

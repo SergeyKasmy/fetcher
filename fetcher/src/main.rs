@@ -108,10 +108,9 @@ async fn async_main() -> color_eyre::Result<()> {
 }
 
 async fn run(once: bool) -> color_eyre::Result<()> {
-	let read_filter_getter =
-		|name: String, default: Option<ReadFilterKind>| -> Pin<Box<dyn Future<Output = _>>> {
-			Box::pin(async move { settings::read_filter::get(&name, default).await })
-		};
+	let read_filter_getter = |current, name: String| -> Pin<Box<dyn Future<Output = _>>> {
+		Box::pin(async move { settings::read_filter::get(current, &name).await })
+	};
 
 	let data_settings = DataSettings {
 		twitter_auth: settings::data::twitter().await?,

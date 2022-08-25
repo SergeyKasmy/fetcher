@@ -6,6 +6,7 @@
 
 use std::path::PathBuf;
 
+use fetcher_core as fcore;
 use fetcher_core::error::GoogleOAuth2Error;
 
 #[derive(thiserror::Error, Debug)]
@@ -60,4 +61,11 @@ pub(crate) enum ConfigError {
 
 	#[error("Error setting up a source")]
 	FetcherCoreSource(#[source] Box<fetcher_core::error::source::Error>),
+
+	#[error("The read filter type set in the config is different from the one saved on disk. Read filter type migration is currently unsupported. Either change the read filter type in the config from \"{in_config}\" to \"{on_disk}\", or manually remove the read filter save file at \"{disk_rf_path}\" to create a new one with type \"{in_config}\"")]
+	IncompatibleReadFilterTypes {
+		in_config: fcore::read_filter::Kind,
+		on_disk: fcore::read_filter::Kind,
+		disk_rf_path: PathBuf,
+	},
 }

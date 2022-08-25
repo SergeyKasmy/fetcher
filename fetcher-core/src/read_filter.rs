@@ -35,7 +35,7 @@ pub enum ReadFilterInner {
 	NotPresentInReadList(NotPresent),
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Kind {
 	NewerThanLastRead,
 	NotPresentInReadList,
@@ -55,6 +55,16 @@ impl ReadFilter {
 		}
 	}
 
+	#[must_use]
+	pub fn to_kind(&self) -> Kind {
+		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+
+		match &self.inner {
+			NewerThanLastRead(_) => Kind::NewerThanLastRead,
+			NotPresentInReadList(_) => Kind::NotPresentInReadList,
+		}
+	}
+
 	pub(crate) fn last_read(&self) -> Option<&str> {
 		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
 
@@ -70,16 +80,6 @@ impl ReadFilter {
 		match &self.inner {
 			NewerThanLastRead(x) => x.remove_read_from(list),
 			NotPresentInReadList(x) => x.remove_read_from(list),
-		}
-	}
-
-	#[allow(dead_code)] // TODO
-	pub(crate) fn to_kind(&self) -> Kind {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
-
-		match &self.inner {
-			NewerThanLastRead(_) => Kind::NewerThanLastRead,
-			NotPresentInReadList(_) => Kind::NotPresentInReadList,
 		}
 	}
 
@@ -105,5 +105,14 @@ impl std::fmt::Debug for ReadFilter {
 		f.debug_struct("ReadFilter")
 			.field("inner", &self.inner)
 			.finish_non_exhaustive()
+	}
+}
+
+impl std::fmt::Display for Kind {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.write_str(match self {
+			Kind::NewerThanLastRead => "Newer than the last one read",
+			Kind::NotPresentInReadList => "Not present in the marked as read list",
+		})
 	}
 }

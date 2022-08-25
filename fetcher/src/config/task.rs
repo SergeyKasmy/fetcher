@@ -42,8 +42,8 @@ impl Task {
 	) -> Result<task::Task, crate::error::ConfigError> {
 		let rf = {
 			let rf = (settings.read_filter)(
-				name.to_owned(),
 				self.read_filter_kind.map(read_filter::Kind::parse),
+				name.to_owned(),
 			)
 			.await?;
 			rf.map(|rf| Arc::new(RwLock::new(rf)))
