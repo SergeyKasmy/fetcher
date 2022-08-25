@@ -7,7 +7,6 @@ repository = "https://github.com/SergeyKasmy/fetcher"
 edition = "2021"
 
 [dependencies]
-ammonia = "3.2.0"
 async-trait = "0.1.57"
 chrono = "0.4.22"
 egg-mode = { version = "0.16.0", features = ["rustls"], default-features = false }
