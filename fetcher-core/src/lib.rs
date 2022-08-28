@@ -27,14 +27,14 @@ pub mod source;
 pub mod task;
 pub mod transform;
 
-use itertools::Itertools;
-
 use crate::{
 	entry::Entry,
 	error::{transform::Error as TransformError, Error},
 	task::Task,
 	transform::Transform,
 };
+
+use std::collections::HashSet;
 
 /// Run a task (both the source and the sink part) once to completion
 ///
@@ -45,18 +45,13 @@ pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 
 	let entries = {
 		let untransformed = t.source.get().await?;
-		let transformed = if let Some(transforms) = t.transforms.as_deref() {
-			transform_entries(untransformed, transforms).await?
-		} else {
-			untransformed
+
+		let transformed = match &t.transforms {
+			Some(transforms) => transform_entries(untransformed, transforms).await?,
+			None => untransformed,
 		};
 
-		transformed
-			.into_iter()
-			// TODO: I don't like this clone...
-			// FIXME: removes all entries with no/empty id because "" == "". Maybe move to .remove_read()?
-			.unique_by(|ent| ent.id.clone())
-			.collect::<Vec<_>>()
+		remove_duplicates(transformed)
 	};
 
 	for entry in entries {
@@ -81,30 +76,28 @@ async fn transform_entries(
 	mut entries: Vec<Entry>,
 	transforms: &[Transform],
 ) -> Result<Vec<Entry>, TransformError> {
-	/*
-	let mut fully_transformed = Vec::new();
-	for entry in untransformed {
-		let mut to_transform = vec![entry];
-
-		for transform in transforms {
-			let mut partially_transformed = Vec::new(); // transformed only with the current transformator
-
-			for entry_to_transform in to_transform {
-				partially_transformed.extend(transform.transform(entry_to_transform).await?);
-			}
-
-			to_transform = partially_transformed;
-		}
-
-		fully_transformed.extend(to_transform);
-	}
-
-	Ok(fully_transformed)
-	*/
-
 	for tr in transforms {
 		entries = tr.transform(entries).await?;
 	}
 
 	Ok(entries)
+}
+
+fn remove_duplicates(entries: Vec<Entry>) -> Vec<Entry> {
+	let mut uniq = Vec::new();
+	let mut used_ids = HashSet::new();
+
+	for ent in entries {
+		match ent.id.as_deref() {
+			Some("") => panic!("An id should never be none but empty"),
+			Some(id) => {
+				if used_ids.insert(id.to_owned()) {
+					uniq.push(ent);
+				}
+			}
+			None => uniq.push(ent),
+		}
+	}
+
+	uniq
 }
