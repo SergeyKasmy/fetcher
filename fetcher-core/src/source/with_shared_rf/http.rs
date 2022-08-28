@@ -6,7 +6,7 @@
 
 use once_cell::sync::Lazy;
 use std::fmt::Debug;
-use std::sync::RwLock;
+use std::sync::Mutex;
 use url::Url;
 
 use crate::entry::Entry;
@@ -19,8 +19,8 @@ const USER_AGENT: &str =
 
 // option because tls init could've failed and we took out the Err()
 // TODO: make a Mutex instead
-static CLIENT: Lazy<RwLock<Option<Result<reqwest::Client, HttpError>>>> = Lazy::new(|| {
-	RwLock::new(Some(
+static CLIENT: Lazy<Mutex<Option<Result<reqwest::Client, HttpError>>>> = Lazy::new(|| {
+	Mutex::new(Some(
 		reqwest::ClientBuilder::new()
 			.timeout(std::time::Duration::from_secs(30))
 			.build()
@@ -42,30 +42,28 @@ impl Http {
 	/// # Panics
 	/// This function may panic if a different thread crashes when calling this function
 	pub fn new(url: Url) -> Result<Self, HttpError> {
+		let mut client_lock = CLIENT.lock().unwrap();
+
 		// take out the error out of the option if there was an error, otherwise just clone the Client
-		let client = if let Ok(client) = CLIENT // if there was no error building the client
-			.read()
-			.expect("RwLock has been poisoned")
+		let client = match client_lock
 			.as_ref()
-			// there was an error building the client and the error has already been extracted
 			.ok_or(HttpError::ClientNotInitialized)?
 		{
-			client.clone()
-		} else {
-			return Err(CLIENT
-				.write()
-				.expect("RwLock has been poisoned")
-				.take()
-				.unwrap()
-				.unwrap_err()); // should always be Some and Err because we .ok_or?'ed it up above
-			    // TODO: remove these unwraps
+			Ok(client) => client.clone(),
+			Err(_) => {
+				let e = client_lock
+					.take()
+					.expect("Option should be not empty because we have just ok_or()'ed it")
+					.unwrap_err();
+
+				return Err(e);
+			}
 		};
 
 		Ok(Self { url, client })
 	}
 
 	// TODO: return a single entry, not a vec
-	// TODO: set title from page title
 	#[tracing::instrument(skip_all)]
 	pub async fn get(&self) -> Result<Vec<Entry>, HttpError> {
 		tracing::debug!("Fetching HTTP source");
@@ -80,17 +78,18 @@ impl Http {
 			.map_err(|e| HttpError::Get(e, self.url.to_string()))?;
 
 		tracing::trace!("Getting text body of the responce");
-		let page = request
+		let body = request
 			.text()
 			.await
 			.map_err(|e| HttpError::Get(e, self.url.to_string()))?;
-		tracing::trace!("Done. Body: ----------------------------------------\n{page:?}\n----------------------------------------\n");
+
+		tracing::trace!("Done. Body: ----------------------------------------\n{body:?}\n----------------------------------------\n");
 
 		Ok(vec![Entry {
 			id: None,
 			msg: Message {
 				title: None,
-				body: page,
+				body,
 				link: Some(self.url.clone()),
 				media: None,
 			},

@@ -56,7 +56,6 @@ impl Telegram {
 		}
 	}
 
-	#[allow(clippy::items_after_statements)] // TODO
 	#[tracing::instrument(skip_all)]
 	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError> {
 		let Message {

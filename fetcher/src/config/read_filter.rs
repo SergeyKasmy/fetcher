@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 
 use fetcher_core::read_filter;
 
-// TODO: add None as an option and make the read filter optional throughout the app
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Kind {

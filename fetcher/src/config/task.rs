@@ -30,7 +30,6 @@ pub struct Task {
 }
 
 impl Task {
-	// TODO: return option if the disabled field was true
 	pub(crate) async fn parse(
 		self,
 		name: &str,

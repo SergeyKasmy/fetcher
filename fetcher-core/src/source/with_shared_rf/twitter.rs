@@ -46,15 +46,21 @@ impl Twitter {
 	#[tracing::instrument(skip_all)]
 	pub async fn get(&mut self) -> Result<Vec<Entry>, TwitterError> {
 		tracing::debug!("Getting tweets");
-		if self.token.is_none() {
-			self.token = Some(
-				bearer_token(&KeyPair::new(self.api_key.clone(), self.api_secret.clone()))
-					.await
-					.map_err(TwitterError::Auth)?,
-			);
-		}
-		// unwrap NOTE: initialized just above, should be safe	// TODO: make this unwrap not required
-		let token = self.token.as_ref().unwrap();
+
+		let token = match &self.token {
+			Some(t) => t,
+			None => {
+				self.token = Some(
+					bearer_token(&KeyPair::new(self.api_key.clone(), self.api_secret.clone()))
+						.await
+						.map_err(TwitterError::Auth)?,
+				);
+
+				self.token
+					.as_ref()
+					.expect("token should have been init just up above")
+			}
+		};
 
 		// TODO: keep a tweet id -> message id hashmap and handle enable with_replies from below
 		let (_, tweets) = user_timeline(self.handle.clone(), false, true, token)
