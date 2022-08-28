@@ -157,11 +157,17 @@ impl Email {
 
 		mails
 			.iter()
-			.filter(|x| x.body().is_some()) // TODO: properly handle error cases and don't just filter them out
 			.map(|x| {
+				let body = x
+					.body()
+					.expect("Body should always be present because we explicitly requested it");
+
+				let uid = 
+					x.uid.expect("UIDs should always be present because we used uid_fetch(). The server probably doesn't support them which isn't something ~we~ support for now").to_string();
+
 				self.parse(
-					&mailparse::parse_mail(x.body().unwrap())?, // unwrap NOTE: temporary but it's safe for now because of the check above
-					x.uid.unwrap().to_string(),
+					&mailparse::parse_mail(body)?,
+					uid,
 				)
 			})
 			.collect::<Result<Vec<Entry>, EmailError>>()
