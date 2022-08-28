@@ -212,7 +212,7 @@ impl Email {
 	}
 	// }
 
-	// FIXME: doesn't actually work for some reason
+	// FIXME: doesn't actually work
 	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<(), ImapError> {
 		if let ViewMode::ReadOnly = self.view_mode {
 			return Ok(());

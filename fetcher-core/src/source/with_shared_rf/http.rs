@@ -63,7 +63,6 @@ impl Http {
 		Ok(Self { url, client })
 	}
 
-	// TODO: return a single entry, not a vec
 	#[tracing::instrument(skip_all)]
 	pub async fn get(&self) -> Result<Entry, HttpError> {
 		tracing::debug!("Fetching HTTP source");

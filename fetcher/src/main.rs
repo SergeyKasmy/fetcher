@@ -7,9 +7,7 @@
 // TODO: proper argument parser. Something like clap or argh or something
 
 #![warn(clippy::pedantic)]
-#![allow(clippy::missing_panics_doc)] // TODO
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::module_name_repetitions)] // TODO
 
 mod config;
 mod error;
