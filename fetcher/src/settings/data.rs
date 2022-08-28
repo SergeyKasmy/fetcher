@@ -114,7 +114,7 @@ async fn save_data(name: &str, data: &str) -> Result<(), ConfigError> {
 		.map_err(|e| ConfigError::Write(e, p))
 }
 
-pub(crate) async fn generate_google_oauth2() -> Result<(), ConfigError> {
+pub(crate) async fn prompt_google_oauth2() -> Result<(), ConfigError> {
 	const SCOPE: &str = "https://mail.google.com/";
 
 	let client_id = input("Google OAuth2 client id: ", 100).await?;
@@ -135,14 +135,13 @@ pub(crate) async fn generate_google_oauth2() -> Result<(), ConfigError> {
 	.await
 }
 
-// TODO: maybe "generate" isn't the best word?
-pub(crate) async fn generate_email_password() -> Result<(), ConfigError> {
+pub(crate) async fn prompt_email_password() -> Result<(), ConfigError> {
 	let pass = input("Email password", 25).await?;
 
 	save_data(EMAIL_PASS, &pass).await
 }
 
-pub(crate) async fn generate_twitter_auth() -> Result<(), ConfigError> {
+pub(crate) async fn prompt_twitter_auth() -> Result<(), ConfigError> {
 	let api_key = input("Twitter API key: ", 25).await?;
 	let api_secret = input("Twitter API secret: ", 50).await?;
 
@@ -157,7 +156,7 @@ pub(crate) async fn generate_twitter_auth() -> Result<(), ConfigError> {
 	.await
 }
 
-pub(crate) async fn generate_telegram() -> Result<(), ConfigError> {
+pub(crate) async fn prompt_telegram() -> Result<(), ConfigError> {
 	let key = input("Telegram bot API key: ", 50).await?;
 	save_data("telegram.txt", &key).await
 }

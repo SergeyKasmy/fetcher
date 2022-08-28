@@ -92,10 +92,10 @@ async fn async_main() -> color_eyre::Result<()> {
 	tracing::info!("Running fetcher {}", version);
 
 	match std::env::args().nth(1).as_deref() {
-		Some("--gen-secret-google-oauth2") => settings::data::generate_google_oauth2().await?,
-		Some("--gen-secret-email-password") => settings::data::generate_email_password().await?,
-		Some("--gen-secret-telegram") => settings::data::generate_telegram().await?,
-		Some("--gen-secret-twitter") => settings::data::generate_twitter_auth().await?,
+		Some("--save-google-oauth2") => settings::data::prompt_google_oauth2().await?,
+		Some("--save-email-password") => settings::data::prompt_email_password().await?,
+		Some("--save-telegram") => settings::data::prompt_telegram().await?,
+		Some("--save-twitter") => settings::data::prompt_twitter_auth().await?,
 
 		Some("--once") => run(true).await?,
 		None => run(false).await?,
