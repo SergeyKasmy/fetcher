@@ -37,7 +37,6 @@ use crate::config::DataSettings;
 use fetcher_core::{
 	error::Error,
 	error::ErrorChainExt,
-	read_filter::Kind as ReadFilterKind,
 	task::{Task, Tasks},
 };
 

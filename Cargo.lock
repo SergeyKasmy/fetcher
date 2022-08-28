@@ -588,7 +588,6 @@ dependencies = [
  "serde_json",
  "signal-hook",
  "signal-hook-tokio",
- "teloxide",
  "thiserror",
  "tokio",
  "tracing",

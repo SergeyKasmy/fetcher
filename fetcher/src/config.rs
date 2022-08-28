@@ -36,7 +36,7 @@ pub(crate) struct DataSettings {
 	pub twitter_auth: Option<(String, String)>,
 	pub google_oauth2: Option<fetcher_core::auth::Google>,
 	pub email_password: Option<String>,
-	pub telegram: Option<teloxide::Bot>,
+	pub telegram: Option<String>,
 	pub read_filter: ReadFilterGetter,
 }
 

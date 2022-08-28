@@ -3,6 +3,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
+
 //! fetcher core    // TODO
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]

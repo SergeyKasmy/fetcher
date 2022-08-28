@@ -6,7 +6,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use teloxide::Bot;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::{fs, io};
 
@@ -105,8 +104,8 @@ pub(crate) async fn twitter() -> Result<Option<(String, String)>, ConfigError> {
 	Ok(Some((api_key, api_secret)))
 }
 
-pub(crate) async fn telegram() -> Result<Option<Bot>, ConfigError> {
-	Ok(data(TELEGRAM).await?.map(Bot::new))
+pub(crate) async fn telegram() -> Result<Option<String>, ConfigError> {
+	data(TELEGRAM).await
 }
 
 async fn save_data(name: &str, data: &str) -> Result<(), ConfigError> {

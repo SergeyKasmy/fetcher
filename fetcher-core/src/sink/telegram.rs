@@ -45,12 +45,12 @@ pub struct Telegram {
 
 impl Telegram {
 	#[must_use]
-	pub fn new(bot: Bot, chat_id: i64, link_location: LinkLocation) -> Self {
+	pub fn new(token: String, chat_id: i64, link_location: LinkLocation) -> Self {
 		Self {
 			// TODO: THIS BLOCKS. WHY??????
 			// #2 throttle() spawns a tokio task but we are in sync. Maybe that causes the hangup?
 			// bot: bot.throttle(Limits::default()),
-			bot,
+			bot: Bot::new(token),
 			chat_id: ChatId(chat_id),
 			link_location,
 		}
