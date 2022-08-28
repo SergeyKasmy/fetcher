@@ -56,7 +56,7 @@ impl Source {
 
 		for s in &mut self.0 {
 			entries.extend(match s {
-				Kind::Http(x) => x.get().await?, // TODO: should HTTP even take a read filter?
+				Kind::Http(x) => x.get().await?,
 				Kind::Twitter(x) => x.get().await?,
 				Kind::File(x) => x.get().await?,
 			});
