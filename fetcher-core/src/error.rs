@@ -39,7 +39,7 @@ pub enum Error {
 #[derive(thiserror::Error, Debug)]
 pub enum GoogleOAuth2Error {
 	#[error("Error contacting Google servers for authentication")]
-	Post(#[source] reqwest::Error), // TODO: maybe integrate with source::HttpError?
+	Post(#[source] reqwest::Error),
 
 	/// An error received from Google, whatever it is
 	#[error("{0}")]

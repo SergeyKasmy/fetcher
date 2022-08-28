@@ -26,7 +26,7 @@ use crate::source::Http;
 
 /// Type that allows transformation of a single [`Entry`] into one or multiple separate entries.
 /// That includes everything from parsing a markdown format like JSON to simple transformations like making all text uppercase
-// NOTE: Rss (and probs others in the future) is a ZST, so there's always going to be some amount of variance of enum sizes but is trying to avoid that worth the hasle of a Box? TODO: Find out
+// NOTE: Rss (and probs others in the future) is a ZST, so there's always going to be some amount of variance of enum sizes but is trying to avoid that worth the hasle of a Box?
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Transform {

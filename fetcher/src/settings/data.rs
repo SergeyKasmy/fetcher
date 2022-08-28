@@ -15,7 +15,7 @@ use crate::error::ConfigError;
 use fetcher_core::auth;
 
 const GOOGLE_OAUTH2: &str = "google_oauth2.json";
-const GOOGLE_PASS: &str = "google_pass.txt";
+const EMAIL_PASS: &str = "email_pass.txt";
 const TWITTER: &str = "twitter.json";
 const TELEGRAM: &str = "telegram.txt";
 
@@ -41,7 +41,7 @@ async fn input(prompt: &str, expected_input_len: usize) -> Result<String, Config
 	print!("{prompt}");
 	std::io::stdout()
 		.flush()
-		.map_err(ConfigError::StdoutWrite)?; // TODO: why can't I use tokio version?
+		.map_err(ConfigError::StdoutWrite)?;
 
 	let mut buf = String::with_capacity(expected_input_len);
 	BufReader::new(io::stdin())
@@ -66,7 +66,7 @@ pub(crate) async fn data(name: &str) -> Result<Option<String>, ConfigError> {
 	.transpose()
 }
 
-#[allow(clippy::doc_markdown)] // TODO
+#[allow(clippy::doc_markdown)]
 /// Get date required for authentication with Google OAuth2
 ///
 /// # Errors
@@ -84,9 +84,8 @@ pub(crate) async fn google_oauth2() -> Result<Option<auth::Google>, ConfigError>
 	Ok(Some(conf.parse()))
 }
 
-/// TODO: rename to email password
-pub(crate) async fn google_password() -> Result<Option<String>, ConfigError> {
-	data(GOOGLE_PASS).await
+pub(crate) async fn email_password() -> Result<Option<String>, ConfigError> {
+	data(EMAIL_PASS).await
 }
 
 pub(crate) async fn twitter() -> Result<Option<(String, String)>, ConfigError> {
@@ -137,10 +136,10 @@ pub(crate) async fn generate_google_oauth2() -> Result<(), ConfigError> {
 }
 
 // TODO: maybe "generate" isn't the best word?
-pub(crate) async fn generate_google_password() -> Result<(), ConfigError> {
-	let pass = input("Google app password", 25).await?;
+pub(crate) async fn generate_email_password() -> Result<(), ConfigError> {
+	let pass = input("Email password", 25).await?;
 
-	save_data(GOOGLE_PASS, &pass).await
+	save_data(EMAIL_PASS, &pass).await
 }
 
 pub(crate) async fn generate_twitter_auth() -> Result<(), ConfigError> {

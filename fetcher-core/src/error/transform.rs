@@ -11,7 +11,7 @@ use crate::entry::Entry;
 pub struct Error {
 	#[source]
 	pub kind: Kind,
-	pub original_entry: Entry, // TODO: pick up a better name
+	pub original_entry: Entry,
 }
 
 #[derive(thiserror::Error, Debug)]

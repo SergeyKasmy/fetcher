@@ -94,7 +94,7 @@ async fn async_main() -> color_eyre::Result<()> {
 
 	match std::env::args().nth(1).as_deref() {
 		Some("--gen-secret-google-oauth2") => settings::data::generate_google_oauth2().await?,
-		Some("--gen-secret-google-password") => settings::data::generate_google_password().await?,
+		Some("--gen-secret-email-password") => settings::data::generate_email_password().await?,
 		Some("--gen-secret-telegram") => settings::data::generate_telegram().await?,
 		Some("--gen-secret-twitter") => settings::data::generate_twitter_auth().await?,
 
@@ -114,7 +114,7 @@ async fn run(once: bool) -> color_eyre::Result<()> {
 	let data_settings = DataSettings {
 		twitter_auth: settings::data::twitter().await?,
 		google_oauth2: settings::data::google_oauth2().await?,
-		email_password: settings::data::google_password().await?,
+		email_password: settings::data::email_password().await?,
 		telegram: settings::data::telegram().await?,
 		read_filter: Box::new(read_filter_getter),
 	};
