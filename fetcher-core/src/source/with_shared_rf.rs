@@ -98,10 +98,3 @@ impl std::ops::Deref for Source {
 		self.0.as_slice()
 	}
 }
-
-// TODO: can this be used to change the enum variant of a source kind?
-impl std::ops::DerefMut for Source {
-	fn deref_mut(&mut self) -> &mut Self::Target {
-		self.0.as_mut_slice()
-	}
-}
