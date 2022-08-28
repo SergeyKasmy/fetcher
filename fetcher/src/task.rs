@@ -4,8 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#[allow(clippy::module_inception)]
-pub mod task;
-pub mod template;
+use fetcher_core as fcore;
 
-pub use self::{task::Task, template::Template};
+use std::collections::HashMap;
+
+pub(crate) type Tasks = HashMap<String, Task>;
+pub(crate) struct Task {
+	pub inner: fcore::task::Task,
+	pub refresh: u64,
+}

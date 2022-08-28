@@ -14,6 +14,7 @@
 mod config;
 mod error;
 mod settings;
+mod task;
 
 use color_eyre::{eyre::eyre, Report};
 use futures::{future::join_all, StreamExt};
@@ -34,11 +35,9 @@ use tokio::{
 use tracing::Instrument;
 
 use crate::config::DataSettings;
-use fetcher_core::{
-	error::Error,
-	error::ErrorChainExt,
-	task::{Task, Tasks},
-};
+use crate::task::Task;
+use crate::task::Tasks;
+use fetcher_core::{error::Error, error::ErrorChainExt};
 
 fn main() -> color_eyre::Result<()> {
 	set_up_logging()?;
@@ -229,7 +228,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> color
 
 async fn task_loop(t: &mut Task, once: bool) -> Result<(), Error> {
 	loop {
-		match fetcher_core::run_task(t).await {
+		match fetcher_core::run_task(&mut t.inner).await {
 			Ok(()) => (),
 			Err(Error::Transform(transform_err)) => {
 				tracing::error!("Transform error: {}", transform_err.display_chain());

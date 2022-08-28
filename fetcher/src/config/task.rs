@@ -9,12 +9,9 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use super::{read_filter, sink::Sink, source::Source, transform::Transform, DataSettings};
-use fetcher_core::task;
-
-#[derive(Deserialize, Debug)]
-pub struct TemplatesField {
-	pub templates: Option<Vec<String>>,
-}
+use crate::error::ConfigError;
+use crate::task::Task as ParsedTask;
+use fetcher_core as fcore;
 
 #[derive(Deserialize, Serialize, Debug)]
 // TODO: add
@@ -22,7 +19,6 @@ pub struct TemplatesField {
 // but allow templates templates field
 // that's used elsewhere
 pub struct Task {
-	disabled: Option<bool>,
 	#[serde(rename = "read_filter_type")]
 	read_filter_kind: Option<read_filter::Kind>,
 	tag: Option<String>,
@@ -39,7 +35,7 @@ impl Task {
 		self,
 		name: &str,
 		settings: &DataSettings,
-	) -> Result<task::Task, crate::error::ConfigError> {
+	) -> Result<ParsedTask, ConfigError> {
 		let rf = {
 			let rf = (settings.read_filter)(
 				self.read_filter_kind.map(read_filter::Kind::parse),
@@ -68,14 +64,17 @@ impl Task {
 			})
 			.transpose()?;
 
-		Ok(task::Task {
-			disabled: self.disabled.unwrap_or(false),
-			refresh: self.refresh,
+		let inner = fcore::task::Task {
 			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
 			source: self.source.parse(settings).await?,
 			rf,
 			transforms,
 			sink: self.sink.parse(settings)?,
+		};
+
+		Ok(ParsedTask {
+			inner,
+			refresh: self.refresh,
 		})
 	}
 }

@@ -13,10 +13,16 @@ use figment::{
 use std::path::PathBuf;
 
 use super::CONFIG_FILE_EXT;
-use crate::config::{self, DataSettings, TemplatesField};
 use crate::error::ConfigError;
 use crate::settings;
-use fetcher_core::task::{Task, Tasks};
+use crate::task::Task;
+use crate::{
+	config::{self, DataSettings},
+	task::Tasks,
+};
+
+type DisabledField = Option<bool>;
+type TemplatesField = Option<Vec<String>>;
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]
 #[tracing::instrument(skip(settings))]
@@ -69,14 +75,24 @@ pub(crate) async fn get(
 ) -> Result<Option<Task>, ConfigError> {
 	tracing::trace!("Parsing a task from file");
 
-	let templates: TemplatesField = Figment::new()
-		.merge(Yaml::file(&path))
-		.extract()
+	let task_file = Figment::new().merge(Yaml::file(&path));
+
+	let disabled: DisabledField = task_file
+		.extract_inner("disabled")
 		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
 
-	let mut conf = Figment::new();
+	if disabled.unwrap_or(false) {
+		tracing::trace!("Task is disabled, skipping...");
+		return Ok(None);
+	}
 
-	if let Some(templates) = templates.templates {
+	let templates: TemplatesField = task_file
+		.extract_inner("templates")
+		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
+
+	let mut full_conf = Figment::new();
+
+	if let Some(templates) = templates {
 		for tmpl_name in templates {
 			let tmpl = settings::config::templates::find(&tmpl_name)?.ok_or_else(|| {
 				ConfigError::TemplateNotFound {
@@ -87,22 +103,15 @@ pub(crate) async fn get(
 
 			tracing::trace!("Using template: {:?}", tmpl.path);
 
-			conf = conf.merge(Yaml::string(&tmpl.contents));
+			full_conf = full_conf.merge(Yaml::string(&tmpl.contents));
 		}
 	}
 
-	let task: config::Task = conf
-		.merge(Yaml::file(&path))
+	let full_conf = full_conf.merge(Yaml::file(&path));
+
+	let task: config::Task = full_conf
 		.extract()
 		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
 
-	let task = task.parse(name, settings).await?;
-
-	// TODO: move that check up above and skip all parsing if the task's disabled to avoid terminating if a disabled task's config is corrupted
-	if task.disabled {
-		tracing::trace!("Task is disabled, skipping...");
-		return Ok(None);
-	}
-
-	Ok(Some(task))
+	Ok(Some(task.parse(name, settings).await?))
 }

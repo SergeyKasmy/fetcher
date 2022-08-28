@@ -21,7 +21,6 @@ use serde::Deserialize;
 use serde::Serialize;
 
 pub use self::task::Task;
-pub use self::task::TemplatesField;
 use crate::error::ConfigError;
 use fetcher_core::read_filter::ReadFilter;
 
