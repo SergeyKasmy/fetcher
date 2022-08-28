@@ -10,6 +10,7 @@ use figment::{
 	providers::{Format, Yaml},
 	Figment,
 };
+use serde::Deserialize;
 use std::path::PathBuf;
 
 use super::CONFIG_FILE_EXT;
@@ -21,8 +22,15 @@ use crate::{
 	task::Tasks,
 };
 
-type DisabledField = Option<bool>;
-type TemplatesField = Option<Vec<String>>;
+#[derive(Deserialize, Debug)]
+struct DisabledField {
+	disabled: Option<bool>,
+}
+
+#[derive(Deserialize, Debug)]
+struct TemplatesField {
+	templates: Option<Vec<String>>,
+}
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]
 #[tracing::instrument(skip(settings))]
@@ -77,8 +85,8 @@ pub(crate) async fn get(
 
 	let task_file = Figment::new().merge(Yaml::file(&path));
 
-	let disabled: DisabledField = task_file
-		.extract_inner("disabled")
+	let DisabledField { disabled } = task_file
+		.extract()
 		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
 
 	if disabled.unwrap_or(false) {
@@ -86,8 +94,8 @@ pub(crate) async fn get(
 		return Ok(None);
 	}
 
-	let templates: TemplatesField = task_file
-		.extract_inner("templates")
+	let TemplatesField { templates } = task_file
+		.extract()
 		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
 
 	let mut full_conf = Figment::new();
