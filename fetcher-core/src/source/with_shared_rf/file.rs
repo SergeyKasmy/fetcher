@@ -17,13 +17,13 @@ pub struct File {
 
 impl File {
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&self) -> Result<Vec<Entry>, SourceError> {
+	pub async fn get(&self) -> Result<Entry, SourceError> {
 		let text = tokio::fs::read_to_string(&self.path)
 			.await
 			.map(|s| s.trim().to_owned())
 			.map_err(|e| SourceError::FileRead(e, self.path.clone()))?;
 
-		Ok(vec![Entry {
+		Ok(Entry {
 			id: None,
 			msg: Message {
 				title: None,
@@ -31,6 +31,6 @@ impl File {
 				link: None,
 				media: None,
 			},
-		}])
+		})
 	}
 }

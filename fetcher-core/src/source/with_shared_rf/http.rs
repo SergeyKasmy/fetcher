@@ -65,7 +65,7 @@ impl Http {
 
 	// TODO: return a single entry, not a vec
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&self) -> Result<Vec<Entry>, HttpError> {
+	pub async fn get(&self) -> Result<Entry, HttpError> {
 		tracing::debug!("Fetching HTTP source");
 
 		tracing::trace!("Making a request to {:?}", self.url.as_str());
@@ -85,7 +85,7 @@ impl Http {
 
 		tracing::trace!("Done. Body: ----------------------------------------\n{body:?}\n----------------------------------------\n");
 
-		Ok(vec![Entry {
+		Ok(Entry {
 			id: None,
 			msg: Message {
 				title: None,
@@ -93,11 +93,11 @@ impl Http {
 				link: Some(self.url.clone()),
 				media: None,
 			},
-		}])
+		})
 	}
 
 	pub async fn transform(entry: &Entry) -> Result<Vec<Entry>, HttpTransformError> {
-		let body = match Self::new(
+		let body = Self::new(
 			entry
 				.msg
 				.link
@@ -106,11 +106,8 @@ impl Http {
 		)?
 		.get()
 		.await?
-		.pop()
-		{
-			Some(ent) => ent.msg.body,
-			None => return Ok(Vec::new()), // TODO: is returning an empty vec really the move here
-		};
+		.msg
+		.body;
 
 		let entry = Entry {
 			msg: Message {

@@ -56,31 +56,14 @@ impl Source {
 
 		for s in &mut self.0 {
 			entries.extend(match s {
-				Kind::Http(x) => x.get().await?,
+				Kind::Http(x) => vec![x.get().await?],
 				Kind::Twitter(x) => x.get().await?,
-				Kind::File(x) => x.get().await?,
+				Kind::File(x) => vec![x.get().await?],
 			});
 		}
 
 		Ok(entries)
 	}
-
-	// /// Mark an entry id as read if there's an rf available
-	// #[allow(clippy::missing_errors_doc)]
-	// pub async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
-	// 	if let Some(rf) = self.rf.as_mut() {
-	// 		rf.mark_as_read(id).await?;
-	// 	}
-
-	// 	Ok(())
-	// }
-
-	// /// Delegate for [`Source::remove_read`]
-	// pub fn remove_read(&self, entries: &mut Vec<Entry>) {
-	// 	if let Some(rf) = self.rf.as_ref() {
-	// 		rf.remove_read_from(entries);
-	// 	}
-	// }
 }
 
 impl TryFrom<Vec<Kind>> for Source {
