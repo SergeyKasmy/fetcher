@@ -11,7 +11,7 @@ use url::Url;
 #[derive(Clone, Default)]
 pub struct Message {
 	pub title: Option<String>,
-	pub body: String,
+	pub body: Option<String>,
 	pub link: Option<Url>,
 	pub media: Option<Vec<Media>>,
 }

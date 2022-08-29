@@ -272,7 +272,7 @@ async fn report_error(task_name: &str, err: &str) -> color_eyre::Result<()> {
 		}
 	};
 	let msg = Message {
-		body: err.to_owned(),
+		body: Some(err.to_owned()),
 		..Default::default()
 	};
 	Telegram::new(bot, admin_chat_id, LinkLocation::default())

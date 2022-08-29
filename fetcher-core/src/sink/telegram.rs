@@ -66,15 +66,17 @@ impl Telegram {
 		} = message;
 
 		tracing::debug!(
-			"Processing message: title: {title:?}, body len: {}, media: {}",
-			body.len(),
+			"Processing message: title: {title:?}, body len: {}, link: {}, media: {}",
+			body.as_ref().map(|s| s.len()).unwrap_or(0),
+			link.is_some(),
 			media.is_some(),
 		);
 
 		let title = title.map(|s| teloxide::utils::html::escape(&s));
-		let body = teloxide::utils::html::escape(&body);
+		let body = body.map(|s| teloxide::utils::html::escape(&s));
 
 		let (head, tail) = self.format_head_tail(title, link, tag);
+		let body = body.unwrap_or_default();
 
 		// TODO: send media with the first message
 		// TODO: maybe add an option to make all consecutive messages reply to the prev ones

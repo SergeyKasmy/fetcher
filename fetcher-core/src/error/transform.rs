@@ -20,7 +20,7 @@ pub enum Kind {
 	Http(#[from] HttpError),
 
 	#[error("RSS parsing error")]
-	Rss(#[from] rss::Error),
+	Rss(#[from] RssError),
 
 	#[error("HTML parsing error")]
 	Html(#[from] HtmlError),
@@ -39,7 +39,19 @@ pub enum HttpError {
 }
 
 #[derive(thiserror::Error, Debug)]
+pub enum RssError {
+	#[error(transparent)]
+	NothingToTransform(#[from] NothingToTransformError),
+
+	#[error(transparent)]
+	Rss(#[from] rss::Error),
+}
+
+#[derive(thiserror::Error, Debug)]
 pub enum HtmlError {
+	#[error(transparent)]
+	NothingToTransform(#[from] NothingToTransformError),
+
 	#[error("URL not found")]
 	UrlNotFound,
 
@@ -64,6 +76,9 @@ pub enum HtmlError {
 
 #[derive(thiserror::Error, Debug)]
 pub enum JsonError {
+	#[error(transparent)]
+	NothingToTransform(#[from] NothingToTransformError),
+
 	#[error("Invalid JSON")]
 	JsonParseInvalid(#[from] serde_json::error::Error),
 
@@ -80,6 +95,10 @@ pub enum JsonError {
 	#[error(transparent)]
 	InvalidUrl(#[from] InvalidUrlError),
 }
+
+#[derive(thiserror::Error, Debug)]
+#[error("There's nothing to transform")]
+pub struct NothingToTransformError;
 
 #[derive(thiserror::Error, Debug)]
 #[error("Invalid URL: {1}")]

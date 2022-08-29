@@ -7,7 +7,7 @@
 use rss::Channel;
 
 use crate::entry::Entry;
-use crate::error::transform::Kind as TransformErrorKind;
+use crate::error::transform::{NothingToTransformError, RssError};
 use crate::sink::Message;
 
 #[derive(Debug)]
@@ -15,10 +15,17 @@ pub struct Rss;
 
 impl Rss {
 	#[tracing::instrument(skip_all)]
-	pub fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, TransformErrorKind> {
+	pub fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, RssError> {
 		tracing::debug!("Parsing RSS articles");
 
-		let feed = Channel::read_from(entry.msg.body.as_bytes())?;
+		let feed = Channel::read_from(
+			entry
+				.msg
+				.body
+				.as_ref()
+				.ok_or(NothingToTransformError)?
+				.as_bytes(),
+		)?;
 
 		tracing::debug!("Got {num} RSS articles total", num = feed.items.len());
 
@@ -31,7 +38,7 @@ impl Rss {
 					msg: Message {
 						// unwrap NOTE: "safe", these are required fields
 						title: Some(x.title.unwrap()),
-						body: x.description.unwrap(),
+						body: Some(x.description.unwrap()),
 						link: Some(x.link.unwrap().as_str().try_into().unwrap()),
 						media: None,
 					},

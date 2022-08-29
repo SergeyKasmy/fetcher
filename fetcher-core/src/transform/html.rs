@@ -20,13 +20,15 @@ use self::query::{
 use crate::entry::Entry;
 use crate::error::transform::HtmlError;
 use crate::error::transform::InvalidUrlError;
+use crate::error::transform::NothingToTransformError;
 use crate::sink::{Media, Message};
 
 #[derive(Debug)]
 pub struct Html {
+	// TODO: make optional
 	pub itemq: Vec<Query>,
 	pub titleq: Option<TitleQuery>,
-	pub textq: Vec<TextQuery>, // allow to find multiple paragraphs and join them together
+	pub textq: Option<Vec<TextQuery>>, // allow to find multiple paragraphs and join them together
 	pub idq: Option<IdQuery>,
 	pub linkq: Option<UrlQuery>,
 	pub imgq: Option<ImageQuery>,
@@ -38,7 +40,14 @@ impl Html {
 	pub fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, HtmlError> {
 		tracing::debug!("Parsing HTML");
 
-		let soup = Soup::new(entry.msg.body.as_str());
+		let soup = Soup::new(
+			entry
+				.msg
+				.body
+				.as_ref()
+				.ok_or(NothingToTransformError)?
+				.as_str(),
+		);
 		let items = find_chain(&soup, &self.itemq);
 
 		let entries = items
@@ -68,7 +77,10 @@ impl Html {
 			None => None,
 		};
 
-		let body = extract_body(item, &self.textq)?;
+		let body = match &self.textq {
+			Some(textq) => Some(extract_body(item, textq)?),
+			None => None,
+		};
 
 		let img = match &self.imgq {
 			Some(imgq) => extract_img(item, imgq)?,

@@ -17,7 +17,7 @@ impl Caps {
 			id: None,
 			msg: Message {
 				title: entry.msg.title.as_ref().map(|s| s.to_uppercase()),
-				body: entry.msg.body.to_uppercase(),
+				body: entry.msg.body.as_ref().map(|s| s.to_uppercase()),
 				link: None,
 				media: None,
 			},

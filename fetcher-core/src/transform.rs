@@ -67,7 +67,7 @@ impl Transform {
 			Transform::Http => Http::transform(&entry).await.map_err(Into::into),
 			Transform::Html(x) => x.transform(&entry).map_err(Into::into),
 			Transform::Json(x) => x.transform(&entry).map_err(Into::into),
-			Transform::Rss(x) => x.transform(&entry),
+			Transform::Rss(x) => x.transform(&entry).map_err(Into::into),
 			// Transform::ReadFilter(rf) => Ok(rf.read().await.transform(&entries)),
 			Transform::ReadFilter(_) => {
 				unreachable!("Read filter doesn't support transforming one by one")
@@ -86,7 +86,7 @@ impl Transform {
 					id: new_entry.id.or_else(|| entry.id.take()),
 					msg: Message {
 						title: new_entry.msg.title.or_else(|| entry.msg.title.take()),
-						body: new_entry.msg.body,
+						body: new_entry.msg.body.or_else(|| entry.msg.body.take()),
 						link: new_entry.msg.link.or_else(|| entry.msg.link.take()),
 						media: new_entry.msg.media.or_else(|| entry.msg.media.take()),
 					},

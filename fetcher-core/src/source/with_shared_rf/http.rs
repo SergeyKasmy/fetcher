@@ -88,7 +88,7 @@ impl Http {
 			id: None,
 			msg: Message {
 				title: None,
-				body,
+				body: Some(body),
 				link: Some(self.url.clone()),
 				media: None,
 			},

@@ -21,7 +21,7 @@ pub(crate) struct Html {
 	pub(crate) titleq: Option<TitleQuery>,
 
 	#[serde(rename = "text_query")]
-	pub(crate) textq: Vec<TextQuery>,
+	pub(crate) textq: Option<Vec<TextQuery>>,
 
 	#[serde(rename = "id_query")]
 	pub(crate) idq: Option<IdQuery>,
@@ -40,9 +40,12 @@ impl Html {
 			titleq: self.titleq.map(TitleQuery::parse).transpose()?,
 			textq: self
 				.textq
-				.into_iter()
-				.map(TextQuery::parse)
-				.collect::<Result<_, _>>()?,
+				.map(|v| {
+					v.into_iter()
+						.map(TextQuery::parse)
+						.collect::<Result<_, _>>()
+				})
+				.transpose()?,
 			idq: self.idq.map(IdQuery::parse).transpose()?,
 			linkq: self.linkq.map(UrlQuery::parse).transpose()?,
 			imgq: self.imgq.map(ImageQuery::parse).transpose()?,

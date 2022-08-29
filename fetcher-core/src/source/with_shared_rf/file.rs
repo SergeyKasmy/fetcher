@@ -27,7 +27,7 @@ impl File {
 			id: None,
 			msg: Message {
 				title: None,
-				body: text,
+				body: Some(text),
 				link: None,
 				media: None,
 			},

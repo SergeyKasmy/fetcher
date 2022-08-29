@@ -34,7 +34,7 @@ pub(crate) struct Json {
 	pub(crate) titleq: Option<String>,
 
 	#[serde(rename = "text_query")]
-	pub(crate) textq: Vec<TextQuery>,
+	pub(crate) textq: Option<Vec<TextQuery>>,
 
 	#[serde(rename = "id_query")]
 	pub(crate) idq: String,
@@ -51,7 +51,9 @@ impl Json {
 		transform::Json {
 			itemq: self.itemq,
 			titleq: self.titleq,
-			textq: self.textq.into_iter().map(TextQuery::parse).collect(),
+			textq: self
+				.textq
+				.map(|v| v.into_iter().map(TextQuery::parse).collect::<_>()),
 			idq: self.idq,
 			linkq: self.linkq.map(TextQuery::parse),
 			imgq: self.imgq,

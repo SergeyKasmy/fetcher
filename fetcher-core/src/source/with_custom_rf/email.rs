@@ -204,7 +204,7 @@ impl Email {
 			id: Some(id),
 			msg: Message {
 				title: subject,
-				body,
+				body: Some(body),
 				link: None,
 				media: None,
 			},

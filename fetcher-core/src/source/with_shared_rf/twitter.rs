@@ -102,7 +102,7 @@ impl Twitter {
 					id: Some(tweet.id.to_string()),
 					msg: Message {
 						title: None,
-						body: tweet.text.clone(),
+						body: Some(tweet.text.clone()),
 						link: Some(
 							format!(
 								"https://twitter.com/{handle}/status/{id}",

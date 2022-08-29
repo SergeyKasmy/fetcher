@@ -8,7 +8,7 @@ use serde_json::Value;
 use url::Url;
 
 use crate::entry::Entry;
-use crate::error::transform::{InvalidUrlError, JsonError};
+use crate::error::transform::{InvalidUrlError, JsonError, NothingToTransformError};
 use crate::sink::{Media, Message};
 
 #[derive(Debug)]
@@ -23,7 +23,7 @@ pub struct TextQuery {
 pub struct Json {
 	pub itemq: Vec<String>,
 	pub titleq: Option<String>,
-	pub textq: Vec<TextQuery>, // adjecent
+	pub textq: Option<Vec<TextQuery>>, // adjecent
 	pub idq: String,
 	pub linkq: Option<TextQuery>,
 	pub imgq: Option<Vec<String>>, // nested
@@ -32,7 +32,8 @@ pub struct Json {
 impl Json {
 	#[tracing::instrument(skip_all)]
 	pub fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, JsonError> {
-		let json: Value = serde_json::from_str(&entry.msg.body)?;
+		let json: Value =
+			serde_json::from_str(entry.msg.body.as_ref().ok_or(NothingToTransformError)?)?;
 
 		let items = self.itemq.iter().try_fold(&json, |acc, x| {
 			acc.get(x.as_str())
@@ -62,39 +63,46 @@ impl Json {
 					.and_then(serde_json::Value::as_str)
 					.map(|s| s.trim().to_owned());
 
-				let text = self
+				let body = self
 					.textq
-					.iter()
-					.map(|query| {
-						let mut text_str = {
-							let text_val = item.get(&query.string).ok_or_else(|| {
-								JsonError::JsonParseKeyNotFound(query.string.clone())
-							})?;
+					.as_ref()
+					.map(|v| {
+						let s = v
+							.iter()
+							.map(|query| {
+								let mut text_str = {
+									let text_val = item.get(&query.string).ok_or_else(|| {
+										JsonError::JsonParseKeyNotFound(query.string.clone())
+									})?;
 
-							text_val
-								.as_str()
-								.ok_or_else(|| JsonError::JsonParseKeyWrongType {
-									key: query.string.clone(),
-									expected_type: "string",
-									found_type: format!("{text_val:?}"),
-								})?
-								.trim()
-								.to_owned()
-						};
+									text_val
+										.as_str()
+										.ok_or_else(|| JsonError::JsonParseKeyWrongType {
+											key: query.string.clone(),
+											expected_type: "string",
+											found_type: format!("{text_val:?}"),
+										})?
+										.trim()
+										.to_owned()
+								};
 
-						if query.prepend.is_some() || query.append.is_some() {
-							text_str = format!(
-								"{prepend}{original}{append}",
-								prepend = query.prepend.as_deref().unwrap_or_default(),
-								original = text_str,
-								append = query.append.as_deref().unwrap_or_default()
-							);
-						}
+								if query.prepend.is_some() || query.append.is_some() {
+									text_str = format!(
+										"{prepend}{original}{append}",
+										prepend = query.prepend.as_deref().unwrap_or_default(),
+										original = text_str,
+										append = query.append.as_deref().unwrap_or_default()
+									);
+								}
 
-						Ok(text_str)
+								Ok(text_str)
+							})
+							.collect::<Result<Vec<String>, JsonError>>()?
+							.join("\n\n");
+
+						Ok::<_, JsonError>(s)
 					})
-					.collect::<Result<Vec<String>, JsonError>>()?
-					.join("\n\n");
+					.transpose()?;
 
 				let id = {
 					let id_val = item
@@ -177,7 +185,7 @@ impl Json {
 					id: Some(id),
 					msg: Message {
 						title,
-						body: text,
+						body,
 						link,
 						media: img.map(|url| vec![Media::Photo(url)]),
 					},
