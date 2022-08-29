@@ -27,6 +27,7 @@ pub(crate) enum Transform {
 	ReadFilter,
 
 	Caps,
+	UseRawContents,
 }
 
 impl Transform {
@@ -38,7 +39,8 @@ impl Transform {
 			Transform::Rss => core_transform::Transform::Rss(core_transform::Rss {}),
 
 			Transform::ReadFilter => unreachable!("If the transform was set to ReadFilter, it should've been parsed beforehand and it shouldn't be possible to reach here"),	// TODO: make this a compile-time guarantee probably
-			Transform::Caps => core_transform::Transform::Caps(core_transform::Caps {}),
+			Transform::Caps => core_transform::Transform::Caps,
+			Transform::UseRawContents => core_transform::Transform::UseRawContents,
 		})
 	}
 }
