@@ -32,7 +32,24 @@ pub(crate) async fn get(
 			let path = read_filter_path(name)?;
 
 			match fs::read_to_string(&path).await {
+				Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
+					tracing::debug!("Read filter save file is empty");
+
+					Ok(Some(ReadFilter::new(
+						currently_set_rf_kind,
+						Box::new(save_file(&path)?),
+					)))
+				}
+				Err(e) => {
+					tracing::debug!("Read filter save file doesn't exist or is inaccessible: {e}");
+
+					Ok(Some(ReadFilter::new(
+						currently_set_rf_kind,
+						Box::new(save_file(&path)?),
+					)))
+				}
 				Ok(save_file_rf_raw) => {
+					dbg!(save_file_rf_raw.len());
 					let save_file_rf = {
 						let save_file_rf_conf: config::read_filter::ReadFilter =
 							serde_json::from_str(&save_file_rf_raw).map_err(|e| {
@@ -52,14 +69,6 @@ pub(crate) async fn get(
 							disk_rf_path: path,
 						})
 					}
-				}
-				Err(e) => {
-					tracing::debug!("Read filter save file doesn't exist or is inaccessible: {e}");
-
-					Ok(Some(ReadFilter::new(
-						currently_set_rf_kind,
-						Box::new(save_file(&path)?),
-					)))
 				}
 			}
 		}
