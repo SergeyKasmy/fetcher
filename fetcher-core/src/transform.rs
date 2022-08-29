@@ -8,8 +8,8 @@ pub mod caps;
 pub mod html;
 pub mod json;
 pub mod rss;
+pub mod use_raw_contents;
 
-pub use self::caps::Caps;
 pub use self::html::Html;
 pub use self::json::Json;
 pub use self::rss::Rss;
@@ -32,7 +32,7 @@ use crate::source::Http;
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Transform {
-	// transform from one data to another
+	// transform from one data type to another
 	Http,
 	Html(Html),
 	Json(Json),
@@ -42,7 +42,9 @@ pub enum Transform {
 	ReadFilter(Arc<RwLock<ReadFilter>>),
 
 	// modify data in-place
-	Caps(Caps),
+	/// use [`raw_contents`](`crate::entry::Entry::raw_contents`) as message's [`body`](`crate::sink::Message::body`)
+	UseRawContents,
+	Caps,
 }
 
 impl Transform {
@@ -76,7 +78,8 @@ impl Transform {
 			Transform::ReadFilter(_) => {
 				unreachable!("Read filter doesn't support transforming one by one")
 			}
-			Transform::Caps(x) => Ok(x.transform(&entry)),
+			Transform::UseRawContents => Ok(vec![use_raw_contents::transform(&entry)]),
+			Transform::Caps => Ok(vec![caps::transform(&entry)]),
 		};
 
 		res.map_err(|kind| TransformError {
