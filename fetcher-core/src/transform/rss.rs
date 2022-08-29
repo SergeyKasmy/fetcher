@@ -20,8 +20,7 @@ impl Rss {
 
 		let feed = Channel::read_from(
 			entry
-				.msg
-				.body
+				.raw_contents
 				.as_ref()
 				.ok_or(NothingToTransformError)?
 				.as_bytes(),

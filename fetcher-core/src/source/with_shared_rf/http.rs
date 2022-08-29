@@ -87,7 +87,8 @@ impl Http {
 			.await
 			.map_err(|e| HttpError::Get(e, self.url.to_string()))?;
 
-		tracing::trace!("Done. Body: ----------------------------------------\n{page:?}\n----------------------------------------\n");
+		// tracing::trace!("Done. Body: ----------------------------------------\n{page:?}\n----------------------------------------\n");
+		tracing::trace!("Done");
 
 		Ok(Entry {
 			raw_contents: Some(page),
@@ -102,7 +103,7 @@ impl Http {
 	pub async fn transform(
 		entry: &Entry,
 		from_field: TransformFromField,
-	) -> Result<Vec<Entry>, HttpTransformError> {
+	) -> Result<Entry, HttpTransformError> {
 		let link = match from_field {
 			TransformFromField::MessageLink => entry.msg.link.clone(),
 			TransformFromField::RawContents => entry
@@ -113,17 +114,7 @@ impl Http {
 		};
 		let link = link.ok_or(HttpTransformError::MissingUrl(from_field))?;
 
-		let body = Self::new(link)?.get().await?.msg.body;
-
-		let entry = Entry {
-			msg: Message {
-				body,
-				..Default::default()
-			},
-			..Default::default()
-		};
-
-		Ok(vec![entry])
+		Ok(Self::new(link)?.get().await?)
 	}
 }
 

@@ -42,8 +42,7 @@ impl Html {
 
 		let soup = Soup::new(
 			entry
-				.msg
-				.body
+				.raw_contents
 				.as_ref()
 				.ok_or(NothingToTransformError)?
 				.as_str(),

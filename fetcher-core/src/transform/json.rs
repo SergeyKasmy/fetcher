@@ -33,7 +33,7 @@ impl Json {
 	#[tracing::instrument(skip_all)]
 	pub fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, JsonError> {
 		let json: Value =
-			serde_json::from_str(entry.msg.body.as_ref().ok_or(NothingToTransformError)?)?;
+			serde_json::from_str(entry.raw_contents.as_ref().ok_or(NothingToTransformError)?)?;
 
 		let items = self.itemq.iter().try_fold(&json, |acc, x| {
 			acc.get(x.as_str())

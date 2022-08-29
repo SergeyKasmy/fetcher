@@ -66,11 +66,14 @@ impl Transform {
 		})
 	}
 
-	async fn transform_one(&self, mut entry: Entry) -> Result<Vec<Entry>, TransformError> {
+	async fn transform_one(&self, entry: Entry) -> Result<Vec<Entry>, TransformError> {
 		let res: Result<_, TransformErrorKind> = match self {
-			Transform::Http => Http::transform(&entry, TransformFromField::MessageLink)
-				.await
-				.map_err(Into::into), // TODO: make this a choise
+			Transform::Http => {
+				Http::transform(&entry, TransformFromField::MessageLink) // TODO: make this a choise
+					.await
+					.map(|x| vec![x])
+					.map_err(Into::into)
+			}
 			Transform::Html(x) => x.transform(&entry).map_err(Into::into),
 			Transform::Json(x) => x.transform(&entry).map_err(Into::into),
 			Transform::Rss(x) => x.transform(&entry).map_err(Into::into),
@@ -90,13 +93,15 @@ impl Transform {
 			v.into_iter()
 				// use old entry's value if some new entry's field is None
 				.map(|new_entry| Entry {
-					id: new_entry.id.or_else(|| entry.id.take()),
-					raw_contents: new_entry.raw_contents.or_else(|| entry.raw_contents.take()),
+					id: new_entry.id.or_else(|| entry.id.clone()),
+					raw_contents: new_entry
+						.raw_contents
+						.or_else(|| entry.raw_contents.clone()),
 					msg: Message {
-						title: new_entry.msg.title.or_else(|| entry.msg.title.take()),
-						body: new_entry.msg.body.or_else(|| entry.msg.body.take()),
-						link: new_entry.msg.link.or_else(|| entry.msg.link.take()),
-						media: new_entry.msg.media.or_else(|| entry.msg.media.take()),
+						title: new_entry.msg.title.or_else(|| entry.msg.title.clone()),
+						body: new_entry.msg.body.or_else(|| entry.msg.body.clone()),
+						link: new_entry.msg.link.or_else(|| entry.msg.link.clone()),
+						media: new_entry.msg.media.or_else(|| entry.msg.media.clone()),
 					},
 				})
 				.collect()
