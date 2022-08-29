@@ -7,6 +7,7 @@
 pub mod caps;
 pub mod html;
 pub mod json;
+pub mod print;
 pub mod rss;
 pub mod use_raw_contents;
 
@@ -45,6 +46,9 @@ pub enum Transform {
 	/// use [`raw_contents`](`crate::entry::Entry::raw_contents`) as message's [`body`](`crate::sink::Message::body`)
 	UseRawContents,
 	Caps,
+
+	// other
+	Print,
 }
 
 impl Transform {
@@ -83,6 +87,10 @@ impl Transform {
 			}
 			Transform::UseRawContents => Ok(vec![use_raw_contents::transform(&entry)]),
 			Transform::Caps => Ok(vec![caps::transform(&entry)]),
+			Transform::Print => {
+				print::transform(&entry).await;
+				Ok(Vec::new())
+			}
 		};
 
 		res.map_err(|kind| TransformError {
