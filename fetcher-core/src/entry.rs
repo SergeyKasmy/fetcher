@@ -13,6 +13,12 @@ use crate::sink::Message;
 pub struct Entry {
 	/// An optional id of that entry. A [`ReadFilter`](`crate::read_filter::ReadFilter`) can use it to differentiate already read entries from the unread ones
 	pub id: Option<String>, // TODO: add date id type
+
+	/// Raw contents gotten from a [`Source`].
+	///
+	/// It's used to compose a message using [`transformators`](`crate::transform::Transform`).
+	pub raw_contents: Option<String>,
+
 	/// The message itself
 	pub msg: Message,
 }

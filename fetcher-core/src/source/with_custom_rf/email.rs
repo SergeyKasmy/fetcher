@@ -205,9 +205,9 @@ impl Email {
 			msg: Message {
 				title: subject,
 				body: Some(body),
-				link: None,
-				media: None,
+				..Default::default()
 			},
+			..Default::default()
 		})
 	}
 	// }

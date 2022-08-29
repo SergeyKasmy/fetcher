@@ -40,8 +40,9 @@ impl Rss {
 						title: Some(x.title.unwrap()),
 						body: Some(x.description.unwrap()),
 						link: Some(x.link.unwrap().as_str().try_into().unwrap()),
-						media: None,
+						..Default::default()
 					},
+					..Default::default()
 				}
 			})
 			.collect::<Vec<_>>();

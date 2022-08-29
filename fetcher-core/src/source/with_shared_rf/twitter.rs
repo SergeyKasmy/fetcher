@@ -101,7 +101,6 @@ impl Twitter {
 				Some(Entry {
 					id: Some(tweet.id.to_string()),
 					msg: Message {
-						title: None,
 						body: Some(tweet.text.clone()),
 						link: Some(
 							format!(
@@ -126,7 +125,9 @@ impl Twitter {
 								})
 								.collect::<Option<Vec<Media>>>()
 						}),
+						..Default::default()
 					},
+					..Default::default()
 				})
 			})
 			.collect::<Vec<_>>();

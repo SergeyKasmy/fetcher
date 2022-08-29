@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::entry::Entry;
+use crate::{entry::Entry, source::with_shared_rf::http::TransformFromField};
 
 #[derive(thiserror::Error, Debug)]
 #[error("Original entry: {original_entry:?}")]
@@ -31,8 +31,11 @@ pub enum Kind {
 
 #[derive(thiserror::Error, Debug)]
 pub enum HttpError {
-	#[error("Missing URL in the message's link field")]
-	MissingUrl,
+	#[error("Missing URL in the entry {0} field")]
+	MissingUrl(TransformFromField),
+
+	#[error("Invalid URL in the entry raw_contents field")]
+	InvalidUrl(#[from] InvalidUrlError),
 
 	#[error(transparent)]
 	Other(#[from] crate::error::source::HttpError),

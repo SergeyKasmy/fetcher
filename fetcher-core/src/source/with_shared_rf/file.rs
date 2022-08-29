@@ -8,7 +8,6 @@ use std::path::PathBuf;
 
 use crate::entry::Entry;
 use crate::error::source::Error as SourceError;
-use crate::sink::Message;
 
 #[derive(Debug)]
 pub struct File {
@@ -24,13 +23,8 @@ impl File {
 			.map_err(|e| SourceError::FileRead(e, self.path.clone()))?;
 
 		Ok(Entry {
-			id: None,
-			msg: Message {
-				title: None,
-				body: Some(text),
-				link: None,
-				media: None,
-			},
+			raw_contents: Some(text),
+			..Default::default()
 		})
 	}
 }

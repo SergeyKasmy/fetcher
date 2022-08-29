@@ -189,6 +189,7 @@ impl Json {
 						link,
 						media: img.map(|url| vec![Media::Photo(url)]),
 					},
+					..Default::default()
 				})
 			})
 			.collect::<Result<Vec<Entry>, JsonError>>()

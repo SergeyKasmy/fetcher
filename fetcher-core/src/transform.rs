@@ -22,11 +22,13 @@ use crate::error::transform::Error as TransformError;
 use crate::error::transform::Kind as TransformErrorKind;
 use crate::read_filter::ReadFilter;
 use crate::sink::Message;
+use crate::source::with_shared_rf::http::TransformFromField;
 use crate::source::Http;
 
 /// Type that allows transformation of a single [`Entry`] into one or multiple separate entries.
 /// That includes everything from parsing a markdown format like JSON to simple transformations like making all text uppercase
 // NOTE: Rss (and probs others in the future) is a ZST, so there's always going to be some amount of variance of enum sizes but is trying to avoid that worth the hasle of a Box?
+// TODO: add raw_contents -> msg.body transformator
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Transform {
@@ -64,7 +66,9 @@ impl Transform {
 
 	async fn transform_one(&self, mut entry: Entry) -> Result<Vec<Entry>, TransformError> {
 		let res: Result<_, TransformErrorKind> = match self {
-			Transform::Http => Http::transform(&entry).await.map_err(Into::into),
+			Transform::Http => Http::transform(&entry, TransformFromField::MessageLink)
+				.await
+				.map_err(Into::into), // TODO: make this a choise
 			Transform::Html(x) => x.transform(&entry).map_err(Into::into),
 			Transform::Json(x) => x.transform(&entry).map_err(Into::into),
 			Transform::Rss(x) => x.transform(&entry).map_err(Into::into),
@@ -84,6 +88,7 @@ impl Transform {
 				// use old entry's value if some new entry's field is None
 				.map(|new_entry| Entry {
 					id: new_entry.id.or_else(|| entry.id.take()),
+					raw_contents: new_entry.raw_contents.or_else(|| entry.raw_contents.take()),
 					msg: Message {
 						title: new_entry.msg.title.or_else(|| entry.msg.title.take()),
 						body: new_entry.msg.body.or_else(|| entry.msg.body.take()),

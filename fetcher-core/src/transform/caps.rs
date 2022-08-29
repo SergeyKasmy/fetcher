@@ -14,13 +14,12 @@ impl Caps {
 	#[tracing::instrument(skip_all)]
 	pub fn transform(&self, entry: &Entry) -> Vec<Entry> {
 		vec![Entry {
-			id: None,
 			msg: Message {
 				title: entry.msg.title.as_ref().map(|s| s.to_uppercase()),
 				body: entry.msg.body.as_ref().map(|s| s.to_uppercase()),
-				link: None,
-				media: None,
+				..Default::default()
 			},
+			..Default::default()
 		}]
 	}
 }

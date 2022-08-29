@@ -95,6 +95,7 @@ impl Html {
 				link,
 				media: img.map(|url| vec![Media::Photo(url)]),
 			},
+			..Default::default()
 		})
 	}
 }

@@ -5,20 +5,19 @@
  */
 
 use once_cell::sync::Lazy;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::sync::Mutex;
 use url::Url;
 
 use crate::entry::Entry;
 use crate::error::source::HttpError;
-use crate::error::transform::HttpError as HttpTransformError;
+use crate::error::transform::{HttpError as HttpTransformError, InvalidUrlError};
 use crate::sink::Message;
 
 const USER_AGENT: &str =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0";
 
 // option because tls init could've failed and we took out the Err()
-// TODO: make a Mutex instead
 static CLIENT: Lazy<Mutex<Option<Result<reqwest::Client, HttpError>>>> = Lazy::new(|| {
 	Mutex::new(Some(
 		reqwest::ClientBuilder::new()
@@ -31,6 +30,12 @@ static CLIENT: Lazy<Mutex<Option<Result<reqwest::Client, HttpError>>>> = Lazy::n
 pub struct Http {
 	pub(crate) url: Url,
 	client: reqwest::Client,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum TransformFromField {
+	MessageLink,
+	RawContents,
 }
 
 impl Http {
@@ -77,36 +82,38 @@ impl Http {
 			.map_err(|e| HttpError::Get(e, self.url.to_string()))?;
 
 		tracing::trace!("Getting text body of the responce");
-		let body = request
+		let page = request
 			.text()
 			.await
 			.map_err(|e| HttpError::Get(e, self.url.to_string()))?;
 
-		tracing::trace!("Done. Body: ----------------------------------------\n{body:?}\n----------------------------------------\n");
+		tracing::trace!("Done. Body: ----------------------------------------\n{page:?}\n----------------------------------------\n");
 
 		Ok(Entry {
-			id: None,
+			raw_contents: Some(page),
 			msg: Message {
-				title: None,
-				body: Some(body),
 				link: Some(self.url.clone()),
-				media: None,
+				..Default::default()
 			},
+			..Default::default()
 		})
 	}
 
-	pub async fn transform(entry: &Entry) -> Result<Vec<Entry>, HttpTransformError> {
-		let body = Self::new(
-			entry
-				.msg
-				.link
-				.clone()
-				.ok_or(HttpTransformError::MissingUrl)?,
-		)?
-		.get()
-		.await?
-		.msg
-		.body;
+	pub async fn transform(
+		entry: &Entry,
+		from_field: TransformFromField,
+	) -> Result<Vec<Entry>, HttpTransformError> {
+		let link = match from_field {
+			TransformFromField::MessageLink => entry.msg.link.clone(),
+			TransformFromField::RawContents => entry
+				.raw_contents
+				.as_ref()
+				.map(|s| Url::try_from(s.as_str()).map_err(|e| InvalidUrlError(e, s.to_owned())))
+				.transpose()?,
+		};
+		let link = link.ok_or(HttpTransformError::MissingUrl(from_field))?;
+
+		let body = Self::new(link)?.get().await?.msg.body;
 
 		let entry = Entry {
 			msg: Message {
@@ -125,5 +132,14 @@ impl Debug for Http {
 		f.debug_struct("Http")
 			.field("url", &self.url.as_str())
 			.finish_non_exhaustive()
+	}
+}
+
+impl Display for TransformFromField {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.write_str(match self {
+			TransformFromField::MessageLink => "message's link",
+			TransformFromField::RawContents => "raw_contents",
+		})
 	}
 }

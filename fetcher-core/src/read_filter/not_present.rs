@@ -161,39 +161,39 @@ mod tests {
 		let mut entries = vec![
 			Entry {
 				id: None,
-				msg: crate::sink::Message::default(),
+				..Default::default()
 			},
 			Entry {
 				id: Some("5".to_owned()),
-				msg: crate::sink::Message::default(),
+				..Default::default()
 			},
 			Entry {
 				id: Some("4".to_owned()),
-				msg: crate::sink::Message::default(),
+				..Default::default()
 			},
 			Entry {
 				id: Some("0".to_owned()),
-				msg: crate::sink::Message::default(),
+				..Default::default()
 			},
 			Entry {
 				id: Some("1".to_owned()),
-				msg: crate::sink::Message::default(),
+				..Default::default()
 			},
 			Entry {
 				id: Some("3".to_owned()),
-				msg: crate::sink::Message::default(),
+				..Default::default()
 			},
 			Entry {
 				id: None,
-				msg: crate::sink::Message::default(),
+				..Default::default()
 			},
 			Entry {
 				id: Some("6".to_owned()),
-				msg: crate::sink::Message::default(),
+				..Default::default()
 			},
 			Entry {
 				id: Some("8".to_owned()),
-				msg: crate::sink::Message::default(),
+				..Default::default()
 			},
 		];
 
