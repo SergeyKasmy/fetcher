@@ -89,7 +89,7 @@ impl Transform {
 			Transform::Caps => Ok(vec![caps::transform(&entry)]),
 			Transform::Print => {
 				print::transform(&entry).await;
-				Ok(Vec::new())
+				Ok(vec![Entry::default()])
 			}
 		};
 

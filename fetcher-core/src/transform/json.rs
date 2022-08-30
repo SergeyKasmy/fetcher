@@ -24,7 +24,7 @@ pub struct Json {
 	pub itemq: Vec<String>,
 	pub titleq: Option<String>,
 	pub textq: Option<Vec<TextQuery>>, // adjecent
-	pub idq: String,
+	pub idq: String,                   // TODO: make optional
 	pub linkq: Option<TextQuery>,
 	pub imgq: Option<Vec<String>>, // nested
 }
