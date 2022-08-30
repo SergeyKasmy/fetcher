@@ -53,7 +53,8 @@ pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 		remove_duplicates(transformed)
 	};
 
-	for entry in entries {
+	// entries should be sorted newer to oldest but we should send oldest first
+	for entry in entries.into_iter().rev() {
 		t.sink.send(entry.msg, t.tag.as_deref()).await?;
 
 		if let Some(id) = &entry.id {

@@ -49,7 +49,6 @@ pub(crate) async fn get(
 					)))
 				}
 				Ok(save_file_rf_raw) => {
-					dbg!(save_file_rf_raw.len());
 					let save_file_rf = {
 						let save_file_rf_conf: config::read_filter::ReadFilter =
 							serde_json::from_str(&save_file_rf_raw).map_err(|e| {

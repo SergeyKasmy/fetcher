@@ -33,13 +33,9 @@ impl Source {
 		&mut self,
 		// transforms: Option<&[Transform]>,
 	) -> Result<Vec<Entry>, SourceError> {
-		let mut entries = match self {
-			Source::WithSharedReadFilter(x) => x.get().await?,
-			Source::WithCustomReadFilter(x) => x.get().await?,
-		};
-
-		entries.reverse();
-
-		Ok(entries)
+		match self {
+			Source::WithSharedReadFilter(x) => x.get().await,
+			Source::WithCustomReadFilter(x) => x.get().await,
+		}
 	}
 }
