@@ -6,9 +6,17 @@
 
 use crate::{entry::Entry, sink::Stdout};
 
+use std::fmt::Write as _;
+
 pub async fn transform(entry: &Entry) {
-	Stdout
-		.send(entry.msg.clone(), Some("print transform"))
-		.await
-		.unwrap();
+	let mut msg = entry.msg.clone();
+
+	// append raw_contents to help in debugging
+	msg.body = {
+		let mut body = msg.body.unwrap_or_default();
+		let _ = write!(body, "\nraw_contents: {:?}", entry.raw_contents);
+		Some(body)
+	};
+
+	Stdout.send(msg, Some("print transform")).await.unwrap();
 }

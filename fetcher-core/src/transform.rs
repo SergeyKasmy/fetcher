@@ -98,6 +98,8 @@ impl Transform {
 			original_entry: entry.clone(),
 		})
 		.map(|v| {
+			// TODO: check if v is empty (mb make it an option even), and return the last entry if it is.
+			// to avoid the unnecessary `Ok(vec![Entry::default()])` in the print transform
 			v.into_iter()
 				// use old entry's value if some new entry's field is None
 				.map(|new_entry| Entry {
