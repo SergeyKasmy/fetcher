@@ -32,16 +32,21 @@ impl Rss {
 			.items
 			.into_iter()
 			.map(|x| {
+				// unwrap NOTE: "safe", these are required fields	// TODO: make an error
+				let id = Some(x.guid.as_ref().unwrap().value.clone());
+				let title = Some(x.title.unwrap());
+				let body = Some(x.description.unwrap());
+				let link = Some(x.link.unwrap().as_str().try_into().unwrap());
+
 				Entry {
-					id: Some(x.guid.as_ref().unwrap().value.clone()), // unwrap NOTE: same as above
+					id,
+					raw_contents: body.clone(),
 					msg: Message {
-						// unwrap NOTE: "safe", these are required fields
-						title: Some(x.title.unwrap()),
-						body: Some(x.description.unwrap()),
-						link: Some(x.link.unwrap().as_str().try_into().unwrap()),
+						title,
+						body,
+						link,
 						..Default::default()
 					},
-					..Default::default()
 				}
 			})
 			.collect::<Vec<_>>();

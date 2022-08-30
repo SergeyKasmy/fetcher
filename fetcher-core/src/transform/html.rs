@@ -88,13 +88,13 @@ impl Html {
 
 		Ok(Entry {
 			id,
+			raw_contents: body.clone(), // TODO: add an ability to choose if raw_contents should be kept from prev step
 			msg: Message {
 				title,
 				body,
 				link,
 				media: img.map(|url| vec![Media::Photo(url)]),
 			},
-			..Default::default()
 		})
 	}
 }

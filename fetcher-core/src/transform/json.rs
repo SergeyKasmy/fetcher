@@ -183,13 +183,13 @@ impl Json {
 
 				Ok(Entry {
 					id: Some(id),
+					raw_contents: body.clone(),
 					msg: Message {
 						title,
 						body,
 						link,
 						media: img.map(|url| vec![Media::Photo(url)]),
 					},
-					..Default::default()
 				})
 			})
 			.collect::<Result<Vec<Entry>, JsonError>>()
