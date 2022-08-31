@@ -252,11 +252,10 @@ fn extract_data(
 		None => return Ok(None),
 	};
 
-	let s = data.join("\n\n"); // lifetime workaround
-	let s = s.trim();
+	let s = data.join("\n\n");
 
 	let s = if let Some(re) = &query_data.regex {
-		let captures = match re.captures(s) {
+		let captures = match re.captures(&s) {
 			Some(x) => x,
 			None => return Ok(None),
 		};
@@ -266,10 +265,10 @@ fn extract_data(
 			.ok_or(HtmlError::RegexCaptureGroupMissing)?
 			.as_str()
 	} else {
-		s
+		&s
 	};
 
-	Ok(Some(s.to_owned()))
+	Ok(Some(s.trim().to_owned()))
 }
 
 // TODO: rewrite the entire fn to use today/Yesterday words and date formats from the config per source and not global
