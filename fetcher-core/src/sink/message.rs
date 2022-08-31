@@ -8,10 +8,10 @@ use std::fmt::Debug;
 
 use url::Url;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Message {
 	pub title: Option<String>,
-	pub body: String,
+	pub body: Option<String>,
 	pub link: Option<Url>,
 	pub media: Option<Vec<Media>>,
 }
@@ -27,6 +27,7 @@ impl Debug for Message {
 	}
 }
 
+#[derive(Clone)]
 pub enum Media {
 	Photo(Url),
 	Video(Url),

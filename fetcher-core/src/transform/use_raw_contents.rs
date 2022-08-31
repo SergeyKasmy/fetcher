@@ -4,8 +4,14 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#[allow(clippy::module_inception)]
-pub mod task;
-pub mod template;
+use crate::{entry::Entry, sink::Message};
 
-pub use self::{task::Task, template::Template};
+pub fn transform(entry: &Entry) -> Entry {
+	Entry {
+		msg: Message {
+			body: entry.raw_contents.clone(),
+			..Default::default()
+		},
+		..Default::default()
+	}
+}

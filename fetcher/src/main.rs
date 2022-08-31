@@ -6,11 +6,15 @@
 
 // TODO: proper argument parser. Something like clap or argh or something
 
+#![warn(clippy::pedantic)]
+#![allow(clippy::module_name_repetitions)] // TODO
+
 mod config;
 mod error;
 mod settings;
+mod task;
 
-use color_eyre::{eyre::eyre, Report, Result};
+use color_eyre::{eyre::eyre, Report};
 use futures::{future::join_all, StreamExt};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
@@ -29,24 +33,23 @@ use tokio::{
 use tracing::Instrument;
 
 use crate::config::DataSettings;
-use fetcher_core::{
-	read_filter::Kind as ReadFilterKind,
-	task::{Task, Tasks},
-};
+use crate::task::Task;
+use crate::task::Tasks;
+use fetcher_core::{error::Error, error::ErrorChainExt};
 
-fn main() -> Result<()> {
+fn main() -> color_eyre::Result<()> {
 	set_up_logging()?;
 	async_main()
 }
 
-fn set_up_logging() -> Result<()> {
+fn set_up_logging() -> color_eyre::Result<()> {
 	use tracing_subscriber::fmt::time::OffsetTime;
 	use tracing_subscriber::layer::SubscriberExt;
 	use tracing_subscriber::EnvFilter;
 	use tracing_subscriber::Layer;
 
-	let env_filter =
-		EnvFilter::try_from_env("FETCHER_LOG").unwrap_or_else(|_| EnvFilter::from("fetcher=info"));
+	let env_filter = EnvFilter::try_from_env("FETCHER_LOG")
+		.unwrap_or_else(|_| EnvFilter::from("fetcher=info,fetcher_core=info"));
 	let stdout = tracing_subscriber::fmt::layer()
 		.pretty()
 		// hide source code/debug info on release builds
@@ -55,10 +58,10 @@ fn set_up_logging() -> Result<()> {
 		.with_timer(OffsetTime::local_rfc_3339().expect("could not get local time offset"));
 
 	// enable journald logging only on release to avoid log spam on dev machines
-	let journald = if !cfg!(debug_assertions) {
-		tracing_journald::layer().ok()
-	} else {
+	let journald = if cfg!(debug_assertions) {
 		None
+	} else {
+		tracing_journald::layer().ok()
 	};
 
 	let subscriber = tracing_subscriber::registry()
@@ -71,7 +74,7 @@ fn set_up_logging() -> Result<()> {
 }
 
 #[tokio::main]
-async fn async_main() -> Result<()> {
+async fn async_main() -> color_eyre::Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -86,12 +89,11 @@ async fn async_main() -> Result<()> {
 	};
 	tracing::info!("Running fetcher {}", version);
 
-	// TODO: add option to send to optional global debug chat to test first
 	match std::env::args().nth(1).as_deref() {
-		Some("--gen-secret-google-oauth2") => settings::data::generate_google_oauth2().await?,
-		Some("--gen-secret-google-password") => settings::data::generate_google_password().await?,
-		Some("--gen-secret-telegram") => settings::data::generate_telegram().await?,
-		Some("--gen-secret-twitter") => settings::data::generate_twitter_auth().await?,
+		Some("--save-google-oauth2") => settings::data::prompt_google_oauth2().await?,
+		Some("--save-email-password") => settings::data::prompt_email_password().await?,
+		Some("--save-telegram") => settings::data::prompt_telegram().await?,
+		Some("--save-twitter") => settings::data::prompt_twitter_auth().await?,
 
 		Some("--once") => run(true).await?,
 		None => run(false).await?,
@@ -101,16 +103,15 @@ async fn async_main() -> Result<()> {
 	Ok(())
 }
 
-async fn run(once: bool) -> Result<()> {
-	let read_filter_getter =
-		|name: String, default: Option<ReadFilterKind>| -> Pin<Box<dyn Future<Output = _>>> {
-			Box::pin(async move { settings::read_filter::get(&name, default).await })
-		};
+async fn run(once: bool) -> color_eyre::Result<()> {
+	let read_filter_getter = |current, name: String| -> Pin<Box<dyn Future<Output = _>>> {
+		Box::pin(async move { settings::read_filter::get(current, &name).await })
+	};
 
 	let data_settings = DataSettings {
 		twitter_auth: settings::data::twitter().await?,
 		google_oauth2: settings::data::google_oauth2().await?,
-		email_password: settings::data::google_password().await?,
+		email_password: settings::data::email_password().await?,
 		telegram: settings::data::telegram().await?,
 		read_filter: Box::new(read_filter_getter),
 	};
@@ -172,7 +173,7 @@ async fn run(once: bool) -> Result<()> {
 	Ok(())
 }
 
-async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Result<()> {
+async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> color_eyre::Result<()> {
 	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
 		let name2 = name.clone();
@@ -186,7 +187,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 				};
 
 				if let Err(err) = &res {
-					let err_str = format!("{:?}", err);
+					let err_str = err.display_chain();
 					tracing::error!("{err_str}");
 
 					// production error reporting
@@ -216,15 +217,28 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> Resul
 		}
 	}
 
+	// TODO: aggregate multiple errors into one using color_eyre Section trait
 	match first_err {
 		None => Ok(()),
-		Some(e) => Err(e),
+		Some(e) => Err(e.into()),
 	}
 }
 
-async fn task_loop(t: &mut Task, once: bool) -> Result<()> {
+async fn task_loop(t: &mut Task, once: bool) -> Result<(), Error> {
 	loop {
-		fetcher_core::run_task(t).await?;
+		match fetcher_core::run_task(&mut t.inner).await {
+			Ok(()) => (),
+			Err(Error::Transform(transform_err)) => {
+				tracing::error!("Transform error: {}", transform_err.display_chain());
+			}
+			Err(e) => {
+				if let Some(network_err) = e.is_connection_error() {
+					tracing::warn!("Network error: {}", network_err.display_chain());
+				} else {
+					return Err(e);
+				}
+			}
+		}
 
 		if once {
 			break;
@@ -243,10 +257,12 @@ async fn report_error(task_name: &str, err: &str) -> color_eyre::Result<()> {
 	use fetcher_core::sink::Message;
 	use fetcher_core::sink::Telegram;
 
-	let admin_chat_id = match std::env::var("FETCHER_ADMIN_CHAT_ID")?.parse::<i64>() {
+	let admin_chat_id = match std::env::var("FETCHER_TELEGRAM_ADMIN_CHAT_ID")?.parse::<i64>() {
 		Ok(num) => num,
 		Err(e) => {
-			return Err(eyre!("FETCHER_ADMIN_CHAT_ID isn't a valid chat id ({e})"));
+			return Err(eyre!(
+				"FETCHER_TELEGRAM_ADMIN_CHAT_ID isn't a valid chat id ({e})"
+			));
 		}
 	};
 	let bot = match settings::data::telegram().await? {
@@ -256,7 +272,7 @@ async fn report_error(task_name: &str, err: &str) -> color_eyre::Result<()> {
 		}
 	};
 	let msg = Message {
-		body: err.to_owned(),
+		body: Some(err.to_owned()),
 		..Default::default()
 	};
 	Telegram::new(bot, admin_chat_id, LinkLocation::default())
@@ -267,7 +283,7 @@ async fn report_error(task_name: &str, err: &str) -> color_eyre::Result<()> {
 	Ok(())
 }
 
-async fn flatten_task_result<T>(h: JoinHandle<Result<T>>) -> Result<T> {
+async fn flatten_task_result<T, E>(h: JoinHandle<Result<T, E>>) -> Result<T, E> {
 	match h.await {
 		Ok(Ok(res)) => Ok(res),
 		Ok(Err(err)) => Err(err),

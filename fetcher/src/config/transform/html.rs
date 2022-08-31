@@ -9,7 +9,8 @@ pub(crate) mod query;
 use serde::{Deserialize, Serialize};
 
 use self::query::{IdQuery, ImageQuery, Query, TextQuery, TitleQuery, UrlQuery};
-use fetcher_core::source;
+use crate::error::ConfigError;
+use fetcher_core::transform::Html as CoreHtml;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct Html {
@@ -20,7 +21,7 @@ pub(crate) struct Html {
 	pub(crate) titleq: Option<TitleQuery>,
 
 	#[serde(rename = "text_query")]
-	pub(crate) textq: Vec<TextQuery>,
+	pub(crate) textq: Option<Vec<TextQuery>>,
 
 	#[serde(rename = "id_query")]
 	pub(crate) idq: Option<IdQuery>,
@@ -33,14 +34,21 @@ pub(crate) struct Html {
 }
 
 impl Html {
-	pub(crate) fn parse(self) -> source::parser::Html {
-		source::parser::Html {
+	pub(crate) fn parse(self) -> Result<CoreHtml, ConfigError> {
+		Ok(CoreHtml {
 			itemq: self.itemq.into_iter().map(Query::parse).collect(),
-			titleq: self.titleq.map(TitleQuery::parse),
-			textq: self.textq.into_iter().map(TextQuery::parse).collect(),
-			idq: self.idq.map(IdQuery::parse),
-			linkq: self.linkq.map(UrlQuery::parse),
-			imgq: self.imgq.map(ImageQuery::parse),
-		}
+			titleq: self.titleq.map(TitleQuery::parse).transpose()?,
+			textq: self
+				.textq
+				.map(|v| {
+					v.into_iter()
+						.map(TextQuery::parse)
+						.collect::<Result<_, _>>()
+				})
+				.transpose()?,
+			idq: self.idq.map(IdQuery::parse).transpose()?,
+			linkq: self.linkq.map(UrlQuery::parse).transpose()?,
+			imgq: self.imgq.map(ImageQuery::parse).transpose()?,
+		})
 	}
 }

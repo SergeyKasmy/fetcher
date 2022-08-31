@@ -157,11 +157,17 @@ impl Email {
 
 		mails
 			.iter()
-			.filter(|x| x.body().is_some()) // TODO: properly handle error cases and don't just filter them out
 			.map(|x| {
+				let body = x
+					.body()
+					.expect("Body should always be present because we explicitly requested it");
+
+				let uid = 
+					x.uid.expect("UIDs should always be present because we used uid_fetch(). The server probably doesn't support them which isn't something ~we~ support for now").to_string();
+
 				self.parse(
-					&mailparse::parse_mail(x.body().unwrap())?, // unwrap NOTE: temporary but it's safe for now because of the check above
-					x.uid.unwrap().to_string(),
+					&mailparse::parse_mail(body)?,
+					uid,
 				)
 			})
 			.collect::<Result<Vec<Entry>, EmailError>>()
@@ -198,15 +204,15 @@ impl Email {
 			id: Some(id),
 			msg: Message {
 				title: subject,
-				body,
-				link: None,
-				media: None,
+				body: Some(body),
+				..Default::default()
 			},
+			..Default::default()
 		})
 	}
 	// }
 
-	// FIXME: doesn't actually work for some reason
+	// FIXME: doesn't actually work
 	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<(), ImapError> {
 		if let ViewMode::ReadOnly = self.view_mode {
 			return Ok(());

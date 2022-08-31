@@ -4,16 +4,26 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+/// Errors that can happen in [`Sinks`](`crate::sink`)
+pub mod sink;
+/// Errors that can happen in [`Sources`](`crate::source`)
+pub mod source;
+
+pub mod transform;
+
 use std::error::Error as StdError;
 use std::fmt::Write as _;
 
-pub mod sink;
-pub mod source;
+use self::transform::Error as TransformError;
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error("Can't fetch data")]
 	Source(#[from] source::Error),
+
+	#[error("Can't transform data")]
+	Transform(#[from] TransformError),
 
 	#[error("Can't send data")]
 	Sink(#[from] sink::Error),
@@ -25,24 +35,26 @@ pub enum Error {
 	ReadFilterExternalWrite(#[source] std::io::Error),
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum GoogleOAuth2Error {
 	#[error("Error contacting Google servers for authentication")]
-	Post(#[source] reqwest::Error), // TODO: maybe integrate with source::HttpError?
+	Post(#[source] reqwest::Error),
 
+	/// An error received from Google, whatever it is
 	#[error("{0}")]
 	Auth(String),
 }
 
 impl Error {
-	/// Return some network connection error if it is some, otherwise return None
+	/// Check if the current error is somehow related to network connection and return it if it is
 	#[allow(clippy::match_same_arms)]
 	#[must_use]
 	pub fn is_connection_error(&self) -> Option<&(dyn StdError + Send + Sync)> {
 		match self {
 			Error::Source(source_err) => match source_err {
-				source::Error::Parse(_) => None,
 				source::Error::EmptySourceList => None,
+				source::Error::SourceListHasDifferentVariants => None,
 				source::Error::FileRead(_, _) => None,
 				source::Error::Http(http_err) => Some(http_err),
 				// I know it will match any future variants automatically but I actually want it to do that anyways
@@ -56,6 +68,7 @@ impl Error {
 				}
 				source::Error::Twitter(_) => None,
 			},
+			Error::Transform(_) => None,
 			Error::Sink(sink_err) => match sink_err {
 				sink::Error::StdoutWrite(_) => None,
 				sink::Error::Telegram {
@@ -73,7 +86,9 @@ impl Error {
 	}
 }
 
+/// Extention trait for [`std::error::Error`] to print the entire chain of the error
 pub trait ErrorChainExt {
+	/// Return a string intented for logging or printing that formats an error's entire error source chain
 	fn display_chain(&self) -> String;
 }
 

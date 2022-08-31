@@ -12,6 +12,7 @@ pub mod read_filter;
 pub mod sink;
 pub mod source;
 pub mod task;
+pub mod transform;
 
 use std::future::Future;
 use std::pin::Pin;
@@ -20,14 +21,13 @@ use serde::Deserialize;
 use serde::Serialize;
 
 pub use self::task::Task;
-pub use self::task::TemplatesField;
 use crate::error::ConfigError;
 use fetcher_core::read_filter::ReadFilter;
 
 pub(crate) type ReadFilterGetter = Box<
 	dyn Fn(
-		String,
 		Option<fetcher_core::read_filter::Kind>,
+		String,
 	) -> Pin<Box<dyn Future<Output = Result<Option<ReadFilter>, ConfigError>>>>,
 >;
 
@@ -35,7 +35,7 @@ pub(crate) struct DataSettings {
 	pub twitter_auth: Option<(String, String)>,
 	pub google_oauth2: Option<fetcher_core::auth::Google>,
 	pub email_password: Option<String>,
-	pub telegram: Option<teloxide::Bot>,
+	pub telegram: Option<String>,
 	pub read_filter: ReadFilterGetter,
 }
 

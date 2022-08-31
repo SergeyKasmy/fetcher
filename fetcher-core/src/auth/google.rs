@@ -42,12 +42,22 @@ impl Google {
 		}
 	}
 
-	#[allow(clippy::items_after_statements)] // TODO
+	#[allow(clippy::doc_markdown)]
+	/// Generate a new Google OAuth2 refresh token using the `client_id`, `client_secret`, and `access_code`
+	///
+	/// # Errors
+	/// * if there was a network connection error
+	/// * if the responce isn't a valid refresh_token
 	pub async fn generate_refresh_token(
 		client_id: &str,
 		client_secret: &str,
 		access_code: &str,
 	) -> Result<String, GoogleOAuth2Error> {
+		#[derive(Deserialize)]
+		struct Response {
+			refresh_token: String,
+		}
+
 		let body = [
 			("client_id", client_id),
 			("client_secret", client_secret),
@@ -65,12 +75,6 @@ impl Google {
 			.text()
 			.await
 			.map_err(GoogleOAuth2Error::Post)?;
-
-		// TODO: find a better way to get a string without a temporary struct or a million of ok_or()'s
-		#[derive(Deserialize)]
-		struct Response {
-			refresh_token: String,
-		}
 
 		let Response { refresh_token } =
 			serde_json::from_str(&resp).map_err(|_| GoogleOAuth2Error::Auth(resp))?;
@@ -119,6 +123,12 @@ impl Google {
 		Ok(())
 	}
 
+	/// Return a previously gotten `access_token` or fetch a new one
+	///
+	/// # Errors
+	/// * if there was a network connection error
+	/// * if the responce isn't a valid `refresh_token`
+	#[allow(clippy::missing_panics_doc)] // this should never panic
 	pub async fn access_token(&mut self) -> Result<&str, GoogleOAuth2Error> {
 		// FIXME: for some reason the token sometimes expires by itself and should be renewed manually
 		// Update the token if:

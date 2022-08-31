@@ -11,16 +11,20 @@ use super::CONFIG_FILE_EXT;
 use crate::error::ConfigError;
 use fetcher_core::task::template::Template;
 
+const TEMPLATES_DIR: &str = "templates";
+
 #[tracing::instrument(name = "template")]
 pub(crate) fn find(name: &str) -> Result<Option<Template>, ConfigError> {
-	super::cfg_dirs()?
-		.into_iter()
-		.map(|mut p| {
-			p.push("templates");
-			p
-		})
-		.find_map(|p| find_in(&p, name).transpose()) // TODO: what da transpose doin? Probs will short circuit as soon as it encounters an error. Is that what we actually want?
-		.transpose()
+	for template_dir_path in super::cfg_dirs()?.into_iter().map(|mut p| {
+		p.push(TEMPLATES_DIR);
+		p
+	}) {
+		if let Some(template) = find_in(&template_dir_path, name)? {
+			return Ok(Some(template));
+		}
+	}
+
+	Ok(None)
 }
 
 pub(crate) fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>, ConfigError> {

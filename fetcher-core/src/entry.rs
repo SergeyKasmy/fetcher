@@ -7,8 +7,18 @@
 use crate::sink::Message;
 
 // TODO: add message history via responce id -> message id hashmap
-#[derive(Debug)]
+
+/// A [`fetcher`](`crate`) primitive that contains a message and an id returned from a source that can be send to a sink
+#[derive(Clone, Default, Debug)]
 pub struct Entry {
+	/// An optional id of that entry. A [`ReadFilter`](`crate::read_filter::ReadFilter`) can use it to differentiate already read entries from the unread ones
 	pub id: Option<String>, // TODO: add date id type
+
+	/// Raw contents gotten from a [`Source`].
+	///
+	/// It's used to compose a message using [`transformators`](`crate::transform::Transform`).
+	pub raw_contents: Option<String>,
+
+	/// The message itself
 	pub msg: Message,
 }

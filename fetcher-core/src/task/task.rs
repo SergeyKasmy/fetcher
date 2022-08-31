@@ -4,94 +4,23 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
-use crate::{
-	sink::Sink,
-	source::{parser::Parser, Source},
-};
+use crate::{read_filter::ReadFilter, sink::Sink, source::Source, transform::Transform};
 
-/// Name -> Task
-pub type Tasks = HashMap<String, Task>;
-
+/// A core primitive of [`fetcher`](`crate`).
+/// Contains everything from a [`Source`] that allows to fetch some data, to a [`Sink`] that takes that data and sends it somewhere.
+/// It also contains any transformators
 #[derive(Debug)]
 pub struct Task {
-	pub disabled: bool,
-	pub refresh: u64,
+	/// An optional tag that may be put near a message body to differentiate this task from others that may be similar
 	pub tag: Option<String>,
+	pub rf: Option<Arc<RwLock<ReadFilter>>>,
+	/// The source where to fetch some data from
 	pub source: Source,
-	pub parsers: Option<Vec<Parser>>,
+	/// A list of optional transformators which to run the data received from the source through
+	pub transforms: Option<Vec<Transform>>,
+	/// The sink where to send the data to
 	pub sink: Sink,
 }
-
-// #[cfg(test)]
-// mod tests {
-// 	mod source_types {
-// 		use teloxide::Bot;
-
-// 		use super::super::Task;
-// 		use crate::source::email::ViewMode;
-// 		use crate::{
-// 			sink::Sink,
-// 			sink::Telegram,
-// 			source::Rss,
-// 			source::Source,
-// 			source::{email::filters::Filters, Email},
-// 		};
-
-// 		#[test]
-// 		fn one_type() {
-// 			let _x = Task::new(
-// 				false,
-// 				1,
-// 				None,
-// 				Sink::Telegram(Telegram::new(Bot::new("null"), 0)),
-// 				vec![Source::Rss(Rss::new("null".to_owned()))],
-// 			);
-// 		}
-
-// 		#[test]
-// 		fn same_types() {
-// 			let _x = Task::new(
-// 				false,
-// 				1,
-// 				None,
-// 				Sink::Telegram(Telegram::new(Bot::new("null"), 0)),
-// 				vec![
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 				],
-// 			);
-// 		}
-
-// 		#[test]
-// 		#[should_panic]
-// 		fn different_types() {
-// 			let _x = Task::new(
-// 				false,
-// 				1,
-// 				None,
-// 				Sink::Telegram(Telegram::new(Bot::new("null"), 0)),
-// 				vec![
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 					Source::Rss(Rss::new("null".to_owned())),
-// 					Source::Email(Email::with_password(
-// 						"null".to_owned(),
-// 						"null".to_owned(),
-// 						"null".to_owned(),
-// 						Filters {
-// 							sender: None,
-// 							subjects: None,
-// 							exclude_subjects: None,
-// 						},
-// 						ViewMode::ReadOnly,
-// 						None,
-// 					)),
-// 				],
-// 			);
-// 		}
-// 	}
-// }

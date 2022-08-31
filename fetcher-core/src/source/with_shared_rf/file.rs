@@ -8,7 +8,6 @@ use std::path::PathBuf;
 
 use crate::entry::Entry;
 use crate::error::source::Error as SourceError;
-use crate::sink::Message;
 
 #[derive(Debug)]
 pub struct File {
@@ -17,20 +16,15 @@ pub struct File {
 
 impl File {
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&self) -> Result<Vec<Entry>, SourceError> {
+	pub async fn get(&self) -> Result<Entry, SourceError> {
 		let text = tokio::fs::read_to_string(&self.path)
 			.await
 			.map(|s| s.trim().to_owned())
 			.map_err(|e| SourceError::FileRead(e, self.path.clone()))?;
 
-		Ok(vec![Entry {
-			id: None,
-			msg: Message {
-				title: None,
-				body: text,
-				link: None,
-				media: None,
-			},
-		}])
+		Ok(Entry {
+			raw_contents: Some(text),
+			..Default::default()
+		})
 	}
 }

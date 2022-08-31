@@ -4,6 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use regex::Regex;
+
+use crate::error::transform::HtmlError;
+
 #[derive(Clone, Debug)]
 pub enum QueryKind {
 	Tag(String),
@@ -27,6 +31,24 @@ pub struct Query {
 pub struct QueryData {
 	pub query: Vec<Query>,
 	pub data_location: DataLocation,
+	pub regex: Option<Regex>,
+}
+
+impl QueryData {
+	pub fn new(
+		query: Vec<Query>,
+		data_location: DataLocation,
+		re: Option<&str>,
+	) -> Result<Self, HtmlError> {
+		Ok(Self {
+			query,
+			data_location,
+			regex: match re {
+				Some(re) => Some(Regex::new(re)?),
+				None => None,
+			},
+		})
+	}
 }
 
 #[derive(Debug)]

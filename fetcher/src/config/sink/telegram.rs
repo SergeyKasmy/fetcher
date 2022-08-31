@@ -37,12 +37,6 @@ pub(crate) struct Telegram {
 
 impl Telegram {
 	pub(crate) fn parse(self, settings: &DataSettings) -> Result<sink::Telegram, ConfigError> {
-		// let chat_id = match std::env::var("FETCHER_DEBUG_CHAT_ID") {
-		// 	Ok(s) => s
-		// 		.parse::<i64>()
-		// 		.map_err(|_| Error::Other("Invalid chat id in FETCHER_DEBUG_CHAT_ID".to_owned()))?,
-		// 	_ => self.chat_id,
-		// };
 		Ok(sink::Telegram::new(
 			settings
 				.telegram

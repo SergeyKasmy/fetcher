@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use fetcher_core::source;
+use fetcher_core::transform;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct TextQuery {
@@ -16,8 +16,8 @@ pub(crate) struct TextQuery {
 }
 
 impl TextQuery {
-	pub(crate) fn parse(self) -> source::parser::json::TextQuery {
-		source::parser::json::TextQuery {
+	pub(crate) fn parse(self) -> transform::json::TextQuery {
+		transform::json::TextQuery {
 			string: self.string,
 			prepend: self.prepend,
 			append: self.append,
@@ -34,7 +34,7 @@ pub(crate) struct Json {
 	pub(crate) titleq: Option<String>,
 
 	#[serde(rename = "text_query")]
-	pub(crate) textq: Vec<TextQuery>,
+	pub(crate) textq: Option<Vec<TextQuery>>,
 
 	#[serde(rename = "id_query")]
 	pub(crate) idq: String,
@@ -47,11 +47,13 @@ pub(crate) struct Json {
 }
 
 impl Json {
-	pub(crate) fn parse(self) -> source::parser::Json {
-		source::parser::Json {
+	pub(crate) fn parse(self) -> transform::Json {
+		transform::Json {
 			itemq: self.itemq,
 			titleq: self.titleq,
-			textq: self.textq.into_iter().map(TextQuery::parse).collect(),
+			textq: self
+				.textq
+				.map(|v| v.into_iter().map(TextQuery::parse).collect::<_>()),
 			idq: self.idq,
 			linkq: self.linkq.map(TextQuery::parse),
 			imgq: self.imgq,

@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 
 use fetcher_core::read_filter;
 
-// TODO: add None as an option and make the read filter optional throughout the app
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Kind {
@@ -92,17 +91,15 @@ pub struct NotPresent {
 
 impl NotPresent {
 	pub(crate) fn parse(self) -> read_filter::not_present::NotPresent {
-		read_filter::not_present::NotPresent {
-			read_list: self.read_list.into(),
-		}
+		read_filter::not_present::NotPresent::from_iter(self.read_list)
 	}
 
 	pub(crate) fn unparse(read_filter: &read_filter::not_present::NotPresent) -> Option<Self> {
-		if read_filter.read_list.is_empty() {
+		if read_filter.is_empty() {
 			None
 		} else {
 			Some(Self {
-				read_list: read_filter.read_list.iter().cloned().collect(),
+				read_list: read_filter.iter().cloned().collect(),
 			})
 		}
 	}

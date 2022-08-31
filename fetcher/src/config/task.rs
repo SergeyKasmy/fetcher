@@ -5,14 +5,13 @@
  */
 
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
-use super::{read_filter, sink::Sink, source::parser::Parser, source::Source, DataSettings};
-use fetcher_core::task;
-
-#[derive(Deserialize, Debug)]
-pub struct TemplatesField {
-	pub templates: Option<Vec<String>>,
-}
+use super::{read_filter, sink::Sink, source::Source, transform::Transform, DataSettings};
+use crate::error::ConfigError;
+use crate::task::Task as ParsedTask;
+use fetcher_core as fcore;
 
 #[derive(Deserialize, Serialize, Debug)]
 // TODO: add
@@ -20,13 +19,12 @@ pub struct TemplatesField {
 // but allow templates templates field
 // that's used elsewhere
 pub struct Task {
-	disabled: Option<bool>,
 	#[serde(rename = "read_filter_type")]
 	read_filter_kind: Option<read_filter::Kind>,
 	tag: Option<String>,
 	refresh: u64,
 	source: Source,
-	parse: Option<Vec<Parser>>,
+	transform: Option<Vec<Transform>>,
 	// TODO: several sinks
 	sink: Sink,
 }
@@ -36,24 +34,46 @@ impl Task {
 		self,
 		name: &str,
 		settings: &DataSettings,
-	) -> Result<task::Task, crate::error::ConfigError> {
-		let source = self
-			.source
-			.parse(
-				name,
-				settings,
+	) -> Result<ParsedTask, ConfigError> {
+		let rf = {
+			let rf = (settings.read_filter)(
 				self.read_filter_kind.map(read_filter::Kind::parse),
+				name.to_owned(),
 			)
 			.await?;
-		Ok(task::Task {
-			disabled: self.disabled.unwrap_or(false),
-			refresh: self.refresh,
+			rf.map(|rf| Arc::new(RwLock::new(rf)))
+		};
+		let transforms = self
+			.transform
+			.map(|x| {
+				x.into_iter()
+					.filter_map(|x| match x {
+						Transform::ReadFilter => match rf.clone() {
+							Some(rf) => {
+								Some(Ok(fetcher_core::transform::Transform::ReadFilter(rf)))
+							}
+							None => {
+								tracing::warn!("Can't use read filter transformer when no read filter is set up for the task!");
+								None
+							}
+						},
+						x => Some(x.parse()),
+					})
+					.collect::<Result<_, _>>()
+			})
+			.transpose()?;
+
+		let inner = fcore::task::Task {
 			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
-			source,
-			parsers: self
-				.parse
-				.map(|x| x.into_iter().map(Parser::parse).collect()),
+			source: self.source.parse(settings).await?,
+			rf,
+			transforms,
 			sink: self.sink.parse(settings)?,
+		};
+
+		Ok(ParsedTask {
+			inner,
+			refresh: self.refresh,
 		})
 	}
 }

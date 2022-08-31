@@ -7,7 +7,6 @@
 pub mod email;
 pub mod file;
 pub mod http;
-pub mod parser;
 pub mod twitter;
 
 use serde::{Deserialize, Serialize};
@@ -18,7 +17,7 @@ use self::http::Http;
 use self::twitter::Twitter;
 use super::{DataSettings, OneOrMultiple};
 use crate::error::ConfigError;
-use fetcher_core::{read_filter, source};
+use fetcher_core::source;
 
 #[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
 #[derive(Deserialize, Serialize, Debug)]
@@ -48,42 +47,37 @@ pub(crate) enum WithCustomReadFilter {
 impl Source {
 	pub(crate) async fn parse(
 		self,
-		name: &str,
 		settings: &DataSettings,
-		default_read_filter_kind: Option<read_filter::Kind>,
 	) -> Result<source::Source, ConfigError> {
 		Ok(match self {
 			Source::WithSharedReadFilter(v) => {
 				let v: Vec<WithSharedReadFilter> = v.into();
 
-				let inner = v
+				let sources = v
 					.into_iter()
 					.map(|x| {
 						Ok(match x {
 							WithSharedReadFilter::Http(x) => {
-								source::WithSharedReadFilterInner::Http(x.parse()?)
+								source::with_shared_rf::Kind::Http(x.parse()?)
 							}
 							WithSharedReadFilter::Twitter(x) => {
-								source::WithSharedReadFilterInner::Twitter(x.parse(settings)?)
+								source::with_shared_rf::Kind::Twitter(x.parse(settings)?)
 							}
 							WithSharedReadFilter::File(x) => {
-								source::WithSharedReadFilterInner::File(x.parse())
+								source::with_shared_rf::Kind::File(x.parse())
 							}
 						})
 					})
 					.collect::<Result<Vec<_>, ConfigError>>()?;
 
-				let read_filter =
-					(settings.read_filter)(name.to_owned(), default_read_filter_kind).await?;
-
 				source::Source::WithSharedReadFilter(
-					source::WithSharedReadFilter::new(inner, read_filter)
-						.map_err(|e| ConfigError::FetcherCoreSource(e.into()))?,
+					source::with_shared_rf::Source::new(sources)
+						.map_err(|e| ConfigError::FetcherCoreSource(Box::new(e)))?,
 				)
 			}
 			Source::WithCustomReadFilter(s) => match s {
 				WithCustomReadFilter::Email(x) => source::Source::WithCustomReadFilter(
-					source::WithCustomReadFilter::Email(x.parse(settings)?),
+					source::with_custom_rf::Source::Email(x.parse(settings)?),
 				),
 			},
 		})

@@ -4,19 +4,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub mod parse;
-
-use parse::Error as ParseError;
-
 use std::path::PathBuf;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-	#[error("Error parsing data")]
-	Parse(#[from] ParseError),
-
 	#[error("Can't create a source with an empty source list")]
 	EmptySourceList,
+
+	#[error("Can't create a source with a source list that contains different source variants")]
+	SourceListHasDifferentVariants,
 
 	#[error("Can't read file {}", .1.to_string_lossy())]
 	FileRead(#[source] std::io::Error, PathBuf),

@@ -4,15 +4,75 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use std::path::Path;
 use std::{io::Write, path::PathBuf};
 use tokio::fs;
 
 use super::PREFIX;
 use crate::config;
 use crate::error::ConfigError;
+use fetcher_core as fcore;
 use fetcher_core::read_filter::{ExternalSave, ReadFilter};
 
 const READ_DATA_DIR: &str = "read";
+
+/// Returns a read filter for the task name from the filesystem.
+///
+/// # Errors
+/// * if the file is inaccessible
+/// * if the file is corrupted
+#[tracing::instrument(skip(currently_set_rf_kind))]
+pub(crate) async fn get(
+	currently_set_rf_kind: Option<fcore::read_filter::Kind>,
+	name: &str,
+) -> Result<Option<ReadFilter>, ConfigError> {
+	match currently_set_rf_kind {
+		None => Ok(None),
+		Some(currently_set_rf_kind) => {
+			let path = read_filter_path(name)?;
+
+			match fs::read_to_string(&path).await {
+				Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
+					tracing::debug!("Read filter save file is empty");
+
+					Ok(Some(ReadFilter::new(
+						currently_set_rf_kind,
+						Box::new(save_file(&path)?),
+					)))
+				}
+				Err(e) => {
+					tracing::debug!("Read filter save file doesn't exist or is inaccessible: {e}");
+
+					Ok(Some(ReadFilter::new(
+						currently_set_rf_kind,
+						Box::new(save_file(&path)?),
+					)))
+				}
+				Ok(save_file_rf_raw) => {
+					let save_file_rf = {
+						let save_file_rf_conf: config::read_filter::ReadFilter =
+							serde_json::from_str(&save_file_rf_raw).map_err(|e| {
+								ConfigError::CorruptedConfig(Box::new(e), path.clone())
+							})?;
+
+						save_file_rf_conf.parse(Box::new(save_file(&path)?))
+					};
+
+					// the old read filter saved on disk is of the same type as the one set in config
+					if save_file_rf.to_kind() == currently_set_rf_kind {
+						Ok(Some(save_file_rf))
+					} else {
+						Err(ConfigError::IncompatibleReadFilterTypes {
+							in_config: save_file_rf.to_kind(),
+							on_disk: currently_set_rf_kind,
+							disk_rf_path: path,
+						})
+					}
+				}
+			}
+		}
+	}
+}
 
 fn read_filter_path(name: &str) -> Result<PathBuf, ConfigError> {
 	debug_assert!(!name.is_empty());
@@ -57,61 +117,16 @@ impl ExternalSave for TruncatingFileWriter {
 	}
 }
 
-/// Returns a read filter for the task name from the filesystem.
-///
-/// # Errors
-/// * if the file is inaccessible
-/// * if the file is corrupted
-#[tracing::instrument(skip(default))]
-pub(crate) async fn get(
-	name: &str,
-	// TODO: remove option
-	default: Option<fetcher_core::read_filter::Kind>,
-) -> Result<Option<ReadFilter>, ConfigError> {
-	let path = read_filter_path(name)?;
-
-	let filter_external_save = || -> Result<_, ConfigError> {
-		if let Some(parent) = path.parent() {
-			std::fs::create_dir_all(parent)
-				.map_err(|e| ConfigError::Write(e, parent.to_owned()))?;
-		}
-
-		let file = std::fs::OpenOptions::new()
-			.create(true)
-			.write(true)
-			.open(&path)
-			.map_err(|e| ConfigError::Write(e, path.clone()))?;
-
-		Ok(TruncatingFileWriter { file })
-	};
-
-	// return a valid read filter if there is one
-	let filter = match fs::read_to_string(&path).await.ok() {
-		None => {
-			tracing::trace!("Read filter save file doesn't exist");
-			None
-		}
-		Some(filter_str) => match filter_str.len() {
-			0 => {
-				tracing::trace!("Read filter save file exists but is empty");
-				None
-			}
-			l => {
-				tracing::trace!("Read filter save file exists and is {} bytes long", l);
-
-				let read_filter_conf: config::read_filter::ReadFilter =
-					serde_json::from_str(&filter_str)
-						.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
-				Some(read_filter_conf.parse(Box::new(filter_external_save()?)))
-			}
-		},
-	};
-
-	// create a new one if there's none
-	match filter {
-		f @ Some(_) => Ok(f),
-		None => default
-			.map(|k| Ok(ReadFilter::new(k, Box::new(filter_external_save()?))))
-			.transpose(),
+fn save_file(path: &Path) -> Result<TruncatingFileWriter, ConfigError> {
+	if let Some(parent) = path.parent() {
+		std::fs::create_dir_all(parent).map_err(|e| ConfigError::Write(e, parent.to_owned()))?;
 	}
+
+	let file = std::fs::OpenOptions::new()
+		.create(true)
+		.write(true)
+		.open(&path)
+		.map_err(|e| ConfigError::Write(e, path.to_path_buf()))?;
+
+	Ok(TruncatingFileWriter { file })
 }

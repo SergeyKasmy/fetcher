@@ -17,13 +17,15 @@ use teloxide::{
 	Bot,
 	RequestError,
 };
+use url::Url;
 
 use crate::{
 	error::sink::Error as SinkError,
 	sink::{Media, Message},
 };
 
-const MAX_MSG_LEN: usize = 4096;
+// FIXME: it's 1024 for media captions and 4096 for normal messages
+const MAX_MSG_LEN: usize = 1024;
 
 /// Either embed the link into the title or put it as a separate "Link" button at the botton of the message.
 /// `PreferTitle` falls back to `Bottom` if Message.title is None
@@ -43,18 +45,17 @@ pub struct Telegram {
 
 impl Telegram {
 	#[must_use]
-	pub fn new(bot: Bot, chat_id: i64, link_location: LinkLocation) -> Self {
+	pub fn new(token: String, chat_id: i64, link_location: LinkLocation) -> Self {
 		Self {
 			// TODO: THIS BLOCKS. WHY??????
 			// #2 throttle() spawns a tokio task but we are in sync. Maybe that causes the hangup?
 			// bot: bot.throttle(Limits::default()),
-			bot,
+			bot: Bot::new(token),
 			chat_id: ChatId(chat_id),
 			link_location,
 		}
 	}
 
-	#[allow(clippy::items_after_statements)] // TODO
 	#[tracing::instrument(skip_all)]
 	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError> {
 		let Message {
@@ -64,53 +65,28 @@ impl Telegram {
 			media,
 		} = message;
 
-		// TODO: replace upticks ` with teloxide::utils::html::escape_code
-
-		// NOTE: emails/html sites often contain all kinds of html or other text which Telegram's HTML parser doesn't approve of
-		// I dislike the need to add an extra dependency just for this simple task but you gotta do what you gotta do.
-		// Hopefully I'll find a better way to escape everything though since I don't fear a possibility that it'll be
-		// somehow harmful 'cause it doesn't consern me, only Telegram :P
-		let body = ammonia::clean(&body);
-
 		tracing::debug!(
-			"Processing message: title: {title:?}, body len: {blen}, media: {m}",
-			blen = body.len(),
-			m = media.is_some(),
+			"Processing message: title: {title:?}, body len: {}, link: {}, media: {}",
+			body.as_ref().map(|s| s.len()).unwrap_or(0),
+			link.is_some(),
+			media.is_some(),
 		);
 
-		// tried using Option here but ended up using unwrap_or_default() later anyways, so I'd thought why not use empty strings directly.
-		// Sadly they aren't ZST but 24 bytes but that shouldn't be ~too~ much...
-		let (mut head, tail) = match (&title, &link) {
-			// if title and link are both presend
-			(Some(title), Some(link)) => match self.link_location {
-				// and the link should be in the title, then combine them
-				LinkLocation::PreferTitle => {
-					(format!("<a href=\"{link}\">{title}</a>\n"), String::new())
-				}
-				// even it should be at the bottom, return both separately
-				LinkLocation::Bottom => (
-					format!("{title}\n\n"),
-					format!("\n<a href=\"{link}\">Link</a>"),
-				),
-			},
-			// if only the title is presend, just print itself with an added newline
-			(Some(title), None) => (format!("{title}\n\n"), String::new()),
-			// and if only the link is present, but it at the bottom of the message, even if it should try to be in the title
-			(None, Some(link)) => (String::new(), format!("\n<a href=\"{link}\">Link</a>")),
-			(None, None) => (String::new(), String::new()),
-		};
+		let title = title.map(|s| teloxide::utils::html::escape(&s));
+		let body = body.map(|s| teloxide::utils::html::escape(&s));
 
-		if let Some(tag) = tag {
-			head.insert_str(0, &format!("#{tag}\n\n"));
-		}
+		let (head, tail) = self.format_head_tail(title, link, tag);
+		let body = body.unwrap_or_default();
 
+		// TODO: send media with the first message
+		// TODO: maybe add an option to make all consecutive messages reply to the prev ones
 		let text = {
 			if body.chars().count() + head.chars().count() + tail.chars().count() > MAX_MSG_LEN {
-				let mut msg_parts = split_into_multiple_msg(head, body, tail);
+				let mut msg_parts = split_msg_into_parts(head, body, tail);
 				let last = msg_parts.pop().unwrap(); // unwrap NOTE: we confirmed the entire message is too long, thus we should have at least one part
 
 				for msg_part in msg_parts {
-					self.send_text(msg_part).await?;
+					self.send_text(&msg_part).await?;
 				}
 
 				last
@@ -120,26 +96,23 @@ impl Telegram {
 		};
 
 		if let Some(media) = media {
-			match self
-				.send_media(
-					media
-						.into_iter()
-						.map(|x| match x {
-							Media::Photo(url) => InputMedia::Photo(
-								InputMediaPhoto::new(InputFile::url(url))
-									.caption(text.clone())
-									.parse_mode(ParseMode::Html),
-							),
-							Media::Video(url) => InputMedia::Video(
-								InputMediaVideo::new(InputFile::url(url))
-									.caption(text.clone())
-									.parse_mode(ParseMode::Html),
-							),
-						})
-						.collect::<Vec<InputMedia>>(),
-				)
-				.await
-			{
+			let media = media
+				.into_iter()
+				.map(|x| match x {
+					Media::Photo(url) => InputMedia::Photo(
+						InputMediaPhoto::new(InputFile::url(url))
+							.caption(text.clone())
+							.parse_mode(ParseMode::Html),
+					),
+					Media::Video(url) => InputMedia::Video(
+						InputMediaVideo::new(InputFile::url(url))
+							.caption(text.clone())
+							.parse_mode(ParseMode::Html),
+					),
+				})
+				.collect::<Vec<InputMedia>>();
+
+			match self.send_media(media).await {
 				Err(SinkError::Telegram {
 					source: RequestError::Api(ApiError::Unknown(e)),
 					msg: _,
@@ -148,20 +121,20 @@ impl Telegram {
 				{
 					// TODO: reupload the image manually if this happens
 					tracing::warn!("Telegram disapproved of the media URL ({e}), sending the message as pure text");
-					self.send_text(text).await?;
+					self.send_text(&text).await?;
 				}
 				Ok(_) => (),
 				Err(e) => return Err(e),
 			}
 		} else {
-			self.send_text(text).await?;
+			self.send_text(&text).await?;
 		}
 
 		Ok(())
 	}
 
 	// TODO: move error handling out to dedup send_text & send_media
-	async fn send_text(&self, message: String) -> Result<TelMessage, SinkError> {
+	async fn send_text(&self, message: &str) -> Result<TelMessage, SinkError> {
 		loop {
 			tracing::info!("Sending text message");
 			// TODO: move to the Sink::send() despetcher method mb
@@ -169,7 +142,7 @@ impl Telegram {
 
 			match self
 				.bot
-				.send_message(self.chat_id, &message)
+				.send_message(self.chat_id, message)
 				.parse_mode(ParseMode::Html)
 				.disable_web_page_preview(true)
 				.send()
@@ -186,7 +159,7 @@ impl Telegram {
 				Err(e) => {
 					return Err(SinkError::Telegram {
 						source: e,
-						msg: Box::new(message),
+						msg: Box::new(message.to_owned()),
 					});
 				}
 			}
@@ -227,18 +200,45 @@ impl Telegram {
 			}
 		}
 	}
-}
 
-impl std::fmt::Debug for Telegram {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("Telegram")
-			.field("chat_id", &self.chat_id)
-			.finish_non_exhaustive()
+	fn format_head_tail(
+		&self,
+		title: Option<String>,
+		link: Option<Url>,
+		tag: Option<&str>,
+	) -> (String, String) {
+		// tried using Option here but ended up using unwrap_or_default() later anyways, so I'd thought why not use empty strings directly.
+		// Sadly they aren't ZST but 24 bytes but that shouldn't be ~too~ much...
+		let (mut head, tail) = match (title, link) {
+			// if title and link are both presend
+			(Some(title), Some(link)) => match self.link_location {
+				// and the link should be in the title, then combine them
+				LinkLocation::PreferTitle => {
+					(format!("<a href=\"{link}\">{title}</a>\n"), String::new())
+				}
+				// even it should be at the bottom, return both separately
+				LinkLocation::Bottom => (
+					format!("{title}\n\n"),
+					format!("\n<a href=\"{link}\">Link</a>"),
+				),
+			},
+			// if only the title is presend, just print itself with an added newline
+			(Some(title), None) => (format!("{title}\n\n"), String::new()),
+			// and if only the link is present, but it at the bottom of the message, even if it should try to be in the title
+			(None, Some(link)) => (String::new(), format!("\n<a href=\"{link}\">Link</a>")),
+			(None, None) => (String::new(), String::new()),
+		};
+
+		if let Some(tag) = tag {
+			head.insert_str(0, &format!("#{}\n\n", tag.replace('/', "_")));
+		}
+
+		(head, tail)
 	}
 }
 
 #[allow(clippy::needless_pass_by_value)] // I want to take ownership of the msg parts to avoid using them later by mistake
-fn split_into_multiple_msg(head: String, body: String, tail: String) -> Vec<String> {
+fn split_msg_into_parts(head: String, body: String, tail: String) -> Vec<String> {
 	let body_char_num = body.chars().count();
 	let head_char_num = head.chars().count();
 	let tail_char_num = tail.chars().count();
@@ -287,57 +287,67 @@ fn split_into_multiple_msg(head: String, body: String, tail: String) -> Vec<Stri
 	parts
 }
 
+impl std::fmt::Debug for Telegram {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Telegram")
+			.field("chat_id", &self.chat_id)
+			.finish_non_exhaustive()
+	}
+}
+
 #[cfg(test)]
 mod tests {
-	use super::*;
-	const MSG_COUNT: usize = 3;
+	mod split_msg {
+		use super::super::{split_msg_into_parts, MAX_MSG_LEN};
+		const MSG_COUNT: usize = 3;
 
-	#[test]
-	fn split_msg_empty_head_tail() {
-		let head = String::new();
+		#[test]
+		fn empty_head_tail() {
+			let head = String::new();
 
-		let mut body = String::new();
-		for _ in 0..MAX_MSG_LEN * MSG_COUNT {
-			body.push('b');
+			let mut body = String::new();
+			for _ in 0..MAX_MSG_LEN * MSG_COUNT {
+				body.push('b');
+			}
+
+			let tail = String::new();
+
+			let v = split_msg_into_parts(head, body, tail);
+			assert_eq!(v.len(), MSG_COUNT);
 		}
 
-		let tail = String::new();
+		#[test]
+		fn long_head() {
+			let mut head = String::new();
+			for _ in 0..150 {
+				head.push('h');
+			}
 
-		let v = split_into_multiple_msg(head, body, tail);
-		assert_eq!(v.len(), MSG_COUNT);
-	}
+			let mut body = String::new();
+			for _ in 0..MAX_MSG_LEN * MSG_COUNT {
+				body.push('b');
+			}
 
-	#[test]
-	fn split_msg_long_head() {
-		let mut head = String::new();
-		for _ in 0..150 {
-			head.push('h');
+			let tail = String::new();
+
+			let v = split_msg_into_parts(head, body, tail);
+			assert_eq!(v.len(), MSG_COUNT + 1);
 		}
 
-		let mut body = String::new();
-		for _ in 0..MAX_MSG_LEN * MSG_COUNT {
-			body.push('b');
+		#[test]
+		fn with_tail_almost_fitting() {
+			let head = String::new();
+
+			let mut body = String::new();
+			// body is 1 char from max msg len
+			for _ in 0..MAX_MSG_LEN * MSG_COUNT - 1 {
+				body.push('b');
+			}
+
+			let tail = "tt".to_owned(); // and tail is 2 char
+
+			let v = split_msg_into_parts(head, body, tail);
+			assert_eq!(v.len(), MSG_COUNT + 1); // tail shouldn't be split and thus should be put into it's own msg
 		}
-
-		let tail = String::new();
-
-		let v = split_into_multiple_msg(head, body, tail);
-		assert_eq!(v.len(), MSG_COUNT + 1);
-	}
-
-	#[test]
-	fn split_msg_with_tail_almost_fitting() {
-		let head = String::new();
-
-		let mut body = String::new();
-		// body is 1 char from max msg len
-		for _ in 0..MAX_MSG_LEN * MSG_COUNT - 1 {
-			body.push('b');
-		}
-
-		let tail = "tt".to_owned(); // and tail is 2 char
-
-		let v = split_into_multiple_msg(head, body, tail);
-		assert_eq!(v.len(), MSG_COUNT + 1); // tail shouldn't be split and thus should be put into it's own msg
 	}
 }

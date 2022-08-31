@@ -1,30 +1,30 @@
 [package]
 name = "fetcher-core"
 description = "Core fetcher functionality"
-version = "0.8.1"
+version = "0.9.0"
 license = "MPL-2.0"
 repository = "https://github.com/SergeyKasmy/fetcher"
 edition = "2021"
 
 [dependencies]
-ammonia = "3.2.0"
-async-trait = "0.1.56"
-chrono = "0.4.19"
+async-trait = "0.1.57"
+chrono = "0.4.22"
 egg-mode = { version = "0.16.0", features = ["rustls"], default-features = false }
 futures = "0.3.21"
 # NOTE: 0.22 is a hard requirement by soup, make sure not to update it when doing cargo upgrade
 html5ever = "0.22"
-imap = { version = "3.0.0-alpha.7", features = [ "rustls-tls" ], default-features = false }
+imap = { version = "3.0.0-alpha.8", features = [ "rustls-tls" ], default-features = false }
 itertools = "0.10.3"
 mailparse = "0.13.8"
 once_cell = "1.13.0"
+regex = "1.6.0"
 reqwest = { version = "0.11.11", features = ["rustls-tls", "gzip"], default-features = false }
 rss = "2.0.1"
-serde = { version = "1.0.138", features = [ "derive" ] }
-serde_json = "1.0.82"
+serde = { version = "1.0.143", features = ["derive"] }
+serde_json = "1.0.83"
 soup = "0.5.1"
-teloxide = { version = "0.9.2", features = ["rustls", "ctrlc_handler"], default-features = false }	# TODO: why is ctrlc_handler required anyway?
-thiserror = "1.0.31"
-tokio = { version = "1.19.2", features = ["full"] }
-tracing = "0.1.35"
+teloxide = { version = "0.10.1", features = ["rustls"], default-features = false }
+thiserror = "1.0.32"
+tokio = { version = "1.20.1", features = ["fs", "io-std"] }
+tracing = "0.1.36"
 url = "2.2.2"

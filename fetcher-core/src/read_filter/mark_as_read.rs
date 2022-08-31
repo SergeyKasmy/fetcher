@@ -4,8 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#[allow(clippy::module_inception)]
-pub mod task;
-pub mod template;
+use async_trait::async_trait;
 
-pub use self::{task::Task, template::Template};
+use crate::error::Error;
+
+#[async_trait]
+pub trait MarkAsRead {
+	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error>;
+}
