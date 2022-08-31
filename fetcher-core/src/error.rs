@@ -68,7 +68,10 @@ impl Error {
 				}
 				source::Error::Twitter(_) => None,
 			},
-			Error::Transform(_) => None,
+			Error::Transform(tr_err) => match &tr_err.kind {
+				transform::Kind::Http(transform::HttpError::Other(http_err)) => Some(http_err),
+				_ => None,
+			},
 			Error::Sink(sink_err) => match sink_err {
 				sink::Error::StdoutWrite(_) => None,
 				sink::Error::Telegram {
