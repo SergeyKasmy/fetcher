@@ -63,10 +63,16 @@ impl Error {
 					source::EmailError::Imap(imap_err) => Some(imap_err),
 					_ => None,
 				},
-				source::Error::Twitter(source::TwitterError::Other(other_twitter_err)) => {
-					Some(other_twitter_err)
-				}
-				source::Error::Twitter(_) => None,
+				source::Error::Twitter(twitter_err) => match twitter_err {
+					source::TwitterError::Auth(auth_err) => match auth_err {
+						egg_mode::error::Error::NetError(net_err) => Some(net_err),
+						_ => None,
+					},
+					source::TwitterError::Other(other_err) => match other_err {
+						egg_mode::error::Error::NetError(net_err) => Some(net_err),
+						_ => None,
+					},
+				},
 			},
 			Error::Transform(tr_err) => match &tr_err.kind {
 				transform::Kind::Http(transform::HttpError::Other(http_err)) => Some(http_err),
