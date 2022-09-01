@@ -4,9 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use regex::Regex;
-
-use crate::error::transform::HtmlError;
+use crate::{
+	error::transform::{HtmlError, RegexError},
+	transform::Regex,
+};
 
 #[derive(Clone, Debug)]
 pub enum QueryKind {
@@ -44,7 +45,7 @@ impl QueryData {
 			query,
 			data_location,
 			regex: match re {
-				Some(re) => Some(Regex::new(re)?),
+				Some(re) => Some(Regex::new(re, false)?),
 				None => None,
 			},
 		})

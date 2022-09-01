@@ -59,6 +59,9 @@ pub(crate) enum ConfigError {
 	#[error("Error setting up HTML parser")]
 	FetcherCoreHtml(#[from] fetcher_core::error::transform::HtmlError),
 
+	#[error("Error setting up Regex parser")]
+	FetcherCoreRegex(#[from] fetcher_core::error::transform::RegexError),
+
 	#[error("Error setting up a source")]
 	FetcherCoreSource(#[source] Box<fetcher_core::error::source::Error>),
 

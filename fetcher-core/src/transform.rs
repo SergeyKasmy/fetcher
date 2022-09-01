@@ -8,11 +8,13 @@ pub mod caps;
 pub mod html;
 pub mod json;
 pub mod print;
+pub mod regex;
 pub mod rss;
 pub mod use_raw_contents;
 
 pub use self::html::Html;
 pub use self::json::Json;
+pub use self::regex::Regex;
 pub use self::rss::Rss;
 
 use std::sync::Arc;
@@ -41,6 +43,7 @@ pub enum Transform {
 
 	// filter data
 	ReadFilter(Arc<RwLock<ReadFilter>>),
+	Regex(Regex),
 
 	// modify data in-place
 	/// use [`raw_contents`](`crate::entry::Entry::raw_contents`) as message's [`body`](`crate::sink::Message::body`)
@@ -85,6 +88,7 @@ impl Transform {
 			Transform::ReadFilter(_) => {
 				unreachable!("Read filter doesn't support transforming one by one")
 			}
+			Transform::Regex(x) => x.transform(&entry).map(|x| vec![x]).map_err(Into::into),
 			Transform::UseRawContents => Ok(vec![use_raw_contents::transform(&entry)]),
 			Transform::Caps => Ok(vec![caps::transform(&entry)]),
 			Transform::Print => {

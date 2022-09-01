@@ -254,18 +254,12 @@ fn extract_data(
 
 	let s = data.join("\n\n");
 
-	let s = if let Some(re) = &query_data.regex {
-		let captures = match re.captures(&s) {
-			Some(x) => x,
+	let s = match &query_data.regex {
+		Some(re) => match re.extract(&s)? {
+			Some(s) => s,
 			None => return Ok(None),
-		};
-
-		captures
-			.name("s")
-			.ok_or(HtmlError::RegexCaptureGroupMissing)?
-			.as_str()
-	} else {
-		&s
+		},
+		None => &s,
 	};
 
 	Ok(Some(s.trim().to_owned()))

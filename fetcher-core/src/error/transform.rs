@@ -27,6 +27,9 @@ pub enum Kind {
 
 	#[error("JSON parsing error")]
 	Json(#[from] JsonError),
+
+	#[error("Regex error")]
+	Regex(#[from] RegexError),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -40,6 +43,14 @@ pub enum HttpError {
 	#[error(transparent)]
 	Other(#[from] crate::error::source::HttpError),
 }
+
+#[derive(thiserror::Error, Debug)]
+#[error("There's nothing to transform")]
+pub struct NothingToTransformError;
+
+#[derive(thiserror::Error, Debug)]
+#[error("Invalid URL: {1}")]
+pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
 
 #[derive(thiserror::Error, Debug)]
 pub enum RssError {
@@ -67,11 +78,8 @@ pub enum HtmlError {
 	#[error("Image not found but it's not optional")]
 	ImageNotFound,
 
-	#[error("Invalid regex pattern")]
-	InvalidRegexPattern(#[from] regex::Error),
-
-	#[error("Missing regex capture group named <s>")]
-	RegexCaptureGroupMissing,
+	#[error(transparent)]
+	RegexError(#[from] RegexError),
 
 	#[error("Invalid time format")]
 	InvalidTimeFormat(#[from] chrono::ParseError),
@@ -100,9 +108,10 @@ pub enum JsonError {
 }
 
 #[derive(thiserror::Error, Debug)]
-#[error("There's nothing to transform")]
-pub struct NothingToTransformError;
+pub enum RegexError {
+	#[error("Invalid regex pattern")]
+	InvalidPattern(#[from] regex::Error),
 
-#[derive(thiserror::Error, Debug)]
-#[error("Invalid URL: {1}")]
-pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
+	#[error("Missing regex capture group named <s>")]
+	CaptureGroupMissing,
+}

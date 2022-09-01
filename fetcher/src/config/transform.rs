@@ -6,13 +6,15 @@
 
 pub mod html;
 pub mod json;
-
-use serde::{Deserialize, Serialize};
+pub mod regex;
 
 use self::html::Html;
 use self::json::Json;
+use self::regex::Regex;
 use crate::error::ConfigError;
 use fetcher_core::transform as core_transform;
+
+use serde::{Deserialize, Serialize};
 
 #[allow(clippy::large_enum_variant)] // this enum is very short-lived, I don't think boxing is worth the trouble
 #[derive(Deserialize, Serialize, Debug)]
@@ -25,6 +27,7 @@ pub(crate) enum Transform {
 	Rss,
 
 	ReadFilter,
+	Regex(Regex),
 
 	Caps,
 	UseRawContents,
@@ -41,6 +44,7 @@ impl Transform {
 			Transform::Rss => core_transform::Transform::Rss(core_transform::Rss {}),
 
 			Transform::ReadFilter => unreachable!("If the transform was set to ReadFilter, it should've been parsed beforehand and it shouldn't be possible to reach here"),	// TODO: make this a compile-time guarantee probably
+			Transform::Regex(x) => core_transform::Transform::Regex(x.parse()?),
 			Transform::Caps => core_transform::Transform::Caps,
 			Transform::UseRawContents => core_transform::Transform::UseRawContents,
 			Transform::Print => core_transform::Transform::Print,
