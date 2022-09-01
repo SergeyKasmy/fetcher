@@ -39,12 +39,12 @@ The main unit of execution in fetcher is a task. A task consists of a source whe
 disabled: true
 
 refresh: 30	 # in minutes
-read_filter_type: newer_than_read
+read_filter_type: newer_than_read	# save only the last one sent/read
 source:
-  http:
-    url: <your_rss_feed_url>
-parse:
+  http: '<your_rss_feed_url>'
+transform:
   - rss
+  - read_filter	# leave out only entries newer than the last one read
 sink:
   telegram:
     chat_id: <your_telegram_chat_id>
@@ -57,26 +57,32 @@ Currently available source types:
 * http
 * file
 
-parser types:
+transform types:
 
-* html
-* rss
-* json
+* http: follows url
+* html: parses html
+* rss: parses rss
+* json: parses json
+* read_filter: filters out read entries
+* use_raw_contents: use unparsed data from a source as the body of the message, e.g. raw html
+* print: debug prints current entry contents  (mostly for testing)
+* caps: make all message text uppercase (mostly for testing)
 
 sink types:
 
 * telegram
 * stdout
+* null
 
 Since a lot of these fields are dependent on the particular source, parser, and sink types and since fetcher is in heavy development at the moment, there isn't any template or example config files but fetcher will notify you if there are missing fields and what values they can have, so it's not that difficult to make one by trial and error even without reading the source code.
 
 ### Login credentials
 
-To set up login credentials, run fetcher with `--gen-secret-<name>` where name is either of these services:
+To set up login credentials, run fetcher with `--save-secret-<name>` where name is either of these services:
 
 * `google-oauth2`
 * `twitter`
 * `telegram`
 
 After finishing the prompt, you will be able to use any of these services automatically without additional authorization.
-There's also a way to use an app password for Google/Gmail (saved with `--gen-secret-google-password`) but it's insecure and shouldn't be used for anything other than testing purposes
+There's also a way to use an app password for Gmail/IMAP (saved with `--save-secret-email-password`) but it's insecure and shouldn't be used for anything other than testing purposes
