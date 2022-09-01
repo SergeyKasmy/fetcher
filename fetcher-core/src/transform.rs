@@ -10,6 +10,7 @@ pub mod json;
 pub mod print;
 pub mod regex;
 pub mod rss;
+pub mod shorten;
 pub mod trim;
 pub mod use_raw_contents;
 
@@ -17,6 +18,7 @@ pub use self::html::Html;
 pub use self::json::Json;
 pub use self::regex::Regex;
 pub use self::rss::Rss;
+pub use self::shorten::Shorten;
 pub use self::trim::Trim;
 
 use std::sync::Arc;
@@ -52,6 +54,7 @@ pub enum Transform {
 	UseRawContents,
 	Caps,
 	Trim(Trim),
+	Shorten(Shorten),
 
 	// other
 	Print,
@@ -95,6 +98,7 @@ impl Transform {
 			Transform::UseRawContents => Ok(vec![use_raw_contents::transform(&entry)]),
 			Transform::Caps => Ok(vec![caps::transform(&entry)]),
 			Transform::Trim(x) => Ok(vec![x.transform(&entry)]),
+			Transform::Shorten(x) => Ok(vec![x.transform(&entry)]),
 			Transform::Print => {
 				print::transform(&entry).await;
 				Ok(vec![Entry::default()])
