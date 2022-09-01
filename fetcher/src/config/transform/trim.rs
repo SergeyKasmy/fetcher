@@ -9,6 +9,7 @@ use fetcher_core::transform::Trim as CoreTrim;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "snake_case")]
 pub(crate) enum Trim {
 	Title,
 	Body,
