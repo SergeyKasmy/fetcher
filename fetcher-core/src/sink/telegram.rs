@@ -264,12 +264,16 @@ fn split_msg_into_parts(head: String, body: String, tail: String) -> Vec<String>
 		let next_body_part_chars_count =
 			std::cmp::min(MAX_MSG_LEN, body_char_num - next_body_part_from);
 
-		parts.push(
-			body.chars()
-				.skip(next_body_part_from)
-				.take(MAX_MSG_LEN)
-				.collect::<String>(),
-		);
+		let part = body
+			.chars()
+			.skip(next_body_part_from)
+			.take(MAX_MSG_LEN)
+			.collect::<String>();
+
+		if !part.is_empty() {
+			parts.push(part);
+		}
+
 		next_body_part_from += next_body_part_chars_count;
 	}
 
