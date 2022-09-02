@@ -112,6 +112,9 @@ pub enum RegexError {
 	#[error("Invalid regex pattern")]
 	InvalidPattern(#[from] regex::Error),
 
-	#[error("Missing regex capture group named <s>")]
+	#[error("Missing regex capture group named <s>, e.g. (?P<s>.*)")]
 	CaptureGroupMissing,
+
+	#[error("No match found in {0:?}")]
+	NoMatchFound(String),
 }

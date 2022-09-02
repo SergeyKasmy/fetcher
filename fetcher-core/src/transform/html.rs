@@ -21,7 +21,10 @@ use crate::entry::Entry;
 use crate::error::transform::HtmlError;
 use crate::error::transform::InvalidUrlError;
 use crate::error::transform::NothingToTransformError;
+use crate::error::transform::RegexError;
 use crate::sink::{Media, Message};
+use crate::transform::regex::extract as regex_extract;
+use crate::transform::regex::ExtractionResult as RegexExtractResult;
 
 #[derive(Debug)]
 pub struct Html {
@@ -255,9 +258,10 @@ fn extract_data(
 	let s = data.join("\n\n");
 
 	let s = match &query_data.regex {
-		Some(re) => match re.extract(&s)? {
-			Some(s) => s,
-			None => return Ok(None),
+		Some(re) => match regex_extract(&re, &s) {
+			RegexExtractResult::Extracted(s) => s,
+			RegexExtractResult::NotMatched => return Err(RegexError::NoMatchFound(s).into()),
+			RegexExtractResult::Matched => return Err(RegexError::CaptureGroupMissing.into()),
 		},
 		None => &s,
 	};
