@@ -64,6 +64,7 @@ transform types:
 * rss: parses rss
 * json: parses json
 * read_filter: filters out read entries
+* take: takes any num of entries from the beginning or the end
 * use_raw_contents: use unparsed data from a source as the body of the message, e.g. raw html
 * print: debug prints current entry contents  (mostly for testing)
 * caps: make all message text uppercase (mostly for testing)

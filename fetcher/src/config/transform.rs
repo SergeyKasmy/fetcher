@@ -8,12 +8,14 @@ pub mod html;
 pub mod json;
 pub mod regex;
 pub mod shorten;
+pub mod take;
 pub mod trim;
 
 use self::html::Html;
 use self::json::Json;
 use self::regex::Regex;
 use self::shorten::Shorten;
+use self::take::Take;
 use self::trim::Trim;
 use crate::error::ConfigError;
 use fetcher_core::transform as core_transform;
@@ -32,6 +34,7 @@ pub(crate) enum Transform {
 
 	ReadFilter,
 	Regex(Regex),
+	Take(Take),
 
 	UseRawContents,
 	Caps,
@@ -51,6 +54,7 @@ impl Transform {
 			Transform::Rss => core_transform::Transform::Rss(core_transform::Rss {}),
 			Transform::ReadFilter => unreachable!("If the transform was set to ReadFilter, it should've been parsed beforehand and it shouldn't be possible to reach here"),	// TODO: make this a compile-time guarantee probably
 			Transform::Regex(x) => core_transform::Transform::Regex(x.parse()?),
+			Transform::Take(x) => core_transform::Transform::Take(x.parse()),
 			Transform::UseRawContents => core_transform::Transform::UseRawContents,
 			Transform::Caps => core_transform::Transform::Caps,
 			Transform::Trim(x) => core_transform::Transform::Trim(x.parse()),

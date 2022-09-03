@@ -11,6 +11,7 @@ pub mod print;
 pub mod regex;
 pub mod rss;
 pub mod shorten;
+pub mod take;
 pub mod trim;
 pub mod use_raw_contents;
 
@@ -19,6 +20,7 @@ pub use self::json::Json;
 pub use self::regex::Regex;
 pub use self::rss::Rss;
 pub use self::shorten::Shorten;
+pub use self::take::Take;
 pub use self::trim::Trim;
 
 use std::sync::Arc;
@@ -48,6 +50,7 @@ pub enum Transform {
 	// filter data
 	ReadFilter(Arc<RwLock<ReadFilter>>),
 	Regex(Regex),
+	Take(Take),
 
 	// modify data in-place
 	/// use [`raw_contents`](`crate::entry::Entry::raw_contents`) as message's [`body`](`crate::sink::Message::body`)
@@ -66,17 +69,25 @@ impl Transform {
 	/// # Errors
 	/// if there was an error parsing the entry
 	pub async fn transform(&self, mut entries: Vec<Entry>) -> Result<Vec<Entry>, TransformError> {
-		Ok(if let Transform::ReadFilter(rf) = self {
-			rf.read().await.remove_read_from(&mut entries);
-			entries
-		} else {
-			let mut fully_transformed_entries = Vec::new();
-			for entry in entries {
-				fully_transformed_entries.extend(self.transform_one(entry).await?);
+		let res = match self {
+			Transform::ReadFilter(rf) => {
+				rf.read().await.remove_read_from(&mut entries);
+				entries
 			}
+			Transform::Take(take) => {
+				take.filter(&mut entries);
+				entries
+			}
+			_ => {
+				let mut fully_transformed_entries = Vec::new();
+				for entry in entries {
+					fully_transformed_entries.extend(self.transform_one(entry).await?);
+				}
 
-			fully_transformed_entries
-		})
+				fully_transformed_entries
+			}
+		};
+		Ok(res)
 	}
 
 	async fn transform_one(&self, entry: Entry) -> Result<Vec<Entry>, TransformError> {
@@ -95,6 +106,9 @@ impl Transform {
 				unreachable!("Read filter doesn't support transforming one by one")
 			}
 			Transform::Regex(x) => x.transform(&entry).map(|x| vec![x]).map_err(Into::into),
+			Transform::Take(_) => {
+				unreachable!("Take doesn't support transforming one by one")
+			}
 			Transform::UseRawContents => Ok(vec![use_raw_contents::transform(&entry)]),
 			Transform::Caps => Ok(vec![caps::transform(&entry)]),
 			Transform::Trim(x) => Ok(vec![x.transform(&entry)]),
