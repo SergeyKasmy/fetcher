@@ -15,12 +15,16 @@ pub struct Shorten {
 
 impl Shorten {
 	pub fn transform(&self, entry: &Entry) -> Entry {
-		let body = entry.msg.body.clone().map(|s| {
-			s.chars()
-				.take(self.len)
-				.chain(repeat('.').take(3))
-				.collect()
-		});
+		let body = if self.len == 0 {
+			Some(String::new())
+		} else {
+			entry.msg.body.clone().map(|s| {
+				s.chars()
+					.take(self.len)
+					.chain(repeat('.').take(3))
+					.collect()
+			})
+		};
 
 		Entry {
 			msg: Message {
