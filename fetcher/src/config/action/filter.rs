@@ -4,24 +4,25 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::transform::Trim as CoreTrim;
+pub mod take;
+
+use self::take::Take;
+use fetcher_core::action::filter::Kind as CoreFilterKind;
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum Trim {
-	Title,
-	Body,
-	All,
+pub enum Filter {
+	ReadFilter,
+	Take(Take),
 }
 
-impl Trim {
-	pub(crate) fn parse(self) -> CoreTrim {
+impl Filter {
+	pub fn parse(self) -> CoreFilterKind {
 		match self {
-			Self::Title => CoreTrim::Title,
-			Self::Body => CoreTrim::Body,
-			Self::All => CoreTrim::All,
+			Self::ReadFilter => unreachable!(),
+			Self::Take(x) => CoreFilterKind::Take(x.parse()),
 		}
 	}
 }

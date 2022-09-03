@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use super::{read_filter, sink::Sink, source::Source, transform::Transform, DataSettings};
+use super::action::filter::Filter;
+use super::action::Action;
+use super::{read_filter, sink::Sink, source::Source, DataSettings};
 use crate::error::ConfigError;
 use crate::task::Task as ParsedTask;
 use fetcher_core as fcore;
@@ -24,7 +26,8 @@ pub struct Task {
 	tag: Option<String>,
 	refresh: u64,
 	source: Source,
-	transform: Option<Vec<Transform>>,
+	#[serde(rename = "process")]
+	actions: Option<Vec<Action>>,
 	// TODO: several sinks
 	sink: Sink,
 }
@@ -43,21 +46,21 @@ impl Task {
 			.await?;
 			rf.map(|rf| Arc::new(RwLock::new(rf)))
 		};
-		let transforms = self
-			.transform
+		let actions = self
+			.actions
 			.map(|x| {
 				x.into_iter()
-					.filter_map(|x| match x {
-						Transform::ReadFilter => match rf.clone() {
-							Some(rf) => {
-								Some(Ok(fetcher_core::transform::Transform::ReadFilter(rf)))
-							}
+					.filter_map(|act| match act {
+						Action::Filter(Filter::ReadFilter) => match rf.clone() {
+							Some(rf) => Some(Ok(fetcher_core::action::Action::Filter(
+								fetcher_core::action::filter::Kind::ReadFilter(rf),
+							))),
 							None => {
 								tracing::warn!("Can't use read filter transformer when no read filter is set up for the task!");
 								None
 							}
 						},
-						x => Some(x.parse()),
+						other => Some(other.parse()),
 					})
 					.collect::<Result<_, _>>()
 			})
@@ -67,7 +70,7 @@ impl Task {
 			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
 			source: self.source.parse(settings).await?,
 			rf,
-			transforms,
+			actions,
 			sink: self.sink.parse(settings)?,
 		};
 

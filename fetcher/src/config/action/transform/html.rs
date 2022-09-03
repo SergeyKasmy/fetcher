@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use self::query::{IdQuery, ImageQuery, Query, TextQuery, TitleQuery, UrlQuery};
 use crate::error::ConfigError;
-use fetcher_core::transform::Html as CoreHtml;
+use fetcher_core::action::transform::Html as CoreHtml;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct Html {

@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use fetcher_core::transform;
+use fetcher_core::action::transform;
 
 use crate::error::ConfigError;
 
