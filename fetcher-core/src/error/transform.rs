@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use std::convert::Infallible;
+
 use crate::{entry::Entry, source::with_shared_rf::http::TransformFromField};
 
 #[derive(thiserror::Error, Debug)]
@@ -117,4 +119,10 @@ pub enum RegexError {
 
 	#[error("No match found in {0:?}")]
 	NoMatchFound(String),
+}
+
+impl From<Infallible> for Kind {
+	fn from(inf: Infallible) -> Self {
+		match inf {}
+	}
 }

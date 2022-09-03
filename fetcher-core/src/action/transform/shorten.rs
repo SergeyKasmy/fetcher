@@ -4,9 +4,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use super::Transform;
+use crate::action::transform::result::{
+	TransformResult as TrRes, TransformedEntry, TransformedMessage,
+};
 use crate::entry::Entry;
-use crate::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage};
 
+use std::convert::Infallible;
 use std::iter::repeat;
 
 #[derive(Debug)]
@@ -14,8 +18,16 @@ pub struct Shorten {
 	pub len: usize,
 }
 
+impl Transform for Shorten {
+	type Error = Infallible;
+
+	fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+		Ok(vec![self.transform_impl(entry)])
+	}
+}
+
 impl Shorten {
-	pub fn transform(&self, entry: &Entry) -> TransformedEntry {
+	pub fn transform_impl(&self, entry: &Entry) -> TransformedEntry {
 		let body = if self.len == 0 {
 			TrRes::Empty
 		} else {

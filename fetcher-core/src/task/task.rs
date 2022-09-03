@@ -7,7 +7,7 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::{read_filter::ReadFilter, sink::Sink, source::Source, transform::Transform};
+use crate::{action::Action, read_filter::ReadFilter, sink::Sink, source::Source};
 
 /// A core primitive of [`fetcher`](`crate`).
 /// Contains everything from a [`Source`] that allows to fetch some data, to a [`Sink`] that takes that data and sends it somewhere.
@@ -20,7 +20,7 @@ pub struct Task {
 	/// The source where to fetch some data from
 	pub source: Source,
 	/// A list of optional transformators which to run the data received from the source through
-	pub transforms: Option<Vec<Transform>>,
+	pub actions: Option<Vec<Action>>,
 	/// The sink where to send the data to
 	pub sink: Sink,
 }

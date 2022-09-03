@@ -7,10 +7,13 @@
 use serde_json::Value;
 use url::Url;
 
+use super::Transform;
+use crate::action::transform::result::{
+	TransformResult as TrRes, TransformedEntry, TransformedMessage,
+};
 use crate::entry::Entry;
 use crate::error::transform::{InvalidUrlError, JsonError, NothingToTransformError};
 use crate::sink::Media;
-use crate::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage};
 
 #[derive(Debug)]
 pub struct TextQuery {
@@ -30,9 +33,11 @@ pub struct Json {
 	pub imgq: Option<Vec<String>>, // nested
 }
 
-impl Json {
+impl Transform for Json {
+	type Error = JsonError;
+
 	#[tracing::instrument(skip_all)]
-	pub fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, JsonError> {
+	fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
 		let json: Value =
 			serde_json::from_str(entry.raw_contents.as_ref().ok_or(NothingToTransformError)?)?;
 

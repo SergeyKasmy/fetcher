@@ -17,15 +17,19 @@ use self::query::{
 	DataLocation, IdQuery, IdQueryKind, ImageQuery, Query, QueryData, QueryKind, TextQuery,
 	TitleQuery, UrlQuery,
 };
+use crate::action::transform::regex::extract as regex_extract;
+use crate::action::transform::regex::ExtractionResult as RegexExtractResult;
+use crate::action::transform::result::{
+	TransformResult as TrRes, TransformedEntry, TransformedMessage,
+};
 use crate::entry::Entry;
 use crate::error::transform::HtmlError;
 use crate::error::transform::InvalidUrlError;
 use crate::error::transform::NothingToTransformError;
 use crate::error::transform::RegexError;
 use crate::sink::Media;
-use crate::transform::regex::extract as regex_extract;
-use crate::transform::regex::ExtractionResult as RegexExtractResult;
-use crate::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage};
+
+use super::Transform;
 
 #[derive(Debug)]
 pub struct Html {
@@ -38,10 +42,10 @@ pub struct Html {
 	pub imgq: Option<ImageQuery>,
 }
 
-// TODO: make sure (and add tests!) that it errors if no item was found
-impl Html {
-	#[tracing::instrument(skip_all)]
-	pub fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, HtmlError> {
+impl Transform for Html {
+	type Error = HtmlError;
+
+	fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
 		tracing::debug!("Parsing HTML");
 
 		let soup = Soup::new(
@@ -61,7 +65,10 @@ impl Html {
 
 		Ok(entries)
 	}
+}
 
+// TODO: make sure (and add tests!) that it errors if no item was found
+impl Html {
 	fn extract_entry(&self, item: &impl QueryBuilderExt) -> Result<TransformedEntry, HtmlError> {
 		let id = self
 			.idq

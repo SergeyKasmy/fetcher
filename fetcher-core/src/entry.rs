@@ -16,7 +16,7 @@ pub struct Entry {
 
 	/// Raw contents gotten from a [`Source`].
 	///
-	/// It's used to compose a message using [`transformators`](`crate::transform::Transform`).
+	/// It's used to compose a message using [`transformators`](`crate::action::transform::Transform`).
 	pub raw_contents: Option<String>,
 
 	/// The message itself
