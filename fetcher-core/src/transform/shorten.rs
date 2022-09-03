@@ -4,9 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::iter::repeat;
+use crate::entry::Entry;
+use crate::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage};
 
-use crate::{entry::Entry, sink::Message};
+use std::iter::repeat;
 
 #[derive(Debug)]
 pub struct Shorten {
@@ -14,20 +15,20 @@ pub struct Shorten {
 }
 
 impl Shorten {
-	pub fn transform(&self, entry: &Entry) -> Entry {
+	pub fn transform(&self, entry: &Entry) -> TransformedEntry {
 		let body = if self.len == 0 {
-			Some(String::new())
+			TrRes::Empty
 		} else {
-			entry.msg.body.clone().map(|s| {
+			TrRes::New(entry.msg.body.clone().map(|s| {
 				s.chars()
 					.take(self.len)
 					.chain(repeat('.').take(3))
 					.collect()
-			})
+			}))
 		};
 
-		Entry {
-			msg: Message {
+		TransformedEntry {
+			msg: TransformedMessage {
 				body,
 				..Default::default()
 			},

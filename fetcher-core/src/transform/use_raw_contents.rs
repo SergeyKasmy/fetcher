@@ -4,12 +4,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::{entry::Entry, sink::Message};
+use crate::entry::Entry;
+use crate::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage};
 
-pub fn transform(entry: &Entry) -> Entry {
-	Entry {
-		msg: Message {
-			body: entry.raw_contents.clone(),
+pub fn transform(entry: &Entry) -> TransformedEntry {
+	TransformedEntry {
+		msg: TransformedMessage {
+			body: TrRes::New(entry.raw_contents.clone()),
 			..Default::default()
 		},
 		..Default::default()

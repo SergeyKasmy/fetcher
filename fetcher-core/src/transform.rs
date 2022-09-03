@@ -10,6 +10,7 @@ pub mod html;
 pub mod json;
 pub mod print;
 pub mod regex;
+pub mod result;
 pub mod shorten;
 pub mod take;
 pub mod trim;
@@ -23,16 +24,16 @@ pub use self::shorten::Shorten;
 pub use self::take::Take;
 pub use self::trim::Trim;
 
-use std::sync::Arc;
-use tokio::sync::RwLock;
-
+use self::result::TransformedEntry;
 use crate::entry::Entry;
 use crate::error::transform::Error as TransformError;
 use crate::error::transform::Kind as TransformErrorKind;
 use crate::read_filter::ReadFilter;
-use crate::sink::Message;
 use crate::source::with_shared_rf::http::TransformFromField;
 use crate::source::Http;
+
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 /// Type that allows transformation of a single [`Entry`] into one or multiple separate entries.
 /// That includes everything from parsing a markdown format like JSON to simple transformations like making all text uppercase
@@ -91,7 +92,7 @@ impl Transform {
 	}
 
 	async fn transform_one(&self, entry: Entry) -> Result<Vec<Entry>, TransformError> {
-		let res: Result<_, TransformErrorKind> = match self {
+		let res: Result<Vec<TransformedEntry>, TransformErrorKind> = match self {
 			Transform::Http => {
 				Http::transform(&entry, TransformFromField::MessageLink) // TODO: make this a choise
 					.await
@@ -115,7 +116,7 @@ impl Transform {
 			Transform::Shorten(x) => Ok(vec![x.transform(&entry)]),
 			Transform::Print => {
 				print::transform(&entry).await;
-				Ok(vec![Entry::default()])
+				Ok(vec![TransformedEntry::default()])
 			}
 		};
 
@@ -127,19 +128,7 @@ impl Transform {
 			// TODO: check if v is empty (mb make it an option even), and return the last entry if it is.
 			// to avoid the unnecessary `Ok(vec![Entry::default()])` in the print transform
 			v.into_iter()
-				// use old entry's value if some new entry's field is None
-				.map(|new_entry| Entry {
-					id: new_entry.id.or_else(|| entry.id.clone()),
-					raw_contents: new_entry
-						.raw_contents
-						.or_else(|| entry.raw_contents.clone()),
-					msg: Message {
-						title: new_entry.msg.title.or_else(|| entry.msg.title.clone()),
-						body: new_entry.msg.body.or_else(|| entry.msg.body.clone()),
-						link: new_entry.msg.link.or_else(|| entry.msg.link.clone()),
-						media: new_entry.msg.media.or_else(|| entry.msg.media.clone()),
-					},
-				})
+				.map(|new_entry| new_entry.into_entry(entry.clone()))
 				.collect()
 		})
 	}

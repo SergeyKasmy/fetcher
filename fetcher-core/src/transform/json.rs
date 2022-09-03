@@ -9,7 +9,8 @@ use url::Url;
 
 use crate::entry::Entry;
 use crate::error::transform::{InvalidUrlError, JsonError, NothingToTransformError};
-use crate::sink::{Media, Message};
+use crate::sink::Media;
+use crate::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage};
 
 #[derive(Debug)]
 pub struct TextQuery {
@@ -31,7 +32,7 @@ pub struct Json {
 
 impl Json {
 	#[tracing::instrument(skip_all)]
-	pub fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, JsonError> {
+	pub fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, JsonError> {
 		let json: Value =
 			serde_json::from_str(entry.raw_contents.as_ref().ok_or(NothingToTransformError)?)?;
 
@@ -181,17 +182,17 @@ impl Json {
 					})
 					.transpose()?;
 
-				Ok(Entry {
-					id: Some(id),
-					raw_contents: body.clone(),
-					msg: Message {
-						title,
-						body,
-						link,
-						media: img.map(|url| vec![Media::Photo(url)]),
+				Ok(TransformedEntry {
+					id: TrRes::New(Some(id)),
+					raw_contents: TrRes::New(body.clone()),
+					msg: TransformedMessage {
+						title: TrRes::New(title),
+						body: TrRes::New(body),
+						link: TrRes::New(link),
+						media: TrRes::New(img.map(|url| vec![Media::Photo(url)])),
 					},
 				})
 			})
-			.collect::<Result<Vec<Entry>, JsonError>>()
+			.collect()
 	}
 }

@@ -5,14 +5,16 @@
  */
 
 use crate::entry::Entry;
-use crate::sink::Message;
+use crate::transform::result::TransformResult;
+use crate::transform::result::TransformedEntry;
+use crate::transform::result::TransformedMessage;
 
 #[tracing::instrument(skip_all)]
-pub fn transform(entry: &Entry) -> Entry {
-	Entry {
-		msg: Message {
-			title: entry.msg.title.as_ref().map(|s| s.to_uppercase()),
-			body: entry.msg.body.as_ref().map(|s| s.to_uppercase()),
+pub fn transform(entry: &Entry) -> TransformedEntry {
+	TransformedEntry {
+		msg: TransformedMessage {
+			title: TransformResult::New(entry.msg.title.as_ref().map(|s| s.to_uppercase())),
+			body: TransformResult::New(entry.msg.body.as_ref().map(|s| s.to_uppercase())),
 			..Default::default()
 		},
 		..Default::default()

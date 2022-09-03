@@ -6,7 +6,7 @@
 
 use crate::entry::Entry;
 use crate::error::transform::{FeedError, NothingToTransformError};
-use crate::sink::Message;
+use crate::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage};
 
 use url::Url;
 
@@ -15,7 +15,7 @@ pub struct Feed;
 
 impl Feed {
 	#[tracing::instrument(skip_all)]
-	pub fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, FeedError> {
+	pub fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, FeedError> {
 		tracing::debug!("Parsing feed entries");
 
 		let feed = feed_rs::parser::parse(
@@ -39,13 +39,13 @@ impl Feed {
 				let body = Some(feed_entry.summary.unwrap().content);
 				let link = Some(Url::try_from(feed_entry.links.remove(0).href.as_str()).unwrap()); // panics
 
-				Entry {
-					id,
-					raw_contents: body.clone(),
-					msg: Message {
-						title,
-						body,
-						link,
+				TransformedEntry {
+					id: TrRes::New(id),
+					raw_contents: TrRes::New(body.clone()),
+					msg: TransformedMessage {
+						title: TrRes::New(title),
+						body: TrRes::New(body),
+						link: TrRes::New(link),
 						..Default::default()
 					},
 				}

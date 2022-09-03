@@ -22,9 +22,10 @@ use crate::error::transform::HtmlError;
 use crate::error::transform::InvalidUrlError;
 use crate::error::transform::NothingToTransformError;
 use crate::error::transform::RegexError;
-use crate::sink::{Media, Message};
+use crate::sink::Media;
 use crate::transform::regex::extract as regex_extract;
 use crate::transform::regex::ExtractionResult as RegexExtractResult;
+use crate::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage};
 
 #[derive(Debug)]
 pub struct Html {
@@ -40,7 +41,7 @@ pub struct Html {
 // TODO: make sure (and add tests!) that it errors if no item was found
 impl Html {
 	#[tracing::instrument(skip_all)]
-	pub fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, HtmlError> {
+	pub fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, HtmlError> {
 		tracing::debug!("Parsing HTML");
 
 		let soup = Soup::new(
@@ -61,7 +62,7 @@ impl Html {
 		Ok(entries)
 	}
 
-	fn extract_entry(&self, item: &impl QueryBuilderExt) -> Result<Entry, HtmlError> {
+	fn extract_entry(&self, item: &impl QueryBuilderExt) -> Result<TransformedEntry, HtmlError> {
 		let id = self
 			.idq
 			.as_ref()
@@ -89,14 +90,14 @@ impl Html {
 			None => None,
 		};
 
-		Ok(Entry {
-			id,
-			raw_contents: body.clone(), // TODO: add an ability to choose if raw_contents should be kept from prev step
-			msg: Message {
-				title,
-				body,
-				link,
-				media: img.map(|url| vec![Media::Photo(url)]),
+		Ok(TransformedEntry {
+			id: TrRes::New(id),
+			raw_contents: TrRes::New(body.clone()), // TODO: add an ability to choose if raw_contents should be kept from prev step
+			msg: TransformedMessage {
+				title: TrRes::New(title),
+				body: TrRes::New(body),
+				link: TrRes::New(link),
+				media: TrRes::New(img.map(|url| vec![Media::Photo(url)])),
 			},
 		})
 	}
@@ -258,7 +259,7 @@ fn extract_data(
 	let s = data.join("\n\n");
 
 	let s = match &query_data.regex {
-		Some(re) => match regex_extract(&re, &s) {
+		Some(re) => match regex_extract(re, &s) {
 			RegexExtractResult::Extracted(s) => s,
 			RegexExtractResult::NotMatched => return Err(RegexError::NoMatchFound(s).into()),
 			RegexExtractResult::Matched => return Err(RegexError::CaptureGroupMissing.into()),

@@ -13,6 +13,7 @@ use crate::entry::Entry;
 use crate::error::source::HttpError;
 use crate::error::transform::{HttpError as HttpTransformError, InvalidUrlError};
 use crate::sink::Message;
+use crate::transform::result::{TransformResult, TransformedEntry, TransformedMessage};
 
 const USER_AGENT: &str =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0";
@@ -103,7 +104,7 @@ impl Http {
 	pub async fn transform(
 		entry: &Entry,
 		from_field: TransformFromField,
-	) -> Result<Entry, HttpTransformError> {
+	) -> Result<TransformedEntry, HttpTransformError> {
 		let link = match from_field {
 			TransformFromField::MessageLink => entry.msg.link.clone(),
 			TransformFromField::RawContents => entry
@@ -114,7 +115,20 @@ impl Http {
 		};
 		let link = link.ok_or(HttpTransformError::MissingUrl(from_field))?;
 
-		Ok(Self::new(link)?.get().await?)
+		let Entry {
+			raw_contents,
+			msg: Message { link, .. },
+			..
+		} = Self::new(link)?.get().await?;
+
+		Ok(TransformedEntry {
+			raw_contents: TransformResult::New(raw_contents),
+			msg: TransformedMessage {
+				link: TransformResult::New(link),
+				..Default::default()
+			},
+			..Default::default()
+		})
 	}
 }
 
