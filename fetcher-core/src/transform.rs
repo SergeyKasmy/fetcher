@@ -5,20 +5,20 @@
  */
 
 pub mod caps;
+pub mod feed;
 pub mod html;
 pub mod json;
 pub mod print;
 pub mod regex;
-pub mod rss;
 pub mod shorten;
 pub mod take;
 pub mod trim;
 pub mod use_raw_contents;
 
+pub use self::feed::Feed;
 pub use self::html::Html;
 pub use self::json::Json;
 pub use self::regex::Regex;
-pub use self::rss::Rss;
 pub use self::shorten::Shorten;
 pub use self::take::Take;
 pub use self::trim::Trim;
@@ -36,7 +36,7 @@ use crate::source::Http;
 
 /// Type that allows transformation of a single [`Entry`] into one or multiple separate entries.
 /// That includes everything from parsing a markdown format like JSON to simple transformations like making all text uppercase
-// NOTE: Rss (and probs others in the future) is a ZST, so there's always going to be some amount of variance of enum sizes but is trying to avoid that worth the hasle of a Box?
+// NOTE: Feed (and probs others in the future) is a ZST, so there's always going to be some amount of variance of enum sizes but is trying to avoid that worth the hasle of a Box?
 // TODO: add raw_contents -> msg.body transformator
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -45,7 +45,7 @@ pub enum Transform {
 	Http,
 	Html(Html),
 	Json(Json),
-	Rss(Rss),
+	Feed(Feed),
 
 	// filter data
 	ReadFilter(Arc<RwLock<ReadFilter>>),
@@ -100,7 +100,7 @@ impl Transform {
 			}
 			Transform::Html(x) => x.transform(&entry).map_err(Into::into),
 			Transform::Json(x) => x.transform(&entry).map_err(Into::into),
-			Transform::Rss(x) => x.transform(&entry).map_err(Into::into),
+			Transform::Feed(x) => x.transform(&entry).map_err(Into::into),
 			// Transform::ReadFilter(rf) => Ok(rf.read().await.transform(&entries)),
 			Transform::ReadFilter(_) => {
 				unreachable!("Read filter doesn't support transforming one by one")

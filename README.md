@@ -43,7 +43,7 @@ read_filter_type: newer_than_read	# save only the last one sent/read
 source:
   http: '<your_rss_feed_url>'
 transform:
-  - rss
+  - feed
   - read_filter	# leave out only entries newer than the last one read
 sink:
   telegram:
@@ -61,7 +61,7 @@ transform types:
 
 * http: follows url
 * html: parses html
-* rss: parses rss
+* feed: parses rss and atom feeds
 * json: parses json
 * read_filter: filters out read entries
 * take: takes any num of entries from the beginning or the end

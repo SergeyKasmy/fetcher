@@ -4,39 +4,40 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use rss::Channel;
-
 use crate::entry::Entry;
-use crate::error::transform::{NothingToTransformError, RssError};
+use crate::error::transform::{FeedError, NothingToTransformError};
 use crate::sink::Message;
 
+use url::Url;
+
 #[derive(Debug)]
-pub struct Rss;
+pub struct Feed;
 
-impl Rss {
+impl Feed {
 	#[tracing::instrument(skip_all)]
-	pub fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, RssError> {
-		tracing::debug!("Parsing RSS articles");
+	pub fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, FeedError> {
+		tracing::debug!("Parsing feed entries");
 
-		let feed = Channel::read_from(
+		let feed = feed_rs::parser::parse(
 			entry
 				.raw_contents
 				.as_ref()
 				.ok_or(NothingToTransformError)?
 				.as_bytes(),
-		)?;
+		)
+		.unwrap();
 
-		tracing::debug!("Got {num} RSS articles total", num = feed.items.len());
+		tracing::debug!("Got {num} feed entries total", num = feed.entries.len());
 
 		let entries = feed
-			.items
+			.entries
 			.into_iter()
-			.map(|x| {
+			.map(|mut feed_entry| {
 				// unwrap NOTE: "safe", these are required fields	// TODO: make an error
-				let id = Some(x.guid.as_ref().unwrap().value.clone());
-				let title = Some(x.title.unwrap());
-				let body = Some(x.description.unwrap());
-				let link = Some(x.link.unwrap().as_str().try_into().unwrap());
+				let id = Some(feed_entry.id);
+				let title = Some(feed_entry.title.unwrap().content);
+				let body = Some(feed_entry.summary.unwrap().content);
+				let link = Some(Url::try_from(feed_entry.links.remove(0).href.as_str()).unwrap()); // panics
 
 				Entry {
 					id,

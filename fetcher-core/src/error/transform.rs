@@ -19,8 +19,8 @@ pub enum Kind {
 	#[error("HTTP error")]
 	Http(#[from] HttpError),
 
-	#[error("RSS parsing error")]
-	Rss(#[from] RssError),
+	#[error("Feed parsing error")]
+	Feed(#[from] FeedError),
 
 	#[error("HTML parsing error")]
 	Html(#[from] HtmlError),
@@ -53,12 +53,12 @@ pub struct NothingToTransformError;
 pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
 
 #[derive(thiserror::Error, Debug)]
-pub enum RssError {
+pub enum FeedError {
 	#[error(transparent)]
 	NothingToTransform(#[from] NothingToTransformError),
 
 	#[error(transparent)]
-	Rss(#[from] rss::Error),
+	Other(#[from] feed_rs::parser::ParseFeedError),
 }
 
 #[derive(thiserror::Error, Debug)]

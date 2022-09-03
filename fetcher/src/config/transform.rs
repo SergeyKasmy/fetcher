@@ -30,7 +30,7 @@ pub(crate) enum Transform {
 	Http,
 	Html(Html),
 	Json(Json),
-	Rss,
+	Feed,
 
 	ReadFilter,
 	Regex(Regex),
@@ -51,7 +51,7 @@ impl Transform {
 			Transform::Http => core_transform::Transform::Http,
 			Transform::Html(x) => core_transform::Transform::Html(x.parse()?),
 			Transform::Json(x) => core_transform::Transform::Json(x.parse()),
-			Transform::Rss => core_transform::Transform::Rss(core_transform::Rss {}),
+			Transform::Feed => core_transform::Transform::Feed(core_transform::Feed {}),
 			Transform::ReadFilter => unreachable!("If the transform was set to ReadFilter, it should've been parsed beforehand and it shouldn't be possible to reach here"),	// TODO: make this a compile-time guarantee probably
 			Transform::Regex(x) => core_transform::Transform::Regex(x.parse()?),
 			Transform::Take(x) => core_transform::Transform::Take(x.parse()),
