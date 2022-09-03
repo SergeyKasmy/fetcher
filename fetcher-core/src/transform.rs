@@ -116,7 +116,7 @@ impl Transform {
 			Transform::Shorten(x) => Ok(vec![x.transform(&entry)]),
 			Transform::Print => {
 				print::transform(&entry).await;
-				Ok(vec![TransformedEntry::default()])
+				Ok(Vec::new())
 			}
 		};
 
@@ -125,11 +125,14 @@ impl Transform {
 			original_entry: entry.clone(),
 		})
 		.map(|v| {
-			// TODO: check if v is empty (mb make it an option even), and return the last entry if it is.
-			// to avoid the unnecessary `Ok(vec![Entry::default()])` in the print transform
-			v.into_iter()
-				.map(|new_entry| new_entry.into_entry(entry.clone()))
-				.collect()
+			if v.is_empty() {
+				// pass-through the previous entry if the resulting after transforms vec is empty, i.e. if there was nothing done to the old entry
+				vec![entry]
+			} else {
+				v.into_iter()
+					.map(|new_entry| new_entry.into_entry(entry.clone()))
+					.collect()
+			}
 		})
 	}
 }
