@@ -6,13 +6,19 @@
 
 pub mod html;
 pub mod json;
-
-use serde::{Deserialize, Serialize};
+pub mod regex;
+pub mod shorten;
+pub mod trim;
 
 use self::html::Html;
 use self::json::Json;
+use self::regex::Regex;
+use self::shorten::Shorten;
+use self::trim::Trim;
 use crate::error::ConfigError;
 use fetcher_core::transform as core_transform;
+
+use serde::{Deserialize, Serialize};
 
 #[allow(clippy::large_enum_variant)] // this enum is very short-lived, I don't think boxing is worth the trouble
 #[derive(Deserialize, Serialize, Debug)]
@@ -25,9 +31,12 @@ pub(crate) enum Transform {
 	Rss,
 
 	ReadFilter,
+	Regex(Regex),
 
-	Caps,
 	UseRawContents,
+	Caps,
+	Trim(Trim),
+	Shorten(Shorten),
 
 	Print,
 }
@@ -35,14 +44,17 @@ pub(crate) enum Transform {
 impl Transform {
 	pub(crate) fn parse(self) -> Result<core_transform::Transform, ConfigError> {
 		Ok(match self {
+			// TODO: core_transform::Transform -> CoreTransform
 			Transform::Http => core_transform::Transform::Http,
 			Transform::Html(x) => core_transform::Transform::Html(x.parse()?),
 			Transform::Json(x) => core_transform::Transform::Json(x.parse()),
 			Transform::Rss => core_transform::Transform::Rss(core_transform::Rss {}),
-
 			Transform::ReadFilter => unreachable!("If the transform was set to ReadFilter, it should've been parsed beforehand and it shouldn't be possible to reach here"),	// TODO: make this a compile-time guarantee probably
-			Transform::Caps => core_transform::Transform::Caps,
+			Transform::Regex(x) => core_transform::Transform::Regex(x.parse()?),
 			Transform::UseRawContents => core_transform::Transform::UseRawContents,
+			Transform::Caps => core_transform::Transform::Caps,
+			Transform::Trim(x) => core_transform::Transform::Trim(x.parse()),
+			Transform::Shorten(x) => core_transform::Transform::Shorten(x.parse()),
 			Transform::Print => core_transform::Transform::Print,
 		})
 	}

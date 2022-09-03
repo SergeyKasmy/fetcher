@@ -28,3 +28,6 @@ thiserror = "1.0.32"
 tokio = { version = "1.20.1", features = ["fs", "io-std"] }
 tracing = "0.1.36"
 url = "2.2.2"
+
+[dev-dependencies]
+assert_matches = "1.5"
