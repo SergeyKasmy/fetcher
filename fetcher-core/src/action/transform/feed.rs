@@ -4,18 +4,22 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use super::Transform;
+use crate::action::transform::result::{
+	TransformResult as TrRes, TransformedEntry, TransformedMessage,
+};
 use crate::entry::Entry;
 use crate::error::transform::{FeedError, NothingToTransformError};
-use crate::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage};
 
 use url::Url;
 
 #[derive(Debug)]
 pub struct Feed;
 
-impl Feed {
-	#[tracing::instrument(skip_all)]
-	pub fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, FeedError> {
+impl Transform for Feed {
+	type Error = FeedError;
+
+	fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
 		tracing::debug!("Parsing feed entries");
 
 		let feed = feed_rs::parser::parse(

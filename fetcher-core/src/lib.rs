@@ -5,11 +5,12 @@
  */
 
 //! fetcher core    // TODO
-#![warn(clippy::pedantic)]
+// #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)] // TODO
-#![warn(missing_docs)]
-#![warn(clippy::unwrap_used)]
+										   // #![warn(missing_docs)]
+										   // #![warn(clippy::unwrap_used)]
 
+pub mod action;
 /// Everything concerning some kind of non-primitive authentication
 pub mod auth;
 /// Contains [`Entry`] - a struct that contains a message that can be fed into a [`Sink`] and an id that can be used with a [`ReadFilter`](`read_filter::ReadFilter`)
@@ -24,13 +25,12 @@ pub mod sink;
 pub mod source;
 /// Contains [`Task`] - a struct that combines everything from the above into a one coherent entity
 pub mod task;
-pub mod transform;
 
 use crate::{
+	action::Action,
 	entry::Entry,
 	error::{transform::Error as TransformError, Error},
 	task::Task,
-	transform::Transform,
 };
 
 use std::collections::HashSet;
@@ -43,14 +43,15 @@ pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 	tracing::trace!("Running task: {:#?}", t);
 
 	let entries = {
-		let untransformed = t.source.get().await?;
+		let raw = t.source.get().await?;
 
-		let transformed = match &t.transforms {
-			Some(transforms) => transform_entries(untransformed, transforms).await?,
-			None => untransformed,
+		let processed = match &t.actions {
+			Some(actions) => process_entries(raw, actions).await?,
+			None => raw,
 		};
 
-		remove_duplicates(transformed)
+		// TODO: make this an action mb?
+		remove_duplicates(processed)
 	};
 
 	// entries should be sorted newest to oldest but we should send oldest first
@@ -72,12 +73,12 @@ pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 	Ok(())
 }
 
-async fn transform_entries(
+async fn process_entries(
 	mut entries: Vec<Entry>,
-	transforms: &[Transform],
+	actions: &[Action],
 ) -> Result<Vec<Entry>, TransformError> {
-	for tr in transforms {
-		entries = tr.transform(entries).await?;
+	for a in actions {
+		entries = a.process(entries).await?;
 	}
 
 	Ok(entries)

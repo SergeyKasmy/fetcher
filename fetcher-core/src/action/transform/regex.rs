@@ -4,8 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage};
+use crate::action::transform::result::{
+	TransformResult as TrRes, TransformedEntry, TransformedMessage,
+};
 use crate::{entry::Entry, error::transform::RegexError};
+
+use super::Transform;
 
 #[derive(Debug)]
 pub struct Regex {
@@ -27,8 +31,18 @@ impl Regex {
 			action,
 		})
 	}
+}
 
-	pub fn transform(&self, entry: &Entry) -> Result<TransformedEntry, RegexError> {
+impl Transform for Regex {
+	type Error = RegexError;
+
+	fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+		self.transform_impl(entry).map(|e| vec![e])
+	}
+}
+
+impl Regex {
+	pub fn transform_impl(&self, entry: &Entry) -> Result<TransformedEntry, RegexError> {
 		tracing::trace!("Transforming entry {:#?}", entry);
 
 		let body = match entry.msg.body.clone() {

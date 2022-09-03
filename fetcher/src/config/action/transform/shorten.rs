@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::transform::Shorten as CoreShorten;
+use fetcher_core::action::transform::Shorten as CoreShorten;
 
 use serde::{Deserialize, Serialize};
 

@@ -7,12 +7,12 @@
 // TODO: add deny_unknown_fields annotations to every config struct
 // TODO: mb rename .parse() into .into() or something of that sort? .into() is already used by From/Into traits though. Naming is hard, man... UPD: into_conf() and from_conf() are way better!
 
+pub mod action;
 pub mod auth;
 pub mod read_filter;
 pub mod sink;
 pub mod source;
 pub mod task;
-pub mod transform;
 
 use std::future::Future;
 use std::pin::Pin;

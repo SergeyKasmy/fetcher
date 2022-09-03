@@ -10,6 +10,7 @@ pub mod not_present;
 
 use self::newer::Newer;
 use self::not_present::NotPresent;
+use crate::action::filter::Filter;
 use crate::entry::Entry;
 use crate::error::Error;
 
@@ -97,6 +98,12 @@ impl ReadFilter {
 		self.external_save
 			.save(&self.inner)
 			.map_err(Error::ReadFilterExternalWrite)
+	}
+}
+
+impl Filter for ReadFilter {
+	fn filter(&self, entries: &mut Vec<Entry>) {
+		self.remove_read_from(entries);
 	}
 }
 

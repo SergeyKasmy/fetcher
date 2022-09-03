@@ -5,8 +5,8 @@
  */
 
 use crate::error::ConfigError;
-use fetcher_core::transform::regex::Action as CoreAction;
-use fetcher_core::transform::Regex as CoreRegex;
+use fetcher_core::action::transform::regex::Action as CoreAction;
+use fetcher_core::action::transform::Regex as CoreRegex;
 
 use serde::{Deserialize, Serialize};
 

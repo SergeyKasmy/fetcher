@@ -4,19 +4,19 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::transform::take as core_take;
+use fetcher_core::action::filter::take as core_take;
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct Take {
+pub struct Take {
 	from: TakeFrom,
 	num: usize,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum TakeFrom {
+pub enum TakeFrom {
 	Beginning,
 	End,
 }

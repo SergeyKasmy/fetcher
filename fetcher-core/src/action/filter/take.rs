@@ -4,6 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use super::Filter;
 use crate::entry::Entry;
 
 #[derive(Debug)]
@@ -18,8 +19,8 @@ pub enum TakeFrom {
 	End,
 }
 
-impl Take {
-	pub fn filter(&self, entries: &mut Vec<Entry>) {
+impl Filter for Take {
+	fn filter(&self, entries: &mut Vec<Entry>) {
 		match self.from {
 			TakeFrom::Beginning => {
 				entries.truncate(self.num);

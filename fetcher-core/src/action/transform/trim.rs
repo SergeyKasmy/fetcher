@@ -4,8 +4,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use super::Transform;
+use crate::action::transform::result::{
+	TransformResult as TrRes, TransformedEntry, TransformedMessage,
+};
 use crate::entry::Entry;
-use crate::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage};
+
+use std::convert::Infallible;
 
 #[derive(Debug)]
 pub enum Trim {
@@ -14,8 +19,16 @@ pub enum Trim {
 	All,
 }
 
+impl Transform for Trim {
+	type Error = Infallible;
+
+	fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+		Ok(vec![self.transform_impl(entry)])
+	}
+}
+
 impl Trim {
-	pub fn transform(&self, entry: &Entry) -> TransformedEntry {
+	pub fn transform_impl(&self, entry: &Entry) -> TransformedEntry {
 		TransformedEntry {
 			msg: TransformedMessage {
 				title: TrRes::New(

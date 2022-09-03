@@ -8,13 +8,17 @@ use crate::{entry::Entry, sink::Stdout};
 
 use std::fmt::Write as _;
 
-pub async fn transform(entry: &Entry) {
+pub async fn print(entry: &Entry) {
 	let mut msg = entry.msg.clone();
 
 	// append raw_contents to help in debugging
 	msg.body = {
 		let mut body = msg.body.unwrap_or_default();
-		let _ = write!(body, "\nraw_contents: {:?}", entry.raw_contents);
+		let _ = write!(
+			body,
+			"\nid: {:?}\nraw_contents: {:?}",
+			entry.id, entry.raw_contents
+		);
 		Some(body)
 	};
 

@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use fetcher_core::transform;
+use fetcher_core::action::transform;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct TextQuery {
