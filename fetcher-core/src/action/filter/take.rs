@@ -27,7 +27,7 @@ impl Filter for Take {
 			}
 			TakeFrom::End => {
 				let first = entries.len() - self.num;
-				entries.drain(first..);
+				entries.drain(..first);
 			}
 		}
 	}
