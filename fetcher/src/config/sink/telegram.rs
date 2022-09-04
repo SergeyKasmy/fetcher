@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::config::DataSettings;
+use crate::config::TaskSettings;
 use crate::error::ConfigError;
 use fetcher_core::sink;
 
@@ -36,7 +36,7 @@ pub(crate) struct Telegram {
 }
 
 impl Telegram {
-	pub(crate) fn parse(self, settings: &DataSettings) -> Result<sink::Telegram, ConfigError> {
+	pub(crate) fn parse(self, settings: &TaskSettings) -> Result<sink::Telegram, ConfigError> {
 		Ok(sink::Telegram::new(
 			settings
 				.telegram

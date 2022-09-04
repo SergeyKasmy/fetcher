@@ -15,7 +15,7 @@ use self::email::Email;
 use self::file::File;
 use self::http::Http;
 use self::twitter::Twitter;
-use super::{DataSettings, OneOrMultiple};
+use super::{OneOrMultiple, TaskSettings};
 use crate::error::ConfigError;
 use fetcher_core::source;
 
@@ -47,7 +47,7 @@ pub(crate) enum WithCustomReadFilter {
 impl Source {
 	pub(crate) async fn parse(
 		self,
-		settings: &DataSettings,
+		settings: &TaskSettings,
 	) -> Result<source::Source, ConfigError> {
 		Ok(match self {
 			Source::WithSharedReadFilter(v) => {

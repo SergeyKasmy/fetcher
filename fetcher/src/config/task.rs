@@ -10,7 +10,7 @@ use tokio::sync::RwLock;
 
 use super::action::filter::Filter;
 use super::action::Action;
-use super::{read_filter, sink::Sink, source::Source, DataSettings};
+use super::{read_filter, sink::Sink, source::Source, TaskSettings};
 use crate::error::ConfigError;
 use crate::task::Task as ParsedTask;
 use fetcher_core as fcore;
@@ -36,12 +36,12 @@ impl Task {
 	pub(crate) async fn parse(
 		self,
 		name: &str,
-		settings: &DataSettings,
+		settings: &TaskSettings,
 	) -> Result<ParsedTask, ConfigError> {
 		let rf = {
 			let rf = (settings.read_filter)(
-				self.read_filter_kind.map(read_filter::Kind::parse),
 				name.to_owned(),
+				self.read_filter_kind.map(read_filter::Kind::parse),
 			)
 			.await?;
 			rf.map(|rf| Arc::new(RwLock::new(rf)))

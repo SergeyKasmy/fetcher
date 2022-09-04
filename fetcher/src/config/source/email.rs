@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use self::auth::Auth;
 use self::filters::Filters;
 use self::view_mode::ViewMode;
-use crate::config::DataSettings;
+use crate::config::TaskSettings;
 use crate::error::ConfigError;
 use fetcher_core::source;
 
@@ -29,7 +29,7 @@ pub(crate) struct Email {
 }
 
 impl Email {
-	pub(crate) fn parse(self, settings: &DataSettings) -> Result<source::Email, ConfigError> {
+	pub(crate) fn parse(self, settings: &TaskSettings) -> Result<source::Email, ConfigError> {
 		Ok(match self.auth {
 			Auth::GoogleOAuth2 => source::Email::with_google_oauth2(
 				self.email,

@@ -8,4 +8,23 @@ pub(crate) mod config;
 pub(crate) mod data;
 pub(crate) mod read_filter;
 
+use crate::{config::TaskSettings, error::ConfigError};
+
+use std::future::Future;
+use std::pin::Pin;
+
 const PREFIX: &str = "fetcher";
+
+pub async fn get_task_settings() -> Result<TaskSettings, ConfigError> {
+	let read_filter_getter = |name: String, current| -> Pin<Box<dyn Future<Output = _>>> {
+		Box::pin(async move { read_filter::get(&name, current).await })
+	};
+
+	Ok(TaskSettings {
+		twitter_auth: data::twitter().await?,
+		google_oauth2: data::google_oauth2().await?,
+		email_password: data::email_password().await?,
+		telegram: data::telegram().await?,
+		read_filter: Box::new(read_filter_getter),
+	})
+}

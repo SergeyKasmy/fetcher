@@ -10,7 +10,7 @@ use fetcher_core as fcore;
 use fetcher_core::error::GoogleOAuth2Error;
 
 #[derive(thiserror::Error, Debug)]
-pub(crate) enum ConfigError {
+pub enum ConfigError {
 	#[error("Twitter API key isn't set up")]
 	TwitterApiKeysMissing,
 

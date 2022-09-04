@@ -24,20 +24,25 @@ pub use self::task::Task;
 use crate::error::ConfigError;
 use fetcher_core::read_filter::ReadFilter;
 
-pub(crate) type ReadFilterGetter = Box<
-	dyn Fn(
-		Option<fetcher_core::read_filter::Kind>,
-		String,
-	) -> Pin<Box<dyn Future<Output = Result<Option<ReadFilter>, ConfigError>>>>,
->;
-
-pub(crate) struct DataSettings {
+/// A struct to pass around in the config module in order not to depend on the settings module directly
+/// All settings are shared except for the read_filter which is separate for each task and requires a name and a default value to get
+// This one should be especially useful if we decide to move the config module out into a separate crate
+pub struct TaskSettings {
 	pub twitter_auth: Option<(String, String)>,
 	pub google_oauth2: Option<fetcher_core::auth::Google>,
 	pub email_password: Option<String>,
 	pub telegram: Option<String>,
 	pub read_filter: ReadFilterGetter,
 }
+
+/// A closure that takes the name of the task and its default read filter kind and returns a future
+/// that returns a result if there was an error parsing current config/save file and an option if the default value is none
+pub type ReadFilterGetter = Box<
+	dyn Fn(
+		String,
+		Option<fetcher_core::read_filter::Kind>,
+	) -> Pin<Box<dyn Future<Output = Result<Option<ReadFilter>, ConfigError>>>>,
+>;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(untagged)]

@@ -32,7 +32,7 @@ use tokio::{
 };
 use tracing::Instrument;
 
-use crate::config::DataSettings;
+use crate::config::TaskSettings;
 use crate::task::Task;
 use crate::task::Tasks;
 use fetcher_core::{error::Error, error::ErrorChainExt};
@@ -104,19 +104,7 @@ async fn async_main() -> color_eyre::Result<()> {
 }
 
 async fn run(once: bool) -> color_eyre::Result<()> {
-	let read_filter_getter = |current, name: String| -> Pin<Box<dyn Future<Output = _>>> {
-		Box::pin(async move { settings::read_filter::get(current, &name).await })
-	};
-
-	let data_settings = DataSettings {
-		twitter_auth: settings::data::twitter().await?,
-		google_oauth2: settings::data::google_oauth2().await?,
-		email_password: settings::data::email_password().await?,
-		telegram: settings::data::telegram().await?,
-		read_filter: Box::new(read_filter_getter),
-	};
-
-	let tasks = settings::config::tasks::get_all(&data_settings).await?;
+	let tasks = settings::config::tasks::get_all().await?;
 
 	if tasks.is_empty() {
 		tracing::info!("No enabled tasks provided");

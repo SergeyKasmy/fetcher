@@ -17,10 +17,7 @@ use super::CONFIG_FILE_EXT;
 use crate::error::ConfigError;
 use crate::settings;
 use crate::task::Task;
-use crate::{
-	config::{self, DataSettings},
-	task::Tasks,
-};
+use crate::{config, task::Tasks};
 
 #[derive(Deserialize, Debug)]
 struct DisabledField {
@@ -33,23 +30,20 @@ struct TemplatesField {
 }
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]
-#[tracing::instrument(skip(settings))]
-pub(crate) async fn get_all(settings: &DataSettings) -> Result<Tasks, ConfigError> {
+#[tracing::instrument]
+pub(crate) async fn get_all() -> Result<Tasks, ConfigError> {
 	let mut tasks = Tasks::new();
 	for dir in super::cfg_dirs()?.into_iter().map(|mut p| {
 		p.push("tasks");
 		p
 	}) {
-		tasks.extend(get_all_from(dir, settings).await?);
+		tasks.extend(get_all_from(dir).await?);
 	}
 
 	Ok(tasks)
 }
 
-pub(crate) async fn get_all_from(
-	tasks_dir: PathBuf,
-	settings: &DataSettings,
-) -> Result<Tasks, ConfigError> {
+pub(crate) async fn get_all_from(tasks_dir: PathBuf) -> Result<Tasks, ConfigError> {
 	let glob_str = format!(
 		"{tasks_dir}/**/*.{CONFIG_FILE_EXT}",
 		tasks_dir = tasks_dir.to_str().expect("Path is illegal UTF-8") // .ok_or_else(|| ConfigError::BadPath(tasks_dir.clone()))?
@@ -67,20 +61,14 @@ pub(crate) async fn get_all_from(
 			.to_string_lossy()
 			.into_owned();
 
-		get(cfg, &name, settings)
-			.await?
-			.map(|task| tasks.insert(name, task));
+		get(cfg, &name).await?.map(|task| tasks.insert(name, task));
 	}
 
 	Ok(tasks)
 }
 
-#[tracing::instrument(skip(settings))]
-pub(crate) async fn get(
-	path: PathBuf,
-	name: &str,
-	settings: &DataSettings,
-) -> Result<Option<Task>, ConfigError> {
+#[tracing::instrument]
+pub(crate) async fn get(path: PathBuf, name: &str) -> Result<Option<Task>, ConfigError> {
 	tracing::trace!("Parsing a task from file");
 
 	let task_file = Figment::new().merge(Yaml::file(&path));
@@ -121,5 +109,6 @@ pub(crate) async fn get(
 		.extract()
 		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
 
-	Ok(Some(task.parse(name, settings).await?))
+	let task_settings = settings::get_task_settings().await?;
+	Ok(Some(task.parse(name, &task_settings).await?))
 }

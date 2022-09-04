@@ -9,7 +9,7 @@ mod telegram;
 use serde::{Deserialize, Serialize};
 
 use self::telegram::Telegram;
-use super::DataSettings;
+use super::TaskSettings;
 use crate::error::ConfigError;
 use fetcher_core::sink;
 
@@ -23,7 +23,7 @@ pub(crate) enum Sink {
 }
 
 impl Sink {
-	pub(crate) fn parse(self, settings: &DataSettings) -> Result<sink::Sink, ConfigError> {
+	pub(crate) fn parse(self, settings: &TaskSettings) -> Result<sink::Sink, ConfigError> {
 		Ok(match self {
 			Sink::Telegram(x) => sink::Sink::Telegram(x.parse(settings)?),
 			Sink::Stdout => sink::Sink::Stdout(sink::Stdout {}),
