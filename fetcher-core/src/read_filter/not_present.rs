@@ -4,10 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use crate::entry::Entry;
+
 use chrono::{DateTime, Utc};
 use std::collections::VecDeque;
-
-use crate::entry::Entry;
 
 const MAX_LIST_LEN: usize = 500;
 

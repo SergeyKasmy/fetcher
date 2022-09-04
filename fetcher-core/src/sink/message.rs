@@ -5,7 +5,6 @@
  */
 
 use std::fmt::Debug;
-
 use url::Url;
 
 #[derive(Clone, Default)]

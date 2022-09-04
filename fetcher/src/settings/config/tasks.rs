@@ -6,19 +6,19 @@
 
 // TODO: add trace logging, e.g. all config dirs, all config files, stuff like that
 
-use figment::{
-	providers::{Format, Yaml},
-	Figment,
-};
-use serde::Deserialize;
-use std::path::PathBuf;
-
 use super::CONFIG_FILE_EXT;
 use crate::settings;
 use fetcher_config::error::ConfigError;
 use fetcher_config::task::Task as ConfigTask;
 use fetcher_config::ParsedTask;
 use fetcher_config::ParsedTasks;
+
+use figment::{
+	providers::{Format, Yaml},
+	Figment,
+};
+use serde::Deserialize;
+use std::path::PathBuf;
 
 #[derive(Deserialize, Debug)]
 struct DisabledField {

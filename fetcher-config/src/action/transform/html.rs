@@ -6,11 +6,11 @@
 
 pub mod query;
 
-use serde::{Deserialize, Serialize};
-
 use self::query::{IdQuery, ImageQuery, Query, TextQuery, TitleQuery, UrlQuery};
 use crate::error::ConfigError;
 use fetcher_core::action::transform::Html as CoreHtml;
+
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Html {

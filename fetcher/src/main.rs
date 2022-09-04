@@ -5,6 +5,7 @@
  */
 
 // TODO: proper argument parser. Something like clap or argh or something
+// TODO: make fetcher_config more easily replaceable
 
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)] // TODO

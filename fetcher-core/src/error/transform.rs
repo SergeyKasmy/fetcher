@@ -4,9 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::convert::Infallible;
-
 use crate::{entry::Entry, source::with_shared_rf::http::TransformFromField};
+
+use std::convert::Infallible;
 
 #[derive(thiserror::Error, Debug)]
 #[error("Original entry: {original_entry:?}")]

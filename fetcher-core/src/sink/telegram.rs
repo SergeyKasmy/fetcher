@@ -4,6 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use crate::{
+	error::sink::Error as SinkError,
+	sink::{Media, Message},
+};
+
 use std::time::Duration;
 use teloxide::{
 	// adaptors::{throttle::Limits, Throttle},
@@ -18,11 +23,6 @@ use teloxide::{
 	RequestError,
 };
 use url::Url;
-
-use crate::{
-	error::sink::Error as SinkError,
-	sink::{Media, Message},
-};
 
 // FIXME: it's 1024 for media captions and 4096 for normal messages
 const MAX_MSG_LEN: usize = 1024;

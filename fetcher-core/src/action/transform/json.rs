@@ -4,9 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use serde_json::Value;
-use url::Url;
-
 use super::Transform;
 use crate::action::transform::result::{
 	TransformResult as TrRes, TransformedEntry, TransformedMessage,
@@ -14,6 +11,9 @@ use crate::action::transform::result::{
 use crate::entry::Entry;
 use crate::error::transform::{InvalidUrlError, JsonError, NothingToTransformError};
 use crate::sink::Media;
+
+use serde_json::Value;
+use url::Url;
 
 #[derive(Debug)]
 pub struct TextQuery {

@@ -4,10 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use crate::error::GoogleOAuth2Error;
+
 use serde::Deserialize;
 use std::time::{Duration, Instant};
-
-use crate::error::GoogleOAuth2Error;
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
 

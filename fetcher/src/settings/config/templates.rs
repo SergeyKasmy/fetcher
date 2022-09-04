@@ -4,12 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::fs;
-use std::path::Path;
-
 use super::CONFIG_FILE_EXT;
 use fetcher_config::error::ConfigError;
 use fetcher_core::task::template::Template;
+
+use std::fs;
+use std::path::Path;
 
 const TEMPLATES_DIR: &str = "templates";
 

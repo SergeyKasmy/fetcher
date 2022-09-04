@@ -4,14 +4,14 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use super::PREFIX;
+use fetcher_config::error::ConfigError;
+use fetcher_core::auth;
+
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::{fs, io};
-
-use super::PREFIX;
-use fetcher_config::error::ConfigError;
-use fetcher_core::auth;
 
 const GOOGLE_OAUTH2: &str = "google_oauth2.json";
 const EMAIL_PASS: &str = "email_pass.txt";

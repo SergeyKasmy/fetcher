@@ -7,10 +7,10 @@
 pub mod tasks;
 pub mod templates;
 
-use std::path::PathBuf;
-
 use super::PREFIX;
 use fetcher_config::error::ConfigError;
+
+use std::path::PathBuf;
 
 const CONFIG_FILE_EXT: &str = "yaml";
 

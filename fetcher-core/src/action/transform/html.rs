@@ -8,15 +8,11 @@
 
 pub mod query;
 
-use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
-use html5ever::rcdom::Handle;
-use soup::{NodeExt, QueryBuilderExt, Soup};
-use url::Url;
-
 use self::query::{
 	DataLocation, IdQuery, IdQueryKind, ImageQuery, Query, QueryData, QueryKind, TextQuery,
 	TitleQuery, UrlQuery,
 };
+use super::Transform;
 use crate::action::transform::regex::extract as regex_extract;
 use crate::action::transform::regex::ExtractionResult as RegexExtractResult;
 use crate::action::transform::result::{
@@ -29,7 +25,10 @@ use crate::error::transform::NothingToTransformError;
 use crate::error::transform::RegexError;
 use crate::sink::Media;
 
-use super::Transform;
+use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
+use html5ever::rcdom::Handle;
+use soup::{NodeExt, QueryBuilderExt, Soup};
+use url::Url;
 
 #[derive(Debug)]
 pub struct Html {

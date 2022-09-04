@@ -4,12 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use super::Transform;
 use crate::action::transform::result::{
 	TransformResult as TrRes, TransformedEntry, TransformedMessage,
 };
 use crate::{entry::Entry, error::transform::RegexError};
-
-use super::Transform;
 
 #[derive(Debug)]
 pub struct Regex {

@@ -4,10 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use crate::{action::Action, read_filter::ReadFilter, sink::Sink, source::Source};
+
 use std::sync::Arc;
 use tokio::sync::RwLock;
-
-use crate::{action::Action, read_filter::ReadFilter, sink::Sink, source::Source};
 
 /// A core primitive of [`fetcher`](`crate`).
 /// Contains everything from a [`Source`] that allows to fetch some data, to a [`Sink`] that takes that data and sends it somewhere.

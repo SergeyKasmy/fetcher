@@ -4,14 +4,14 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::path::Path;
-use std::{io::Write, path::PathBuf};
-use tokio::fs;
-
 use super::PREFIX;
 use fetcher_config::error::ConfigError;
 use fetcher_core as fcore;
 use fetcher_core::read_filter::{ExternalSave, ReadFilter};
+
+use std::path::Path;
+use std::{io::Write, path::PathBuf};
+use tokio::fs;
 
 const READ_DATA_DIR: &str = "read";
 
