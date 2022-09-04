@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 use self::auth::Auth;
 use self::filters::Filters;
 use self::view_mode::ViewMode;
-use crate::config::TaskSettings;
 use crate::error::ConfigError;
+use crate::TaskSettings;
 use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]

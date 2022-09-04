@@ -12,7 +12,7 @@ use super::action::filter::Filter;
 use super::action::Action;
 use super::{read_filter, sink::Sink, source::Source, TaskSettings};
 use crate::error::ConfigError;
-use crate::task::Task as ParsedTask;
+use crate::ParsedTask;
 use fetcher_core as fcore;
 
 #[derive(Deserialize, Serialize, Debug)]

@@ -10,8 +10,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::{fs, io};
 
 use super::PREFIX;
-use crate::config;
-use crate::error::ConfigError;
+use fetcher_config::error::ConfigError;
 use fetcher_core::auth;
 
 const GOOGLE_OAUTH2: &str = "google_oauth2.json";
@@ -78,7 +77,7 @@ pub async fn google_oauth2() -> Result<Option<auth::Google>, ConfigError> {
 		None => return Ok(None),
 	};
 
-	let conf: config::auth::Google = serde_json::from_str(&data)
+	let conf: fetcher_config::auth::Google = serde_json::from_str(&data)
 		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), GOOGLE_OAUTH2.into()))?;
 
 	Ok(Some(conf.parse()))
@@ -125,7 +124,7 @@ pub async fn prompt_google_oauth2() -> Result<(), ConfigError> {
 
 	save_data(
 		GOOGLE_OAUTH2,
-		&serde_json::to_string(&config::auth::Google {
+		&serde_json::to_string(&fetcher_config::auth::Google {
 			client_id,
 			client_secret,
 			refresh_token,

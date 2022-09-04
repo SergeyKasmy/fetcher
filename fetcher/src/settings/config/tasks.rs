@@ -14,10 +14,11 @@ use serde::Deserialize;
 use std::path::PathBuf;
 
 use super::CONFIG_FILE_EXT;
-use crate::error::ConfigError;
 use crate::settings;
-use crate::task::Task;
-use crate::{config, task::Tasks};
+use fetcher_config::error::ConfigError;
+use fetcher_config::task::Task as ConfigTask;
+use fetcher_config::ParsedTask;
+use fetcher_config::ParsedTasks;
 
 #[derive(Deserialize, Debug)]
 struct DisabledField {
@@ -31,8 +32,8 @@ struct TemplatesField {
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]
 #[tracing::instrument]
-pub async fn get_all() -> Result<Tasks, ConfigError> {
-	let mut tasks = Tasks::new();
+pub async fn get_all() -> Result<ParsedTasks, ConfigError> {
+	let mut tasks = ParsedTasks::new();
 	for dir in super::cfg_dirs()?.into_iter().map(|mut p| {
 		p.push("tasks");
 		p
@@ -43,7 +44,7 @@ pub async fn get_all() -> Result<Tasks, ConfigError> {
 	Ok(tasks)
 }
 
-pub async fn get_all_from(tasks_dir: PathBuf) -> Result<Tasks, ConfigError> {
+pub async fn get_all_from(tasks_dir: PathBuf) -> Result<ParsedTasks, ConfigError> {
 	let glob_str = format!(
 		"{tasks_dir}/**/*.{CONFIG_FILE_EXT}",
 		tasks_dir = tasks_dir.to_str().expect("Path is illegal UTF-8") // .ok_or_else(|| ConfigError::BadPath(tasks_dir.clone()))?
@@ -51,7 +52,7 @@ pub async fn get_all_from(tasks_dir: PathBuf) -> Result<Tasks, ConfigError> {
 
 	let cfgs = glob::glob(&glob_str).unwrap(); // unwrap NOTE: should be safe if the glob pattern is correct
 
-	let mut tasks = Tasks::new();
+	let mut tasks = ParsedTasks::new();
 	for cfg in cfgs {
 		let cfg = cfg.map_err(|e| ConfigError::Read(e.into_error(), tasks_dir.clone()))?;
 		let name = cfg
@@ -68,7 +69,7 @@ pub async fn get_all_from(tasks_dir: PathBuf) -> Result<Tasks, ConfigError> {
 }
 
 #[tracing::instrument]
-pub async fn get(path: PathBuf, name: &str) -> Result<Option<Task>, ConfigError> {
+pub async fn get(path: PathBuf, name: &str) -> Result<Option<ParsedTask>, ConfigError> {
 	tracing::trace!("Parsing a task from file");
 
 	let task_file = Figment::new().merge(Yaml::file(&path));
@@ -105,7 +106,7 @@ pub async fn get(path: PathBuf, name: &str) -> Result<Option<Task>, ConfigError>
 
 	let full_conf = full_conf.merge(Yaml::file(&path));
 
-	let task: config::Task = full_conf
+	let task: ConfigTask = full_conf
 		.extract()
 		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
 

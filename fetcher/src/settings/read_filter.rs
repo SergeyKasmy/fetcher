@@ -9,8 +9,7 @@ use std::{io::Write, path::PathBuf};
 use tokio::fs;
 
 use super::PREFIX;
-use crate::config;
-use crate::error::ConfigError;
+use fetcher_config::error::ConfigError;
 use fetcher_core as fcore;
 use fetcher_core::read_filter::{ExternalSave, ReadFilter};
 
@@ -50,7 +49,7 @@ pub async fn get(
 				}
 				Ok(save_file_rf_raw) => {
 					let save_file_rf = {
-						let save_file_rf_conf: config::read_filter::ReadFilter =
+						let save_file_rf_conf: fetcher_config::read_filter::ReadFilter =
 							serde_json::from_str(&save_file_rf_raw).map_err(|e| {
 								ConfigError::CorruptedConfig(Box::new(e), path.clone())
 							})?;
@@ -108,7 +107,7 @@ impl ExternalSave for TruncatingFileWriter {
 		&mut self,
 		read_filter: &fetcher_core::read_filter::ReadFilterInner,
 	) -> std::io::Result<()> {
-		if let Some(filter_conf) = crate::config::read_filter::ReadFilter::unparse(read_filter) {
+		if let Some(filter_conf) = fetcher_config::read_filter::ReadFilter::unparse(read_filter) {
 			let s = serde_json::to_string(&filter_conf).unwrap();
 			return self.write_all(s.as_bytes());
 		}

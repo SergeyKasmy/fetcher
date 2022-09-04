@@ -8,7 +8,7 @@ use std::fs;
 use std::path::Path;
 
 use super::CONFIG_FILE_EXT;
-use crate::error::ConfigError;
+use fetcher_config::error::ConfigError;
 use fetcher_core::task::template::Template;
 
 const TEMPLATES_DIR: &str = "templates";

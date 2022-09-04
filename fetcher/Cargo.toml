@@ -8,8 +8,9 @@ edition = "2021"
 
 [dependencies]
 fetcher-core = { version = "0.9.1", path = "../fetcher-core" }
+fetcher-config = { version = "0.9.1", path = "../fetcher-config" }
+
 color-eyre = "0.6.2"
-chrono = "0.4.22"
 figment = { version = "0.10.6", features = ["yaml"] }
 futures = "0.3.21"
 glob = "0.3.0"
@@ -22,8 +23,6 @@ tracing = "0.1.36"
 tracing-journald = "0.3.0"
 tracing-subscriber = { version = "0.3.15", features = ["env-filter", "tracing-log", "time", "local-time"] }
 xdg = "2.4.1"
-url = "2.2.2"
-thiserror = "1.0.32"
 
 [build-dependencies]
 vergen = { version = "7.3.2", features = ["git"], default-features = false }

@@ -7,22 +7,28 @@
 // TODO: add deny_unknown_fields annotations to every config struct
 // TODO: mb rename .parse() into .into() or something of that sort? .into() is already used by From/Into traits though. Naming is hard, man... UPD: into_conf() and from_conf() are way better!
 
+#![warn(clippy::pedantic)]
+#![allow(clippy::module_name_repetitions)] // TODO
+
 pub mod action;
 pub mod auth;
+pub mod error;
 pub mod read_filter;
 pub mod sink;
 pub mod source;
 pub mod task;
 
-use std::future::Future;
-use std::pin::Pin;
+pub use self::task::Task;
+
+use crate::error::ConfigError;
+use fetcher_core::read_filter::ReadFilter;
+use fetcher_core::task::Task as CoreTask;
 
 use serde::Deserialize;
 use serde::Serialize;
-
-pub use self::task::Task;
-use crate::error::ConfigError;
-use fetcher_core::read_filter::ReadFilter;
+use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 
 /// A struct to pass around in the config module in order not to depend on the settings module directly
 /// All settings are shared except for the read_filter which is separate for each task and requires a name and a default value to get
@@ -43,6 +49,12 @@ pub type ReadFilterGetter = Box<
 		Option<fetcher_core::read_filter::Kind>,
 	) -> Pin<Box<dyn Future<Output = Result<Option<ReadFilter>, ConfigError>>>>,
 >;
+
+pub type ParsedTasks = HashMap<String, ParsedTask>;
+pub struct ParsedTask {
+	pub inner: CoreTask,
+	pub refresh: u64,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(untagged)]

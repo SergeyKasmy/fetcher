@@ -514,8 +514,8 @@ dependencies = [
 name = "fetcher"
 version = "0.9.1"
 dependencies = [
- "chrono",
  "color-eyre",
+ "fetcher-config",
  "fetcher-core",
  "figment",
  "futures",
@@ -524,13 +524,26 @@ dependencies = [
  "serde_json",
  "signal-hook",
  "signal-hook-tokio",
- "thiserror",
  "tokio",
  "tracing",
  "tracing-journald",
  "tracing-subscriber",
- "url",
  "vergen",
+ "xdg",
+]
+
+[[package]]
+name = "fetcher-config"
+version = "0.9.1"
+dependencies = [
+ "chrono",
+ "fetcher-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "url",
  "xdg",
 ]
 

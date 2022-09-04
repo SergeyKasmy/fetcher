@@ -6,8 +6,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::config::TaskSettings;
 use crate::error::ConfigError;
+use crate::TaskSettings;
 use fetcher_core::sink;
 
 /// Refer to [`crate::sink::message::LinkLocation`]

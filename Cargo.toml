@@ -1,7 +1,8 @@
 [workspace]
 members = [
 	"fetcher",
-	"fetcher-core"
+	"fetcher-core",
+	"fetcher-config",
 ]
 
 [profile.release]

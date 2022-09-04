@@ -8,7 +8,7 @@ pub mod config;
 pub mod data;
 pub mod read_filter;
 
-use crate::{config::TaskSettings, error::ConfigError};
+use fetcher_config::{error::ConfigError, TaskSettings};
 
 use std::future::Future;
 use std::pin::Pin;

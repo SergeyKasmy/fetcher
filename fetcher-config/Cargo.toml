@@ -1,0 +1,19 @@
+[package]
+name = "fetcher-config"
+description = "fetcher config"
+version = "0.9.1"
+license = "MPL-2.0"
+repository = "https://github.com/SergeyKasmy/fetcher"
+edition = "2021"
+
+[dependencies]
+fetcher-core = { version = "0.9.1", path = "../fetcher-core" }
+
+chrono = "0.4.22"
+serde = { version = "1.0.143", features = ["derive"] }
+serde_json = "1.0.83"
+thiserror = "1.0.32"
+tokio = "1.20.1"
+tracing = "0.1.36"
+url = "2.2.2"
+xdg = "2.4.1"

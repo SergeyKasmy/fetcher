@@ -9,13 +9,10 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)] // TODO
 
-pub mod config;
-pub mod error;
 pub mod settings;
-pub mod task;
 
-use crate::task::Task;
-use crate::task::Tasks;
+use fetcher_config::ParsedTask;
+use fetcher_config::ParsedTasks;
 use fetcher_core::{error::Error, error::ErrorChainExt};
 
 use color_eyre::{eyre::eyre, Report};
@@ -158,7 +155,11 @@ async fn run(once: bool) -> color_eyre::Result<()> {
 	Ok(())
 }
 
-async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> color_eyre::Result<()> {
+async fn run_tasks(
+	tasks: ParsedTasks,
+	shutdown_rx: Receiver<()>,
+	once: bool,
+) -> color_eyre::Result<()> {
 	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
 		let name2 = name.clone();
@@ -209,7 +210,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> color
 	}
 }
 
-async fn task_loop(t: &mut Task, once: bool) -> Result<(), Error> {
+async fn task_loop(t: &mut ParsedTask, once: bool) -> Result<(), Error> {
 	loop {
 		match fetcher_core::run_task(&mut t.inner).await {
 			Ok(()) => (),
