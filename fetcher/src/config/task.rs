@@ -33,7 +33,7 @@ pub struct Task {
 }
 
 impl Task {
-	pub(crate) async fn parse(
+	pub async fn parse(
 		self,
 		name: &str,
 		settings: &TaskSettings,

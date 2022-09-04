@@ -20,7 +20,7 @@ pub enum LinkLocation {
 }
 
 impl LinkLocation {
-	pub(crate) fn parse(self) -> sink::telegram::LinkLocation {
+	pub fn parse(self) -> sink::telegram::LinkLocation {
 		match self {
 			LinkLocation::PreferTitle => sink::telegram::LinkLocation::PreferTitle,
 			LinkLocation::Bottom => sink::telegram::LinkLocation::Bottom,
@@ -30,13 +30,13 @@ impl LinkLocation {
 
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
-pub(crate) struct Telegram {
+pub struct Telegram {
 	chat_id: i64,
 	link_location: LinkLocation,
 }
 
 impl Telegram {
-	pub(crate) fn parse(self, settings: &TaskSettings) -> Result<sink::Telegram, ConfigError> {
+	pub fn parse(self, settings: &TaskSettings) -> Result<sink::Telegram, ConfigError> {
 		Ok(sink::Telegram::new(
 			settings
 				.telegram

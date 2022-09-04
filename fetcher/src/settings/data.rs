@@ -52,7 +52,7 @@ async fn input(prompt: &str, expected_input_len: usize) -> Result<String, Config
 	Ok(buf.trim().to_string())
 }
 
-pub(crate) async fn data(name: &str) -> Result<Option<String>, ConfigError> {
+pub async fn data(name: &str) -> Result<Option<String>, ConfigError> {
 	let f = data_path(name)?;
 	if !f.is_file() {
 		return Ok(None);
@@ -72,7 +72,7 @@ pub(crate) async fn data(name: &str) -> Result<Option<String>, ConfigError> {
 /// # Errors
 /// * if the file is inaccessible
 /// * if the file is corrupted
-pub(crate) async fn google_oauth2() -> Result<Option<auth::Google>, ConfigError> {
+pub async fn google_oauth2() -> Result<Option<auth::Google>, ConfigError> {
 	let data = match data(GOOGLE_OAUTH2).await? {
 		Some(d) => d,
 		None => return Ok(None),
@@ -84,11 +84,11 @@ pub(crate) async fn google_oauth2() -> Result<Option<auth::Google>, ConfigError>
 	Ok(Some(conf.parse()))
 }
 
-pub(crate) async fn email_password() -> Result<Option<String>, ConfigError> {
+pub async fn email_password() -> Result<Option<String>, ConfigError> {
 	data(EMAIL_PASS).await
 }
 
-pub(crate) async fn twitter() -> Result<Option<(String, String)>, ConfigError> {
+pub async fn twitter() -> Result<Option<(String, String)>, ConfigError> {
 	let data = match data(TWITTER).await? {
 		Some(d) => d,
 		None => return Ok(None),
@@ -103,7 +103,7 @@ pub(crate) async fn twitter() -> Result<Option<(String, String)>, ConfigError> {
 	Ok(Some((api_key, api_secret)))
 }
 
-pub(crate) async fn telegram() -> Result<Option<String>, ConfigError> {
+pub async fn telegram() -> Result<Option<String>, ConfigError> {
 	data(TELEGRAM).await
 }
 
@@ -114,7 +114,7 @@ async fn save_data(name: &str, data: &str) -> Result<(), ConfigError> {
 		.map_err(|e| ConfigError::Write(e, p))
 }
 
-pub(crate) async fn prompt_google_oauth2() -> Result<(), ConfigError> {
+pub async fn prompt_google_oauth2() -> Result<(), ConfigError> {
 	const SCOPE: &str = "https://mail.google.com/";
 
 	let client_id = input("Google OAuth2 client id: ", 100).await?;
@@ -135,13 +135,13 @@ pub(crate) async fn prompt_google_oauth2() -> Result<(), ConfigError> {
 	.await
 }
 
-pub(crate) async fn prompt_email_password() -> Result<(), ConfigError> {
+pub async fn prompt_email_password() -> Result<(), ConfigError> {
 	let pass = input("Email password", 25).await?;
 
 	save_data(EMAIL_PASS, &pass).await
 }
 
-pub(crate) async fn prompt_twitter_auth() -> Result<(), ConfigError> {
+pub async fn prompt_twitter_auth() -> Result<(), ConfigError> {
 	let api_key = input("Twitter API key: ", 25).await?;
 	let api_secret = input("Twitter API secret: ", 50).await?;
 
@@ -156,7 +156,7 @@ pub(crate) async fn prompt_twitter_auth() -> Result<(), ConfigError> {
 	.await
 }
 
-pub(crate) async fn prompt_telegram() -> Result<(), ConfigError> {
+pub async fn prompt_telegram() -> Result<(), ConfigError> {
 	let key = input("Telegram bot API key: ", 50).await?;
 	save_data("telegram.txt", &key).await
 }

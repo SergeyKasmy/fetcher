@@ -11,14 +11,14 @@ use fetcher_core::source;
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum ViewMode {
+pub enum ViewMode {
 	ReadOnly,
 	MarkAsRead,
 	Delete,
 }
 
 impl ViewMode {
-	pub(crate) fn parse(self) -> source::with_custom_rf::email::ViewMode {
+	pub fn parse(self) -> source::with_custom_rf::email::ViewMode {
 		use ViewMode::{Delete, MarkAsRead, ReadOnly};
 
 		match self {

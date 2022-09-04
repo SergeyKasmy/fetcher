@@ -13,14 +13,14 @@ use crate::error::ConfigError;
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum QueryKind {
+pub enum QueryKind {
 	Tag(String),
 	Class(String),
 	Attr { name: String, value: String },
 }
 
 impl QueryKind {
-	pub(crate) fn parse(self) -> transform::html::query::QueryKind {
+	pub fn parse(self) -> transform::html::query::QueryKind {
 		use QueryKind::{Attr, Class, Tag};
 
 		match self {
@@ -34,7 +34,7 @@ impl QueryKind {
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum DataLocation {
+pub enum DataLocation {
 	Text,
 	Attr(String),
 }
@@ -51,14 +51,14 @@ impl DataLocation {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct Query {
+pub struct Query {
 	#[serde(flatten)]
-	pub(crate) kind: QueryKind,
-	pub(crate) ignore: Option<Vec<QueryKind>>,
+	pub kind: QueryKind,
+	pub ignore: Option<Vec<QueryKind>>,
 }
 
 impl Query {
-	pub(crate) fn parse(self) -> transform::html::query::Query {
+	pub fn parse(self) -> transform::html::query::Query {
 		transform::html::query::Query {
 			kind: self.kind.parse(),
 			ignore: self
@@ -69,10 +69,10 @@ impl Query {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct QueryData {
-	pub(crate) query: Vec<Query>,
-	pub(crate) data_location: DataLocation,
-	pub(crate) regex: Option<String>,
+pub struct QueryData {
+	pub query: Vec<Query>,
+	pub data_location: DataLocation,
+	pub regex: Option<String>,
 }
 
 impl QueryData {
@@ -88,23 +88,23 @@ impl QueryData {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(transparent)]
-pub(crate) struct TitleQuery(pub(crate) QueryData);
+pub struct TitleQuery(pub QueryData);
 
 impl TitleQuery {
-	pub(crate) fn parse(self) -> Result<transform::html::query::TitleQuery, ConfigError> {
+	pub fn parse(self) -> Result<transform::html::query::TitleQuery, ConfigError> {
 		Ok(transform::html::query::TitleQuery(self.0.parse()?))
 	}
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct TextQuery {
-	pub(crate) prepend: Option<String>,
+pub struct TextQuery {
+	pub prepend: Option<String>,
 	#[serde(flatten)]
-	pub(crate) inner: QueryData,
+	pub inner: QueryData,
 }
 
 impl TextQuery {
-	pub(crate) fn parse(self) -> Result<transform::html::query::TextQuery, ConfigError> {
+	pub fn parse(self) -> Result<transform::html::query::TextQuery, ConfigError> {
 		Ok(transform::html::query::TextQuery {
 			prepend: self.prepend,
 			inner: self.inner.parse()?,
@@ -115,7 +115,7 @@ impl TextQuery {
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(rename_all = "snake_case", deny_unknown_fields)]	// TODO: check if deny_unknown_fields can be used here, esp with flatten
 #[serde(rename_all = "snake_case")]
-pub(crate) enum IdQueryKind {
+pub enum IdQueryKind {
 	String,
 	Date,
 }
@@ -130,14 +130,14 @@ impl IdQueryKind {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct IdQuery {
-	pub(crate) kind: IdQueryKind,
+pub struct IdQuery {
+	pub kind: IdQueryKind,
 	#[serde(flatten)]
-	pub(crate) inner: QueryData,
+	pub inner: QueryData,
 }
 
 impl IdQuery {
-	pub(crate) fn parse(self) -> Result<transform::html::query::IdQuery, ConfigError> {
+	pub fn parse(self) -> Result<transform::html::query::IdQuery, ConfigError> {
 		Ok(transform::html::query::IdQuery {
 			kind: self.kind.parse(),
 			inner: self.inner.parse()?,
@@ -146,14 +146,14 @@ impl IdQuery {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct UrlQuery {
-	pub(crate) prepend: Option<String>,
+pub struct UrlQuery {
+	pub prepend: Option<String>,
 	#[serde(flatten)]
-	pub(crate) inner: QueryData,
+	pub inner: QueryData,
 }
 
 impl UrlQuery {
-	pub(crate) fn parse(self) -> Result<transform::html::query::UrlQuery, ConfigError> {
+	pub fn parse(self) -> Result<transform::html::query::UrlQuery, ConfigError> {
 		Ok(transform::html::query::UrlQuery {
 			prepend: self.prepend,
 			inner: self.inner.parse()?,
@@ -162,14 +162,14 @@ impl UrlQuery {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct ImageQuery {
+pub struct ImageQuery {
 	optional: Option<bool>,
 	#[serde(flatten)]
 	url: UrlQuery,
 }
 
 impl ImageQuery {
-	pub(crate) fn parse(self) -> Result<transform::html::query::ImageQuery, ConfigError> {
+	pub fn parse(self) -> Result<transform::html::query::ImageQuery, ConfigError> {
 		Ok(transform::html::query::ImageQuery {
 			optional: self.optional.unwrap_or(false),
 			url: self.url.parse()?,

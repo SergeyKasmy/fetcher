@@ -12,13 +12,13 @@ use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
-pub(crate) struct Twitter {
+pub struct Twitter {
 	handle: String,
 	filter: Vec<String>,
 }
 
 impl Twitter {
-	pub(crate) fn parse(self, settings: &TaskSettings) -> Result<source::Twitter, ConfigError> {
+	pub fn parse(self, settings: &TaskSettings) -> Result<source::Twitter, ConfigError> {
 		let (api_key, api_secret) = settings
 			.twitter_auth
 			.as_ref()

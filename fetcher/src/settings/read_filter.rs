@@ -22,7 +22,7 @@ const READ_DATA_DIR: &str = "read";
 /// * if the file is inaccessible
 /// * if the file is corrupted
 #[tracing::instrument(skip(currently_set_rf_kind))]
-pub(crate) async fn get(
+pub async fn get(
 	name: &str,
 	currently_set_rf_kind: Option<fcore::read_filter::Kind>,
 ) -> Result<Option<ReadFilter>, ConfigError> {

@@ -19,7 +19,7 @@ use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
-pub(crate) struct Email {
+pub struct Email {
 	imap: Option<String>,
 	email: String,
 	auth: Auth,
@@ -29,7 +29,7 @@ pub(crate) struct Email {
 }
 
 impl Email {
-	pub(crate) fn parse(self, settings: &TaskSettings) -> Result<source::Email, ConfigError> {
+	pub fn parse(self, settings: &TaskSettings) -> Result<source::Email, ConfigError> {
 		Ok(match self.auth {
 			Auth::GoogleOAuth2 => source::Email::with_google_oauth2(
 				self.email,

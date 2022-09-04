@@ -4,9 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub(crate) mod config;
-pub(crate) mod data;
-pub(crate) mod read_filter;
+pub mod config;
+pub mod data;
+pub mod read_filter;
 
 use crate::{config::TaskSettings, error::ConfigError};
 

@@ -46,7 +46,7 @@ pub type ReadFilterGetter = Box<
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(untagged)]
-pub(crate) enum OneOrMultiple<T> {
+pub enum OneOrMultiple<T> {
 	One(T),
 	Multiple(Vec<T>),
 }

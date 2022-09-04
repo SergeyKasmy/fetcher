@@ -8,8 +8,8 @@ use fetcher_core as fcore;
 
 use std::collections::HashMap;
 
-pub(crate) type Tasks = HashMap<String, Task>;
-pub(crate) struct Task {
+pub type Tasks = HashMap<String, Task>;
+pub struct Task {
 	pub inner: fcore::task::Task,
 	pub refresh: u64,
 }

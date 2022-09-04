@@ -22,7 +22,7 @@ pub enum TakeFrom {
 }
 
 impl Take {
-	pub(crate) fn parse(self) -> core_take::Take {
+	pub fn parse(self) -> core_take::Take {
 		core_take::Take {
 			from: self.from.parse(),
 			num: self.num,
@@ -31,7 +31,7 @@ impl Take {
 }
 
 impl TakeFrom {
-	pub(crate) fn parse(self) -> core_take::TakeFrom {
+	pub fn parse(self) -> core_take::TakeFrom {
 		match self {
 			TakeFrom::Beginning => core_take::TakeFrom::Beginning,
 			TakeFrom::End => core_take::TakeFrom::End,

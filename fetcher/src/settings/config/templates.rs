@@ -14,7 +14,7 @@ use fetcher_core::task::template::Template;
 const TEMPLATES_DIR: &str = "templates";
 
 #[tracing::instrument(name = "template")]
-pub(crate) fn find(name: &str) -> Result<Option<Template>, ConfigError> {
+pub fn find(name: &str) -> Result<Option<Template>, ConfigError> {
 	for template_dir_path in super::cfg_dirs()?.into_iter().map(|mut p| {
 		p.push(TEMPLATES_DIR);
 		p
@@ -27,7 +27,7 @@ pub(crate) fn find(name: &str) -> Result<Option<Template>, ConfigError> {
 	Ok(None)
 }
 
-pub(crate) fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>, ConfigError> {
+pub fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>, ConfigError> {
 	tracing::trace!("Searching for template in {}", templates_path.display());
 	let path = templates_path.join(name).with_extension(CONFIG_FILE_EXT);
 	if !path.is_file() {

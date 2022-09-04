@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub(crate) mod query;
+pub mod query;
 
 use serde::{Deserialize, Serialize};
 
@@ -13,28 +13,28 @@ use crate::error::ConfigError;
 use fetcher_core::action::transform::Html as CoreHtml;
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct Html {
+pub struct Html {
 	#[serde(rename = "item_query")]
-	pub(crate) itemq: Vec<Query>,
+	pub itemq: Vec<Query>,
 
 	#[serde(rename = "title_query")]
-	pub(crate) titleq: Option<TitleQuery>,
+	pub titleq: Option<TitleQuery>,
 
 	#[serde(rename = "text_query")]
-	pub(crate) textq: Option<Vec<TextQuery>>,
+	pub textq: Option<Vec<TextQuery>>,
 
 	#[serde(rename = "id_query")]
-	pub(crate) idq: Option<IdQuery>,
+	pub idq: Option<IdQuery>,
 
 	#[serde(rename = "link_query")]
-	pub(crate) linkq: Option<UrlQuery>,
+	pub linkq: Option<UrlQuery>,
 
 	#[serde(rename = "img_query")]
-	pub(crate) imgq: Option<ImageQuery>,
+	pub imgq: Option<ImageQuery>,
 }
 
 impl Html {
-	pub(crate) fn parse(self) -> Result<CoreHtml, ConfigError> {
+	pub fn parse(self) -> Result<CoreHtml, ConfigError> {
 		Ok(CoreHtml {
 			itemq: self.itemq.into_iter().map(Query::parse).collect(),
 			titleq: self.titleq.map(TitleQuery::parse).transpose()?,

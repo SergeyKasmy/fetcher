@@ -11,13 +11,13 @@ use fetcher_core::read_filter;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum Kind {
+pub enum Kind {
 	NewerThanRead,
 	NotPresentInReadList,
 }
 
 impl Kind {
-	pub(crate) fn parse(self) -> read_filter::Kind {
+	pub fn parse(self) -> read_filter::Kind {
 		match self {
 			Kind::NewerThanRead => read_filter::Kind::NewerThanLastRead,
 			Kind::NotPresentInReadList => read_filter::Kind::NotPresentInReadList,
@@ -53,7 +53,7 @@ impl ReadFilter {
 		}
 	}
 
-	pub(crate) fn unparse(read_filter: &read_filter::ReadFilterInner) -> Option<Self> {
+	pub fn unparse(read_filter: &read_filter::ReadFilterInner) -> Option<Self> {
 		Some(match &read_filter {
 			read_filter::ReadFilterInner::NewerThanLastRead(x) => {
 				ReadFilter::NewerThanRead(Newer::unparse(x)?)
@@ -71,13 +71,13 @@ pub struct Newer {
 }
 
 impl Newer {
-	pub(crate) fn parse(self) -> read_filter::newer::Newer {
+	pub fn parse(self) -> read_filter::newer::Newer {
 		read_filter::newer::Newer {
 			last_read_id: Some(self.last_read_id),
 		}
 	}
 
-	pub(crate) fn unparse(read_filter: &read_filter::newer::Newer) -> Option<Self> {
+	pub fn unparse(read_filter: &read_filter::newer::Newer) -> Option<Self> {
 		read_filter.last_read_id.as_ref().map(|last_read_id| Self {
 			last_read_id: last_read_id.clone(),
 		})
@@ -90,11 +90,11 @@ pub struct NotPresent {
 }
 
 impl NotPresent {
-	pub(crate) fn parse(self) -> read_filter::not_present::NotPresent {
+	pub fn parse(self) -> read_filter::not_present::NotPresent {
 		read_filter::not_present::NotPresent::from_iter(self.read_list)
 	}
 
-	pub(crate) fn unparse(read_filter: &read_filter::not_present::NotPresent) -> Option<Self> {
+	pub fn unparse(read_filter: &read_filter::not_present::NotPresent) -> Option<Self> {
 		if read_filter.is_empty() {
 			None
 		} else {

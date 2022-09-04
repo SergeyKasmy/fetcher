@@ -9,14 +9,14 @@ use serde::{Deserialize, Serialize};
 use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct Filters {
+pub struct Filters {
 	sender: Option<String>,
 	subjects: Option<Vec<String>>,
 	exclude_subjects: Option<Vec<String>>,
 }
 
 impl Filters {
-	pub(crate) fn parse(self) -> source::with_custom_rf::email::filters::Filters {
+	pub fn parse(self) -> source::with_custom_rf::email::filters::Filters {
 		source::with_custom_rf::email::filters::Filters {
 			sender: self.sender,
 			subjects: self.subjects,

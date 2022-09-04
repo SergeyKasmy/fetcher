@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(untagged)]
-pub(crate) enum Action {
+pub enum Action {
 	Filter(Filter),
 	Transform(Transform),
 }

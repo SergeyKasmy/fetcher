@@ -10,12 +10,12 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(transparent)]
-pub(crate) struct Shorten {
+pub struct Shorten {
 	len: usize,
 }
 
 impl Shorten {
-	pub(crate) fn parse(self) -> CoreShorten {
+	pub fn parse(self) -> CoreShorten {
 		CoreShorten { len: self.len }
 	}
 }

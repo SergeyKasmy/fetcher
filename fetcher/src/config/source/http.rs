@@ -12,12 +12,12 @@ use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(transparent)]
-pub(crate) struct Http {
-	pub(crate) url: Url,
+pub struct Http {
+	pub url: Url,
 }
 
 impl Http {
-	pub(crate) fn parse(self) -> Result<source::Http, error::source::HttpError> {
+	pub fn parse(self) -> Result<source::Http, error::source::HttpError> {
 		source::Http::new(self.url)
 	}
 }

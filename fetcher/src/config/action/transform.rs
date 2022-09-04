@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum Transform {
+pub enum Transform {
 	Http,
 	Html(Html),
 	Json(Json),
@@ -40,7 +40,7 @@ pub(crate) enum Transform {
 }
 
 impl Transform {
-	pub(crate) fn parse(self) -> Result<CoreTransformKind, ConfigError> {
+	pub fn parse(self) -> Result<CoreTransformKind, ConfigError> {
 		Ok(match self {
 			Transform::Http => CoreTransformKind::Http,
 			Transform::Html(x) => CoreTransformKind::Html(x.parse()?),

@@ -11,12 +11,12 @@ use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(transparent)]
-pub(crate) struct File {
+pub struct File {
 	path: PathBuf,
 }
 
 impl File {
-	pub(crate) fn parse(self) -> source::File {
+	pub fn parse(self) -> source::File {
 		source::File { path: self.path }
 	}
 }

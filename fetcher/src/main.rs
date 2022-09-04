@@ -9,18 +9,20 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)] // TODO
 
-mod config;
-mod error;
-mod settings;
-mod task;
+pub mod config;
+pub mod error;
+pub mod settings;
+pub mod task;
+
+use crate::task::Task;
+use crate::task::Tasks;
+use fetcher_core::{error::Error, error::ErrorChainExt};
 
 use color_eyre::{eyre::eyre, Report};
 use futures::{future::join_all, StreamExt};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
 use std::{
-	future::Future,
-	pin::Pin,
 	sync::{atomic::AtomicBool, Arc},
 	time::Duration,
 };
@@ -31,11 +33,6 @@ use tokio::{
 	time::sleep,
 };
 use tracing::Instrument;
-
-use crate::config::TaskSettings;
-use crate::task::Task;
-use crate::task::Tasks;
-use fetcher_core::{error::Error, error::ErrorChainExt};
 
 fn main() -> color_eyre::Result<()> {
 	set_up_logging()?;

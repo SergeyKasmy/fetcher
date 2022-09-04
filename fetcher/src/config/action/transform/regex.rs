@@ -11,9 +11,9 @@ use fetcher_core::action::transform::Regex as CoreRegex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(crate) struct Regex {
-	pub(crate) re: String,
-	pub(crate) action: Action,
+pub struct Regex {
+	pub re: String,
+	pub action: Action,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -24,13 +24,13 @@ pub enum Action {
 }
 
 impl Regex {
-	pub(crate) fn parse(self) -> Result<CoreRegex, ConfigError> {
+	pub fn parse(self) -> Result<CoreRegex, ConfigError> {
 		Ok(CoreRegex::new(&self.re, self.action.parse())?)
 	}
 }
 
 impl Action {
-	pub(crate) fn parse(self) -> CoreAction {
+	pub fn parse(self) -> CoreAction {
 		match self {
 			Action::Find => CoreAction::Find,
 			Action::Extract {
