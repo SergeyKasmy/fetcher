@@ -4,16 +4,16 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tokio::sync::RwLock;
-
 use super::action::filter::Filter;
 use super::action::Action;
 use super::{read_filter, sink::Sink, source::Source, TaskSettings};
 use crate::error::ConfigError;
-use crate::ParsedTask;
+use crate::tasks::ParsedTask;
 use fetcher_core as fcore;
+
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[derive(Deserialize, Serialize, Debug)]
 // TODO: add

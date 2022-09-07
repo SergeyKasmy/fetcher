@@ -5,10 +5,10 @@
  */
 
 use super::PREFIX;
-use fetcher_config::error::ConfigError;
 use fetcher_core as fcore;
 use fetcher_core::read_filter::{ExternalSave, ReadFilter};
 
+use std::io;
 use std::path::Path;
 use std::{io::Write, path::PathBuf};
 use tokio::fs;
@@ -24,7 +24,7 @@ const READ_DATA_DIR: &str = "read";
 pub async fn get(
 	name: &str,
 	currently_set_rf_kind: Option<fcore::read_filter::Kind>,
-) -> Result<Option<ReadFilter>, ConfigError> {
+) -> io::Result<Option<ReadFilter>> {
 	match currently_set_rf_kind {
 		None => Ok(None),
 		Some(currently_set_rf_kind) => {
@@ -49,10 +49,8 @@ pub async fn get(
 				}
 				Ok(save_file_rf_raw) => {
 					let save_file_rf = {
-						let save_file_rf_conf: fetcher_config::read_filter::ReadFilter =
-							serde_json::from_str(&save_file_rf_raw).map_err(|e| {
-								ConfigError::CorruptedConfig(Box::new(e), path.clone())
-							})?;
+						let save_file_rf_conf: fetcher_config::tasks::read_filter::ReadFilter =
+							serde_json::from_str(&save_file_rf_raw)?;
 
 						save_file_rf_conf.parse(Box::new(save_file(&path)?))
 					};
@@ -61,11 +59,17 @@ pub async fn get(
 					if save_file_rf.to_kind() == currently_set_rf_kind {
 						Ok(Some(save_file_rf))
 					} else {
-						Err(ConfigError::IncompatibleReadFilterTypes {
-							in_config: save_file_rf.to_kind(),
-							on_disk: currently_set_rf_kind,
-							disk_rf_path: path,
-						})
+						// #1
+						// Err(ConfigError::IncompatibleReadFilterTypes {
+						// 	in_config: save_file_rf.to_kind(),
+						// 	on_disk: currently_set_rf_kind,
+						// 	disk_rf_path: path,
+						// })
+						// #2
+						// Ok(None)
+
+						// TODO
+						panic!("Incompatible read filter types: {:?} in config, {:?} on disk (at {:?})", save_file_rf.to_kind(), currently_set_rf_kind, path)
 					}
 				}
 			}
@@ -73,14 +77,12 @@ pub async fn get(
 	}
 }
 
-fn read_filter_path(name: &str) -> Result<PathBuf, ConfigError> {
+fn read_filter_path(name: &str) -> io::Result<PathBuf> {
 	debug_assert!(!name.is_empty());
 	Ok(if cfg!(debug_assertions) {
 		PathBuf::from(format!("debug_data/read/{name}"))
 	} else {
-		xdg::BaseDirectories::with_profile(PREFIX, READ_DATA_DIR)?
-			.place_data_file(name)
-			.map_err(|e| ConfigError::Read(e, format!("READ_DATA_DIR/{name}").into()))?
+		xdg::BaseDirectories::with_profile(PREFIX, READ_DATA_DIR)?.place_data_file(name)?
 	})
 }
 
@@ -107,7 +109,9 @@ impl ExternalSave for TruncatingFileWriter {
 		&mut self,
 		read_filter: &fetcher_core::read_filter::ReadFilterInner,
 	) -> std::io::Result<()> {
-		if let Some(filter_conf) = fetcher_config::read_filter::ReadFilter::unparse(read_filter) {
+		if let Some(filter_conf) =
+			fetcher_config::tasks::read_filter::ReadFilter::unparse(read_filter)
+		{
 			let s = serde_json::to_string(&filter_conf).unwrap();
 			return self.write_all(s.as_bytes());
 		}
@@ -116,16 +120,15 @@ impl ExternalSave for TruncatingFileWriter {
 	}
 }
 
-fn save_file(path: &Path) -> Result<TruncatingFileWriter, ConfigError> {
+fn save_file(path: &Path) -> io::Result<TruncatingFileWriter> {
 	if let Some(parent) = path.parent() {
-		std::fs::create_dir_all(parent).map_err(|e| ConfigError::Write(e, parent.to_owned()))?;
+		std::fs::create_dir_all(parent)?;
 	}
 
 	let file = std::fs::OpenOptions::new()
 		.create(true)
 		.write(true)
-		.open(&path)
-		.map_err(|e| ConfigError::Write(e, path.to_path_buf()))?;
+		.open(&path)?;
 
 	Ok(TruncatingFileWriter { file })
 }

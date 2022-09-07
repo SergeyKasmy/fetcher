@@ -12,11 +12,11 @@
 
 pub mod settings;
 
-use fetcher_config::ParsedTask;
-use fetcher_config::ParsedTasks;
+use fetcher_config::tasks::ParsedTask;
+use fetcher_config::tasks::ParsedTasks;
 use fetcher_core::{error::Error, error::ErrorChainExt};
 
-use color_eyre::{eyre::eyre, Report};
+use color_eyre::{eyre::eyre, Report, Result};
 use futures::{future::join_all, StreamExt};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
@@ -32,12 +32,12 @@ use tokio::{
 };
 use tracing::Instrument;
 
-fn main() -> color_eyre::Result<()> {
+fn main() -> Result<()> {
 	set_up_logging()?;
 	async_main()
 }
 
-fn set_up_logging() -> color_eyre::Result<()> {
+fn set_up_logging() -> Result<()> {
 	use tracing_subscriber::fmt::time::OffsetTime;
 	use tracing_subscriber::layer::SubscriberExt;
 	use tracing_subscriber::EnvFilter;
@@ -69,7 +69,7 @@ fn set_up_logging() -> color_eyre::Result<()> {
 }
 
 #[tokio::main]
-async fn async_main() -> color_eyre::Result<()> {
+async fn async_main() -> Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -98,7 +98,7 @@ async fn async_main() -> color_eyre::Result<()> {
 	Ok(())
 }
 
-async fn run(once: bool) -> color_eyre::Result<()> {
+async fn run(once: bool) -> Result<()> {
 	let tasks = settings::config::tasks::get_all().await?;
 
 	if tasks.is_empty() {
@@ -156,11 +156,7 @@ async fn run(once: bool) -> color_eyre::Result<()> {
 	Ok(())
 }
 
-async fn run_tasks(
-	tasks: ParsedTasks,
-	shutdown_rx: Receiver<()>,
-	once: bool,
-) -> color_eyre::Result<()> {
+async fn run_tasks(tasks: ParsedTasks, shutdown_rx: Receiver<()>, once: bool) -> Result<()> {
 	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
 		let name2 = name.clone();
@@ -239,7 +235,7 @@ async fn task_loop(t: &mut ParsedTask, once: bool) -> Result<(), Error> {
 }
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
-async fn report_error(task_name: &str, err: &str) -> color_eyre::Result<()> {
+async fn report_error(task_name: &str, err: &str) -> Result<()> {
 	use fetcher_core::sink::telegram::LinkLocation;
 	use fetcher_core::sink::Message;
 	use fetcher_core::sink::Telegram;

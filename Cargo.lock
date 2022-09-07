@@ -539,12 +539,10 @@ dependencies = [
  "chrono",
  "fetcher-core",
  "serde",
- "serde_json",
  "thiserror",
  "tokio",
  "tracing",
  "url",
- "xdg",
 ]
 
 [[package]]

@@ -8,14 +8,15 @@ pub mod config;
 pub mod data;
 pub mod read_filter;
 
-use fetcher_config::{error::ConfigError, TaskSettings};
+use fetcher_config::tasks::TaskSettings;
 
+use color_eyre::Result;
 use std::future::Future;
 use std::pin::Pin;
 
 const PREFIX: &str = "fetcher";
 
-pub async fn get_task_settings() -> Result<TaskSettings, ConfigError> {
+pub async fn get_task_settings() -> Result<TaskSettings> {
 	let read_filter_getter = |name: String, current| -> Pin<Box<dyn Future<Output = _>>> {
 		Box::pin(async move { read_filter::get(&name, current).await })
 	};

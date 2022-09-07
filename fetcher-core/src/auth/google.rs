@@ -25,9 +25,9 @@ struct AccessToken {
 
 #[derive(Clone, Debug)]
 pub struct Google {
-	client_id: String,
-	client_secret: String,
-	refresh_token: String,
+	pub client_id: String,
+	pub client_secret: String,
+	pub refresh_token: String,
 	access_token: Option<AccessToken>,
 }
 

@@ -7,7 +7,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::error::ConfigError;
-use crate::TaskSettings;
+use crate::tasks::TaskSettings;
 use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]

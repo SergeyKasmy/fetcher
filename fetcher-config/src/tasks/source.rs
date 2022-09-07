@@ -15,8 +15,8 @@ use self::email::Email;
 use self::file::File;
 use self::http::Http;
 use self::twitter::Twitter;
-use super::{OneOrMultiple, TaskSettings};
 use crate::error::ConfigError;
+use crate::{tasks::TaskSettings, OneOrMultiple};
 use fetcher_core::source;
 
 #[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
@@ -45,10 +45,7 @@ pub enum WithCustomReadFilter {
 }
 
 impl Source {
-	pub async fn parse(
-		self,
-		settings: &TaskSettings,
-	) -> Result<source::Source, ConfigError> {
+	pub async fn parse(self, settings: &TaskSettings) -> Result<source::Source, ConfigError> {
 		Ok(match self {
 			Source::WithSharedReadFilter(v) => {
 				let v: Vec<WithSharedReadFilter> = v.into();
