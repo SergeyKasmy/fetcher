@@ -230,7 +230,16 @@ impl Telegram {
 		};
 
 		if let Some(tag) = tag {
-			head.insert_str(0, &format!("#{}\n\n", tag.replace('/', "_")));
+			let tag = tag.replace(
+				|c| match c {
+					'/' => true,
+					c if c.is_whitespace() => true,
+					_ => false,
+				},
+				"_",
+			);
+
+			head.insert_str(0, &format!("#{tag}\n\n",));
 		}
 
 		(head, tail)

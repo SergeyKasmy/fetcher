@@ -8,7 +8,9 @@
 // TODO: make fetcher_config more easily replaceable
 
 #![warn(clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)] // TODO
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::panic_errors_doc)]
+#![allow(clippy::module_name_repetitions)]
 
 pub mod settings;
 

@@ -7,8 +7,8 @@
 use super::action::filter::Filter;
 use super::action::Action;
 use super::{read_filter, sink::Sink, source::Source, TaskSettings};
-use crate::Error;
 use crate::tasks::ParsedTask;
+use crate::Error;
 use fetcher_core as fcore;
 
 use serde::{Deserialize, Serialize};
@@ -33,15 +33,29 @@ pub struct Task {
 }
 
 impl Task {
-	pub async fn parse(self, name: &str, settings: &TaskSettings) -> Result<ParsedTask, Error> {
-		let rf = {
-			let rf = (settings.read_filter)(
-				name.to_owned(),
-				self.read_filter_kind.map(read_filter::Kind::parse),
-			)
-			.await?;
-			rf.map(|rf| Arc::new(RwLock::new(rf)))
-		};
+	pub async fn parse(self, name: &str, mut settings: TaskSettings) -> Result<ParsedTask, Error> {
+		let rf = self
+			.read_filter_kind
+			.map(read_filter::Kind::parse)
+			.map(|cfg_rf_kind| {
+				let settings_rf = settings
+					.read_filter
+					.remove(name)
+					.expect("No saved read filter gotten"); // FIXME
+
+				let settings_rf_kind = settings_rf.to_kind();
+				if settings_rf_kind != cfg_rf_kind {
+					return Err(Error::IncompatibleReadFilterTypes {
+						in_config: cfg_rf_kind,
+						on_disk: settings_rf_kind,
+						disk_path: name.into(),
+					});
+				}
+
+				Ok(Arc::new(RwLock::new(settings_rf)))
+			})
+			.transpose()?;
+
 		let actions = self
 			.actions
 			.map(|x| {
@@ -63,11 +77,11 @@ impl Task {
 			.transpose()?;
 
 		let inner = fcore::task::Task {
-			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
-			source: self.source.parse(settings).await?,
+			tag: self.tag,
+			source: self.source.parse(&settings).await?,
 			rf,
 			actions,
-			sink: self.sink.parse(settings)?,
+			sink: self.sink.parse(&settings)?,
 		};
 
 		Ok(ParsedTask {

@@ -5,87 +5,85 @@
  */
 
 use super::PREFIX;
-use fetcher_core as fcore;
+use fetcher_config::tasks::read_filter::ReadFilter as ReadFilterConf;
 use fetcher_core::read_filter::{ExternalSave, ReadFilter};
 
+use color_eyre::eyre::eyre;
+use color_eyre::Result;
+use std::collections::HashMap;
+use std::fs;
 use std::io;
 use std::path::Path;
 use std::{io::Write, path::PathBuf};
-use tokio::fs;
 
 const READ_DATA_DIR: &str = "read";
 
 /// Returns a read filter for the task name from the filesystem.
-///
-/// # Errors
-/// * if the file is inaccessible
-/// * if the file is corrupted
-#[tracing::instrument(skip(currently_set_rf_kind))]
-pub async fn get(
-	name: &str,
-	currently_set_rf_kind: Option<fcore::read_filter::Kind>,
-) -> io::Result<Option<ReadFilter>> {
-	match currently_set_rf_kind {
-		None => Ok(None),
-		Some(currently_set_rf_kind) => {
-			let path = read_filter_path(name)?;
+#[tracing::instrument]
+pub async fn get() -> Result<HashMap<String, ReadFilter>> {
+	tokio::task::spawn_blocking(|| {
+		let mut saved_rfs = HashMap::new();
 
-			match fs::read_to_string(&path).await {
-				Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
-					tracing::debug!("Read filter save file is empty");
+		get_all_from(&read_filter_path()?, &mut saved_rfs)?;
 
-					Ok(Some(ReadFilter::new(
-						currently_set_rf_kind,
-						Box::new(save_file(&path)?),
-					)))
-				}
-				Err(e) => {
-					tracing::debug!("Read filter save file doesn't exist or is inaccessible: {e}");
+		Ok(saved_rfs)
+	})
+	.await
+	.unwrap()
+}
 
-					Ok(Some(ReadFilter::new(
-						currently_set_rf_kind,
-						Box::new(save_file(&path)?),
-					)))
-				}
-				Ok(save_file_rf_raw) => {
-					let save_file_rf = {
-						let save_file_rf_conf: fetcher_config::tasks::read_filter::ReadFilter =
-							serde_json::from_str(&save_file_rf_raw)?;
+#[tracing::instrument(skip(rfs))]
+fn get_all_from(dir: &Path, rfs: &mut HashMap<String, ReadFilter>) -> Result<()> {
+	tracing::trace!("Walking though dir {dir:?}");
 
-						save_file_rf_conf.parse(Box::new(save_file(&path)?))
-					};
+	assert!(
+		dir.is_dir(),
+		"Read filters can be searched for only in directories"
+	);
 
-					// the old read filter saved on disk is of the same type as the one set in config
-					if save_file_rf.to_kind() == currently_set_rf_kind {
-						Ok(Some(save_file_rf))
-					} else {
-						// #1
-						// Err(ConfigError::IncompatibleReadFilterTypes {
-						// 	in_config: save_file_rf.to_kind(),
-						// 	on_disk: currently_set_rf_kind,
-						// 	disk_rf_path: path,
-						// })
-						// #2
-						// Ok(None)
+	for entry in fs::read_dir(dir)? {
+		let entry = entry?;
+		let entry_path = entry.path();
 
-						// TODO
-						panic!("Incompatible read filter types: {:?} in config, {:?} on disk (at {:?})", save_file_rf.to_kind(), currently_set_rf_kind, path)
-					}
-				}
+		tracing::trace!("Found entry path {entry_path:?}");
+
+		if entry_path.is_dir() {
+			get_all_from(&entry_path, rfs)?;
+		} else {
+			let name = entry_path
+				.strip_prefix(dir)?
+				.to_str()
+				.ok_or_else(|| eyre!("Read filter save file can't contain invalid unicode"))?
+				.to_owned();
+
+			tracing::trace!("Found read filter {name:?}");
+
+			let rf_raw = fs::read_to_string(&entry_path)?;
+
+			tracing::trace!("{name:?}'s raw contents: {rf_raw:?}");
+
+			if !rf_raw.is_empty() {
+				let rf_conf: ReadFilterConf = serde_json::from_str(&rf_raw)?;
+				let rf = rf_conf.parse(Box::new(save_file(&entry_path)?));
+
+				tracing::trace!("Inserting ({name:?}, {rf:?}) into the hashmap");
+				rfs.insert(name, rf);
 			}
 		}
 	}
+
+	Ok(())
 }
 
-fn read_filter_path(name: &str) -> io::Result<PathBuf> {
-	debug_assert!(!name.is_empty());
+fn read_filter_path() -> Result<PathBuf> {
 	Ok(if cfg!(debug_assertions) {
-		PathBuf::from(format!("debug_data/read/{name}"))
+		PathBuf::from("debug_data/read/")
 	} else {
-		xdg::BaseDirectories::with_profile(PREFIX, READ_DATA_DIR)?.place_data_file(name)?
+		xdg::BaseDirectories::with_profile(PREFIX, READ_DATA_DIR)?.get_data_home()
 	})
 }
 
+// TODO: move to a new mod
 struct TruncatingFileWriter {
 	file: std::fs::File,
 }
@@ -105,10 +103,7 @@ impl std::io::Write for TruncatingFileWriter {
 }
 
 impl ExternalSave for TruncatingFileWriter {
-	fn save(
-		&mut self,
-		read_filter: &fetcher_core::read_filter::ReadFilterInner,
-	) -> std::io::Result<()> {
+	fn save(&mut self, read_filter: &fetcher_core::read_filter::ReadFilterInner) -> io::Result<()> {
 		if let Some(filter_conf) =
 			fetcher_config::tasks::read_filter::ReadFilter::unparse(read_filter)
 		{
@@ -120,7 +115,7 @@ impl ExternalSave for TruncatingFileWriter {
 	}
 }
 
-fn save_file(path: &Path) -> io::Result<TruncatingFileWriter> {
+fn save_file(path: &Path) -> Result<TruncatingFileWriter> {
 	if let Some(parent) = path.parent() {
 		std::fs::create_dir_all(parent)?;
 	}
