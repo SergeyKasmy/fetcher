@@ -10,41 +10,34 @@ pub mod read_filter;
 
 use fetcher_config::tasks::TaskSettings;
 
-use color_eyre::Result;
+use std::io;
 
 const PREFIX: &str = "fetcher";
 
-pub async fn get_task_settings() -> Result<TaskSettings> {
-	tracing::trace!("Getting task settings");
+struct TaskSettingsFetcherDefault;
 
-	tracing::trace!("Getting twitter auth");
-	let twitter_auth = data::twitter().await?;
+impl TaskSettings for TaskSettingsFetcherDefault {
+	fn twitter_token(&self) -> io::Result<Option<(String, String)>> {
+		data::twitter::get()
+	}
 
-	tracing::trace!("Getting google auth");
-	let google_oauth2 = data::google_oauth2().await?;
+	fn google_oauth2(&self) -> io::Result<Option<fetcher_core::auth::Google>> {
+		data::google_oauth2::get()
+	}
 
-	tracing::trace!("Getting email password");
-	let email_password = data::email_password().await?;
+	fn email_password(&self) -> io::Result<Option<String>> {
+		data::email_password::get()
+	}
 
-	tracing::trace!("Getting telegram auth");
-	let telegram = data::telegram().await?;
+	fn telegram_bot_token(&self) -> io::Result<Option<String>> {
+		data::telegram::get()
+	}
 
-	tracing::trace!("Getting read filters");
-	let read_filter = read_filter::get().await?;
-
-	Ok(TaskSettings {
-		twitter_auth,
-		google_oauth2,
-		email_password,
-		telegram,
-		read_filter,
-	})
-
-	// Ok(TaskSettings {
-	// 	twitter_auth: data::twitter().await?,
-	// 	google_oauth2: data::google_oauth2().await?,
-	// 	email_password: data::email_password().await?,
-	// 	telegram: data::telegram().await?,
-	// 	read_filter: read_filter::get().await?,
-	// })
+	fn read_filter(
+		&self,
+		name: &str,
+		kind: fetcher_core::read_filter::Kind,
+	) -> io::Result<fetcher_core::read_filter::ReadFilter> {
+		todo!()
+	}
 }

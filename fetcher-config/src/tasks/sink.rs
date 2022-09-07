@@ -23,7 +23,7 @@ pub enum Sink {
 }
 
 impl Sink {
-	pub fn parse(self, settings: &TaskSettings) -> Result<sink::Sink, Error> {
+	pub fn parse(self, settings: &dyn TaskSettings) -> Result<sink::Sink, Error> {
 		Ok(match self {
 			Sink::Telegram(x) => sink::Sink::Telegram(x.parse(settings)?),
 			Sink::Stdout => sink::Sink::Stdout(sink::Stdout {}),

@@ -4,16 +4,19 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::path::PathBuf;
-
 use fetcher_core as fcore;
 use fetcher_core::error::GoogleOAuth2Error;
+
+use std::path::PathBuf;
 
 // pub type Result<T> = std::result::Result<T, Error>;
 
 // TODO: rename to just Error
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+	#[error(transparent)]
+	IoError(#[from] std::io::Error),
+
 	#[error("Twitter API key isn't set up")]
 	TwitterApiKeysMissing,
 
@@ -28,10 +31,6 @@ pub enum Error {
 
 	#[error("Telegram bot token isn't set up")]
 	TelegramBotTokenMissing,
-
-	// used with read_filter::get for now
-	#[error(transparent)]
-	IoError(#[from] std::io::Error),
 
 	#[error("Wrong Google OAuth2 token")]
 	GoogleOAuth2WrongToken(#[from] GoogleOAuth2Error),

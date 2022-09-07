@@ -45,7 +45,7 @@ pub enum WithCustomReadFilter {
 }
 
 impl Source {
-	pub async fn parse(self, settings: &TaskSettings) -> Result<source::Source, Error> {
+	pub async fn parse(self, settings: &dyn TaskSettings) -> Result<source::Source, Error> {
 		Ok(match self {
 			Source::WithSharedReadFilter(v) => {
 				let v: Vec<WithSharedReadFilter> = v.into();

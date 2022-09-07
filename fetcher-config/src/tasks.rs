@@ -12,10 +12,13 @@ pub mod task;
 
 pub use self::task::Task;
 
+use fetcher_core as fcore;
+use fetcher_core::read_filter::Kind as ReadFilterKind;
 use fetcher_core::read_filter::ReadFilter;
 use fetcher_core::task::Task as CoreTask;
 
 use std::collections::HashMap;
+use std::io;
 
 pub type ParsedTasks = HashMap<String, ParsedTask>;
 pub struct ParsedTask {
@@ -23,11 +26,10 @@ pub struct ParsedTask {
 	pub refresh: u64,
 }
 
-/// A struct to pass around in the config module in order not to depend on the settings module directly
-pub struct TaskSettings {
-	pub twitter_auth: Option<(String, String)>,
-	pub google_oauth2: Option<fetcher_core::auth::Google>,
-	pub email_password: Option<String>,
-	pub telegram: Option<String>,
-	pub read_filter: HashMap<String, ReadFilter>,
+pub trait TaskSettings {
+	fn twitter_token(&self) -> io::Result<Option<(String, String)>>;
+	fn google_oauth2(&self) -> io::Result<Option<fcore::auth::Google>>;
+	fn email_password(&self) -> io::Result<Option<String>>;
+	fn telegram_bot_token(&self) -> io::Result<Option<String>>;
+	fn read_filter(&self, name: &str, kind: ReadFilterKind) -> io::Result<ReadFilter>;
 }

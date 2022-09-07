@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 use self::auth::Auth;
 use self::filters::Filters;
 use self::view_mode::ViewMode;
-use crate::Error;
 use crate::tasks::TaskSettings;
+use crate::Error;
 use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -29,14 +29,12 @@ pub struct Email {
 }
 
 impl Email {
-	pub fn parse(self, settings: &TaskSettings) -> Result<source::Email, Error> {
+	pub fn parse(self, settings: &dyn TaskSettings) -> Result<source::Email, Error> {
 		Ok(match self.auth {
 			Auth::GoogleOAuth2 => source::Email::with_google_oauth2(
 				self.email,
 				settings
-					.google_oauth2
-					.as_ref()
-					.cloned()
+					.google_oauth2()?
 					.ok_or(Error::GoogleOAuth2TokenMissing)?,
 				self.filters.parse(),
 				self.view_mode.parse(),
@@ -46,9 +44,7 @@ impl Email {
 				self.imap.ok_or(Error::EmailImapFieldMissing)?,
 				self.email,
 				settings
-					.email_password
-					.as_ref()
-					.cloned()
+					.email_password()?
 					.ok_or(Error::EmailPasswordMissing)?,
 				self.filters.parse(),
 				self.view_mode.parse(),

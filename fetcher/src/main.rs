@@ -9,7 +9,7 @@
 
 #![warn(clippy::pedantic)]
 #![allow(clippy::missing_errors_doc)]
-#![allow(clippy::panic_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
 #![allow(clippy::module_name_repetitions)]
 
 pub mod settings;
@@ -87,10 +87,10 @@ async fn async_main() -> Result<()> {
 	tracing::info!("Running fetcher {}", version);
 
 	match std::env::args().nth(1).as_deref() {
-		Some("--save-google-oauth2") => settings::data::prompt_google_oauth2().await?,
-		Some("--save-email-password") => settings::data::prompt_email_password().await?,
-		Some("--save-telegram") => settings::data::prompt_telegram().await?,
-		Some("--save-twitter") => settings::data::prompt_twitter_auth().await?,
+		Some("--save-google-oauth2") => settings::data::google_oauth2::prompt().await?,
+		Some("--save-email-password") => settings::data::email_password::prompt()?,
+		Some("--save-telegram") => settings::data::telegram::prompt()?,
+		Some("--save-twitter") => settings::data::twitter::prompt()?,
 
 		Some("--once") => run(true).await?,
 		None => run(false).await?,
@@ -250,7 +250,7 @@ async fn report_error(task_name: &str, err: &str) -> Result<()> {
 			));
 		}
 	};
-	let bot = match settings::data::telegram().await? {
+	let bot = match settings::data::telegram::get()? {
 		Some(b) => b,
 		None => {
 			return Err(eyre!("Telegram bot token not provided"));

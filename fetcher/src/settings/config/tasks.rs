@@ -100,7 +100,7 @@ pub async fn get(path: PathBuf, name: &str) -> Result<Option<ParsedTask>> {
 
 	let full_conf = full_conf.merge(Yaml::file(&path));
 	let task: ConfigTask = full_conf.extract()?;
-	let task_settings = settings::get_task_settings().await?;
+	let task_settings = settings::TaskSettingsFetcherDefault;
 
-	Ok(Some(task.parse(name, task_settings).await?))
+	Ok(Some(task.parse(name, &task_settings).await?))
 }

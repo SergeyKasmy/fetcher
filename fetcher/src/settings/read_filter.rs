@@ -8,8 +8,6 @@ use super::PREFIX;
 use fetcher_config::tasks::read_filter::ReadFilter as ReadFilterConf;
 use fetcher_core::read_filter::{ExternalSave, ReadFilter};
 
-use color_eyre::eyre::eyre;
-use color_eyre::Result;
 use std::collections::HashMap;
 use std::fs;
 use std::io;
@@ -20,22 +18,16 @@ const READ_DATA_DIR: &str = "read";
 
 /// Returns a read filter for the task name from the filesystem.
 #[tracing::instrument]
-pub async fn get() -> Result<HashMap<String, ReadFilter>> {
-	tokio::task::spawn_blocking(|| {
-		let mut saved_rfs = HashMap::new();
+pub fn get() -> io::Result<HashMap<String, ReadFilter>> {
+	let mut saved_rfs = HashMap::new();
 
-		get_all_from(&read_filter_path()?, &mut saved_rfs)?;
+	get_all_from(&read_filter_path()?, &mut saved_rfs)?;
 
-		Ok(saved_rfs)
-	})
-	.await
-	.unwrap()
+	Ok(saved_rfs)
 }
 
 #[tracing::instrument(skip(rfs))]
-fn get_all_from(dir: &Path, rfs: &mut HashMap<String, ReadFilter>) -> Result<()> {
-	tracing::trace!("Walking though dir {dir:?}");
-
+fn get_all_from(dir: &Path, rfs: &mut HashMap<String, ReadFilter>) -> io::Result<()> {
 	assert!(
 		dir.is_dir(),
 		"Read filters can be searched for only in directories"
@@ -45,23 +37,21 @@ fn get_all_from(dir: &Path, rfs: &mut HashMap<String, ReadFilter>) -> Result<()>
 		let entry = entry?;
 		let entry_path = entry.path();
 
-		tracing::trace!("Found entry path {entry_path:?}");
-
 		if entry_path.is_dir() {
 			get_all_from(&entry_path, rfs)?;
 		} else {
 			let name = entry_path
-				.strip_prefix(dir)?
+				.strip_prefix(dir)
+				.expect(
+					"The file was found in the dir and thus should always contain it as a prefix",
+				)
 				.to_str()
-				.ok_or_else(|| eyre!("Read filter save file can't contain invalid unicode"))?
+				.ok_or_else(|| {
+					io::Error::new(io::ErrorKind::Other, "File path is not valid UTF-8")
+				})?
 				.to_owned();
 
-			tracing::trace!("Found read filter {name:?}");
-
 			let rf_raw = fs::read_to_string(&entry_path)?;
-
-			tracing::trace!("{name:?}'s raw contents: {rf_raw:?}");
-
 			if !rf_raw.is_empty() {
 				let rf_conf: ReadFilterConf = serde_json::from_str(&rf_raw)?;
 				let rf = rf_conf.parse(Box::new(save_file(&entry_path)?));
@@ -75,7 +65,7 @@ fn get_all_from(dir: &Path, rfs: &mut HashMap<String, ReadFilter>) -> Result<()>
 	Ok(())
 }
 
-fn read_filter_path() -> Result<PathBuf> {
+fn read_filter_path() -> io::Result<PathBuf> {
 	Ok(if cfg!(debug_assertions) {
 		PathBuf::from("debug_data/read/")
 	} else {
@@ -115,7 +105,7 @@ impl ExternalSave for TruncatingFileWriter {
 	}
 }
 
-fn save_file(path: &Path) -> Result<TruncatingFileWriter> {
+fn save_file(path: &Path) -> io::Result<TruncatingFileWriter> {
 	if let Some(parent) = path.parent() {
 		std::fs::create_dir_all(parent)?;
 	}
