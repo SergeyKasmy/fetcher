@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::ConfigError;
+use crate::Error;
 use crate::tasks::TaskSettings;
 use fetcher_core::sink;
 
@@ -36,15 +36,16 @@ pub struct Telegram {
 }
 
 impl Telegram {
-	pub fn parse(self, settings: &TaskSettings) -> Result<sink::Telegram, ConfigError> {
+	pub fn parse(self, settings: &TaskSettings) -> Result<sink::Telegram, Error> {
 		Ok(sink::Telegram::new(
 			settings
 				.telegram
 				.as_ref()
 				.cloned()
-				.ok_or(ConfigError::TelegramBotTokenMissing)?,
+				.ok_or(Error::TelegramBotTokenMissing)?,
 			self.chat_id,
 			self.link_location.parse(),
 		))
 	}
 }
+

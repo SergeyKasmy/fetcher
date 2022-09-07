@@ -16,6 +16,8 @@ pub mod error;
 pub mod settings;
 pub mod tasks;
 
+pub use self::error::Error;
+
 use serde::Deserialize;
 use serde::Serialize;
 

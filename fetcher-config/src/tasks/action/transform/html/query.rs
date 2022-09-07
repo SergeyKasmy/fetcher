@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use fetcher_core::action::transform;
 
-use crate::error::ConfigError;
+use crate::Error;
 
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
@@ -76,7 +76,7 @@ pub struct QueryData {
 }
 
 impl QueryData {
-	fn parse(self) -> Result<transform::html::query::QueryData, ConfigError> {
+	fn parse(self) -> Result<transform::html::query::QueryData, Error> {
 		transform::html::query::QueryData::new(
 			self.query.into_iter().map(Query::parse).collect(),
 			self.data_location.parse(),
@@ -91,7 +91,7 @@ impl QueryData {
 pub struct TitleQuery(pub QueryData);
 
 impl TitleQuery {
-	pub fn parse(self) -> Result<transform::html::query::TitleQuery, ConfigError> {
+	pub fn parse(self) -> Result<transform::html::query::TitleQuery, Error> {
 		Ok(transform::html::query::TitleQuery(self.0.parse()?))
 	}
 }
@@ -104,7 +104,7 @@ pub struct TextQuery {
 }
 
 impl TextQuery {
-	pub fn parse(self) -> Result<transform::html::query::TextQuery, ConfigError> {
+	pub fn parse(self) -> Result<transform::html::query::TextQuery, Error> {
 		Ok(transform::html::query::TextQuery {
 			prepend: self.prepend,
 			inner: self.inner.parse()?,
@@ -137,7 +137,7 @@ pub struct IdQuery {
 }
 
 impl IdQuery {
-	pub fn parse(self) -> Result<transform::html::query::IdQuery, ConfigError> {
+	pub fn parse(self) -> Result<transform::html::query::IdQuery, Error> {
 		Ok(transform::html::query::IdQuery {
 			kind: self.kind.parse(),
 			inner: self.inner.parse()?,
@@ -153,7 +153,7 @@ pub struct UrlQuery {
 }
 
 impl UrlQuery {
-	pub fn parse(self) -> Result<transform::html::query::UrlQuery, ConfigError> {
+	pub fn parse(self) -> Result<transform::html::query::UrlQuery, Error> {
 		Ok(transform::html::query::UrlQuery {
 			prepend: self.prepend,
 			inner: self.inner.parse()?,
@@ -169,7 +169,7 @@ pub struct ImageQuery {
 }
 
 impl ImageQuery {
-	pub fn parse(self) -> Result<transform::html::query::ImageQuery, ConfigError> {
+	pub fn parse(self) -> Result<transform::html::query::ImageQuery, Error> {
 		Ok(transform::html::query::ImageQuery {
 			optional: self.optional.unwrap_or(false),
 			url: self.url.parse()?,

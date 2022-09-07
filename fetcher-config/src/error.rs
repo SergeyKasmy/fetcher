@@ -6,9 +6,11 @@
 
 use fetcher_core::error::GoogleOAuth2Error;
 
+// pub type Result<T> = std::result::Result<T, Error>;
+
 // TODO: rename to just Error
 #[derive(thiserror::Error, Debug)]
-pub enum ConfigError {
+pub enum Error {
 	#[error("Twitter API key isn't set up")]
 	TwitterApiKeysMissing,
 

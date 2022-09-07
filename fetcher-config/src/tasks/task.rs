@@ -7,7 +7,7 @@
 use super::action::filter::Filter;
 use super::action::Action;
 use super::{read_filter, sink::Sink, source::Source, TaskSettings};
-use crate::error::ConfigError;
+use crate::Error;
 use crate::tasks::ParsedTask;
 use fetcher_core as fcore;
 
@@ -33,11 +33,7 @@ pub struct Task {
 }
 
 impl Task {
-	pub async fn parse(
-		self,
-		name: &str,
-		settings: &TaskSettings,
-	) -> Result<ParsedTask, ConfigError> {
+	pub async fn parse(self, name: &str, settings: &TaskSettings) -> Result<ParsedTask, Error> {
 		let rf = {
 			let rf = (settings.read_filter)(
 				name.to_owned(),

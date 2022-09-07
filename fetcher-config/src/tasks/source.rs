@@ -15,7 +15,7 @@ use self::email::Email;
 use self::file::File;
 use self::http::Http;
 use self::twitter::Twitter;
-use crate::error::ConfigError;
+use crate::Error;
 use crate::{tasks::TaskSettings, OneOrMultiple};
 use fetcher_core::source;
 
@@ -45,7 +45,7 @@ pub enum WithCustomReadFilter {
 }
 
 impl Source {
-	pub async fn parse(self, settings: &TaskSettings) -> Result<source::Source, ConfigError> {
+	pub async fn parse(self, settings: &TaskSettings) -> Result<source::Source, Error> {
 		Ok(match self {
 			Source::WithSharedReadFilter(v) => {
 				let v: Vec<WithSharedReadFilter> = v.into();
@@ -65,11 +65,11 @@ impl Source {
 							}
 						})
 					})
-					.collect::<Result<Vec<_>, ConfigError>>()?;
+					.collect::<Result<Vec<_>, Error>>()?;
 
 				source::Source::WithSharedReadFilter(
 					source::with_shared_rf::Source::new(sources)
-						.map_err(|e| ConfigError::FetcherCoreSource(Box::new(e)))?,
+						.map_err(|e| Error::FetcherCoreSource(Box::new(e)))?,
 				)
 			}
 			Source::WithCustomReadFilter(s) => match s {
