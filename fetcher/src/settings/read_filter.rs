@@ -48,67 +48,19 @@ pub fn get(name: &str, expected_rf_kind: ReadFilterKind) -> io::Result<ReadFilte
 			if save_file_rf.to_kind() == expected_rf_kind {
 				Ok(save_file_rf)
 			} else {
-				// Err(ConfigError::IncompatibleReadFilterTypes {
-				// 	in_config: save_file_rf.to_kind(),
-				// 	on_disk: currently_set_rf_kind,
-				// 	disk_rf_path: path,
-				// })
-				todo!()
+				// TODO: temporary. Return an option or a custom enum insteadP
+				Err(io::Error::new(
+					io::ErrorKind::Other,
+					format!(
+						"Incompatible read filter types: in config {} and on disk {}",
+						expected_rf_kind,
+						save_file_rf.to_kind()
+					),
+				))
 			}
 		}
 	}
 }
-
-/*
-/// Returns a read filter for the task name from the filesystem.
-#[tracing::instrument]
-pub fn get() -> io::Result<HashMap<String, ReadFilter>> {
-	let mut saved_rfs = HashMap::new();
-
-	get_all_from(&read_filter_path()?, &mut saved_rfs)?;
-
-	Ok(saved_rfs)
-}
-
-#[tracing::instrument(skip(rfs))]
-fn get_all_from(dir: &Path, rfs: &mut HashMap<String, ReadFilter>) -> io::Result<()> {
-	assert!(
-		dir.is_dir(),
-		"Read filters can be searched for only in directories"
-	);
-
-	for entry in fs::read_dir(dir)? {
-		let entry = entry?;
-		let entry_path = entry.path();
-
-		if entry_path.is_dir() {
-			get_all_from(&entry_path, rfs)?;
-		} else {
-			let name = entry_path
-				.strip_prefix(dir)
-				.expect(
-					"The file was found in the dir and thus should always contain it as a prefix",
-				)
-				.to_str()
-				.ok_or_else(|| {
-					io::Error::new(io::ErrorKind::Other, "File path is not valid UTF-8")
-				})?
-				.to_owned();
-
-			let rf_raw = fs::read_to_string(&entry_path)?;
-			if !rf_raw.is_empty() {
-				let rf_conf: ReadFilterConf = serde_json::from_str(&rf_raw)?;
-				let rf = rf_conf.parse(Box::new(save_file(&entry_path)?));
-
-				tracing::trace!("Inserting ({name:?}, {rf:?}) into the hashmap");
-				rfs.insert(name, rf);
-			}
-		}
-	}
-
-	Ok(())
-}
-*/
 
 fn read_filter_path() -> io::Result<PathBuf> {
 	Ok(if cfg!(debug_assertions) {
