@@ -30,13 +30,85 @@ use self::result::TransformedEntry;
 use crate::entry::Entry;
 use crate::error::transform::Error as TransformError;
 use crate::error::transform::Kind as TransformErrorKind;
+use crate::sink::Message;
 use crate::source::with_shared_rf::http;
 use crate::source::Http;
 
-trait Transform {
+trait TransformEntry {
 	type Error: Into<TransformErrorKind>;
 
-	fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error>;
+	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error>;
+}
+
+trait TransformField {
+	fn transform_field(&self, field: &str) -> String;
+}
+
+#[derive(Debug)]
+pub enum Kind {
+	Entry(TransformEntryKind),
+	Field(TransformFieldStruct),
+}
+
+#[derive(Debug)]
+pub struct TransformFieldStruct {
+	field: TransformFieldName,
+	kind: TransformFieldKind,
+}
+
+#[derive(Debug)]
+pub enum TransformFieldName {
+	Title,
+	Body,
+}
+
+#[derive(Debug)]
+pub enum TransformFieldKind {
+	Regex(Regex),
+	Caps(Caps),
+	Trim(Trim),
+	Shorten(Shorten),
+}
+
+impl Kind {
+	pub async fn transform(&self, mut entry: Entry) -> Result<Vec<Entry>, TransformError> {
+		match self {
+			Self::Entry(ent_tr) => ent_tr.transform(entry).await,
+			Self::Field(field_tr) => {
+				use TransformFieldKind::{Caps, Regex, Shorten, Trim};
+
+				let field = match &field_tr.field {
+					TransformFieldName::Title => entry.msg.title.take(),
+					TransformFieldName::Body => entry.msg.body.take(),
+				}
+				.expect("TODO"); // TODO
+
+				let field = match &field_tr.kind {
+					Regex(tr) => tr.transform_field(&field),
+					Caps(tr) => tr.transform_field(&field),
+					Trim(tr) => tr.transform_field(&field),
+					Shorten(tr) => tr.transform_field(&field),
+				};
+
+				Ok(vec![match &field_tr.field {
+					TransformFieldName::Title => Entry {
+						msg: Message {
+							title: Some(field),
+							..entry.msg
+						},
+						..entry
+					},
+					TransformFieldName::Body => Entry {
+						msg: Message {
+							body: Some(field),
+							..entry.msg
+						},
+						..entry
+					},
+				}])
+			}
+		}
+	}
 }
 
 /// Type that allows transformation of a single [`Entry`] into one or multiple separate entries.
@@ -44,71 +116,39 @@ trait Transform {
 // NOTE: Feed (and probs others in the future) is a ZST, so there's always going to be some amount of variance of enum sizes but is trying to avoid that worth the hasle of a Box?
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
-pub enum Kind {
-	// transform from one data type to another
+pub enum TransformEntryKind {
 	Http,
 	Html(Html),
 	Json(Json),
 	Feed(Feed),
 
-	// filter data
-	// ReadFilter(Arc<RwLock<ReadFilter>>),
-	Regex(Regex),
-	// Take(Take),
-
-	// modify data in-place
 	/// use [`raw_contents`](`crate::entry::Entry::raw_contents`) as message's [`body`](`crate::sink::Message::body`)
 	UseRawContents(UseRawContents),
-	Caps(Caps),
-	Trim(Trim),
-	Shorten(Shorten),
-
-	// other
 	Print,
 }
 
-impl Kind {
-	/// Transform the entry `entry` into one or more entries
-	///
-	/// # Errors
-	/// if there was an error parsing the entry
-	// pub async fn transform(&self, mut entries: Vec<Entry>) -> Result<Vec<Entry>, TransformError> {
-	// 	let res = match self {
-	// 		Transform::ReadFilter(rf) => {
-	// 			rf.read().await.remove_read_from(&mut entries);
-	// 			entries
-	// 		}
-	// 		Transform::Take(take) => {
-	// 			take.filter(&mut entries);
-	// 			entries
-	// 		}
-	// 		_ => {
-	// 		}
-	// 	};
-	// 	Ok(res)
-	// }
-
+impl TransformEntryKind {
 	pub async fn transform(&self, entry: Entry) -> Result<Vec<Entry>, TransformError> {
 		macro_rules! transform_delegate {
 			($($t:tt),+ custom => { $($custom_t:pat => $custom_impl:expr),+ }) => {
 				match self {
-					$(Self::$t(x) => x.transform(&entry).map_err(Into::into),)+
+					$(Self::$t(x) => x.transform_entry(&entry).map_err(Into::into),)+
 					$($custom_t => $custom_impl,)+
 				}
 			};
 		}
 
 		let res: Result<Vec<TransformedEntry>, TransformErrorKind> = transform_delegate!(
-			Html, Json, Feed, Regex, UseRawContents, Caps, Trim, Shorten
+			Html, Json, Feed, UseRawContents
 
 			custom => {
-				Kind::Http => {
+				Self::Http => {
 					Http::transform(&entry, http::TransformFromField::MessageLink) // TODO: make this a choise
 						.await
 						.map(|x| vec![x])
 						.map_err(Into::into)
 				},
-				Kind::Print => {
+				Self::Print => {
 					print::print(&entry).await;
 					Ok(Vec::new())
 				}

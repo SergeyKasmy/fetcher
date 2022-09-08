@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::Transform;
+use super::{TransformEntry, TransformField};
 use crate::action::transform::result::{
 	TransformResult as TrRes, TransformedEntry, TransformedMessage,
 };
@@ -18,33 +18,22 @@ pub struct Shorten {
 	pub len: usize,
 }
 
-impl Transform for Shorten {
-	type Error = Infallible;
-
-	fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
-		Ok(vec![self.transform_impl(entry)])
-	}
-}
-
-impl Shorten {
-	pub fn transform_impl(&self, entry: &Entry) -> TransformedEntry {
-		let body = if self.len == 0 {
+impl TransformField for Shorten {
+	fn transform_field(&self, field: &str) -> String {
+		/*
+		if self.len == 0 {
 			TrRes::Empty
 		} else {
-			TrRes::New(entry.msg.body.clone().map(|s| {
-				s.chars()
+			TrRes::New(
+				field
+					.chars()
 					.take(self.len)
 					.chain(repeat('.').take(3))
-					.collect()
-			}))
-		};
-
-		TransformedEntry {
-			msg: TransformedMessage {
-				body,
-				..Default::default()
-			},
-			..Default::default()
+					.collect(),
+			)
 		}
+		*/
+
+		todo!()
 	}
 }

@@ -12,7 +12,7 @@ use self::query::{
 	DataLocation, IdQuery, IdQueryKind, ImageQuery, Query, QueryData, QueryKind, TextQuery,
 	TitleQuery, UrlQuery,
 };
-use super::Transform;
+use super::TransformEntry;
 use crate::action::transform::regex::extract as regex_extract;
 use crate::action::transform::regex::ExtractionResult as RegexExtractResult;
 use crate::action::transform::result::{
@@ -41,10 +41,10 @@ pub struct Html {
 	pub imgq: Option<ImageQuery>,
 }
 
-impl Transform for Html {
+impl TransformEntry for Html {
 	type Error = HtmlError;
 
-	fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
 		tracing::debug!("Parsing HTML");
 
 		let soup = Soup::new(
@@ -173,7 +173,7 @@ fn extract_body(item: &impl QueryBuilderExt, textq: &[TextQuery]) -> Result<Stri
 
 fn extract_img(item: &impl QueryBuilderExt, imgq: &ImageQuery) -> Result<Option<Url>, HtmlError> {
 	let mut img_url = match extract_data(item, &imgq.url.inner)? {
-		Some(s) => s.trim().to_owned(),
+		Some(s) => s,
 		None => {
 			if imgq.optional {
 				tracing::trace!(
@@ -193,6 +193,39 @@ fn extract_img(item: &impl QueryBuilderExt, imgq: &ImageQuery) -> Result<Option<
 	Ok(Some(
 		Url::try_from(img_url.as_str()).map_err(|e| InvalidUrlError(e, img_url))?,
 	))
+}
+
+/// Extract data from the provided HTML tags and join them
+fn extract_data(
+	item: &impl QueryBuilderExt,
+	query_data: &QueryData,
+) -> Result<Option<String>, HtmlError> {
+	let data = find_chain(item, &query_data.query)
+		.map(|hndl| match &query_data.data_location {
+			DataLocation::Text => Some(hndl.text()),
+			DataLocation::Attr(v) => hndl.get(v),
+		})
+		.collect::<Option<Vec<_>>>();
+
+	let data = match data {
+		Some(v) => v,
+		None => return Ok(None),
+	};
+
+	let s = data.join("\n\n"); // lifetime workaround
+	let s = s.trim();
+
+	if s.is_empty() {
+		return Ok(None);
+	}
+
+	let s = match &query_data.regex {
+		// Some(re) => re.run(s)?,
+		Some(_re) => todo!(),
+		None => Some(s),
+	};
+
+	Ok(s.map(ToOwned::to_owned))
 }
 
 /// Find items matching the query in the provided HTML part
@@ -243,37 +276,6 @@ fn find_chain<'a>(
 	}
 
 	handles.unwrap() // unwrap NOTE: safe *if* there are more than 0 query kinds which should be always... hopefully... // TODO: make sure there are more than 0 qks
-}
-
-/// Extract data from the provided HTML tags and join them
-fn extract_data(
-	item: &impl QueryBuilderExt,
-	query_data: &QueryData,
-) -> Result<Option<String>, HtmlError> {
-	let data = find_chain(item, &query_data.query)
-		.map(|hndl| match &query_data.data_location {
-			DataLocation::Text => Some(hndl.text()),
-			DataLocation::Attr(v) => hndl.get(v),
-		})
-		.collect::<Option<Vec<_>>>();
-
-	let data = match data {
-		Some(x) => x,
-		None => return Ok(None),
-	};
-
-	let s = data.join("\n\n");
-
-	let s = match &query_data.regex {
-		Some(re) => match regex_extract(re, &s) {
-			RegexExtractResult::Extracted(s) => s,
-			RegexExtractResult::NotMatched => return Err(RegexError::NoMatchFound(s).into()),
-			RegexExtractResult::Matched => return Err(RegexError::CaptureGroupMissing.into()),
-		},
-		None => &s,
-	};
-
-	Ok(Some(s.trim().to_owned()))
 }
 
 // TODO: rewrite the entire fn to use today/Yesterday words and date formats from the config per source and not global

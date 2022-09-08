@@ -7,8 +7,10 @@
 //! fetcher core    // TODO
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)] // TODO
-#![warn(missing_docs)]
-#![warn(clippy::unwrap_used)]
+// #![warn(missing_docs)]
+// #![warn(clippy::unwrap_used)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
 
 pub mod action;
 /// Everything concerning some kind of non-primitive authentication

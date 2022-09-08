@@ -4,11 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::Transform;
-use crate::action::transform::result::{
-	TransformResult as TrRes, TransformedEntry, TransformedMessage,
-};
-use crate::{entry::Entry, error::transform::RegexError};
+use super::TransformField;
+
+use crate::error::transform::RegexError;
 
 #[derive(Debug)]
 pub struct Regex {
@@ -32,39 +30,20 @@ impl Regex {
 	}
 }
 
-impl Transform for Regex {
-	type Error = RegexError;
+impl TransformField for Regex {
+	// type Error = RegexError;
 
-	fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
-		// self.transform_impl(entry).map(|e| vec![e])
-		let body = match entry.msg.body.clone() {
-			Some(body) => body,
-			None => {
-				return Ok(vec![TransformedEntry {
-					msg: TransformedMessage {
-						body: TrRes::Empty,
-						..Default::default()
-					},
-					..Default::default()
-				}])
-			}
-		};
-
-		let body = self.run(&body)?.map(ToOwned::to_owned);
-
-		Ok(vec![TransformedEntry {
-			msg: TransformedMessage {
-				body: TrRes::New(body),
-				..Default::default()
-			},
-			..Default::default()
-		}])
+	fn transform_field(&self, field: &str) -> String {
+		self.run(field)
+			.expect("TODO")
+			.map(ToOwned::to_owned)
+			.expect("TODO") // TODO
 	}
 }
 
 impl Regex {
 	pub fn run<'a>(&self, text: &'a str) -> Result<Option<&'a str>, RegexError> {
-		let res = match (&self.action, extract(&self.re, &text)) {
+		let res = match (&self.action, extract(&self.re, text)) {
 			// return the original str if a match was found or even extracted from some reason when we are just searching
 			(Action::Find, ExtractionResult::Matched | ExtractionResult::Extracted(_)) => {
 				Some(text)
