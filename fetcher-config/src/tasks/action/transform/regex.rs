@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::error::ConfigError;
+use crate::Error;
 use fetcher_core::action::transform::regex::Action as CoreAction;
 use fetcher_core::action::transform::Regex as CoreRegex;
 
@@ -24,7 +24,7 @@ pub enum Action {
 }
 
 impl Regex {
-	pub fn parse(self) -> Result<CoreRegex, ConfigError> {
+	pub fn parse(self) -> Result<CoreRegex, Error> {
 		Ok(CoreRegex::new(&self.re, self.action.parse())?)
 	}
 }

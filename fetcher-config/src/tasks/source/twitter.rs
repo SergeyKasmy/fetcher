@@ -6,8 +6,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::config::TaskSettings;
-use crate::error::ConfigError;
+use crate::tasks::TaskSettings;
+use crate::Error;
 use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -18,12 +18,10 @@ pub struct Twitter {
 }
 
 impl Twitter {
-	pub fn parse(self, settings: &TaskSettings) -> Result<source::Twitter, ConfigError> {
+	pub fn parse(self, settings: &dyn TaskSettings) -> Result<source::Twitter, Error> {
 		let (api_key, api_secret) = settings
-			.twitter_auth
-			.as_ref()
-			.cloned()
-			.ok_or(ConfigError::TwitterApiKeysMissing)?;
+			.twitter_token()?
+			.ok_or(Error::TwitterApiKeysMissing)?;
 
 		Ok(source::Twitter::new(
 			self.handle,

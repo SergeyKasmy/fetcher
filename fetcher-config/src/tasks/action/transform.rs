@@ -15,7 +15,7 @@ use self::json::Json;
 use self::regex::Regex;
 use self::shorten::Shorten;
 use self::trim::Trim;
-use crate::error::ConfigError;
+use crate::Error;
 use fetcher_core::action::transform as core_transform;
 use fetcher_core::action::transform::Kind as CoreTransformKind;
 
@@ -40,7 +40,7 @@ pub enum Transform {
 }
 
 impl Transform {
-	pub fn parse(self) -> Result<CoreTransformKind, ConfigError> {
+	pub fn parse(self) -> Result<CoreTransformKind, Error> {
 		Ok(match self {
 			Transform::Http => CoreTransformKind::Http,
 			Transform::Html(x) => CoreTransformKind::Html(x.parse()?),

@@ -4,10 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::path::PathBuf;
-
 use crate::entry::Entry;
 use crate::error::source::Error as SourceError;
+
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct File {

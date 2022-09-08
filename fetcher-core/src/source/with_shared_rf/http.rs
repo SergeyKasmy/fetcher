@@ -4,16 +4,16 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use once_cell::sync::Lazy;
-use std::fmt::{Debug, Display};
-use std::sync::Mutex;
-use url::Url;
-
+use crate::action::transform::result::{TransformResult, TransformedEntry, TransformedMessage};
 use crate::entry::Entry;
 use crate::error::source::HttpError;
 use crate::error::transform::{HttpError as HttpTransformError, InvalidUrlError};
 use crate::sink::Message;
-use crate::action::transform::result::{TransformResult, TransformedEntry, TransformedMessage};
+
+use once_cell::sync::Lazy;
+use std::fmt::{Debug, Display};
+use std::sync::Mutex;
+use url::Url;
 
 const USER_AGENT: &str =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0";

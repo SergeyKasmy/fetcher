@@ -4,16 +4,16 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use egg_mode::entities::MediaType;
-use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
-// use std::sync::Arc;
-// use tokio::sync::RwLock;
-
 use crate::entry::Entry;
 use crate::error::source::TwitterError;
 // use crate::read_filter::ReadFilter;
 use crate::sink::Media;
 use crate::sink::Message;
+
+use egg_mode::entities::MediaType;
+use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
+// use std::sync::Arc;
+// use tokio::sync::RwLock;
 
 pub struct Twitter {
 	handle: String,

@@ -7,15 +7,15 @@
 pub mod tasks;
 pub mod templates;
 
-use std::path::PathBuf;
-
 use super::PREFIX;
-use crate::error::ConfigError;
+
+use color_eyre::Result;
+use std::path::PathBuf;
 
 const CONFIG_FILE_EXT: &str = "yaml";
 
 // TODO: use directories instead of xdg
-fn cfg_dirs() -> Result<Vec<PathBuf>, ConfigError> {
+fn cfg_dirs() -> Result<Vec<PathBuf>> {
 	Ok(if cfg!(debug_assertions) {
 		vec![PathBuf::from("debug_data/cfg".to_string())]
 	} else {

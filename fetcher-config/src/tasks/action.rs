@@ -9,7 +9,7 @@ pub mod transform;
 
 use self::filter::Filter;
 use self::transform::Transform;
-use crate::error::ConfigError;
+use crate::Error;
 use fetcher_core::action::Action as CoreAction;
 
 use serde::{Deserialize, Serialize};
@@ -22,7 +22,7 @@ pub enum Action {
 }
 
 impl Action {
-	pub fn parse(self) -> Result<CoreAction, ConfigError> {
+	pub fn parse(self) -> Result<CoreAction, Error> {
 		Ok(match self {
 			Self::Filter(x) => CoreAction::Filter(x.parse()),
 			Self::Transform(x) => CoreAction::Transform(x.parse()?),

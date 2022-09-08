@@ -4,16 +4,16 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tokio::sync::RwLock;
-
 use super::action::filter::Filter;
 use super::action::Action;
 use super::{read_filter, sink::Sink, source::Source, TaskSettings};
-use crate::error::ConfigError;
-use crate::task::Task as ParsedTask;
+use crate::tasks::ParsedTask;
+use crate::Error;
 use fetcher_core as fcore;
+
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[derive(Deserialize, Serialize, Debug)]
 // TODO: add
@@ -33,19 +33,14 @@ pub struct Task {
 }
 
 impl Task {
-	pub async fn parse(
-		self,
-		name: &str,
-		settings: &TaskSettings,
-	) -> Result<ParsedTask, ConfigError> {
-		let rf = {
-			let rf = (settings.read_filter)(
-				name.to_owned(),
-				self.read_filter_kind.map(read_filter::Kind::parse),
-			)
-			.await?;
-			rf.map(|rf| Arc::new(RwLock::new(rf)))
-		};
+	pub fn parse(self, name: &str, settings: &dyn TaskSettings) -> Result<ParsedTask, Error> {
+		let rf = self
+			.read_filter_kind
+			.map(read_filter::Kind::parse)
+			.map(|cfg_rf_kind| settings.read_filter(name, cfg_rf_kind))
+			.transpose()?
+			.map(|rf| Arc::new(RwLock::new(rf)));
+
 		let actions = self
 			.actions
 			.map(|x| {
@@ -67,8 +62,8 @@ impl Task {
 			.transpose()?;
 
 		let inner = fcore::task::Task {
-			tag: self.tag.map(|s| s.replace(char::is_whitespace, "_")),
-			source: self.source.parse(settings).await?,
+			tag: self.tag,
+			source: self.source.parse(settings)?,
 			rf,
 			actions,
 			sink: self.sink.parse(settings)?,

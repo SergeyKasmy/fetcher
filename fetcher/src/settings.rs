@@ -8,23 +8,34 @@ pub mod config;
 pub mod data;
 pub mod read_filter;
 
-use crate::{config::TaskSettings, error::ConfigError};
+use fetcher_config::tasks::TaskSettings;
+use fetcher_core::read_filter::Kind as ReadFilterKind;
+use fetcher_core::read_filter::ReadFilter;
 
-use std::future::Future;
-use std::pin::Pin;
+use std::io;
 
 const PREFIX: &str = "fetcher";
 
-pub async fn get_task_settings() -> Result<TaskSettings, ConfigError> {
-	let read_filter_getter = |name: String, current| -> Pin<Box<dyn Future<Output = _>>> {
-		Box::pin(async move { read_filter::get(&name, current).await })
-	};
+struct TaskSettingsFetcherDefault;
 
-	Ok(TaskSettings {
-		twitter_auth: data::twitter().await?,
-		google_oauth2: data::google_oauth2().await?,
-		email_password: data::email_password().await?,
-		telegram: data::telegram().await?,
-		read_filter: Box::new(read_filter_getter),
-	})
+impl TaskSettings for TaskSettingsFetcherDefault {
+	fn twitter_token(&self) -> io::Result<Option<(String, String)>> {
+		data::twitter::get()
+	}
+
+	fn google_oauth2(&self) -> io::Result<Option<fetcher_core::auth::Google>> {
+		data::google_oauth2::get()
+	}
+
+	fn email_password(&self) -> io::Result<Option<String>> {
+		data::email_password::get()
+	}
+
+	fn telegram_bot_token(&self) -> io::Result<Option<String>> {
+		data::telegram::get()
+	}
+
+	fn read_filter(&self, name: &str, expected_rf: ReadFilterKind) -> io::Result<ReadFilter> {
+		read_filter::get(name, expected_rf)
+	}
 }

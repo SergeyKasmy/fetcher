@@ -5,20 +5,20 @@
  */
 
 // TODO: proper argument parser. Something like clap or argh or something
+// TODO: make fetcher_config more easily replaceable
 
 #![warn(clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)] // TODO
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::module_name_repetitions)]
 
-pub mod config;
-pub mod error;
 pub mod settings;
-pub mod task;
 
-use crate::task::Task;
-use crate::task::Tasks;
+use fetcher_config::tasks::ParsedTask;
+use fetcher_config::tasks::ParsedTasks;
 use fetcher_core::{error::Error, error::ErrorChainExt};
 
-use color_eyre::{eyre::eyre, Report};
+use color_eyre::{eyre::eyre, Report, Result};
 use futures::{future::join_all, StreamExt};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
@@ -34,12 +34,12 @@ use tokio::{
 };
 use tracing::Instrument;
 
-fn main() -> color_eyre::Result<()> {
+fn main() -> Result<()> {
 	set_up_logging()?;
 	async_main()
 }
 
-fn set_up_logging() -> color_eyre::Result<()> {
+fn set_up_logging() -> Result<()> {
 	use tracing_subscriber::fmt::time::OffsetTime;
 	use tracing_subscriber::layer::SubscriberExt;
 	use tracing_subscriber::EnvFilter;
@@ -71,7 +71,7 @@ fn set_up_logging() -> color_eyre::Result<()> {
 }
 
 #[tokio::main]
-async fn async_main() -> color_eyre::Result<()> {
+async fn async_main() -> Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -87,10 +87,10 @@ async fn async_main() -> color_eyre::Result<()> {
 	tracing::info!("Running fetcher {}", version);
 
 	match std::env::args().nth(1).as_deref() {
-		Some("--save-google-oauth2") => settings::data::prompt_google_oauth2().await?,
-		Some("--save-email-password") => settings::data::prompt_email_password().await?,
-		Some("--save-telegram") => settings::data::prompt_telegram().await?,
-		Some("--save-twitter") => settings::data::prompt_twitter_auth().await?,
+		Some("--save-google-oauth2") => settings::data::google_oauth2::prompt().await?,
+		Some("--save-email-password") => settings::data::email_password::prompt()?,
+		Some("--save-telegram") => settings::data::telegram::prompt()?,
+		Some("--save-twitter") => settings::data::twitter::prompt()?,
 
 		Some("--once") => run(true).await?,
 		None => run(false).await?,
@@ -100,7 +100,7 @@ async fn async_main() -> color_eyre::Result<()> {
 	Ok(())
 }
 
-async fn run(once: bool) -> color_eyre::Result<()> {
+async fn run(once: bool) -> Result<()> {
 	let tasks = settings::config::tasks::get_all().await?;
 
 	if tasks.is_empty() {
@@ -158,7 +158,7 @@ async fn run(once: bool) -> color_eyre::Result<()> {
 	Ok(())
 }
 
-async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> color_eyre::Result<()> {
+async fn run_tasks(tasks: ParsedTasks, shutdown_rx: Receiver<()>, once: bool) -> Result<()> {
 	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
 		let name2 = name.clone();
@@ -209,7 +209,7 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> color
 	}
 }
 
-async fn task_loop(t: &mut Task, once: bool) -> Result<(), Error> {
+async fn task_loop(t: &mut ParsedTask, once: bool) -> Result<(), Error> {
 	loop {
 		match fetcher_core::run_task(&mut t.inner).await {
 			Ok(()) => (),
@@ -237,7 +237,7 @@ async fn task_loop(t: &mut Task, once: bool) -> Result<(), Error> {
 }
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
-async fn report_error(task_name: &str, err: &str) -> color_eyre::Result<()> {
+async fn report_error(task_name: &str, err: &str) -> Result<()> {
 	use fetcher_core::sink::telegram::LinkLocation;
 	use fetcher_core::sink::Message;
 	use fetcher_core::sink::Telegram;
@@ -250,7 +250,7 @@ async fn report_error(task_name: &str, err: &str) -> color_eyre::Result<()> {
 			));
 		}
 	};
-	let bot = match settings::data::telegram().await? {
+	let bot = match settings::data::telegram::get()? {
 		Some(b) => b,
 		None => {
 			return Err(eyre!("Telegram bot token not provided"));

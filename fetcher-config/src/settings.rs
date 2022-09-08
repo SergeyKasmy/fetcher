@@ -4,6 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub mod email_password;
 pub mod google;
+pub mod telegram;
+pub mod twitter;
 
-pub use google::Google;
+pub use self::email_password::EmailPassword;
+pub use self::google::Google;
+pub use self::telegram::Telegram;
+pub use self::twitter::Twitter;

@@ -6,11 +6,11 @@
 
 pub mod query;
 
-use serde::{Deserialize, Serialize};
-
 use self::query::{IdQuery, ImageQuery, Query, TextQuery, TitleQuery, UrlQuery};
-use crate::error::ConfigError;
+use crate::Error;
 use fetcher_core::action::transform::Html as CoreHtml;
+
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Html {
@@ -34,7 +34,7 @@ pub struct Html {
 }
 
 impl Html {
-	pub fn parse(self) -> Result<CoreHtml, ConfigError> {
+	pub fn parse(self) -> Result<CoreHtml, Error> {
 		Ok(CoreHtml {
 			itemq: self.itemq.into_iter().map(Query::parse).collect(),
 			titleq: self.titleq.map(TitleQuery::parse).transpose()?,

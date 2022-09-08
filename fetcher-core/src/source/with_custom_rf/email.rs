@@ -11,9 +11,6 @@ mod view_mode;
 pub use auth::Auth;
 pub use view_mode::ViewMode;
 
-use mailparse::ParsedMail;
-use std::fmt::Write as _;
-
 use self::auth::GoogleAuthExt;
 use self::filters::Filters;
 use crate::auth::Google as GoogleAuth;
@@ -21,6 +18,9 @@ use crate::entry::Entry;
 use crate::error::source::EmailError;
 use crate::error::source::ImapError;
 use crate::sink::Message;
+
+use mailparse::ParsedMail;
+use std::fmt::Write as _;
 
 const IMAP_PORT: u16 = 993;
 
