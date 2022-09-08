@@ -6,9 +6,9 @@
 
 use super::PREFIX;
 use fetcher_config::tasks::read_filter::ReadFilter as ReadFilterConf;
+use fetcher_core::read_filter::Kind as ReadFilterKind;
 use fetcher_core::read_filter::{ExternalSave, ReadFilter};
 
-use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -16,6 +16,50 @@ use std::{io::Write, path::PathBuf};
 
 const READ_DATA_DIR: &str = "read";
 
+#[tracing::instrument]
+pub fn get(name: &str, expected_rf_kind: ReadFilterKind) -> io::Result<ReadFilter> {
+	let path = read_filter_path()?;
+
+	match fs::read_to_string(&path) {
+		Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
+			tracing::debug!("Read filter save file is empty");
+
+			Ok(ReadFilter::new(
+				expected_rf_kind,
+				Box::new(save_file(&path)?),
+			))
+		}
+		Err(e) => {
+			tracing::debug!("Read filter save file doesn't exist or is inaccessible: {e}");
+
+			Ok(ReadFilter::new(
+				expected_rf_kind,
+				Box::new(save_file(&path)?),
+			))
+		}
+		Ok(save_file_rf_raw) => {
+			let save_file_rf = {
+				let conf: ReadFilterConf = serde_json::from_str(&save_file_rf_raw)?;
+
+				conf.parse(Box::new(save_file(&path)?))
+			};
+
+			// the old read filter saved on disk is of the same type as the one set in config
+			if save_file_rf.to_kind() == expected_rf_kind {
+				Ok(save_file_rf)
+			} else {
+				// Err(ConfigError::IncompatibleReadFilterTypes {
+				// 	in_config: save_file_rf.to_kind(),
+				// 	on_disk: currently_set_rf_kind,
+				// 	disk_rf_path: path,
+				// })
+				todo!()
+			}
+		}
+	}
+}
+
+/*
 /// Returns a read filter for the task name from the filesystem.
 #[tracing::instrument]
 pub fn get() -> io::Result<HashMap<String, ReadFilter>> {
@@ -64,6 +108,7 @@ fn get_all_from(dir: &Path, rfs: &mut HashMap<String, ReadFilter>) -> io::Result
 
 	Ok(())
 }
+*/
 
 fn read_filter_path() -> io::Result<PathBuf> {
 	Ok(if cfg!(debug_assertions) {

@@ -33,16 +33,13 @@ pub struct Task {
 }
 
 impl Task {
-	pub async fn parse(self, name: &str, settings: &dyn TaskSettings) -> Result<ParsedTask, Error> {
+	pub fn parse(self, name: &str, settings: &dyn TaskSettings) -> Result<ParsedTask, Error> {
 		let rf = self
 			.read_filter_kind
 			.map(read_filter::Kind::parse)
-			.map(|cfg_rf_kind| {
-				let rf = settings.read_filter(name, cfg_rf_kind)?;
-
-				Ok::<_, std::io::Error>(Arc::new(RwLock::new(rf)))
-			})
-			.transpose()?;
+			.map(|cfg_rf_kind| settings.read_filter(name, cfg_rf_kind))
+			.transpose()?
+			.map(|rf| Arc::new(RwLock::new(rf)));
 
 		let actions = self
 			.actions
@@ -66,7 +63,7 @@ impl Task {
 
 		let inner = fcore::task::Task {
 			tag: self.tag,
-			source: self.source.parse(settings).await?,
+			source: self.source.parse(settings)?,
 			rf,
 			actions,
 			sink: self.sink.parse(settings)?,

@@ -61,7 +61,7 @@ pub async fn get_all_from(tasks_dir: PathBuf) -> Result<ParsedTasks> {
 			.strip_prefix(&tasks_dir)
 			.expect("The prefix was just appended up above in the glob pattern and thus should never fail")
 			.with_extension("")
-			.to_string_lossy()
+			.to_string_lossy()	// TODO: choose if we should use lossy or fail on invalid UTF-8 like in read_filter::get. This inconsistent behavior is probably even worse than any of the two
 			.into_owned();
 
 		get(cfg, &name).await?.map(|task| tasks.insert(name, task));
@@ -100,7 +100,13 @@ pub async fn get(path: PathBuf, name: &str) -> Result<Option<ParsedTask>> {
 
 	let full_conf = full_conf.merge(Yaml::file(&path));
 	let task: ConfigTask = full_conf.extract()?;
-	let task_settings = settings::TaskSettingsFetcherDefault;
 
-	Ok(Some(task.parse(name, &task_settings).await?))
+	let name = name.to_owned(); // ehhhh, such a wasteful clone, and just because tokio doesn't support scoped tasks
+	let parsed_task = tokio::task::spawn_blocking(move || {
+		task.parse(&name, &settings::TaskSettingsFetcherDefault)
+	})
+	.await
+	.unwrap()?;
+
+	Ok(Some(parsed_task))
 }

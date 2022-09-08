@@ -9,6 +9,8 @@ pub mod data;
 pub mod read_filter;
 
 use fetcher_config::tasks::TaskSettings;
+use fetcher_core::read_filter::Kind as ReadFilterKind;
+use fetcher_core::read_filter::ReadFilter;
 
 use std::io;
 
@@ -33,11 +35,7 @@ impl TaskSettings for TaskSettingsFetcherDefault {
 		data::telegram::get()
 	}
 
-	fn read_filter(
-		&self,
-		name: &str,
-		kind: fetcher_core::read_filter::Kind,
-	) -> io::Result<fetcher_core::read_filter::ReadFilter> {
-		todo!()
+	fn read_filter(&self, name: &str, expected_rf: ReadFilterKind) -> io::Result<ReadFilter> {
+		read_filter::get(name, expected_rf)
 	}
 }

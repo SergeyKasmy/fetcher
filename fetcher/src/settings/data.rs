@@ -16,8 +16,6 @@ use std::io;
 use std::io::Write;
 use std::path::PathBuf;
 
-const EMAIL_PASS: &str = "email_pass.txt";
-
 pub fn get_data_file(file_name: &str) -> io::Result<Option<String>> {
 	let f = get_data_file_path(file_name)?;
 	if !f.is_file() {

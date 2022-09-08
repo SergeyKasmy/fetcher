@@ -31,5 +31,5 @@ pub trait TaskSettings {
 	fn google_oauth2(&self) -> io::Result<Option<fcore::auth::Google>>;
 	fn email_password(&self) -> io::Result<Option<String>>;
 	fn telegram_bot_token(&self) -> io::Result<Option<String>>;
-	fn read_filter(&self, name: &str, kind: ReadFilterKind) -> io::Result<ReadFilter>;
+	fn read_filter(&self, name: &str, expected_rf: ReadFilterKind) -> io::Result<ReadFilter>;
 }
