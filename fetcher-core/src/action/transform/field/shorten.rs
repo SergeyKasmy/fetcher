@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::{TransformEntry, TransformField};
+use super::TransformField;
 use crate::action::transform::result::{
 	TransformResult as TrRes, TransformedEntry, TransformedMessage,
 };

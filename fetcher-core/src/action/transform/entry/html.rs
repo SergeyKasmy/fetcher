@@ -13,8 +13,8 @@ use self::query::{
 	TitleQuery, UrlQuery,
 };
 use super::TransformEntry;
-use crate::action::transform::regex::extract as regex_extract;
-use crate::action::transform::regex::ExtractionResult as RegexExtractResult;
+use crate::action::transform::field::regex::extract as regex_extract;
+use crate::action::transform::field::regex::ExtractionResult as RegexExtractResult;
 use crate::action::transform::result::{
 	TransformResult as TrRes, TransformedEntry, TransformedMessage,
 };
