@@ -97,13 +97,13 @@ impl Html {
 		};
 
 		Ok(TransformedEntry {
-			id: TrRes::New(id),
-			raw_contents: TrRes::New(body.clone()), // TODO: add an ability to choose if raw_contents should be kept from prev step
+			id: TrRes::Old(id),
+			raw_contents: TrRes::Old(body.clone()), // TODO: add an ability to choose if raw_contents should be kept from prev step
 			msg: TransformedMessage {
-				title: TrRes::New(title),
-				body: TrRes::New(body),
-				link: TrRes::New(link),
-				media: TrRes::New(img.map(|url| vec![Media::Photo(url)])),
+				title: TrRes::Old(title),
+				body: TrRes::Old(body),
+				link: TrRes::Old(link),
+				media: TrRes::Old(img.map(|url| vec![Media::Photo(url)])),
 			},
 		})
 	}

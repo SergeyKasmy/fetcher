@@ -188,13 +188,13 @@ impl TransformEntry for Json {
 					.transpose()?;
 
 				Ok(TransformedEntry {
-					id: TrRes::New(Some(id)),
-					raw_contents: TrRes::New(body.clone()),
+					id: TrRes::New(Some(id)), // TODO: return Old(id) where id is None if json id query is None
+					raw_contents: TrRes::Old(body.clone()),
 					msg: TransformedMessage {
-						title: TrRes::New(title),
-						body: TrRes::New(body),
-						link: TrRes::New(link),
-						media: TrRes::New(img.map(|url| vec![Media::Photo(url)])),
+						title: TrRes::Old(title),
+						body: TrRes::Old(body),
+						link: TrRes::Old(link),
+						media: TrRes::Old(img.map(|url| vec![Media::Photo(url)])),
 					},
 				})
 			})

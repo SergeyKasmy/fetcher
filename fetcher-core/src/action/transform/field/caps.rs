@@ -5,12 +5,13 @@
  */
 
 use super::TransformField;
+use crate::action::transform::result::TransformResult;
 
 #[derive(Debug)]
 pub struct Caps;
 
 impl TransformField for Caps {
-	fn transform_field(&self, field: &str) -> String {
-		field.to_uppercase()
+	fn transform_field(&self, field: &str) -> TransformResult<String> {
+		TransformResult::New(Some(field.to_uppercase()))
 	}
 }

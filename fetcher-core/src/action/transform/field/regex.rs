@@ -6,7 +6,7 @@
 
 use super::TransformField;
 
-use crate::error::transform::RegexError;
+use crate::{action::transform::result::TransformResult, error::transform::RegexError};
 
 #[derive(Debug)]
 pub struct Regex {
@@ -33,11 +33,8 @@ impl Regex {
 impl TransformField for Regex {
 	// type Error = RegexError;
 
-	fn transform_field(&self, field: &str) -> String {
-		self.run(field)
-			.expect("TODO")
-			.map(ToOwned::to_owned)
-			.expect("TODO") // TODO
+	fn transform_field(&self, field: &str) -> TransformResult<String> {
+		TransformResult::New(self.run(field).expect("TODO").map(ToOwned::to_owned))
 	}
 }
 

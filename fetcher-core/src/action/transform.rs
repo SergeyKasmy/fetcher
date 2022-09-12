@@ -36,30 +36,34 @@ impl Kind {
 				use field::Field;
 				use field::Kind::{Caps, Regex, Shorten, Trim};
 
-				let field = match &field_tr.field {
+				let old_val = match &field_tr.field {
 					Field::Title => entry.msg.title.take(),
 					Field::Body => entry.msg.body.take(),
-				}
-				.expect("TODO"); // TODO
+				};
 
-				let field = match &field_tr.kind {
-					Regex(tr) => tr.transform_field(&field),
-					Caps(tr) => tr.transform_field(&field),
-					Trim(tr) => tr.transform_field(&field),
-					Shorten(tr) => tr.transform_field(&field),
+				let new_val = old_val.as_deref().map(|v| match &field_tr.kind {
+					Regex(tr) => tr.transform_field(v),
+					Caps(tr) => tr.transform_field(v),
+					Trim(tr) => tr.transform_field(v),
+					Shorten(tr) => tr.transform_field(v),
+				});
+
+				let final_val = match new_val {
+					None => old_val,
+					Some(v) => v.get(old_val),
 				};
 
 				Ok(vec![match &field_tr.field {
 					Field::Title => Entry {
 						msg: Message {
-							title: Some(field),
+							title: final_val,
 							..entry.msg
 						},
 						..entry
 					},
 					Field::Body => Entry {
 						msg: Message {
-							body: Some(field),
+							body: final_val,
 							..entry.msg
 						},
 						..entry

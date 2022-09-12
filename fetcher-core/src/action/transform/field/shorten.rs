@@ -5,12 +5,8 @@
  */
 
 use super::TransformField;
-use crate::action::transform::result::{
-	TransformResult as TrRes, TransformedEntry, TransformedMessage,
-};
-use crate::entry::Entry;
+use crate::action::transform::result::TransformResult;
 
-use std::convert::Infallible;
 use std::iter::repeat;
 
 #[derive(Debug)]
@@ -19,21 +15,15 @@ pub struct Shorten {
 }
 
 impl TransformField for Shorten {
-	fn transform_field(&self, field: &str) -> String {
-		/*
-		if self.len == 0 {
-			TrRes::Empty
-		} else {
-			TrRes::New(
-				field
-					.chars()
-					.take(self.len)
-					.chain(repeat('.').take(3))
-					.collect(),
-			)
-		}
-		*/
+	fn transform_field(&self, field: &str) -> TransformResult<String> {
+		let new_val = (self.len != 0).then(|| {
+			field
+				.chars()
+				.take(self.len)
+				.chain(repeat('.').take(3))
+				.collect::<String>()
+		});
 
-		todo!()
+		TransformResult::New(new_val)
 	}
 }

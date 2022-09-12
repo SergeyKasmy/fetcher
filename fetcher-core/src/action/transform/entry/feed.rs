@@ -44,12 +44,12 @@ impl TransformEntry for Feed {
 				let link = Some(Url::try_from(feed_entry.links.remove(0).href.as_str()).unwrap()); // panics
 
 				TransformedEntry {
-					id: TrRes::New(id),
-					raw_contents: TrRes::New(body.clone()),
+					id: TrRes::Old(id),
+					raw_contents: TrRes::Old(body.clone()),
 					msg: TransformedMessage {
-						title: TrRes::New(title),
-						body: TrRes::New(body),
-						link: TrRes::New(link),
+						title: TrRes::Old(title),
+						body: TrRes::Old(body),
+						link: TrRes::Old(link),
 						..Default::default()
 					},
 				}

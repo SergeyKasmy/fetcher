@@ -9,16 +9,17 @@ pub mod regex;
 pub mod shorten;
 pub mod trim;
 
-use enum_dispatch::enum_dispatch;
-
 use self::caps::Caps;
 use self::regex::Regex;
 use self::shorten::Shorten;
 use self::trim::Trim;
+use super::result::TransformResult;
+
+use enum_dispatch::enum_dispatch;
 
 #[enum_dispatch]
 pub trait TransformField {
-	fn transform_field(&self, field: &str) -> String;
+	fn transform_field(&self, field: &str) -> TransformResult<String>;
 }
 
 #[enum_dispatch(TransformField)]
