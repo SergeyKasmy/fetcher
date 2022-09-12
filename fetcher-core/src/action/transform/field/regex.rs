@@ -31,10 +31,12 @@ impl Regex {
 }
 
 impl TransformField for Regex {
-	// type Error = RegexError;
+	type Error = RegexError;
 
-	fn transform_field(&self, field: &str) -> TransformResult<String> {
-		TransformResult::New(self.run(field).expect("TODO").map(ToOwned::to_owned))
+	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, RegexError> {
+		Ok(TransformResult::New(
+			self.run(field)?.map(ToOwned::to_owned),
+		))
 	}
 }
 

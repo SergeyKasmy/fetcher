@@ -7,11 +7,15 @@
 use super::TransformField;
 use crate::action::transform::result::TransformResult;
 
+use std::convert::Infallible;
+
 #[derive(Debug)]
 pub struct Caps;
 
 impl TransformField for Caps {
-	fn transform_field(&self, field: &str) -> TransformResult<String> {
-		TransformResult::New(Some(field.to_uppercase()))
+	type Error = Infallible;
+
+	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, Infallible> {
+		Ok(TransformResult::New(Some(field.to_uppercase())))
 	}
 }

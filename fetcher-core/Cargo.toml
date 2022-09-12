@@ -10,7 +10,6 @@ edition = "2021"
 async-trait = "0.1.57"
 chrono = "0.4.22"
 egg-mode = { version = "0.16.0", features = ["rustls"], default-features = false }
-enum_dispatch = "0.3.8"
 feed-rs = "1.1.0"
 futures = "0.3.21"
 # NOTE: 0.22 is a hard requirement by soup, make sure not to update it when doing cargo upgrade

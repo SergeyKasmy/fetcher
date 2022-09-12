@@ -44,7 +44,7 @@ pub enum Kind {
 
 impl Kind {
 	pub async fn transform(&self, entry: Entry) -> Result<Vec<Entry>, TransformError> {
-		macro_rules! transform_delegate {
+		macro_rules! delegate {
 			($($t:tt),+ custom => { $($custom_t:pat => $custom_impl:expr),+ }) => {
 				match self {
 					$(Self::$t(x) => x.transform_entry(&entry).map_err(Into::into),)+
@@ -53,7 +53,7 @@ impl Kind {
 			};
 		}
 
-		let res: Result<Vec<TransformedEntry>, TransformErrorKind> = transform_delegate!(
+		let res: Result<Vec<TransformedEntry>, TransformErrorKind> = delegate!(
 			Html, Json, Feed, UseRawContents
 
 			custom => {

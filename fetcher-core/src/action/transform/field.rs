@@ -14,21 +14,37 @@ use self::regex::Regex;
 use self::shorten::Shorten;
 use self::trim::Trim;
 use super::result::TransformResult;
+use crate::error::transform::Kind as TransformErrorKind;
 
-use enum_dispatch::enum_dispatch;
-
-#[enum_dispatch]
 pub trait TransformField {
-	fn transform_field(&self, field: &str) -> TransformResult<String>;
+	type Error: Into<TransformErrorKind>;
+
+	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, Self::Error>;
 }
 
-#[enum_dispatch(TransformField)]
 #[derive(Debug)]
 pub enum Kind {
 	Regex(Regex),
 	Caps(Caps),
 	Trim(Trim),
 	Shorten(Shorten),
+}
+
+impl Kind {
+	pub fn transform_field(
+		&self,
+		field: &str,
+	) -> Result<TransformResult<String>, TransformErrorKind> {
+		macro_rules! delegate {
+		    ($($k:tt),+) => {
+				match self {
+					$(Self::$k(x) => x.transform_field(field).map_err(Into::into),)+
+				}
+		    };
+		}
+
+		delegate!(Regex, Caps, Trim, Shorten)
+	}
 }
 
 #[derive(Debug)]

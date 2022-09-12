@@ -17,11 +17,11 @@ pub use self::field::regex::Regex;
 pub use self::field::shorten::Shorten;
 pub use self::field::trim::Trim;
 
-use self::field::TransformField;
 use crate::entry::Entry;
 use crate::error::transform::Error as TransformError;
 use crate::sink::Message;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Kind {
 	Entry(entry::Kind),
@@ -34,19 +34,20 @@ impl Kind {
 			Self::Entry(ent_tr) => ent_tr.transform(entry).await,
 			Self::Field(field_tr) => {
 				use field::Field;
-				use field::Kind::{Caps, Regex, Shorten, Trim};
 
 				let old_val = match &field_tr.field {
 					Field::Title => entry.msg.title.take(),
 					Field::Body => entry.msg.body.take(),
 				};
 
-				let new_val = old_val.as_deref().map(|v| match &field_tr.kind {
-					Regex(tr) => tr.transform_field(v),
-					Caps(tr) => tr.transform_field(v),
-					Trim(tr) => tr.transform_field(v),
-					Shorten(tr) => tr.transform_field(v),
-				});
+				let new_val = old_val
+					.as_deref()
+					.map(|v| field_tr.kind.transform_field(v))
+					.transpose()
+					.map_err(|kind| TransformError {
+						kind,
+						original_entry: entry.clone(),
+					})?;
 
 				let final_val = match new_val {
 					None => old_val,

@@ -7,6 +7,7 @@
 use super::TransformField;
 use crate::action::transform::result::TransformResult;
 
+use std::convert::Infallible;
 use std::iter::repeat;
 
 #[derive(Debug)]
@@ -15,7 +16,9 @@ pub struct Shorten {
 }
 
 impl TransformField for Shorten {
-	fn transform_field(&self, field: &str) -> TransformResult<String> {
+	type Error = Infallible;
+
+	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, Infallible> {
 		let new_val = (self.len != 0).then(|| {
 			field
 				.chars()
@@ -24,6 +27,6 @@ impl TransformField for Shorten {
 				.collect::<String>()
 		});
 
-		TransformResult::New(new_val)
+		Ok(TransformResult::New(new_val))
 	}
 }

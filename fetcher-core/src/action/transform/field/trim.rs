@@ -7,11 +7,15 @@
 use super::TransformField;
 use crate::action::transform::result::TransformResult;
 
+use std::convert::Infallible;
+
 #[derive(Debug)]
 pub struct Trim;
 
 impl TransformField for Trim {
-	fn transform_field(&self, field: &str) -> TransformResult<String> {
-		TransformResult::New(Some(field.trim().to_owned()))
+	type Error = Infallible;
+
+	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, Infallible> {
+		Ok(TransformResult::New(Some(field.trim().to_owned())))
 	}
 }
