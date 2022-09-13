@@ -13,7 +13,7 @@ use self::shorten::Shorten;
 use self::trim::Trim;
 use super::result::TransformResult;
 use crate::{
-	action::regex::{action::Extract, Regex},
+	action::regex::{action::Extract, action::Replace, Regex},
 	error::transform::Kind as TransformErrorKind,
 };
 
@@ -33,7 +33,8 @@ pub struct Transform {
 
 #[derive(From, Debug)]
 pub enum Kind {
-	Regex(Regex<Extract>),
+	RegexExtract(Regex<Extract>),
+	RegexReplace(Regex<Replace>),
 	Caps(Caps),
 	Trim(Trim),
 	Shorten(Shorten),
@@ -58,6 +59,6 @@ impl Kind {
 		    };
 		}
 
-		delegate!(Regex, Caps, Trim, Shorten)
+		delegate!(RegexExtract, RegexReplace, Caps, Trim, Shorten)
 	}
 }

@@ -67,13 +67,11 @@ impl Regex {
 				.into(),
 			}
 			.into(),
-			// FIXME
-			// Action::Replace { field, with } => CFieldTransform {
-			// 	field: field.parse(),
-			// 	kind: CRegex::new(re, Replace { with })?.into(),
-			// }
-			// .into(),
-			_ => todo!(),
+			Action::Replace { in_field, with } => CFieldTransform {
+				field: in_field.parse(),
+				kind: CRegex::new(re, Replace { with })?.into(),
+			}
+			.into(),
 		})
 	}
 }
