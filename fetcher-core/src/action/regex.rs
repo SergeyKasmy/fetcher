@@ -6,13 +6,18 @@
 
 pub mod action;
 
-use self::action::Action;
-use self::action::Extract;
-use self::action::Find;
+use std::{borrow::Cow, convert::Infallible};
+
+use self::action::{Action, Extract, Find, Replace};
 use super::transform::field::TransformField;
-use crate::action::filter::Filter;
-use crate::action::transform::field::Field;
-use crate::{action::transform::result::TransformResult, error::transform::RegexError};
+use crate::{
+	action::{
+		filter::Filter,
+		transform::{field::Field, result::TransformResult},
+	},
+	entry::Entry,
+	error::transform::RegexError,
+};
 
 #[derive(Debug)]
 pub struct Regex<A> {
@@ -47,11 +52,11 @@ impl TransformField for Regex<Extract> {
 }
 
 impl Filter for Regex<Find> {
-	fn filter(&self, entries: &mut Vec<crate::entry::Entry>) {
+	fn filter(&self, entries: &mut Vec<Entry>) {
 		use ExtractionResult::{Extracted, Matched, NotMatched};
 
 		entries.retain(|ent| {
-			let s = match self.action.field {
+			let s = match self.action.in_field {
 				Field::Title => ent.msg.title.as_deref(),
 				Field::Body => ent.msg.body.as_deref(),
 			};
@@ -64,6 +69,20 @@ impl Filter for Regex<Find> {
 				},
 			}
 		});
+	}
+}
+
+impl TransformField for Regex<Replace> {
+	type Error = Infallible;
+
+	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, Self::Error> {
+		Ok(TransformResult::New(Some(self.replace(field).into_owned())))
+	}
+}
+
+impl Regex<Replace> {
+	pub(crate) fn replace<'a>(&self, text: &'a str) -> Cow<'a, str> {
+		self.re.replace(text, &self.action.with)
 	}
 }
 

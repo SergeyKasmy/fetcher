@@ -6,16 +6,22 @@
 
 use crate::action::transform::field::Field;
 
-pub trait Action {}
-
 #[derive(Debug)]
 pub struct Extract {
 	pub passthrough_if_not_found: bool,
 }
-impl Action for Extract {}
 
 #[derive(Debug)]
 pub struct Find {
-	pub field: Field,
+	pub in_field: Field,
 }
+
+#[derive(Debug)]
+pub struct Replace {
+	pub with: String,
+}
+
+pub trait Action {}
+impl Action for Extract {}
 impl Action for Find {}
+impl Action for Replace {}

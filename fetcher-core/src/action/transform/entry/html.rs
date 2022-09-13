@@ -220,12 +220,11 @@ fn extract_data(
 	}
 
 	let s = match &query_data.regex {
-		// Some(re) => re.run(s)?,
-		Some(_re) => todo!(),
-		None => Some(s),
+		Some(r) => r.replace(s).into_owned(),
+		None => s.to_owned(),
 	};
 
-	Ok(s.map(ToOwned::to_owned))
+	Ok(Some(s))
 }
 
 /// Find items matching the query in the provided HTML part
