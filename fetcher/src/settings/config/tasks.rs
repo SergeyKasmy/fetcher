@@ -107,6 +107,7 @@ pub async fn get(path: PathBuf, name: &str) -> Result<Option<ParsedTask>> {
 	})
 	.await
 	.unwrap()?;
+	// let parsed_task = task.parse(name, &settings::TaskSettingsFetcherDefault)?;
 
 	Ok(Some(parsed_task))
 }

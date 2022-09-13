@@ -20,6 +20,8 @@ use crate::source::with_shared_rf::http;
 use crate::source::Http;
 use crate::{entry::Entry, error::transform::Kind as TransformErrorKind};
 
+use derive_more::From;
+
 pub trait TransformEntry {
 	type Error: Into<TransformErrorKind>;
 
@@ -30,7 +32,7 @@ pub trait TransformEntry {
 /// That includes everything from parsing a markdown format like JSON to simple transformations like making all text uppercase
 // NOTE: Feed (and probs others in the future) is a ZST, so there's always going to be some amount of variance of enum sizes but is trying to avoid that worth the hasle of a Box?
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug)]
+#[derive(From, Debug)]
 pub enum Kind {
 	Http,
 	Html(Html),
