@@ -18,7 +18,7 @@ const READ_DATA_DIR: &str = "read";
 
 #[tracing::instrument]
 pub fn get(name: &str, expected_rf_kind: ReadFilterKind) -> io::Result<ReadFilter> {
-	let path = read_filter_path()?;
+	let path = read_filter_path(name)?;
 
 	match fs::read_to_string(&path) {
 		Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
@@ -62,11 +62,12 @@ pub fn get(name: &str, expected_rf_kind: ReadFilterKind) -> io::Result<ReadFilte
 	}
 }
 
-fn read_filter_path() -> io::Result<PathBuf> {
+fn read_filter_path(name: &str) -> io::Result<PathBuf> {
+	debug_assert!(!name.is_empty());
 	Ok(if cfg!(debug_assertions) {
-		PathBuf::from("debug_data/read/")
+		PathBuf::from(format!("debug_data/read/{name}"))
 	} else {
-		xdg::BaseDirectories::with_profile(PREFIX, READ_DATA_DIR)?.get_data_home()
+		xdg::BaseDirectories::with_profile(PREFIX, READ_DATA_DIR)?.place_data_file(name)?
 	})
 }
 
