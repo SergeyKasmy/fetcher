@@ -13,7 +13,6 @@ pub use self::entry::html::Html;
 pub use self::entry::json::Json;
 pub use self::entry::use_raw_contents::UseRawContents;
 pub use self::field::caps::Caps;
-pub use self::field::regex::Regex;
 pub use self::field::shorten::Shorten;
 pub use self::field::trim::Trim;
 

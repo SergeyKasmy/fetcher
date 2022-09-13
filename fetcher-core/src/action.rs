@@ -7,6 +7,9 @@
 pub mod filter;
 pub mod transform;
 
+// an action that is both a transform and a filter
+pub mod regex;
+
 use crate::entry::Entry;
 use crate::error::transform::Error as TransformError;
 

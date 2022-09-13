@@ -9,8 +9,9 @@ pub mod action;
 use self::action::Action;
 use self::action::Extract;
 use self::action::Find;
-use super::TransformField;
+use super::transform::field::TransformField;
 use crate::action::filter::Filter;
+use crate::action::transform::field::Field;
 use crate::{action::transform::result::TransformResult, error::transform::RegexError};
 
 #[derive(Debug)]
@@ -45,11 +46,26 @@ impl TransformField for Regex<Extract> {
 	}
 }
 
-// impl Filter for Regex<Find> {
-//     fn filter(&self, entries: &mut Vec<crate::entry::Entry>) {
-// 		entries.retain(|ent| extract(&self.re, ent.msg.body))
-//     }
-// }
+impl Filter for Regex<Find> {
+	fn filter(&self, entries: &mut Vec<crate::entry::Entry>) {
+		use ExtractionResult::{Extracted, Matched, NotMatched};
+
+		entries.retain(|ent| {
+			let s = match self.action.field {
+				Field::Title => ent.msg.title.as_deref(),
+				Field::Body => ent.msg.body.as_deref(),
+			};
+
+			match s {
+				None => false,
+				Some(s) => match extract(&self.re, s) {
+					Matched | Extracted(_) => true,
+					NotMatched => false,
+				},
+			}
+		});
+	}
+}
 
 #[derive(Debug)]
 pub(crate) enum ExtractionResult<'a> {
@@ -68,7 +84,6 @@ pub(crate) fn extract<'a>(re: &regex::Regex, text: &'a str) -> ExtractionResult<
 	}
 }
 
-/*
 #[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
@@ -80,7 +95,7 @@ mod tests {
 	fn extract_single() {
 		let re = Regex::new(
 			"Hello, (?P<s>.*)!",
-			Action::Extract {
+			Extract {
 				passthrough_if_not_found: false,
 			},
 		)
@@ -94,7 +109,7 @@ mod tests {
 	fn extract_not_found() {
 		let re = Regex::new(
 			"Hello, (?P<s>.*)!",
-			Action::Extract {
+			Extract {
 				passthrough_if_not_found: false,
 			},
 		)
@@ -104,4 +119,3 @@ mod tests {
 		assert_matches!(extract(&re.re, s), ExtractionResult::NotMatched);
 	}
 }
-*/

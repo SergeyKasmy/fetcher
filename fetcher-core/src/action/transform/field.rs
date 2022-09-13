@@ -5,17 +5,17 @@
  */
 
 pub mod caps;
-pub mod regex;
 pub mod shorten;
 pub mod trim;
 
 use self::caps::Caps;
-use self::regex::action::Extract;
-use self::regex::Regex;
 use self::shorten::Shorten;
 use self::trim::Trim;
 use super::result::TransformResult;
-use crate::error::transform::Kind as TransformErrorKind;
+use crate::{
+	action::regex::{action::Extract, Regex},
+	error::transform::Kind as TransformErrorKind,
+};
 
 pub trait TransformField {
 	type Error: Into<TransformErrorKind>;
