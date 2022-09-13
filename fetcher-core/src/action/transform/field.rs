@@ -17,6 +17,8 @@ use crate::{
 	error::transform::Kind as TransformErrorKind,
 };
 
+use derive_more::From;
+
 pub trait TransformField {
 	type Error: Into<TransformErrorKind>;
 
@@ -24,11 +26,23 @@ pub trait TransformField {
 }
 
 #[derive(Debug)]
+pub struct Transform {
+	pub field: Field,
+	pub kind: Kind,
+}
+
+#[derive(From, Debug)]
 pub enum Kind {
 	Regex(Regex<Extract>),
 	Caps(Caps),
 	Trim(Trim),
 	Shorten(Shorten),
+}
+
+#[derive(Debug)]
+pub enum Field {
+	Title,
+	Body,
 }
 
 impl Kind {
@@ -46,16 +60,4 @@ impl Kind {
 
 		delegate!(Regex, Caps, Trim, Shorten)
 	}
-}
-
-#[derive(Debug)]
-pub struct Transform {
-	pub field: Field,
-	pub kind: Kind,
-}
-
-#[derive(Debug)]
-pub enum Field {
-	Title,
-	Body,
 }

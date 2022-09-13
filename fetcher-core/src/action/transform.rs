@@ -22,12 +22,12 @@ use crate::sink::Message;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
-pub enum Kind {
+pub enum Transform {
 	Entry(entry::Kind),
 	Field(field::Transform),
 }
 
-impl Kind {
+impl Transform {
 	pub async fn transform(&self, mut entry: Entry) -> Result<Vec<Entry>, TransformError> {
 		match self {
 			Self::Entry(ent_tr) => ent_tr.transform(entry).await,
@@ -71,5 +71,17 @@ impl Kind {
 				}])
 			}
 		}
+	}
+}
+
+impl<T: Into<entry::Kind>> From<T> for Transform {
+	fn from(kind: T) -> Self {
+		Self::Entry(kind.into())
+	}
+}
+
+impl From<field::Transform> for Transform {
+	fn from(field_tr: field::Transform) -> Self {
+		Self::Field(field_tr)
 	}
 }

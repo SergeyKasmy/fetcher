@@ -552,6 +552,7 @@ dependencies = [
  "assert_matches",
  "async-trait",
  "chrono",
+ "derive_more",
  "egg-mode",
  "feed-rs",
  "futures",

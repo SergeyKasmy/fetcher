@@ -9,6 +9,7 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1.57"
 chrono = "0.4.22"
+derive_more = "0.99.17"
 egg-mode = { version = "0.16.0", features = ["rustls"], default-features = false }
 feed-rs = "1.1.0"
 futures = "0.3.21"
