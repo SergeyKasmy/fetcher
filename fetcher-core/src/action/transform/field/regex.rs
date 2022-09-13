@@ -4,24 +4,23 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::TransformField;
+pub mod action;
 
+use self::action::Action;
+use self::action::Extract;
+use self::action::Find;
+use super::TransformField;
+use crate::action::filter::Filter;
 use crate::{action::transform::result::TransformResult, error::transform::RegexError};
 
 #[derive(Debug)]
-pub struct Regex {
+pub struct Regex<A> {
 	pub re: regex::Regex,
-	pub action: Action,
+	action: A,
 }
 
-#[derive(Debug)]
-pub enum Action {
-	Find,
-	Extract { passthrough_if_not_found: bool },
-}
-
-impl Regex {
-	pub fn new(re: &str, action: Action) -> Result<Self, RegexError> {
+impl<A: Action> Regex<A> {
+	pub fn new(re: &str, action: A) -> Result<Self, RegexError> {
 		tracing::trace!("Creating Regex transform with str {:?}", re);
 		Ok(Self {
 			re: regex::Regex::new(re)?,
@@ -30,43 +29,27 @@ impl Regex {
 	}
 }
 
-impl TransformField for Regex {
+impl TransformField for Regex<Extract> {
 	type Error = RegexError;
 
 	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, RegexError> {
-		Ok(TransformResult::New(
-			self.run(field)?.map(ToOwned::to_owned),
-		))
-	}
-}
+		use ExtractionResult::{Extracted, Matched, NotMatched};
 
-impl Regex {
-	pub fn run<'a>(&self, text: &'a str) -> Result<Option<&'a str>, RegexError> {
-		let res = match (&self.action, extract(&self.re, text)) {
-			// return the original str if a match was found or even extracted from some reason when we are just searching
-			(Action::Find, ExtractionResult::Matched | ExtractionResult::Extracted(_)) => {
-				Some(text)
-			}
-			// return the extracted str if we are just extracting
-			(Action::Extract { .. }, ExtractionResult::Extracted(extracted_s)) => Some(extracted_s),
-			// return the original str if we are extracting but passthrough_if_not_found is on
-			(
-				Action::Extract {
-					passthrough_if_not_found,
-				},
-				ExtractionResult::Matched,
-			) if *passthrough_if_not_found => Some(text),
-			// return an error if we are extracting without passthrough and we haven't extracted anything
-			(Action::Extract { .. }, ExtractionResult::Matched | ExtractionResult::NotMatched) => {
-				return Err(RegexError::CaptureGroupMissing)
-			}
-			// return nothing if we haven't found anything
-			(_, ExtractionResult::NotMatched) => None,
+		let transformed = match extract(&self.re, field) {
+			Extracted(s) => s,
+			Matched | NotMatched if self.action.passthrough_if_not_found => field,
+			_ => return Err(RegexError::CaptureGroupMissing),
 		};
 
-		Ok(res)
+		Ok(TransformResult::New(Some(transformed.to_owned())))
 	}
 }
+
+// impl Filter for Regex<Find> {
+//     fn filter(&self, entries: &mut Vec<crate::entry::Entry>) {
+// 		entries.retain(|ent| extract(&self.re, ent.msg.body))
+//     }
+// }
 
 #[derive(Debug)]
 pub(crate) enum ExtractionResult<'a> {
@@ -85,6 +68,7 @@ pub(crate) fn extract<'a>(re: &regex::Regex, text: &'a str) -> ExtractionResult<
 	}
 }
 
+/*
 #[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
@@ -120,3 +104,4 @@ mod tests {
 		assert_matches!(extract(&re.re, s), ExtractionResult::NotMatched);
 	}
 }
+*/
