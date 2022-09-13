@@ -16,7 +16,7 @@ pub async fn print(entry: &Entry) {
 		let mut body = msg.body.unwrap_or_default();
 		let _ = write!(
 			body,
-			"\nid: {:?}\nraw_contents: {:?}",
+			"\n\nid: {:?}\n\nraw_contents: {:?}",
 			entry.id, entry.raw_contents
 		);
 		Some(body)
