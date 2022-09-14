@@ -13,8 +13,6 @@ use self::query::{
 	TitleQuery, UrlQuery,
 };
 use super::TransformEntry;
-use crate::action::regex::extract as regex_extract;
-use crate::action::regex::ExtractionResult as RegexExtractResult;
 use crate::action::transform::result::{
 	TransformResult as TrRes, TransformedEntry, TransformedMessage,
 };
@@ -22,7 +20,6 @@ use crate::entry::Entry;
 use crate::error::transform::HtmlError;
 use crate::error::transform::InvalidUrlError;
 use crate::error::transform::NothingToTransformError;
-use crate::error::transform::RegexError;
 use crate::sink::Media;
 
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
