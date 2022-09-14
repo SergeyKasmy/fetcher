@@ -1,8 +1,8 @@
 /*
-* This Source Code Form is subject to the terms of the Mozilla Public
+ * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
-*/
+ */
 
 // TODO: proper argument parser. Something like clap or argh or something
 // TODO: make fetcher_config more easily replaceable
@@ -12,10 +12,11 @@
 #![allow(clippy::missing_panics_doc)]
 #![allow(clippy::module_name_repetitions)]
 
+pub mod args;
 pub mod settings;
 
-use fetcher_config::tasks::ParsedTask;
-use fetcher_config::tasks::ParsedTasks;
+use crate::args::{Args, Setting};
+use fetcher_config::tasks::{ParsedTask, ParsedTasks};
 use fetcher_core::{error::Error, error::ErrorChainExt};
 
 use color_eyre::{eyre::eyre, Report, Result};
@@ -33,6 +34,8 @@ use tokio::{
 	time::sleep,
 };
 use tracing::Instrument;
+
+use self::args::RunSubcommand;
 
 fn main() -> Result<()> {
 	set_up_logging()?;
@@ -72,6 +75,37 @@ fn set_up_logging() -> Result<()> {
 
 #[tokio::main]
 async fn async_main() -> Result<()> {
+	let args: Args = argh::from_env();
+	settings::DATA_PATH
+		.set(match args.data_path {
+			Some(p) => p,
+			None => settings::data::default_data_path()?,
+		})
+		.unwrap();
+	settings::CONF_PATHS
+		.set(match args.config_path {
+			Some(p) => vec![p],
+			None => settings::config::default_cfg_dirs()?,
+		})
+		.unwrap();
+
+	match args.subcommand {
+		args::TopLvlSubcommand::Run(arg) => match arg.subcommand {
+			Some(RunSubcommand::Task(_task)) => eprintln!("Task subcommand. Once? {}", arg.once),
+			_ => run(arg.once).await?,
+		},
+		args::TopLvlSubcommand::Save(save) => match save.setting {
+			Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt().await?,
+			Setting::EmailPassword => settings::data::email_password::prompt()?,
+			Setting::Telegram => settings::data::telegram::prompt()?,
+			Setting::Twitter => settings::data::twitter::prompt()?,
+		},
+	}
+
+	Ok(())
+}
+
+async fn run(once: bool) -> Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -86,21 +120,6 @@ async fn async_main() -> Result<()> {
 	};
 	tracing::info!("Running fetcher {}", version);
 
-	match std::env::args().nth(1).as_deref() {
-		Some("--save-google-oauth2") => settings::data::google_oauth2::prompt().await?,
-		Some("--save-email-password") => settings::data::email_password::prompt()?,
-		Some("--save-telegram") => settings::data::telegram::prompt()?,
-		Some("--save-twitter") => settings::data::twitter::prompt()?,
-
-		Some("--once") => run(true).await?,
-		None => run(false).await?,
-		Some(_) => panic!("error"),
-	};
-
-	Ok(())
-}
-
-async fn run(once: bool) -> Result<()> {
 	let tasks = settings::config::tasks::get_all().await?;
 
 	if tasks.is_empty() {

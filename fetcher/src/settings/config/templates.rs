@@ -5,6 +5,7 @@
  */
 
 use super::CONFIG_FILE_EXT;
+use crate::settings::CONF_PATHS;
 use fetcher_core::task::template::Template;
 
 use color_eyre::Result;
@@ -15,10 +16,12 @@ const TEMPLATES_DIR: &str = "templates";
 
 #[tracing::instrument(name = "template")]
 pub fn find(name: &str) -> Result<Option<Template>> {
-	for template_dir_path in super::cfg_dirs()?.into_iter().map(|mut p| {
-		p.push(TEMPLATES_DIR);
-		p
-	}) {
+	for template_dir_path in CONF_PATHS
+		.get()
+		.unwrap()
+		.iter()
+		.map(|p| p.join(TEMPLATES_DIR))
+	{
 		if let Some(template) = find_in(&template_dir_path, name)? {
 			return Ok(Some(template));
 		}

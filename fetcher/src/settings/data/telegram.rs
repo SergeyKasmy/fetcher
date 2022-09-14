@@ -4,21 +4,17 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::get_data_file;
 use super::prompt_user_for;
-use super::write_to_data_file;
+use crate::settings::DATA_PATH;
 use fetcher_config::settings::Telegram as Config;
 
-use std::io;
+use std::{fs, io};
 
 const FILE_NAME: &str = "telegram.json";
 
 pub fn get() -> io::Result<Option<String>> {
-	let raw = match get_data_file(FILE_NAME)? {
-		Some(d) => d,
-		None => return Ok(None),
-	};
-
+	let path = DATA_PATH.get().unwrap().join(FILE_NAME);
+	let raw = fs::read_to_string(path)?;
 	let conf: Config = serde_json::from_str(&raw)?;
 
 	Ok(Some(conf.parse()))
@@ -27,5 +23,10 @@ pub fn get() -> io::Result<Option<String>> {
 pub fn prompt() -> io::Result<()> {
 	let token = prompt_user_for("Telegram bot API token: ")?;
 
-	write_to_data_file(FILE_NAME, &serde_json::to_string(&Config::unparse(token))?)
+	fs::write(
+		DATA_PATH.get().unwrap().join(FILE_NAME),
+		&serde_json::to_string(&Config::unparse(token))?,
+	)?;
+
+	Ok(())
 }

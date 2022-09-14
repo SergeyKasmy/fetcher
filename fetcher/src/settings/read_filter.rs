@@ -4,21 +4,21 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::PREFIX;
+use super::DATA_PATH;
 use fetcher_config::tasks::read_filter::ReadFilter as ReadFilterConf;
 use fetcher_core::read_filter::Kind as ReadFilterKind;
 use fetcher_core::read_filter::{ExternalSave, ReadFilter};
 
 use std::fs;
 use std::io;
+use std::io::Write;
 use std::path::Path;
-use std::{io::Write, path::PathBuf};
 
 const READ_DATA_DIR: &str = "read";
 
 #[tracing::instrument]
 pub fn get(name: &str, expected_rf_kind: ReadFilterKind) -> io::Result<ReadFilter> {
-	let path = read_filter_path(name)?;
+	let path = DATA_PATH.get().unwrap().join(READ_DATA_DIR).join(name);
 
 	match fs::read_to_string(&path) {
 		Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
@@ -60,15 +60,6 @@ pub fn get(name: &str, expected_rf_kind: ReadFilterKind) -> io::Result<ReadFilte
 			}
 		}
 	}
-}
-
-fn read_filter_path(name: &str) -> io::Result<PathBuf> {
-	debug_assert!(!name.is_empty());
-	Ok(if cfg!(debug_assertions) {
-		PathBuf::from(format!("debug_data/read/{name}"))
-	} else {
-		xdg::BaseDirectories::with_profile(PREFIX, READ_DATA_DIR)?.place_data_file(name)?
-	})
 }
 
 // TODO: move to a new mod
