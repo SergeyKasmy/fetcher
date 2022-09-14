@@ -1,8 +1,8 @@
 /*
-* This Source Code Form is subject to the terms of the Mozilla Public
+ * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
-*/
+ */
 
 // TODO: proper argument parser. Something like clap or argh or something
 // TODO: make fetcher_config more easily replaceable
@@ -12,8 +12,10 @@
 #![allow(clippy::missing_panics_doc)]
 #![allow(clippy::module_name_repetitions)]
 
+pub mod args;
 pub mod settings;
 
+use self::args::Args;
 use fetcher_config::tasks::ParsedTask;
 use fetcher_config::tasks::ParsedTasks;
 use fetcher_core::{error::Error, error::ErrorChainExt};
@@ -86,16 +88,22 @@ async fn async_main() -> Result<()> {
 	};
 	tracing::info!("Running fetcher {}", version);
 
-	match std::env::args().nth(1).as_deref() {
-		Some("--save-google-oauth2") => settings::data::google_oauth2::prompt().await?,
-		Some("--save-email-password") => settings::data::email_password::prompt()?,
-		Some("--save-telegram") => settings::data::telegram::prompt()?,
-		Some("--save-twitter") => settings::data::twitter::prompt()?,
+	// match std::env::args().nth(1).as_deref() {
+	// 	Some("--save-google-oauth2") => settings::data::google_oauth2::prompt().await?,
+	// 	Some("--save-email-password") => settings::data::email_password::prompt()?,
+	// 	Some("--save-telegram") => settings::data::telegram::prompt()?,
+	// 	Some("--save-twitter") => settings::data::twitter::prompt()?,
 
-		Some("--once") => run(true).await?,
-		None => run(false).await?,
-		Some(_) => panic!("error"),
-	};
+	// 	Some("--once") => run(true).await?,
+	// 	None => run(false).await?,
+	// 	Some(_) => panic!("error"),
+	// };
+
+	let args: Args = argh::from_env();
+
+	match args.inner {
+		args::Subcommands::Run(x) => run(x.once).await?,
+	}
 
 	Ok(())
 }
