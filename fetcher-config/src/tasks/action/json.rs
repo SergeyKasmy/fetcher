@@ -6,23 +6,13 @@
 
 use serde::{Deserialize, Serialize};
 
-use fetcher_core::action::transform;
+use fetcher_core::action::transform::entry::json as core_json;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct TextQuery {
 	pub string: String,
 	pub prepend: Option<String>,
 	pub append: Option<String>,
-}
-
-impl TextQuery {
-	pub fn parse(self) -> transform::json::TextQuery {
-		transform::json::TextQuery {
-			string: self.string,
-			prepend: self.prepend,
-			append: self.append,
-		}
-	}
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -46,9 +36,19 @@ pub struct Json {
 	pub imgq: Option<Vec<String>>,
 }
 
+impl TextQuery {
+	pub fn parse(self) -> core_json::TextQuery {
+		core_json::TextQuery {
+			string: self.string,
+			prepend: self.prepend,
+			append: self.append,
+		}
+	}
+}
+
 impl Json {
-	pub fn parse(self) -> transform::Json {
-		transform::Json {
+	pub fn parse(self) -> core_json::Json {
+		core_json::Json {
 			itemq: self.itemq,
 			titleq: self.titleq,
 			textq: self

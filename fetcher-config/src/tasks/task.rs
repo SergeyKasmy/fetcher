@@ -4,7 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::action::filter::Filter;
 use super::action::Action;
 use super::{read_filter, sink::Sink, source::Source, TaskSettings};
 use crate::tasks::ParsedTask;
@@ -46,7 +45,7 @@ impl Task {
 			.map(|x| {
 				x.into_iter()
 					.filter_map(|act| match act {
-						Action::Filter(Filter::ReadFilter) => match rf.clone() {
+						Action::ReadFilter => match rf.clone() {
 							Some(rf) => Some(Ok(fetcher_core::action::Action::Filter(
 								fetcher_core::action::filter::Kind::ReadFilter(rf),
 							))),

@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::Transform;
+use super::TransformEntry;
 use crate::action::transform::result::{
 	TransformResult as TrRes, TransformedEntry, TransformedMessage,
 };
@@ -16,10 +16,10 @@ use url::Url;
 #[derive(Debug)]
 pub struct Feed;
 
-impl Transform for Feed {
+impl TransformEntry for Feed {
 	type Error = FeedError;
 
-	fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
 		tracing::debug!("Parsing feed entries");
 
 		let feed = feed_rs::parser::parse(
@@ -44,12 +44,12 @@ impl Transform for Feed {
 				let link = Some(Url::try_from(feed_entry.links.remove(0).href.as_str()).unwrap()); // panics
 
 				TransformedEntry {
-					id: TrRes::New(id),
-					raw_contents: TrRes::New(body.clone()),
+					id: TrRes::Old(id),
+					raw_contents: TrRes::Old(body.clone()),
 					msg: TransformedMessage {
-						title: TrRes::New(title),
-						body: TrRes::New(body),
-						link: TrRes::New(link),
+						title: TrRes::Old(title),
+						body: TrRes::Old(body),
+						link: TrRes::Old(link),
 						..Default::default()
 					},
 				}

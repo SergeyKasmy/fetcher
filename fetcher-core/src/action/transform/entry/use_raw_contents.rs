@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::Transform;
+use super::TransformEntry;
 use crate::action::transform::result::{
 	TransformResult as TrRes, TransformedEntry, TransformedMessage,
 };
@@ -15,10 +15,10 @@ use std::convert::Infallible;
 #[derive(Debug)]
 pub struct UseRawContents;
 
-impl Transform for UseRawContents {
+impl TransformEntry for UseRawContents {
 	type Error = Infallible;
 
-	fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
 		Ok(vec![transform_impl(entry)])
 	}
 }

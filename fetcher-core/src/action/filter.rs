@@ -8,8 +8,10 @@ pub mod take;
 
 pub use take::Take;
 
+use super::regex::{action::Find, Regex};
 use crate::{entry::Entry, read_filter::ReadFilter};
 
+use derive_more::From;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -17,10 +19,11 @@ pub trait Filter {
 	fn filter(&self, entries: &mut Vec<Entry>);
 }
 
-#[derive(Debug)]
+#[derive(From, Debug)]
 pub enum Kind {
 	ReadFilter(Arc<RwLock<ReadFilter>>),
 	Take(Take),
+	Regex(Regex<Find>),
 }
 
 impl Kind {
@@ -28,6 +31,7 @@ impl Kind {
 		match self {
 			Kind::ReadFilter(rf) => rf.read().await.filter(entries),
 			Kind::Take(x) => x.filter(entries),
+			Kind::Regex(x) => x.filter(entries),
 		}
 	}
 }

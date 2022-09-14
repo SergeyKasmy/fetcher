@@ -4,9 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::error::transform::{HtmlError, RegexError};
-
-use regex::Regex;
+use crate::{
+	action::regex::{action::Replace, Regex},
+	error::transform::HtmlError,
+};
 
 #[derive(Clone, Debug)]
 pub enum QueryKind {
@@ -31,22 +32,19 @@ pub struct Query {
 pub struct QueryData {
 	pub query: Vec<Query>,
 	pub data_location: DataLocation,
-	pub regex: Option<Regex>,
+	pub regex: Option<Regex<Replace>>,
 }
 
 impl QueryData {
 	pub fn new(
 		query: Vec<Query>,
 		data_location: DataLocation,
-		re: Option<&str>,
+		regex: Option<Regex<Replace>>,
 	) -> Result<Self, HtmlError> {
 		Ok(Self {
 			query,
 			data_location,
-			regex: match re {
-				Some(re) => Some(Regex::new(re).map_err(RegexError::InvalidPattern)?),
-				None => None,
-			},
+			regex,
 		})
 	}
 }

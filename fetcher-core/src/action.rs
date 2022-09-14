@@ -7,6 +7,10 @@
 pub mod filter;
 pub mod transform;
 
+// an action that is both a transform and a filter
+pub mod regex;
+
+use self::transform::Transform;
 use crate::entry::Entry;
 use crate::error::transform::Error as TransformError;
 
@@ -14,7 +18,7 @@ use crate::error::transform::Error as TransformError;
 #[allow(clippy::large_enum_variant)] // TODO: is there any benefit to this?
 pub enum Action {
 	Filter(filter::Kind),
-	Transform(transform::Kind),
+	Transform(Transform),
 }
 
 impl Action {
@@ -33,5 +37,18 @@ impl Action {
 				Ok(fully_transformed)
 			}
 		}
+	}
+}
+
+// can't make this generic because of conflicting impl with the Into<Transform> one :(
+impl From<filter::Kind> for Action {
+	fn from(filter: filter::Kind) -> Self {
+		Action::Filter(filter)
+	}
+}
+
+impl<T: Into<Transform>> From<T> for Action {
+	fn from(transform: T) -> Self {
+		Action::Transform(transform.into())
 	}
 }

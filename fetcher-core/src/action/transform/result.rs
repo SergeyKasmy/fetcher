@@ -26,10 +26,11 @@ pub struct TransformedMessage {
 	pub media: TransformResult<Vec<Media>>,
 }
 
+/// Previous: uses previous value if None, and a new one if Some
+/// New: uses empty value if None, and a new one if Some
 #[derive(Debug)]
 pub enum TransformResult<T> {
-	Empty,
-	UsePrevious,
+	Old(Option<T>),
 	New(Option<T>),
 }
 
@@ -56,11 +57,10 @@ impl TransformedMessage {
 
 impl<T> TransformResult<T> {
 	pub fn get(self, old_val: Option<T>) -> Option<T> {
-		use TransformResult::{Empty, New, UsePrevious};
+		use TransformResult::{New, Old};
 
 		match self {
-			Empty => None,
-			UsePrevious => old_val,
+			Old(val) => val.or(old_val),
 			New(val) => val,
 		}
 	}
@@ -68,6 +68,6 @@ impl<T> TransformResult<T> {
 
 impl<T> Default for TransformResult<T> {
 	fn default() -> Self {
-		TransformResult::UsePrevious
+		TransformResult::Old(None)
 	}
 }

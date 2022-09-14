@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::Transform;
+use super::TransformEntry;
 use crate::action::transform::result::{
 	TransformResult as TrRes, TransformedEntry, TransformedMessage,
 };
@@ -33,11 +33,11 @@ pub struct Json {
 	pub imgq: Option<Vec<String>>, // nested
 }
 
-impl Transform for Json {
+impl TransformEntry for Json {
 	type Error = JsonError;
 
 	#[tracing::instrument(skip_all)]
-	fn transform(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
 		let json: Value =
 			serde_json::from_str(entry.raw_contents.as_ref().ok_or(NothingToTransformError)?)?;
 
@@ -188,13 +188,13 @@ impl Transform for Json {
 					.transpose()?;
 
 				Ok(TransformedEntry {
-					id: TrRes::New(Some(id)),
-					raw_contents: TrRes::New(body.clone()),
+					id: TrRes::New(Some(id)), // TODO: return Old(id) where id is None if json id query is None
+					raw_contents: TrRes::Old(body.clone()),
 					msg: TransformedMessage {
-						title: TrRes::New(title),
-						body: TrRes::New(body),
-						link: TrRes::New(link),
-						media: TrRes::New(img.map(|url| vec![Media::Photo(url)])),
+						title: TrRes::Old(title),
+						body: TrRes::Old(body),
+						link: TrRes::Old(link),
+						media: TrRes::Old(img.map(|url| vec![Media::Photo(url)])),
 					},
 				})
 			})
