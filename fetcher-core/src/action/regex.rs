@@ -18,6 +18,7 @@ use crate::{
 	entry::Entry,
 	error::transform::RegexError,
 };
+use ExtractionResult::{Extracted, Matched, NotMatched};
 
 #[derive(Debug)]
 pub struct Regex<A> {
@@ -35,16 +36,23 @@ impl<A: Action> Regex<A> {
 	}
 }
 
+impl Regex<Extract> {
+	pub fn extract<'a>(&self, text: &'a str) -> Option<&'a str> {
+		match find(&self.re, text) {
+			Extracted(s) => Some(s),
+			Matched | NotMatched => None,
+		}
+	}
+}
+
 impl TransformField for Regex<Extract> {
 	type Error = RegexError;
 
 	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, RegexError> {
-		use ExtractionResult::{Extracted, Matched, NotMatched};
-
-		let transformed = match extract(&self.re, field) {
-			Extracted(s) => s,
-			Matched | NotMatched if self.action.passthrough_if_not_found => field,
-			_ => return Err(RegexError::CaptureGroupMissing),
+		let transformed = match self.extract(field) {
+			Some(s) => s,
+			None if self.action.passthrough_if_not_found => field,
+			None => return Err(RegexError::CaptureGroupMissing),
 		};
 
 		Ok(TransformResult::New(Some(transformed.to_owned())))
@@ -53,8 +61,6 @@ impl TransformField for Regex<Extract> {
 
 impl Filter for Regex<Find> {
 	fn filter(&self, entries: &mut Vec<Entry>) {
-		use ExtractionResult::{Extracted, Matched, NotMatched};
-
 		entries.retain(|ent| {
 			let s = match self.action.in_field {
 				Field::Title => ent.msg.title.as_deref(),
@@ -63,12 +69,18 @@ impl Filter for Regex<Find> {
 
 			match s {
 				None => false,
-				Some(s) => match extract(&self.re, s) {
+				Some(s) => match find(&self.re, s) {
 					Matched | Extracted(_) => true,
 					NotMatched => false,
 				},
 			}
 		});
+	}
+}
+
+impl Regex<Replace> {
+	pub fn replace<'a>(&self, text: &'a str) -> Cow<'a, str> {
+		self.re.replace(text, &self.action.with)
 	}
 }
 
@@ -80,12 +92,6 @@ impl TransformField for Regex<Replace> {
 	}
 }
 
-impl Regex<Replace> {
-	pub(crate) fn replace<'a>(&self, text: &'a str) -> Cow<'a, str> {
-		self.re.replace(text, &self.action.with)
-	}
-}
-
 #[derive(Debug)]
 pub(crate) enum ExtractionResult<'a> {
 	NotMatched,
@@ -93,7 +99,8 @@ pub(crate) enum ExtractionResult<'a> {
 	Extracted(&'a str),
 }
 
-pub(crate) fn extract<'a>(re: &regex::Regex, text: &'a str) -> ExtractionResult<'a> {
+/// Searches for the regular expression in `text` and returns whether it matched or not. Alternatively it extracts capture group "s" (?P<s>) from text if it's present
+pub(crate) fn find<'a>(re: &regex::Regex, text: &'a str) -> ExtractionResult<'a> {
 	match re.captures(text) {
 		Some(capture_groups) => match capture_groups.name("s") {
 			Some(s) => ExtractionResult::Extracted(s.as_str()),
@@ -106,10 +113,28 @@ pub(crate) fn extract<'a>(re: &regex::Regex, text: &'a str) -> ExtractionResult<
 #[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
+	use super::action::*;
 	use super::*;
 
 	use assert_matches::assert_matches;
 
+	// #[test]
+	// fn replace_id() {
+	// 	let re = Regex::new(
+	// 		"/s-anzeige/(?:.*)/(?P<s>[0-9]+)-",
+	// 		Replace {
+	// 			with: "$s".to_owned(),
+	// 		},
+	// 	)
+	// 	.unwrap();
+
+	// 	let s = "/s-anzeige/suche-einen-defekten-ps4-controller/2210607105-279-9346";
+
+	// 	assert_eq!(re.replace(s), "2210607105");
+	// }
+
+	/*
+	TODO: improve these tests
 	#[test]
 	fn extract_single() {
 		let re = Regex::new(
@@ -137,4 +162,5 @@ mod tests {
 
 		assert_matches!(extract(&re.re, s), ExtractionResult::NotMatched);
 	}
+	*/
 }
