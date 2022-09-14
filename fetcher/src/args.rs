@@ -11,7 +11,7 @@ use std::{path::PathBuf, str::FromStr};
 #[derive(FromArgs, Debug)]
 pub struct Args {
 	#[argh(subcommand)]
-	pub subcommand: Subcommands,
+	pub subcommand: TopLvlSubcommand,
 
 	/// config path
 	#[argh(option)]
@@ -24,7 +24,7 @@ pub struct Args {
 
 #[derive(FromArgs, Debug)]
 #[argh(subcommand)]
-pub enum Subcommands {
+pub enum TopLvlSubcommand {
 	Run(Run),
 	Save(Save),
 }
@@ -33,10 +33,29 @@ pub enum Subcommands {
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "run")]
 pub struct Run {
+	#[argh(subcommand)]
+	pub subcommand: Option<RunSubcommand>,
+
 	/// run once (instead of looping forever)
 	#[argh(switch)]
 	pub once: bool,
+
+	// TODO: implement dry running
+	/// make no permanent changes to the fs or other io
+	#[argh(switch)]
+	pub dry_run: bool,
 }
+
+#[derive(FromArgs, Debug)]
+#[argh(subcommand)]
+pub enum RunSubcommand {
+	Task(Task),
+}
+
+/// TODO: run a custom task
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "task")]
+pub struct Task {}
 
 /// save a setting
 #[derive(FromArgs, Debug)]

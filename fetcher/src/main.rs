@@ -35,6 +35,8 @@ use tokio::{
 };
 use tracing::Instrument;
 
+use self::args::RunSubcommand;
+
 fn main() -> Result<()> {
 	set_up_logging()?;
 	async_main()
@@ -88,8 +90,11 @@ async fn async_main() -> Result<()> {
 		.unwrap();
 
 	match args.subcommand {
-		args::Subcommands::Run(arg) => run(arg.once).await?,
-		args::Subcommands::Save(save) => match save.setting {
+		args::TopLvlSubcommand::Run(arg) => match arg.subcommand {
+			Some(RunSubcommand::Task(_task)) => eprintln!("Task subcommand. Once? {}", arg.once),
+			_ => run(arg.once).await?,
+		},
+		args::TopLvlSubcommand::Save(save) => match save.setting {
 			Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt().await?,
 			Setting::EmailPassword => settings::data::email_password::prompt()?,
 			Setting::Telegram => settings::data::telegram::prompt()?,
