@@ -11,7 +11,7 @@ use fetcher_core::action::{
 		action::{Extract, Find, Replace},
 		Regex as CRegex,
 	},
-	transform::field::Transform as CFieldTransform,
+	transform::Transform as CTransform,
 	Action as CAction,
 };
 
@@ -56,7 +56,7 @@ impl Regex {
 			Action::Extract {
 				from_field: field,
 				passthrough_if_not_found,
-			} => CFieldTransform {
+			} => CTransform::Field {
 				field: field.parse(),
 				kind: CRegex::new(
 					re,
@@ -67,7 +67,7 @@ impl Regex {
 				.into(),
 			}
 			.into(),
-			Action::Replace { in_field, with } => CFieldTransform {
+			Action::Replace { in_field, with } => CTransform::Field {
 				field: in_field.parse(),
 				kind: CRegex::new(re, Replace { with })?.into(),
 			}

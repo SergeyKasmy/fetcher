@@ -16,8 +16,8 @@ use crate::Error;
 use fetcher_core::action::{
 	transform::{
 		entry::Kind as CTransformEntryKind, field::caps::Caps as CCaps, field::Field as CField,
-		field::Kind as CFieldTransformKind, field::Transform as CFieldTransform, Feed as CFeed,
-		Transform as CTransform, UseRawContents as CUseRawContents,
+		field::Kind as CFieldTransformKind, Feed as CFeed, Transform as CTransform,
+		UseRawContents as CUseRawContents,
 	},
 	Action as CAction,
 };
@@ -59,10 +59,10 @@ impl Action {
 			Action::Feed => CFeed.into(),
 			Action::Regex(x) => x.parse()?,
 			Action::UseRawContents => CUseRawContents.into(),
-			Action::Caps => CAction::Transform(CTransform::Field(CFieldTransform {
+			Action::Caps => CAction::Transform(CTransform::Field {
 				field: CField::Title,
 				kind: CFieldTransformKind::Caps(CCaps),
-			})),
+			}),
 			Action::Trim(x) => x.parse().into(),
 			Action::Shorten(x) => x.parse().into(),
 			Action::Print => CTransformEntryKind::Print.into(),

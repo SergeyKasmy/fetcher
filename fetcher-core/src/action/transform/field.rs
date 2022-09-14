@@ -25,12 +25,6 @@ pub trait TransformField {
 	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, Self::Error>;
 }
 
-#[derive(Debug)]
-pub struct Transform {
-	pub field: Field,
-	pub kind: Kind,
-}
-
 #[derive(From, Debug)]
 pub enum Kind {
 	RegexExtract(Regex<Extract>),
