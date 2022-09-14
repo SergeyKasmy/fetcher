@@ -15,7 +15,7 @@
 pub mod args;
 pub mod settings;
 
-use self::args::Args;
+use crate::args::{Args, Setting};
 use fetcher_config::tasks::ParsedTask;
 use fetcher_config::tasks::ParsedTasks;
 use fetcher_core::{error::Error, error::ErrorChainExt};
@@ -88,21 +88,15 @@ async fn async_main() -> Result<()> {
 	};
 	tracing::info!("Running fetcher {}", version);
 
-	// match std::env::args().nth(1).as_deref() {
-	// 	Some("--save-google-oauth2") => settings::data::google_oauth2::prompt().await?,
-	// 	Some("--save-email-password") => settings::data::email_password::prompt()?,
-	// 	Some("--save-telegram") => settings::data::telegram::prompt()?,
-	// 	Some("--save-twitter") => settings::data::twitter::prompt()?,
-
-	// 	Some("--once") => run(true).await?,
-	// 	None => run(false).await?,
-	// 	Some(_) => panic!("error"),
-	// };
-
 	let args: Args = argh::from_env();
-
 	match args.inner {
-		args::Subcommands::Run(x) => run(x.once).await?,
+		args::Subcommands::Run(arg) => run(arg.once).await?,
+		args::Subcommands::Save(save) => match save.setting {
+			Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt().await?,
+			Setting::EmailPassword => settings::data::email_password::prompt()?,
+			Setting::Telegram => settings::data::telegram::prompt()?,
+			Setting::Twitter => settings::data::twitter::prompt()?,
+		},
 	}
 
 	Ok(())
