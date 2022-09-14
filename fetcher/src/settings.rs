@@ -12,13 +12,18 @@ use fetcher_config::tasks::TaskSettings;
 use fetcher_core::read_filter::Kind as ReadFilterKind;
 use fetcher_core::read_filter::ReadFilter;
 
+use once_cell::sync::OnceCell;
 use std::io;
+use std::path::PathBuf;
 
 const PREFIX: &str = "fetcher";
 
-struct TaskSettingsFetcherDefault;
+pub static DATA_PATH: OnceCell<PathBuf> = OnceCell::new();
+pub static CONF_PATHS: OnceCell<Vec<PathBuf>> = OnceCell::new();
 
-impl TaskSettings for TaskSettingsFetcherDefault {
+struct TaskSettingsFromDataDir {}
+
+impl TaskSettings for TaskSettingsFromDataDir {
 	fn twitter_token(&self) -> io::Result<Option<(String, String)>> {
 		data::twitter::get()
 	}

@@ -7,7 +7,7 @@
 // TODO: add trace logging, e.g. all config dirs, all config files, stuff like that
 
 use super::CONFIG_FILE_EXT;
-use crate::settings;
+use crate::settings::{self, CONF_PATHS};
 use fetcher_config::tasks::task::Task as ConfigTask;
 use fetcher_config::tasks::ParsedTask;
 use fetcher_config::tasks::ParsedTasks;
@@ -35,10 +35,8 @@ struct TemplatesField {
 #[tracing::instrument]
 pub async fn get_all() -> Result<ParsedTasks> {
 	let mut tasks = ParsedTasks::new();
-	for dir in super::cfg_dirs()?.into_iter().map(|mut p| {
-		p.push("tasks");
-		p
-	}) {
+	for dir in CONF_PATHS.get().unwrap().iter().map(|p| p.join("tasks")) {
+		// TODO: make a stream?
 		tasks.extend(get_all_from(dir).await?);
 	}
 
@@ -103,7 +101,7 @@ pub async fn get(path: PathBuf, name: &str) -> Result<Option<ParsedTask>> {
 
 	let name = name.to_owned(); // ehhhh, such a wasteful clone, and just because tokio doesn't support scoped tasks
 	let parsed_task = tokio::task::spawn_blocking(move || {
-		task.parse(&name, &settings::TaskSettingsFetcherDefault)
+		task.parse(&name, &settings::TaskSettingsFromDataDir {})
 	})
 	.await
 	.unwrap()?;

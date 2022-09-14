@@ -4,23 +4,20 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::get_data_file;
 use super::prompt_user_for;
-use super::write_to_data_file;
+use crate::settings::DATA_PATH;
 use fetcher_config::settings::Google as Config;
 use fetcher_core as fcore;
 
 use color_eyre as eyre;
+use std::fs;
 use std::io;
 
 const FILE_NAME: &str = "google_oauth2.json";
 
 pub fn get() -> io::Result<Option<fcore::auth::Google>> {
-	let raw = match get_data_file(FILE_NAME)? {
-		Some(d) => d,
-		None => return Ok(None),
-	};
-
+	let path = DATA_PATH.get().unwrap().join(FILE_NAME);
+	let raw = fs::read_to_string(path)?;
 	let conf: Config = serde_json::from_str(&raw)?;
 
 	Ok(Some(conf.parse()))
@@ -38,8 +35,10 @@ pub async fn prompt() -> eyre::Result<()> {
 
 	let gauth = fcore::auth::Google::new(client_id, client_secret, refresh_token);
 
-	Ok(write_to_data_file(
-		FILE_NAME,
+	fs::write(
+		DATA_PATH.get().unwrap().join(FILE_NAME),
 		&serde_json::to_string(&Config::unparse(gauth))?,
-	)?)
+	)?;
+
+	Ok(())
 }

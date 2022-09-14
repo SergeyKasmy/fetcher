@@ -5,16 +5,24 @@
  */
 
 use argh::FromArgs;
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 
 /// fetcher
-#[derive(FromArgs)]
+#[derive(FromArgs, Debug)]
 pub struct Args {
 	#[argh(subcommand)]
-	pub inner: Subcommands,
+	pub subcommand: Subcommands,
+
+	/// config path
+	#[argh(option)]
+	pub config_path: Option<PathBuf>,
+
+	/// data path
+	#[argh(option)]
+	pub data_path: Option<PathBuf>,
 }
 
-#[derive(FromArgs)]
+#[derive(FromArgs, Debug)]
 #[argh(subcommand)]
 pub enum Subcommands {
 	Run(Run),
@@ -22,7 +30,7 @@ pub enum Subcommands {
 }
 
 /// run all tasks
-#[derive(FromArgs)]
+#[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "run")]
 pub struct Run {
 	/// run once (instead of looping forever)
@@ -31,7 +39,7 @@ pub struct Run {
 }
 
 /// save a setting
-#[derive(FromArgs)]
+#[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "save")]
 pub struct Save {
 	/// which setting to save
@@ -39,6 +47,7 @@ pub struct Save {
 	pub setting: Setting,
 }
 
+#[derive(Debug)]
 pub enum Setting {
 	GoogleOAuth2,
 	EmailPassword,

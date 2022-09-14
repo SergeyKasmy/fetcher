@@ -16,8 +16,7 @@ pub mod args;
 pub mod settings;
 
 use crate::args::{Args, Setting};
-use fetcher_config::tasks::ParsedTask;
-use fetcher_config::tasks::ParsedTasks;
+use fetcher_config::tasks::{ParsedTask, ParsedTasks};
 use fetcher_core::{error::Error, error::ErrorChainExt};
 
 use color_eyre::{eyre::eyre, Report, Result};
@@ -74,6 +73,34 @@ fn set_up_logging() -> Result<()> {
 
 #[tokio::main]
 async fn async_main() -> Result<()> {
+	let args: Args = argh::from_env();
+	settings::DATA_PATH
+		.set(match args.data_path {
+			Some(p) => p,
+			None => settings::data::default_data_path()?,
+		})
+		.unwrap();
+	settings::CONF_PATHS
+		.set(match args.config_path {
+			Some(p) => vec![p],
+			None => settings::config::default_cfg_dirs()?,
+		})
+		.unwrap();
+
+	match args.subcommand {
+		args::Subcommands::Run(arg) => run(arg.once).await?,
+		args::Subcommands::Save(save) => match save.setting {
+			Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt().await?,
+			Setting::EmailPassword => settings::data::email_password::prompt()?,
+			Setting::Telegram => settings::data::telegram::prompt()?,
+			Setting::Twitter => settings::data::twitter::prompt()?,
+		},
+	}
+
+	Ok(())
+}
+
+async fn run(once: bool) -> Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -88,21 +115,6 @@ async fn async_main() -> Result<()> {
 	};
 	tracing::info!("Running fetcher {}", version);
 
-	let args: Args = argh::from_env();
-	match args.inner {
-		args::Subcommands::Run(arg) => run(arg.once).await?,
-		args::Subcommands::Save(save) => match save.setting {
-			Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt().await?,
-			Setting::EmailPassword => settings::data::email_password::prompt()?,
-			Setting::Telegram => settings::data::telegram::prompt()?,
-			Setting::Twitter => settings::data::twitter::prompt()?,
-		},
-	}
-
-	Ok(())
-}
-
-async fn run(once: bool) -> Result<()> {
 	let tasks = settings::config::tasks::get_all().await?;
 
 	if tasks.is_empty() {
