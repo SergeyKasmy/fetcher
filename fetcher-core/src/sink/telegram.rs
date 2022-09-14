@@ -232,9 +232,9 @@ impl Telegram {
 		if let Some(tag) = tag {
 			let tag = tag.replace(
 				|c| match c {
-					'/' => true,
-					c if c.is_whitespace() => true,
-					_ => false,
+					'_' => false,
+					c if c.is_alphabetic() || c.is_ascii_digit() => false,
+					_ => true,
 				},
 				"_",
 			);
