@@ -4,9 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// TODO: proper argument parser. Something like clap or argh or something
-// TODO: make fetcher_config more easily replaceable
-
 #![warn(clippy::pedantic)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
@@ -20,7 +17,7 @@ use fetcher_config::tasks::{ParsedTask, ParsedTasks};
 use fetcher_core::{error::Error, error::ErrorChainExt};
 
 use color_eyre::{eyre::eyre, Report, Result};
-use futures::{future::join_all, StreamExt};
+use futures::{future::try_join_all, StreamExt};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
 use std::{
@@ -201,8 +198,8 @@ async fn run_tasks(tasks: ParsedTasks, shutdown_rx: Receiver<()>, once: bool) ->
 						}
 					}
 				}
+				tracing::info!("Shutting down task {name}...");
 
-				tracing::info!("Shutting down...");
 				res
 			}
 			.instrument(tracing::info_span!("task", name = name2.as_str())),
@@ -211,28 +208,26 @@ async fn run_tasks(tasks: ParsedTasks, shutdown_rx: Receiver<()>, once: bool) ->
 		running_tasks.push(flatten_task_result(task_handle));
 	}
 
-	// return the first error
-	let mut first_err = None;
-	for res in join_all(running_tasks).await {
-		if let Err(e) = res {
-			if first_err.is_none() {
-				first_err = Some(e);
-			}
-		}
-	}
-
-	// TODO: aggregate multiple errors into one using color_eyre Section trait
-	match first_err {
-		None => Ok(()),
-		Some(e) => Err(e.into()),
-	}
+	try_join_all(running_tasks).await?;
+	Ok(())
 }
 
 async fn task_loop(t: &mut ParsedTask, once: bool) -> Result<(), Error> {
+	// allow only 5 transform errors, count any number higher than that as a critical error
+	const TRANSFORM_ERR_MAX_COUNT: u32 = 5;
+	let mut transform_err_count = 0;
+
 	loop {
+		// return critical errors and just log non critical ones
 		match fetcher_core::run_task(&mut t.inner).await {
 			Ok(()) => (),
 			Err(Error::Transform(transform_err)) => {
+				transform_err_count += 1;
+
+				if transform_err_count > TRANSFORM_ERR_MAX_COUNT {
+					return Err(Error::Transform(transform_err));
+				}
+
 				tracing::error!("Transform error: {}", transform_err.display_chain());
 			}
 			Err(e) => {
@@ -291,6 +286,6 @@ async fn flatten_task_result<T, E>(h: JoinHandle<Result<T, E>>) -> Result<T, E> 
 	match h.await {
 		Ok(Ok(res)) => Ok(res),
 		Ok(Err(err)) => Err(err),
-		e => e.unwrap(), // unwrap NOTE: crash if there was an error joining the thread
+		e => e.expect("Thread panicked"),
 	}
 }
