@@ -29,33 +29,23 @@ pub enum TopLvlSubcommand {
 	Save(Save),
 }
 
+// TODO: construct a temporary custom task right in the command line
 /// run all tasks
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "run")]
 pub struct Run {
-	#[argh(subcommand)]
-	pub subcommand: Option<RunSubcommand>,
-
 	/// run once (instead of looping forever)
 	#[argh(switch)]
 	pub once: bool,
 
+	/// run only these tasks
+	#[argh(positional)]
+	pub tasks: Vec<String>,
 	// TODO: implement dry running
-	/// make no permanent changes to the fs or other io
-	#[argh(switch)]
-	pub dry_run: bool,
+	// make no permanent changes to the fs or other io
+	// #[argh(switch)]
+	// pub dry_run: bool,
 }
-
-#[derive(FromArgs, Debug)]
-#[argh(subcommand)]
-pub enum RunSubcommand {
-	Task(Task),
-}
-
-/// TODO: run a custom task
-#[derive(FromArgs, Debug)]
-#[argh(subcommand, name = "task")]
-pub struct Task {}
 
 /// save a setting
 #[derive(FromArgs, Debug)]

@@ -21,6 +21,7 @@ use futures::{future::try_join_all, StreamExt};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
 use std::{
+	collections::HashMap,
 	sync::{atomic::AtomicBool, Arc},
 	time::Duration,
 };
@@ -31,8 +32,6 @@ use tokio::{
 	time::sleep,
 };
 use tracing::Instrument;
-
-use self::args::RunSubcommand;
 
 fn main() -> Result<()> {
 	set_up_logging()?;
@@ -87,10 +86,17 @@ async fn async_main() -> Result<()> {
 		.unwrap();
 
 	match args.subcommand {
-		args::TopLvlSubcommand::Run(arg) => match arg.subcommand {
-			Some(RunSubcommand::Task(_task)) => eprintln!("Task subcommand. Once? {}", arg.once),
-			_ => run(arg.once).await?,
-		},
+		args::TopLvlSubcommand::Run(arg) => {
+			run(
+				arg.once,
+				if arg.tasks.is_empty() {
+					None
+				} else {
+					Some(arg.tasks)
+				},
+			)
+			.await?;
+		}
 		args::TopLvlSubcommand::Save(save) => match save.setting {
 			Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt().await?,
 			Setting::EmailPassword => settings::data::email_password::prompt()?,
@@ -102,7 +108,9 @@ async fn async_main() -> Result<()> {
 	Ok(())
 }
 
-async fn run(once: bool) -> Result<()> {
+/// Run once or loop?
+/// If specified, run only tasks in `run_by_name`
+async fn run(once: bool, run_by_name: Option<Vec<String>>) -> Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -117,7 +125,7 @@ async fn run(once: bool) -> Result<()> {
 	};
 	tracing::info!("Running fetcher {}", version);
 
-	let tasks = settings::config::tasks::get_all().await?;
+	let mut tasks = settings::config::tasks::get_all().await?;
 
 	if tasks.is_empty() {
 		tracing::info!("No enabled tasks provided");
@@ -125,13 +133,33 @@ async fn run(once: bool) -> Result<()> {
 	}
 
 	tracing::info!(
-		"Found {num} enabled tasks: {names:?}",
-		num = tasks.len(),
-		names = tasks
-			.iter()
-			.map(|(name, _)| name.as_str())
-			.collect::<Vec<_>>(),
+		"Found {} enabled tasks: {:?}",
+		tasks.len(),
+		tasks.keys().collect::<Vec<_>>()
 	);
+
+	if let Some(run_by_name) = run_by_name {
+		let mut new_tasks = HashMap::new();
+
+		for name in run_by_name {
+			let task = tasks.remove(&name);
+
+			match task {
+				Some(task) => {
+					new_tasks.insert(name, task);
+				}
+				None => {
+					return Err(eyre!(
+						"Task {name} not found. All available tasks: {:?}",
+						tasks.keys().collect::<Vec<_>>()
+					));
+				}
+			}
+		}
+
+		tracing::info!("Running tasks {:?}", new_tasks.keys().collect::<Vec<_>>());
+		tasks = new_tasks;
+	}
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
 
