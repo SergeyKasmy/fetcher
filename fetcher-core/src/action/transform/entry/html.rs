@@ -8,10 +8,7 @@
 
 pub mod query;
 
-use self::query::{
-	DataLocation, IdQuery, IdQueryKind, ImageQuery, Query, QueryData, QueryKind, TextQuery,
-	TitleQuery, UrlQuery,
-};
+use self::query::{DataLocation, ImageQuery, Query, QueryData, QueryKind};
 use super::TransformEntry;
 use crate::action::transform::result::{
 	TransformResult as TrRes, TransformedEntry, TransformedMessage,
@@ -31,10 +28,10 @@ use url::Url;
 pub struct Html {
 	// TODO: make optional
 	pub itemq: Vec<Query>,
-	pub titleq: Option<TitleQuery>,
-	pub textq: Option<Vec<TextQuery>>, // allow to find multiple paragraphs and join them together
-	pub idq: Option<IdQuery>,
-	pub linkq: Option<UrlQuery>,
+	pub titleq: Option<QueryData>,
+	pub textq: Option<Vec<QueryData>>, // allow to find multiple paragraphs and join them together
+	pub idq: Option<QueryData>,
+	pub linkq: Option<QueryData>,
 	pub imgq: Option<ImageQuery>,
 }
 
@@ -69,7 +66,7 @@ impl Html {
 		let id = self
 			.idq
 			.as_ref()
-			.map(|idq| extract_id(item, idq))
+			.map(|idq| extract_data(item, idq)?.ok_or(HtmlError::IdNotFound))
 			.transpose()?;
 
 		let link = self
@@ -78,10 +75,11 @@ impl Html {
 			.map(|linkq| extract_url(item, linkq))
 			.transpose()?;
 
-		let title = match &self.titleq {
-			Some(titleq) => extract_title(item, titleq)?,
-			None => None,
-		};
+		let title = self
+			.titleq
+			.as_ref()
+			.map(|titleq| extract_data(item, titleq)?.ok_or(HtmlError::TitleNotFound))
+			.transpose()?;
 
 		let body = match &self.textq {
 			Some(textq) => Some(extract_body(item, textq)?),
@@ -106,70 +104,25 @@ impl Html {
 	}
 }
 
-fn extract_url(item: &impl QueryBuilderExt, urlq: &UrlQuery) -> Result<Url, HtmlError> {
-	let mut link = extract_data(item, &urlq.inner)?
-		.ok_or(HtmlError::UrlNotFound)?
-		.trim()
-		.to_owned();
-
-	if let Some(prepend) = &urlq.prepend {
-		link.insert_str(0, prepend);
-	}
+fn extract_url(item: &impl QueryBuilderExt, urlq: &QueryData) -> Result<Url, HtmlError> {
+	let link = extract_data(item, urlq)?.ok_or(HtmlError::UrlNotFound)?;
 
 	Url::try_from(link.as_str()).map_err(|e| InvalidUrlError(e, link).into())
 }
 
-fn extract_id(item: &impl QueryBuilderExt, idq: &IdQuery) -> Result<String, HtmlError> {
-	let id_str = extract_data(item, &idq.inner)?
-		.ok_or(HtmlError::IdNotFound)?
-		.trim()
-		.to_owned();
-
-	Ok(match &idq.kind {
-		IdQueryKind::String => id_str,
-		IdQueryKind::Date => {
-			todo!()
-			// ArticleId::Date(match parse_pretty_date(&id_str) {
-			// 	Ok(d) => d,
-			// 	Err(e) if matches!(e, Error::InvalidDateTimeFormat(_)) => {
-			// 		return None
-			// 	}
-			// 	Err(e) => return Some(Err(e)),
-			// })
-		}
-	})
-}
-
-fn extract_title(
-	item: &impl QueryBuilderExt,
-	titleq: &TitleQuery,
-) -> Result<Option<String>, HtmlError> {
-	extract_data(item, &titleq.0)
-}
-
-fn extract_body(item: &impl QueryBuilderExt, textq: &[TextQuery]) -> Result<String, HtmlError> {
-	let mut body_parts = Vec::new();
-
-	for query in textq {
-		let s = extract_data(item, &query.inner)?;
-
-		match s {
-			Some(mut s) => {
-				if let Some(prepend) = query.prepend.as_deref() {
-					s.insert_str(0, prepend);
-				}
-
-				body_parts.push(s);
-			}
-			None => (),
-		}
-	}
-
-	Ok(body_parts.join("\n\n"))
+fn extract_body(item: &impl QueryBuilderExt, textq: &[QueryData]) -> Result<String, HtmlError> {
+	Ok(textq
+		.iter()
+		.map(|query| extract_data(item, query))
+		.collect::<Result<Vec<_>, _>>()?
+		.into_iter()
+		.flatten()
+		.collect::<Vec<_>>()
+		.join("\n\n"))
 }
 
 fn extract_img(item: &impl QueryBuilderExt, imgq: &ImageQuery) -> Result<Option<Url>, HtmlError> {
-	let mut img_url = match extract_data(item, &imgq.url.inner)? {
+	let img_url = match extract_data(item, &imgq.inner)? {
 		Some(s) => s,
 		None => {
 			if imgq.optional {
@@ -182,10 +135,6 @@ fn extract_img(item: &impl QueryBuilderExt, imgq: &ImageQuery) -> Result<Option<
 			return Err(HtmlError::ImageNotFound);
 		}
 	};
-
-	if let Some(prepend) = &imgq.url.prepend {
-		img_url.insert_str(0, prepend);
-	}
 
 	Ok(Some(
 		Url::try_from(img_url.as_str()).map_err(|e| InvalidUrlError(e, img_url))?,

@@ -6,7 +6,7 @@
 
 pub mod query;
 
-use self::query::{IdQuery, ImageQuery, Query, TextQuery, TitleQuery, UrlQuery};
+use self::query::{ImageQuery, Query, QueryData};
 use crate::Error;
 use fetcher_core::action::transform::Html as CoreHtml;
 
@@ -18,16 +18,16 @@ pub struct Html {
 	pub itemq: Vec<Query>,
 
 	#[serde(rename = "title_query")]
-	pub titleq: Option<TitleQuery>,
+	pub titleq: Option<QueryData>,
 
 	#[serde(rename = "text_query")]
-	pub textq: Option<Vec<TextQuery>>,
+	pub textq: Option<Vec<QueryData>>,
 
 	#[serde(rename = "id_query")]
-	pub idq: Option<IdQuery>,
+	pub idq: Option<QueryData>,
 
 	#[serde(rename = "link_query")]
-	pub linkq: Option<UrlQuery>,
+	pub linkq: Option<QueryData>,
 
 	#[serde(rename = "img_query")]
 	pub imgq: Option<ImageQuery>,
@@ -37,17 +37,17 @@ impl Html {
 	pub fn parse(self) -> Result<CoreHtml, Error> {
 		Ok(CoreHtml {
 			itemq: self.itemq.into_iter().map(Query::parse).collect(),
-			titleq: self.titleq.map(TitleQuery::parse).transpose()?,
+			titleq: self.titleq.map(QueryData::parse).transpose()?,
 			textq: self
 				.textq
 				.map(|v| {
 					v.into_iter()
-						.map(TextQuery::parse)
+						.map(QueryData::parse)
 						.collect::<Result<_, _>>()
 				})
 				.transpose()?,
-			idq: self.idq.map(IdQuery::parse).transpose()?,
-			linkq: self.linkq.map(UrlQuery::parse).transpose()?,
+			idq: self.idq.map(QueryData::parse).transpose()?,
+			linkq: self.linkq.map(QueryData::parse).transpose()?,
 			imgq: self.imgq.map(ImageQuery::parse).transpose()?,
 		})
 	}

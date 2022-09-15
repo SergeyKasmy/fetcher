@@ -68,17 +68,20 @@ pub enum HtmlError {
 	#[error(transparent)]
 	NothingToTransform(#[from] NothingToTransformError),
 
+	#[error("Title not found")]
+	TitleNotFound,
+
 	#[error("URL not found")]
 	UrlNotFound,
-
-	#[error(transparent)]
-	InvalidUrl(#[from] InvalidUrlError),
 
 	#[error("ID not found")]
 	IdNotFound,
 
 	#[error("Image not found but it's not optional")]
 	ImageNotFound,
+
+	#[error(transparent)]
+	InvalidUrl(#[from] InvalidUrlError),
 
 	#[error(transparent)]
 	RegexError(#[from] RegexError),

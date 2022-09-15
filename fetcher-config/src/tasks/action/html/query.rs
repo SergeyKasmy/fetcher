@@ -48,52 +48,10 @@ pub struct QueryData {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(transparent)]
-pub struct TitleQuery(pub QueryData);
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct TextQuery {
-	pub prepend: Option<String>,
-	#[serde(flatten)]
-	pub inner: QueryData,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-// #[serde(rename_all = "snake_case", deny_unknown_fields)]	// TODO: check if deny_unknown_fields can be used here, esp with flatten
-#[serde(rename_all = "snake_case")]
-pub enum IdQueryKind {
-	String,
-	Date,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct IdQuery {
-	pub kind: IdQueryKind,
-	#[serde(flatten)]
-	pub inner: QueryData,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct UrlQuery {
-	pub prepend: Option<String>,
-	#[serde(flatten)]
-	pub inner: QueryData,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
 pub struct ImageQuery {
 	optional: Option<bool>,
 	#[serde(flatten)]
-	url: UrlQuery,
-}
-
-impl ImageQuery {
-	pub fn parse(self) -> Result<c_query::ImageQuery, Error> {
-		Ok(c_query::ImageQuery {
-			optional: self.optional.unwrap_or(false),
-			url: self.url.parse()?,
-		})
-	}
+	inner: QueryData,
 }
 
 impl QueryKind {
@@ -153,40 +111,10 @@ impl QueryData {
 	}
 }
 
-impl TitleQuery {
-	pub fn parse(self) -> Result<c_query::TitleQuery, Error> {
-		Ok(c_query::TitleQuery(self.0.parse()?))
-	}
-}
-
-impl TextQuery {
-	pub fn parse(self) -> Result<c_query::TextQuery, Error> {
-		Ok(c_query::TextQuery {
-			prepend: self.prepend,
-			inner: self.inner.parse()?,
-		})
-	}
-}
-impl IdQueryKind {
-	fn parse(self) -> c_query::IdQueryKind {
-		match self {
-			IdQueryKind::String => c_query::IdQueryKind::String,
-			IdQueryKind::Date => c_query::IdQueryKind::Date,
-		}
-	}
-}
-impl IdQuery {
-	pub fn parse(self) -> Result<c_query::IdQuery, Error> {
-		Ok(c_query::IdQuery {
-			kind: self.kind.parse(),
-			inner: self.inner.parse()?,
-		})
-	}
-}
-impl UrlQuery {
-	pub fn parse(self) -> Result<c_query::UrlQuery, Error> {
-		Ok(c_query::UrlQuery {
-			prepend: self.prepend,
+impl ImageQuery {
+	pub fn parse(self) -> Result<c_query::ImageQuery, Error> {
+		Ok(c_query::ImageQuery {
+			optional: self.optional.unwrap_or(false),
 			inner: self.inner.parse()?,
 		})
 	}

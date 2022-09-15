@@ -50,34 +50,7 @@ impl QueryData {
 }
 
 #[derive(Debug)]
-pub struct TitleQuery(pub QueryData);
-
-#[derive(Debug)]
-pub struct TextQuery {
-	pub prepend: Option<String>,
-	pub inner: QueryData,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum IdQueryKind {
-	String,
-	Date,
-}
-
-#[derive(Debug)]
-pub struct IdQuery {
-	pub kind: IdQueryKind,
-	pub inner: QueryData,
-}
-
-#[derive(Debug)]
-pub struct UrlQuery {
-	pub prepend: Option<String>,
-	pub inner: QueryData,
-}
-
-#[derive(Debug)]
 pub struct ImageQuery {
 	pub optional: bool,
-	pub url: UrlQuery,
+	pub inner: QueryData,
 }
