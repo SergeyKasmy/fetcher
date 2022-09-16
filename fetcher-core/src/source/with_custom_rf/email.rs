@@ -30,7 +30,6 @@ pub struct Email {
 	auth: Auth,
 	filters: Filters,
 	view_mode: ViewMode,
-	footer: Option<String>, // remove everything after this text, including itself, from the message
 }
 
 impl Email {
@@ -41,7 +40,6 @@ impl Email {
 		password: String,
 		filters: Filters,
 		view_mode: ViewMode,
-		footer: Option<String>,
 	) -> Self {
 		Self {
 			imap,
@@ -49,7 +47,6 @@ impl Email {
 			auth: Auth::Password(password),
 			filters,
 			view_mode,
-			footer,
 		}
 	}
 
@@ -59,7 +56,6 @@ impl Email {
 		auth: GoogleAuth,
 		filters: Filters,
 		view_mode: ViewMode,
-		footer: Option<String>,
 	) -> Self {
 		Self {
 			imap: "imap.gmail.com".to_owned(),
@@ -67,7 +63,6 @@ impl Email {
 			auth: Auth::GoogleAuth(auth),
 			filters,
 			view_mode,
-			footer,
 		}
 	}
 
@@ -193,10 +188,6 @@ impl Email {
 			}
 			.get_body()?;
 
-			if let Some(footer) = self.footer.as_deref() {
-				body.drain(body.find(footer).unwrap_or(body.len())..);
-			}
-
 			body
 		};
 
@@ -268,7 +259,6 @@ impl Email {
 impl std::fmt::Debug for Email {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Email")
-			// .field("name", &self.name)
 			.field("imap", &self.imap)
 			.field(
 				"auth_type",
@@ -280,7 +270,6 @@ impl std::fmt::Debug for Email {
 			.field("email", &self.email)
 			.field("filters", &self.filters)
 			.field("view_mode", &self.view_mode)
-			.field("footer", &self.footer)
 			.finish()
 	}
 }

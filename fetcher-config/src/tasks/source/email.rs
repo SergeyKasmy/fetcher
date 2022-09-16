@@ -25,7 +25,6 @@ pub struct Email {
 	auth: Auth,
 	filters: Filters,
 	view_mode: ViewMode,
-	footer: Option<String>,
 }
 
 impl Email {
@@ -38,7 +37,6 @@ impl Email {
 					.ok_or(Error::GoogleOAuth2TokenMissing)?,
 				self.filters.parse(),
 				self.view_mode.parse(),
-				self.footer,
 			),
 			Auth::Password => source::Email::with_password(
 				self.imap.ok_or(Error::EmailImapFieldMissing)?,
@@ -48,7 +46,6 @@ impl Email {
 					.ok_or(Error::EmailPasswordMissing)?,
 				self.filters.parse(),
 				self.view_mode.parse(),
-				self.footer,
 			),
 		})
 	}
