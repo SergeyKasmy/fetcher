@@ -62,7 +62,7 @@ impl Email {
 		footer: Option<String>,
 	) -> Self {
 		Self {
-			imap: "imap.google.com".to_owned(),
+			imap: "imap.gmail.com".to_owned(),
 			email,
 			auth: Auth::GoogleAuth(auth),
 			filters,
