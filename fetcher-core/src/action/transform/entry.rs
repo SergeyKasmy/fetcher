@@ -67,7 +67,7 @@ impl Kind {
 				},
 				Self::Print => {
 					print::print(&entry).await;
-					Ok(Vec::new())
+					Ok(vec![TransformedEntry::default()])
 				}
 			}
 		);
@@ -77,14 +77,9 @@ impl Kind {
 			original_entry: entry.clone(),
 		})
 		.map(|v| {
-			if v.is_empty() {
-				// pass-through the previous entry if the resulting after transforms vec is empty, i.e. if there was nothing done to the old entry
-				vec![entry]
-			} else {
-				v.into_iter()
-					.map(|new_entry| new_entry.into_entry(entry.clone()))
-					.collect()
-			}
+			v.into_iter()
+				.map(|new_entry| new_entry.into_entry(entry.clone()))
+				.collect()
 		})
 	}
 }

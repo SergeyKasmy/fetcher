@@ -253,7 +253,10 @@ async fn task_loop(t: &mut ParsedTask, once: bool) -> Result<(), Error> {
 					return Err(Error::Transform(transform_err));
 				}
 
-				tracing::error!("Transform error: {}", transform_err.display_chain());
+				tracing::error!(
+					"Transform error ({transform_err_count} out of {TRANSFORM_ERR_MAX_COUNT}): {}",
+					transform_err.display_chain()
+				);
 			}
 			Err(e) => {
 				if let Some(network_err) = e.is_connection_error() {
