@@ -215,18 +215,15 @@ async fn run_tasks(tasks: ParsedTasks, shutdown_rx: Receiver<()>, once: bool) ->
 					_ = shutdown_rx.changed() => Ok(()),
 				};
 
-				if let Err(err) = &res {
-					let err_str = err.display_chain();
-					tracing::error!("{err_str}");
-
-					// production error reporting
-					if !cfg!(debug_assertions) {
-						if let Err(e) = report_error(&name, &err_str).await {
+				// production error reporting
+				if !cfg!(debug_assertions) {
+					if let Err(err) = &res {
+						if let Err(e) = report_error(&name, &err.display_chain()).await {
 							tracing::error!("Unable to send error report to the admin: {e:?}",);
 						}
 					}
 				}
-				tracing::info!("Shutting down task {name}...");
+				tracing::info!("Task {name} shut down...");
 
 				res
 			}
