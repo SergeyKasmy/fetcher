@@ -20,6 +20,7 @@ use crate::error::source::ImapError;
 use crate::sink::Message;
 
 use mailparse::ParsedMail;
+use std::fmt::Debug;
 use std::fmt::Write as _;
 
 const IMAP_PORT: u16 = 993;
@@ -30,6 +31,35 @@ pub struct Email {
 	auth: Auth,
 	filters: Filters,
 	view_mode: ViewMode,
+}
+
+macro_rules! authenticate {
+    ($login:expr, $auth:expr, $client:expr) => {{
+		let auth = $auth;
+
+		match auth {
+			Auth::GoogleAuth(auth) => {
+				tracing::trace!("Logging in to IMAP with Google OAuth2");
+
+				$client
+					.authenticate(
+						"XOAUTH2",
+						&auth
+							.as_imap_oauth2($login)
+							.await
+							.map_err(|e| ImapError::GoogleAuth(Box::new(e)))?,
+					)
+					.map_err(|(e, _)| ImapError::Auth(e))?
+			}
+			Auth::Password(password) => {
+				tracing::warn!("Logging in to IMAP with a password, this is insecure");
+
+				$client
+					.login($login, password)
+					.map_err(|(e, _)| ImapError::Auth(e))?
+			}
+		}
+	}};
 }
 
 impl Email {
@@ -76,29 +106,7 @@ impl Email {
 			.rustls()
 			.map_err(ImapError::TlsInitFailed)?;
 
-		// TODO: dedup this with up the same up above
-		let mut session = match &mut self.auth {
-			Auth::GoogleAuth(auth) => {
-				tracing::trace!("Logging in to IMAP with Google OAuth2");
-
-				client
-					.authenticate(
-						"XOAUTH2",
-						&auth
-							.as_imap_oauth2(&self.email)
-							.await
-							.map_err(|e| ImapError::GoogleAuth(Box::new(e)))?,
-					)
-					.map_err(|(e, _)| ImapError::Auth(e))?
-			}
-			Auth::Password(password) => {
-				tracing::warn!("Logging in to IMAP with a password, this is insecure");
-
-				client
-					.login(&self.email, password)
-					.map_err(|(e, _)| ImapError::Auth(e))?
-			}
-		};
+		let mut session = authenticate!(&self.email, &mut self.auth, client);
 
 		session.examine("INBOX").map_err(ImapError::Other)?;
 
@@ -160,7 +168,7 @@ impl Email {
 				let uid = 
 					x.uid.expect("UIDs should always be present because we used uid_fetch(). The server probably doesn't support them which isn't something ~we~ support for now").to_string();
 
-				self.parse(
+				parse(
 					&mailparse::parse_mail(body)?,
 					uid,
 				)
@@ -168,42 +176,6 @@ impl Email {
 			.collect::<Result<Vec<Entry>, EmailError>>()
 	}
 
-	fn parse(&self, mail: &ParsedMail, id: String) -> Result<Entry, EmailError> {
-		let subject = mail.headers.iter().find_map(|x| {
-			if x.get_key_ref() == "Subject" {
-				Some(x.get_value())
-			} else {
-				None
-			}
-		});
-
-		let body = {
-			let mut body = if mail.subparts.is_empty() {
-				mail
-			} else {
-				mail.subparts
-					.iter()
-					.find(|x| x.ctype.mimetype == "text/plain")
-					.unwrap_or(&mail.subparts[0])
-			}
-			.get_body()?;
-
-			body
-		};
-
-		Ok(Entry {
-			id: Some(id),
-			msg: Message {
-				title: subject,
-				body: Some(body),
-				..Default::default()
-			},
-			..Default::default()
-		})
-	}
-	// }
-
-	// FIXME: doesn't actually work
 	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<(), ImapError> {
 		if let ViewMode::ReadOnly = self.view_mode {
 			return Ok(());
@@ -212,28 +184,7 @@ impl Email {
 		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT)
 			.rustls()
 			.map_err(ImapError::TlsInitFailed)?;
-		let mut session = match &mut self.auth {
-			Auth::GoogleAuth(auth) => {
-				tracing::trace!("Logging in to IMAP with Google OAuth2");
-
-				client
-					.authenticate(
-						"XOAUTH2",
-						&auth
-							.as_imap_oauth2(&self.email)
-							.await
-							.map_err(|e| ImapError::GoogleAuth(Box::new(e)))?,
-					)
-					.map_err(|(e, _)| ImapError::Auth(e))?
-			}
-			Auth::Password(password) => {
-				tracing::warn!("Logging in to IMAP with a password, this is insecure");
-
-				client
-					.login(&self.email, password)
-					.map_err(|(e, _)| ImapError::Auth(e))?
-			}
-		};
+		let mut session = authenticate!(&self.email, &mut self.auth, client);
 
 		session.select("INBOX")?;
 
@@ -250,13 +201,45 @@ impl Email {
 			ViewMode::ReadOnly => unreachable!(),
 		};
 
-		session.logout().map_err(ImapError::Other)?;
+		session.logout()?;
 
 		Ok(())
 	}
 }
 
-impl std::fmt::Debug for Email {
+fn parse(mail: &ParsedMail, id: String) -> Result<Entry, EmailError> {
+	let subject = mail.headers.iter().find_map(|x| {
+		if x.get_key_ref() == "Subject" {
+			Some(x.get_value())
+		} else {
+			None
+		}
+	});
+
+	let body = {
+		if mail.subparts.is_empty() {
+			mail
+		} else {
+			mail.subparts
+				.iter()
+				.find(|x| x.ctype.mimetype == "text/plain")
+				.unwrap_or(&mail.subparts[0])
+		}
+		.get_body()?
+	};
+
+	Ok(Entry {
+		id: Some(id),
+		msg: Message {
+			title: subject,
+			body: Some(body),
+			..Default::default()
+		},
+		..Default::default()
+	})
+}
+
+impl Debug for Email {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Email")
 			.field("imap", &self.imap)
