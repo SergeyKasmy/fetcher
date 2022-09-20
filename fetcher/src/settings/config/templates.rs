@@ -6,13 +6,19 @@
 
 use super::CONFIG_FILE_EXT;
 use crate::settings::CONF_PATHS;
-use fetcher_core::task::template::Template;
 
 use color_eyre::Result;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const TEMPLATES_DIR: &str = "templates";
+
+#[derive(Debug)]
+pub struct Template {
+	pub name: String,
+	pub path: PathBuf,
+	pub contents: String,
+}
 
 #[tracing::instrument(name = "template")]
 pub fn find(name: &str) -> Result<Option<Template>> {

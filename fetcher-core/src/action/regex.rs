@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains the [`Regex`] action that can be used as a transform or a filter,
+//! This module contains the [`Regex`] action that can be used as a [`transform`](`crate::action::transform`) or a [`filter`](`crate::action::filter`),
 //! depending on the [`Action`] used
 
 pub mod action;
