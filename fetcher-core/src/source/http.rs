@@ -10,24 +10,14 @@ use crate::error::source::HttpError;
 use crate::error::transform::{HttpError as HttpTransformError, InvalidUrlError};
 use crate::sink::Message;
 
-use once_cell::sync::Lazy;
+use once_cell::sync::OnceCell;
 use std::fmt::{Debug, Display};
-use std::sync::Mutex;
 use url::Url;
 
 const USER_AGENT: &str =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0";
 
-// option because tls init could've failed and we took out the Err()
-// TODO: replace with get_or_init
-static CLIENT: Lazy<Mutex<Option<Result<reqwest::Client, HttpError>>>> = Lazy::new(|| {
-	Mutex::new(Some(
-		reqwest::ClientBuilder::new()
-			.timeout(std::time::Duration::from_secs(30))
-			.build()
-			.map_err(HttpError::TlsInitFailed),
-	))
-});
+static CLIENT: OnceCell<reqwest::Client> = OnceCell::new();
 
 /// A source that fetches from the [`URL`](`url`)
 pub struct Http {
@@ -49,30 +39,16 @@ impl Http {
 	/// Create a new Http client
 	///
 	/// # Errors
-	/// if TLS couldn't be initialized
-	///
-	/// # Panics
-	/// This function may panic if a different thread crashes when calling this function
+	/// This method fails if TLS couldn't be initialized
 	pub fn new(url: Url) -> Result<Self, HttpError> {
-		let mut client_lock = CLIENT
-			.lock()
-			.expect("Thread panicked while holding the mutex lock");
-
-		// take out the error out of the option if there was an error, otherwise just clone the Client
-		let client = match client_lock
-			.as_ref()
-			.ok_or(HttpError::ClientNotInitialized)?
-		{
-			Ok(client) => client.clone(),
-			Err(_) => {
-				let e = client_lock
-					.take()
-					.expect("Option should be not empty because we have just ok_or()'ed it")
-					.unwrap_err();
-
-				return Err(e);
-			}
-		};
+		let client = CLIENT
+			.get_or_try_init(|| {
+				reqwest::ClientBuilder::new()
+					.timeout(std::time::Duration::from_secs(30))
+					.build()
+					.map_err(HttpError::TlsInitFailed)
+			})?
+			.clone();
 
 		Ok(Self { url, client })
 	}

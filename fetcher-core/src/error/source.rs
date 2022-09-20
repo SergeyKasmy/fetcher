@@ -36,9 +36,6 @@ pub enum HttpError {
 
 	#[error("Can't send GET request to {1:?}")]
 	Get(#[source] reqwest::Error, String),
-
-	#[error("Reqwest Client wasn't initialized")]
-	ClientNotInitialized,
 }
 
 #[allow(clippy::large_enum_variant)] // the entire enum is already boxed up above
