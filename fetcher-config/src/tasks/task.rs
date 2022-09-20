@@ -62,8 +62,7 @@ impl Task {
 
 		let inner = fcore::task::Task {
 			tag: self.tag,
-			rf,
-			source: self.source.parse(settings)?,
+			source: self.source.parse(rf, settings)?,
 			actions,
 			sink: self.sink.map(|x| x.parse(settings)).transpose()?,
 		};

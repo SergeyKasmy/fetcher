@@ -23,12 +23,23 @@ pub use self::twitter::Twitter;
 use crate::entry::Entry;
 use crate::error::source::EmailError;
 use crate::error::source::Error as SourceError;
+use crate::read_filter::ReadFilter;
+
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 /// A source that provides a way to get some data once
 #[derive(Debug)]
 pub enum Source {
-	/// Refer to [`WithSharedRF`]
-	WithSharedReadFilter(WithSharedRF),
+	/// A [`WithSharedRF`] source and its [`ReadFilter`].
+	/// It isn't used in this module but is just kept here to be used externally elsewhere
+	/// to avoid using it accidentally with a [`WithCustomReadFilter`]
+	WithSharedReadFilter {
+		/// The read filter that can be used externally to filter out read entries after processing them
+		rf: Option<Arc<RwLock<ReadFilter>>>,
+		/// Refer to [`WithSharedRF`]
+		kind: WithSharedRF,
+	},
 	/// Refer to [`WithCustomRF`]
 	WithCustomReadFilter(WithCustomRF),
 }
@@ -67,7 +78,7 @@ impl Source {
 		// transforms: Option<&[Transform]>,
 	) -> Result<Vec<Entry>, SourceError> {
 		match self {
-			Source::WithSharedReadFilter(x) => x.get().await,
+			Source::WithSharedReadFilter { kind, .. } => kind.get().await,
 			Source::WithCustomReadFilter(x) => x.get().await,
 		}
 	}

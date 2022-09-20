@@ -9,15 +9,18 @@ pub mod file;
 pub mod http;
 pub mod twitter;
 
-use serde::{Deserialize, Serialize};
-
 use self::email::Email;
 use self::file::File;
 use self::http::Http;
 use self::twitter::Twitter;
 use crate::Error;
 use crate::{tasks::TaskSettings, OneOrMultiple};
+use fetcher_core::read_filter::ReadFilter as CReadFilter;
 use fetcher_core::source;
+
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[allow(clippy::large_enum_variant)] // don't care, it's used just once per task and isn't passed a lot
 #[derive(Deserialize, Serialize, Debug)]
@@ -45,7 +48,11 @@ pub enum WithCustomReadFilter {
 }
 
 impl Source {
-	pub fn parse(self, settings: &dyn TaskSettings) -> Result<source::Source, Error> {
+	pub fn parse(
+		self,
+		rf: Option<Arc<RwLock<CReadFilter>>>,
+		settings: &dyn TaskSettings,
+	) -> Result<source::Source, Error> {
 		Ok(match self {
 			Source::WithSharedReadFilter(v) => {
 				let v: Vec<WithSharedReadFilter> = v.into();
@@ -67,10 +74,11 @@ impl Source {
 					})
 					.collect::<Result<Vec<_>, Error>>()?;
 
-				source::Source::WithSharedReadFilter(
-					source::WithSharedRF::new(sources)
+				source::Source::WithSharedReadFilter {
+					rf,
+					kind: source::WithSharedRF::new(sources)
 						.map_err(|e| Error::FetcherCoreSource(Box::new(e)))?,
-				)
+				}
 			}
 			Source::WithCustomReadFilter(s) => match s {
 				WithCustomReadFilter::Email(x) => source::Source::WithCustomReadFilter(
