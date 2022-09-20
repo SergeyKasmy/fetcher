@@ -23,9 +23,6 @@ pub enum Sink {
 	Telegram(Telegram),
 	/// stdout sink
 	Stdout(Stdout),
-	/// null sink that discards any messages
-	// TODO: replace with just 'sink: Option<Sink>'
-	Null,
 }
 
 impl Sink {
@@ -37,7 +34,6 @@ impl Sink {
 		match self {
 			Self::Telegram(t) => t.send(message, tag).await,
 			Self::Stdout(s) => s.send(message, tag).await,
-			Self::Null => Ok(()),
 		}
 	}
 }

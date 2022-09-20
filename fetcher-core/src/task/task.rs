@@ -25,5 +25,5 @@ pub struct Task {
 	/// A list of optional transformators which to run the data received from the source through
 	pub actions: Option<Vec<Action>>,
 	/// The sink where to send the data to
-	pub sink: Sink,
+	pub sink: Option<Sink>,
 }

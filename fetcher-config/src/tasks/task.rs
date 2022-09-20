@@ -28,7 +28,7 @@ pub struct Task {
 	#[serde(rename = "process")]
 	actions: Option<Vec<Action>>,
 	// TODO: several sinks
-	sink: Sink,
+	sink: Option<Sink>,
 }
 
 impl Task {
@@ -62,10 +62,10 @@ impl Task {
 
 		let inner = fcore::task::Task {
 			tag: self.tag,
-			source: self.source.parse(settings)?,
 			rf,
+			source: self.source.parse(settings)?,
 			actions,
-			sink: self.sink.parse(settings)?,
+			sink: self.sink.map(|x| x.parse(settings)).transpose()?,
 		};
 
 		Ok(ParsedTask {
