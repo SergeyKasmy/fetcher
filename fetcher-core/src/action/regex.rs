@@ -33,7 +33,7 @@ pub struct Regex<A> {
 }
 
 impl<A: Action> Regex<A> {
-	/// Creates a new Regex with compiled regular expression [`re`] and [`action`]
+	/// Creates a new Regex with compiled regular expression `re` and [`action`](`Action`)
 	///
 	/// # Errors
 	/// if the regular expression isn't valid
@@ -46,7 +46,7 @@ impl<A: Action> Regex<A> {
 }
 
 impl Regex<Extract> {
-	/// Extracts capture group "s" (?P<s>) from [`text`]
+	/// Extracts capture group "s" (?P<s>) from `text`
 	#[must_use]
 	pub fn extract<'a>(&self, text: &'a str) -> Option<&'a str> {
 		match find(&self.re, text) {
@@ -90,7 +90,7 @@ impl Filter for Regex<Find> {
 }
 
 impl Regex<Replace> {
-	/// Replaces [`text`] with the re
+	/// Replaces `text` with the re
 	#[must_use]
 	pub fn replace<'a>(&self, text: &'a str) -> Cow<'a, str> {
 		self.re.replace(text, &self.action.with)

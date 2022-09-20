@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains everything needed to contruct a new [`Entry`] (via [`TransformedEntry`]) and [`Message`] (via [`TransformedMessage`]) after parsing, optionally using previous [`Entry`]'s data if requested
+//! This module contains everything needed to contruct a new [`Entry`] (via [`TransformedEntry`]) and [`Message`] (via [`TransformedMessage`]) after parsing, optionally using previous [`Entry's`](`Entry`) data if requested
 
 use crate::{
 	entry::Entry,
@@ -44,7 +44,7 @@ pub enum TransformResult<T> {
 }
 
 impl TransformedEntry {
-	/// Transform [`TransformedEntry`] into a new [`Entry`], using [`old_entry`]'s fields as fallback if needed
+	/// Transform [`TransformedEntry`] into a new [`Entry`], using `old_entry`'s fields as fallback if needed
 	#[must_use]
 	pub fn into_entry(self, old_entry: Entry) -> Entry {
 		Entry {
@@ -56,7 +56,7 @@ impl TransformedEntry {
 }
 
 impl TransformedMessage {
-	/// Transform [`TransformedMessage`] into a new [`Message`], using [`old_msg`]'s fields as fallback if needed
+	/// Transform [`TransformedMessage`] into a new [`Message`], using `old_msg`'s fields as fallback if needed
 	#[must_use]
 	pub fn into_message(self, old_msg: Message) -> Message {
 		Message {

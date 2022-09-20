@@ -35,7 +35,7 @@ pub enum Kind {
 }
 
 impl Kind {
-	/// Calls each enum variant's [`filter()`] impl
+	/// Calls each enum variant's [`Filter::filter()`] impl
 	// This type doesn't implement Filter trait itself since the Read Filter requires async locking
 	// and there's no reason to add the overhead of a Box'ed future type (via #[async_trait]) just for that one impl.
 	// If more transforms will require async in the future, I may as well make Filter async and implement it for Kind

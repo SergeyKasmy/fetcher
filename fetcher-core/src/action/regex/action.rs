@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains all actions that [`Regex`] can be used for
+//! This module contains all actions that [`Regex`](`super::Regex`) can be used for
 
 use crate::action::transform::field::Field;
 
@@ -15,14 +15,14 @@ pub struct Extract {
 	pub passthrough_if_not_found: bool,
 }
 
-/// Find a re in field [`in_field`]
+/// Find a re in a field
 #[derive(Debug)]
 pub struct Find {
 	/// The field to find the re in
 	pub in_field: Field,
 }
 
-/// Replace text that matched the re with [`with`]
+/// Replace text that matched the re with a replacement string
 #[derive(Debug)]
 pub struct Replace {
 	/// The text to replace with. May reference capture groups in the re

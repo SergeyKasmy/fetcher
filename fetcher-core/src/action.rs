@@ -4,10 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains all [`Actions`](`Action`) that a list of [`Entry`]'s can be run through to view/modify/filter it out
+
 pub mod filter;
 pub mod transform;
 
-/// [`Regex`](`regex::Regex`) is both a transform and a filter
+// Regex is both a transform and a filter that's why it's here all alone :(
 pub mod regex;
 
 use self::transform::Transform;
@@ -25,10 +27,10 @@ pub enum Action {
 }
 
 impl Action {
-	/// Processes the [`entries`] using the [`Action`]
+	/// Processes `entries` using the [`Action`]
 	///
 	/// # Errors
-	/// if there was error transforming [`entries`]. Filtering out never fails
+	/// if there was error transforming `entries`. Filtering out never fails
 	pub async fn process(&self, mut entries: Vec<Entry>) -> Result<Vec<Entry>, TransformError> {
 		match self {
 			Action::Filter(f) => {

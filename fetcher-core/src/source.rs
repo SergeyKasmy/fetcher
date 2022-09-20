@@ -4,6 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains [`Source`]s that can fetch data and create new [`Entries`](`Entry`) out of it
 // TODO: add google calendar source. Google OAuth2 is already implemented :)
 
 /// Contains the [`Email`] source using IMAP, IMAP [`ViewMode`](`email::ViewMode`), and IMAP [`Filters`](`email::Filters`)
@@ -33,7 +34,7 @@ use tokio::sync::RwLock;
 pub enum Source {
 	/// A [`WithSharedRF`] source and its [`ReadFilter`].
 	/// It isn't used in this module but is just kept here to be used externally elsewhere
-	/// to avoid using it accidentally with a [`WithCustomReadFilter`]
+	/// to avoid using it accidentally with a [`WithCustomReadFilter`](`Source::WithCustomReadFilter`)
 	WithSharedReadFilter {
 		/// The read filter that can be used externally to filter out read entries after processing them
 		rf: Option<Arc<RwLock<ReadFilter>>>,
@@ -89,7 +90,7 @@ impl WithSharedRF {
 	///
 	/// # Errors
 	/// * if the source list is empty
-	/// * if the several sources that were provided are of different [`WithStaredReadFilterKind`] variants
+	/// * if the several sources that were provided are of different [`WithSharedRFKind`] variants
 	pub fn new(sources: Vec<WithSharedRFKind>) -> Result<Self, SourceError> {
 		match sources.len() {
 			0 => return Err(SourceError::EmptySourceList),
@@ -141,7 +142,7 @@ impl WithCustomRF {
 		})
 	}
 
-	/// Delegate for [`Source::mark_as_read`]
+	/// Delegate for `mark_as_read()` for each [`WithCustomRF`] variant
 	#[allow(clippy::missing_errors_doc)]
 	pub async fn mark_as_read(&mut self, id: &str) -> Result<(), SourceError> {
 		match self {
@@ -154,7 +155,7 @@ impl WithCustomRF {
 		Ok(())
 	}
 
-	/// Delegate for [`Source::remove_read`]
+	/// Delegate for `remove_read()` for each [`WithCustomRF`] variant
 	#[allow(clippy::ptr_arg)]
 	pub fn remove_read(&self, _entries: &mut Vec<Entry>) {
 		match self {

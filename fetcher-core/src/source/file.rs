@@ -9,7 +9,7 @@ use crate::error::source::Error as SourceError;
 
 use std::path::PathBuf;
 
-/// File source. Reads contents of a file and puts them into [`raw_contents`]
+/// File source. Reads contents of a file and puts them into [`raw_contents`](`crate::entry::Entry::raw_contents`)
 #[derive(Debug)]
 pub struct File {
 	/// Path of the file

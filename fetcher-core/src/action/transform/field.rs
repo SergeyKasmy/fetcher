@@ -5,7 +5,7 @@
  */
 
 //! This module contains the trait [`TransformField`] as well as all types that implement it
-//! And [`Field`] enum that can be used to refer to a [`Message`]'s field
+//! And [`Field`] enum that can be used to refer to a [`Message`](`crate::sink::Message`)'s field
 
 pub mod caps;
 pub mod shorten;
@@ -24,10 +24,10 @@ use derive_more::From;
 
 /// A helper trait for transforms that transform a single field of an entry
 pub trait TransformField {
-	/// Error return type. May be [`Infallible`]
+	/// Error return type. May be [`Infallible`](`std::convert::Infallible`)
 	type Error: Into<TransformErrorKind>;
 
-	/// Transform the [`field`] into a new field or [`None`], specifying what happens if [`None`] is returned
+	/// Transform the `field` into a new field or `None` specifying what happens if `None` is returned
 	#[allow(clippy::missing_errors_doc)]
 	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, Self::Error>;
 }

@@ -4,6 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`ReadFilter`] that is used for keeping track of what Entry has been or not been read,
+//! including all of its stragedies
+
 // pub mod mark_as_read;
 mod newer;
 mod not_present;
@@ -53,7 +56,7 @@ pub enum Kind {
 }
 
 impl ReadFilter {
-	/// Creates a new Read Filter using [`kind`] filter stragedy and [`external_save`] external saving implementation
+	/// Creates a new Read Filter using [`kind`](`Kind`) filter stragedy and `external_save` external saving implementation
 	#[must_use]
 	pub fn new(kind: Kind, external_save: Box<dyn ExternalSave + Send + Sync>) -> Self {
 		let inner = match kind {

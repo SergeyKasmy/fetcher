@@ -36,7 +36,7 @@ pub enum TransformFromField {
 }
 
 impl Http {
-	/// Create a new Http client
+	/// Create a new HTTP client
 	///
 	/// # Errors
 	/// This method fails if TLS couldn't be initialized
@@ -86,11 +86,11 @@ impl Http {
 		})
 	}
 
-	/// Get the URL from the entry [`entry`], send a GET request to it, and put the result into the [`Entry.raw_contents`] field
+	/// Get the URL from the `entry`, send a GET request to it, and put the result into the [`Entry::raw_contents`] field
 	///
 	/// # Errors
-	/// * if, depending on [`from_field`], either [`Message.link`] or [`Entry.raw_contents`] is None
-	/// * if the string in the [`Entry.raw_contents`] field when using [`TransformFromField::RawContents`] is not a valid URL
+	/// * if, depending on `from_field`, either [`Message::link`] or [`Entry::raw_contents`] is None
+	/// * if the string in the [`Entry::raw_contents`] field when using [`TransformFromField::RawContents`] is not a valid URL
 	/// * if there was an error sending the HTTP request
 	pub async fn transform(
 		entry: &Entry,

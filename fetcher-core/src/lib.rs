@@ -9,24 +9,15 @@
 #![allow(clippy::module_name_repetitions)] // TODO
 #![warn(missing_docs)]
 #![warn(clippy::unwrap_used)]
-// #![allow(clippy::missing_errors_doc)]
-// #![allow(clippy::missing_panics_doc)]
 
-/// Contains any actions (processing, transformations, and filtering) that a list of entries/specific entries may be run through
 pub mod action;
-/// Everything concerning some kind of non-primitive authentication
 pub mod auth;
-/// Contains [`Entry`] - a struct that contains a message that can be fed into a [`Sink`] and an id that can be used with a [`ReadFilter`](`read_filter::ReadFilter`)
 pub mod entry;
-/// Every error this crate and any of its modules may return, plus some helper functions
 pub mod error;
-/// Filtering already read entries and marking what entries have already been read
 pub mod read_filter;
-/// Sending fetched data
 pub mod sink;
-/// Fetching data
 pub mod source;
-/// Contains [`Task`] - a struct that combines everything from the above into a one coherent entity
+#[allow(missing_docs)] // TODO
 pub mod task;
 
 use crate::{

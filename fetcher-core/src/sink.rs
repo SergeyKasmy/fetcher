@@ -4,10 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// Contains [`Message`] and [`Media`]
+//! This module contains [`Sink`] that can be used to consume a composed [`Message`],
+//! as well as [`Message`](`message`) itself
+
 pub mod message;
 pub(crate) mod stdout;
-// Telegram sink
 pub mod telegram;
 
 pub use message::{Media, Message};

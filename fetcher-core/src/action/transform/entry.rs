@@ -25,15 +25,15 @@ use derive_more::From;
 
 /// A helper trait for transforms that transform a single entry into one or several separate entries
 pub trait TransformEntry {
-	/// Error return type. May be [`Infallible`]
+	/// Error return type. May be [`Infallible`](`std::convert::Infallible`)
 	type Error: Into<TransformErrorKind>;
 
-	/// Transform the entry [`entry`] into one or several separate entries
+	/// Transform the `entry` into one or several separate entries
 	#[allow(clippy::missing_errors_doc)]
 	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error>;
 }
 
-/// Type that includes all available transforms that implement the [`TransformEntry`] trait
+/// Type that includes all available transforms that implement the [`TransformEntry`] trait.
 /// That includes everything from parsing a markdown format like JSON to just debug printing
 // NOTE: Feed (and probs others in the future) is a ZST, so there's always going to be some amount of variance of enum sizes but is trying to avoid that worth the hasle of a Box?
 #[allow(missing_docs, clippy::large_enum_variant)]
@@ -50,7 +50,7 @@ pub enum Kind {
 }
 
 impl Kind {
-	/// Calls each enum variant's [`transform_entry()`] impl
+	/// Calls each enum variant's [`transform_entry()`](`TransformEntry::transform_entry()`) impl
 	/// # Errors
 	/// for the same reason each of them may error. Refer to their individual docs
 	// This type doesn't implement TransformEntry trait itself since the Http impl of that requires an async function

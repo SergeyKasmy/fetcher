@@ -26,7 +26,7 @@ impl NotPresent {
 		}
 	}
 
-	/// Marks the [`id`] as already read
+	/// Marks the `id` as already read
 	pub fn mark_as_read(&mut self, id: &str) {
 		self.read_list
 			.push_back((id.to_owned(), chrono::Utc::now()));
@@ -36,7 +36,7 @@ impl NotPresent {
 		}
 	}
 
-	/// Removes all entries that have been marked as read from [`list`]
+	/// Removes all entries that have been marked as read from `list`
 	pub fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		list.retain(|elem| {
 			// retain elements with no id
@@ -58,7 +58,7 @@ impl NotPresent {
 		self.read_list.back().map(|(s, _)| s.as_str())
 	}
 
-	/// Checks if the [`id`] is unread
+	/// Checks if the `id` is unread
 	#[must_use]
 	pub fn is_unread(&self, id: &str) -> bool {
 		!self.read_list.iter().any(|(ent_id, _)| ent_id == id)

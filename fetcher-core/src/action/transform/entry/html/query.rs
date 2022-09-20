@@ -17,9 +17,13 @@ pub enum QueryKind {
 	Tag(String),
 	/// An HTML class
 	Class(String),
-	/// An HTML attribute named [`name`] with [`value`]
-	#[allow(missing_docs)]
-	Attr { name: String, value: String },
+	/// An HTML attribute
+	Attr {
+		/// Name of the attr
+		name: String,
+		/// Value of the attr
+		value: String,
+	},
 }
 
 /// The location of the data in the quiried tag
@@ -31,18 +35,18 @@ pub enum DataLocation {
 	Attr(String),
 }
 
-/// A query for an HTML tag. Finds a tag that matches the [`QueryKind`] but doesn't [`ignore`]
+/// A query for an HTML tag
 #[derive(Debug)]
 pub struct Query {
-	/// The tag we are looking for
+	/// Query the tag should match against
 	pub kind: QueryKind,
-	/// The tag to ignore, especially if several match
+	/// Query the tag should never match
 	pub ignore: Option<Vec<QueryKind>>,
 }
 
-/// A query for a complete HTML tag. Traverses all [`queries`](`query`) one by one and extracts the data from it's [`data_location`], optionally transforming the data via regex
+/// A query for a complete HTML tag. Traverses all queries one by one and extracts the data from it's [`DataLocation`], optionally transforming the data via regex
 /// Example:
-/// ```
+/// ```text
 /// QueryData {
 ///     query: [Tag("div"), Attr { name: "id", value: "this-attr" }],
 ///     data_location: text,
@@ -50,7 +54,7 @@ pub struct Query {
 /// }
 /// ```
 /// will match
-/// ```
+/// ```text
 /// <div>
 ///     <b id="this-attr">
 ///         world
@@ -60,9 +64,9 @@ pub struct Query {
 /// and return "hello, world!"
 #[derive(Debug)]
 pub struct QueryData {
-	/// The queries to match against.
+	/// The queries to match against, one by one
 	pub query: Vec<Query>,
-	/// location of the data we should extract
+	/// location of the data to extract
 	pub data_location: DataLocation,
 	/// optional regex to match against and replace with if it matches
 	pub regex: Option<Regex<Replace>>,
