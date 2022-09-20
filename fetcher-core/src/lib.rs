@@ -7,11 +7,12 @@
 //! fetcher core    // TODO
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)] // TODO
-// #![warn(missing_docs)]
-// #![warn(clippy::unwrap_used)]
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::missing_panics_doc)]
+#![warn(missing_docs)]
+#![warn(clippy::unwrap_used)]
+// #![allow(clippy::missing_errors_doc)]
+// #![allow(clippy::missing_panics_doc)]
 
+/// Contains any actions (processing, transformations, and filtering) that a list of entries/specific entries may be run through
 pub mod action;
 /// Everything concerning some kind of non-primitive authentication
 pub mod auth;

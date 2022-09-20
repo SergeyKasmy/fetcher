@@ -4,9 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub mod action;
+//! This module contains the [`Regex`] action that can be used as a transform or a filter,
+//! depending on the [`Action`] used
 
-use std::{borrow::Cow, convert::Infallible};
+pub mod action;
 
 use self::action::{Action, Extract, Find, Replace};
 use super::transform::field::TransformField;
@@ -20,15 +21,23 @@ use crate::{
 };
 use ExtractionResult::{Extracted, Matched, NotMatched};
 
+use std::{borrow::Cow, convert::Infallible};
+
+/// Regex with different action depending on [`action`]. All available regex actions include [`Extract`], [`Find`], [`Replace`]
+#[allow(missing_docs)]
 #[derive(Debug)]
 pub struct Regex<A> {
+	/// a compiled regular expression
 	pub re: regex::Regex,
-	action: A,
+	pub action: A,
 }
 
 impl<A: Action> Regex<A> {
+	/// Creates a new Regex with compiled regular expression [`re`] and [`action`]
+	///
+	/// # Errors
+	/// if the regular expression isn't valid
 	pub fn new(re: &str, action: A) -> Result<Self, RegexError> {
-		tracing::trace!("Creating Regex transform with str {:?}", re);
 		Ok(Self {
 			re: regex::Regex::new(re)?,
 			action,
@@ -37,6 +46,8 @@ impl<A: Action> Regex<A> {
 }
 
 impl Regex<Extract> {
+	/// Extracts capture group "s" (?P<s>) from [`text`]
+	#[must_use]
 	pub fn extract<'a>(&self, text: &'a str) -> Option<&'a str> {
 		match find(&self.re, text) {
 			Extracted(s) => Some(s),
@@ -79,6 +90,8 @@ impl Filter for Regex<Find> {
 }
 
 impl Regex<Replace> {
+	/// Replaces [`text`] with the re
+	#[must_use]
 	pub fn replace<'a>(&self, text: &'a str) -> Cow<'a, str> {
 		self.re.replace(text, &self.action.with)
 	}
@@ -111,6 +124,7 @@ pub(crate) fn find<'a>(re: &regex::Regex, text: &'a str) -> ExtractionResult<'a>
 }
 
 #[allow(clippy::unwrap_used)]
+#[allow(unused)]
 #[cfg(test)]
 mod tests {
 	use super::action::*;

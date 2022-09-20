@@ -39,10 +39,8 @@ impl ReadFilter {
 		external_save: Box<dyn core_rf::ExternalSave + Send + Sync>,
 	) -> core_rf::ReadFilter {
 		let inner = match self {
-			ReadFilter::NewerThanRead(x) => core_rf::ReadFilterInner::NewerThanLastRead(x.parse()),
-			ReadFilter::NotPresentInReadList(x) => {
-				core_rf::ReadFilterInner::NotPresentInReadList(x.parse())
-			}
+			ReadFilter::NewerThanRead(x) => core_rf::Inner::NewerThanLastRead(x.parse()),
+			ReadFilter::NotPresentInReadList(x) => core_rf::Inner::NotPresentInReadList(x.parse()),
 		};
 
 		core_rf::ReadFilter {
@@ -51,12 +49,10 @@ impl ReadFilter {
 		}
 	}
 
-	pub fn unparse(read_filter: &core_rf::ReadFilterInner) -> Option<Self> {
+	pub fn unparse(read_filter: &core_rf::Inner) -> Option<Self> {
 		Some(match &read_filter {
-			core_rf::ReadFilterInner::NewerThanLastRead(x) => {
-				ReadFilter::NewerThanRead(Newer::unparse(x)?)
-			}
-			core_rf::ReadFilterInner::NotPresentInReadList(x) => {
+			core_rf::Inner::NewerThanLastRead(x) => ReadFilter::NewerThanRead(Newer::unparse(x)?),
+			core_rf::Inner::NotPresentInReadList(x) => {
 				ReadFilter::NotPresentInReadList(NotPresent::unparse(x)?)
 			}
 		})
@@ -69,13 +65,13 @@ pub struct Newer {
 }
 
 impl Newer {
-	pub fn parse(self) -> core_rf::newer::Newer {
-		core_rf::newer::Newer {
+	pub fn parse(self) -> core_rf::Newer {
+		core_rf::Newer {
 			last_read_id: Some(self.last_read_id),
 		}
 	}
 
-	pub fn unparse(read_filter: &core_rf::newer::Newer) -> Option<Self> {
+	pub fn unparse(read_filter: &core_rf::Newer) -> Option<Self> {
 		read_filter.last_read_id.as_ref().map(|last_read_id| Self {
 			last_read_id: last_read_id.clone(),
 		})
@@ -88,11 +84,11 @@ pub struct NotPresent {
 }
 
 impl NotPresent {
-	pub fn parse(self) -> core_rf::not_present::NotPresent {
-		core_rf::not_present::NotPresent::from_iter(self.read_list)
+	pub fn parse(self) -> core_rf::NotPresent {
+		core_rf::NotPresent::from_iter(self.read_list)
 	}
 
-	pub fn unparse(read_filter: &core_rf::not_present::NotPresent) -> Option<Self> {
+	pub fn unparse(read_filter: &core_rf::NotPresent) -> Option<Self> {
 		if read_filter.is_empty() {
 			None
 		} else {

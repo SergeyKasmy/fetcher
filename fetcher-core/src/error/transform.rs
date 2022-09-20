@@ -4,7 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::{entry::Entry, source::with_shared_rf::http::TransformFromField};
+#![allow(missing_docs)]
+
+use crate::{entry::Entry, source::http::TransformFromField};
 
 use std::convert::Infallible;
 

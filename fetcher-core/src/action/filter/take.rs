@@ -4,15 +4,21 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`Take`] filter and the [`TakeFrom`] enum that specifies where the [`Take`] filter should take the entries from
+
 use super::Filter;
 use crate::entry::Entry;
 
+/// Take only a set number of entries and discard all others
 #[derive(Debug)]
 pub struct Take {
+	/// Take from the Beginning or the end of the list?
 	pub from: TakeFrom,
+	/// Take this number of entries
 	pub num: usize,
 }
 
+#[allow(missing_docs)]
 #[derive(Debug)]
 pub enum TakeFrom {
 	Beginning,

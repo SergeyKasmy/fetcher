@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`Json`] parser
+
 use super::TransformEntry;
 use crate::action::transform::result::{
 	TransformResult as TrRes, TransformedEntry, TransformedMessage,
@@ -15,22 +17,32 @@ use crate::sink::Media;
 use serde_json::Value;
 use url::Url;
 
+/// JSON parser
+#[derive(Debug)]
+pub struct Json {
+	/// Query to find an item/entry/article in the list
+	// TODO: make optional
+	pub itemq: Vec<String>,
+	/// Query to find the title of an item
+	pub titleq: Option<String>,
+	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
+	pub textq: Option<Vec<TextQuery>>, // adjecent
+	/// Query to find the id of an item
+	// TODO: make optional
+	pub idq: String,
+	/// Query to find the link to an item
+	pub linkq: Option<TextQuery>,
+	/// Query to find the image of that item
+	pub imgq: Option<Vec<String>>, // nested
+}
+
+#[allow(missing_docs)]
 #[derive(Debug)]
 pub struct TextQuery {
 	pub string: String,
+	// TODO: remove these, use regex instead
 	pub prepend: Option<String>,
 	pub append: Option<String>,
-}
-
-// TODO: differantiate between nested and adjecent fields more clearly, here and in HTML parser, too
-#[derive(Debug)]
-pub struct Json {
-	pub itemq: Vec<String>,
-	pub titleq: Option<String>,
-	pub textq: Option<Vec<TextQuery>>, // adjecent
-	pub idq: String,                   // TODO: make optional
-	pub linkq: Option<TextQuery>,
-	pub imgq: Option<Vec<String>>, // nested
 }
 
 impl TransformEntry for Json {

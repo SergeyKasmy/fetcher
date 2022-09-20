@@ -82,7 +82,7 @@ impl std::io::Write for TruncatingFileWriter {
 }
 
 impl ExternalSave for TruncatingFileWriter {
-	fn save(&mut self, read_filter: &fetcher_core::read_filter::ReadFilterInner) -> io::Result<()> {
+	fn save(&mut self, read_filter: &fetcher_core::read_filter::Inner) -> io::Result<()> {
 		if let Some(filter_conf) =
 			fetcher_config::tasks::read_filter::ReadFilter::unparse(read_filter)
 		{

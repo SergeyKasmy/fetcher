@@ -39,18 +39,18 @@ fn main() -> Result<()> {
 }
 
 fn set_up_logging() -> Result<()> {
-	use tracing_subscriber::fmt::time::OffsetTime;
-	use tracing_subscriber::layer::SubscriberExt;
-	use tracing_subscriber::EnvFilter;
-	use tracing_subscriber::Layer;
+	use tracing_subscriber::{
+		filter::LevelFilter, fmt::time::OffsetTime, layer::SubscriberExt, EnvFilter, Layer,
+	};
 
 	let env_filter = EnvFilter::try_from_env("FETCHER_LOG")
 		.unwrap_or_else(|_| EnvFilter::from("fetcher=info,fetcher_core=info"));
+
 	let stdout = tracing_subscriber::fmt::layer()
 		.pretty()
 		// hide source code/debug info on release builds
-		.with_file(cfg!(debug_assertions))
-		.with_line_number(cfg!(debug_assertions))
+		// .with_file(cfg!(debug_assertions))
+		// .with_line_number(cfg!(debug_assertions))
 		.with_timer(OffsetTime::local_rfc_3339().expect("could not get local time offset"));
 
 	// enable journald logging only on release to avoid log spam on dev machines
@@ -61,7 +61,7 @@ fn set_up_logging() -> Result<()> {
 	};
 
 	let subscriber = tracing_subscriber::registry()
-		.with(journald.with_filter(tracing_subscriber::filter::LevelFilter::INFO))
+		.with(journald.with_filter(LevelFilter::INFO))
 		.with(stdout.with_filter(env_filter));
 	tracing::subscriber::set_global_default(subscriber).unwrap();
 

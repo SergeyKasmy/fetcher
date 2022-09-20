@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#![allow(missing_docs)]
+
 use std::path::PathBuf;
 
 #[derive(thiserror::Error, Debug)]

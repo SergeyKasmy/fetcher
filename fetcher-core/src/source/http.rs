@@ -19,6 +19,7 @@ const USER_AGENT: &str =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0";
 
 // option because tls init could've failed and we took out the Err()
+// TODO: replace with get_or_init
 static CLIENT: Lazy<Mutex<Option<Result<reqwest::Client, HttpError>>>> = Lazy::new(|| {
 	Mutex::new(Some(
 		reqwest::ClientBuilder::new()
@@ -28,14 +29,19 @@ static CLIENT: Lazy<Mutex<Option<Result<reqwest::Client, HttpError>>>> = Lazy::n
 	))
 });
 
+/// A source that fetches from the [`URL`](`url`)
 pub struct Http {
-	pub(crate) url: Url,
+	/// The URL to fetch from
+	pub url: Url,
 	client: reqwest::Client,
 }
 
+/// When used as a transform, which field to get the link from?
 #[derive(Clone, Copy, Debug)]
 pub enum TransformFromField {
+	/// The [`Message.link`] field
 	MessageLink,
+	/// The [`Entry.raw_contents`] field
 	RawContents,
 }
 
@@ -48,7 +54,9 @@ impl Http {
 	/// # Panics
 	/// This function may panic if a different thread crashes when calling this function
 	pub fn new(url: Url) -> Result<Self, HttpError> {
-		let mut client_lock = CLIENT.lock().unwrap();
+		let mut client_lock = CLIENT
+			.lock()
+			.expect("Thread panicked while holding the mutex lock");
 
 		// take out the error out of the option if there was an error, otherwise just clone the Client
 		let client = match client_lock
@@ -69,6 +77,7 @@ impl Http {
 		Ok(Self { url, client })
 	}
 
+	/// Send a GET request to the [`URL`](`self.url`) and return the result in the [`Entry.raw_contents`] field
 	#[tracing::instrument(skip_all)]
 	pub async fn get(&self) -> Result<Entry, HttpError> {
 		tracing::debug!("Fetching HTTP source");
@@ -101,6 +110,12 @@ impl Http {
 		})
 	}
 
+	/// Get the URL from the entry [`entry`], send a GET request to it, and put the result into the [`Entry.raw_contents`] field
+	///
+	/// # Errors
+	/// * if, depending on [`from_field`], either [`Message.link`] or [`Entry.raw_contents`] is None
+	/// * if the string in the [`Entry.raw_contents`] field when using [`TransformFromField::RawContents`] is not a valid URL
+	/// * if there was an error sending the HTTP request
 	pub async fn transform(
 		entry: &Entry,
 		from_field: TransformFromField,
@@ -110,7 +125,7 @@ impl Http {
 			TransformFromField::RawContents => entry
 				.raw_contents
 				.as_ref()
-				.map(|s| Url::try_from(s.as_str()).map_err(|e| InvalidUrlError(e, s.to_owned())))
+				.map(|s| Url::try_from(s.as_str()).map_err(|e| InvalidUrlError(e, s.clone())))
 				.transpose()?,
 		};
 		let link = link.ok_or(HttpTransformError::MissingUrl(from_field))?;

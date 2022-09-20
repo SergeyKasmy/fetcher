@@ -3,6 +3,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
+
+//! This module contains the [`Html`] parser as well as a way to query an HTML tag via [`QueryData`]
 // TODO: better handle invalid config values
 // TODO: make sure read_filter_type not_present_in_read_list only works with id_query.kind = id
 
@@ -19,19 +21,26 @@ use crate::error::transform::InvalidUrlError;
 use crate::error::transform::NothingToTransformError;
 use crate::sink::Media;
 
-use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
+//use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use html5ever::rcdom::Handle;
 use soup::{NodeExt, QueryBuilderExt, Soup};
 use url::Url;
 
+/// HTML parser
 #[derive(Debug)]
 pub struct Html {
+	/// Query to find an item/entry/article in a list on the page
 	// TODO: make optional
 	pub itemq: Vec<Query>,
+	/// Query to find the title of an item
 	pub titleq: Option<QueryData>,
+	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
 	pub textq: Option<Vec<QueryData>>, // allow to find multiple paragraphs and join them together
+	/// Query to find the id of an item
 	pub idq: Option<QueryData>,
+	/// Query to find the link to an item
 	pub linkq: Option<QueryData>,
+	/// Query to find the image of that item
 	pub imgq: Option<ImageQuery>,
 }
 
@@ -223,8 +232,8 @@ fn find_chain<'a>(
 	handles.unwrap() // unwrap NOTE: safe *if* there are more than 0 query kinds which should be always... hopefully... // TODO: make sure there are more than 0 qks
 }
 
+/*
 // TODO: rewrite the entire fn to use today/Yesterday words and date formats from the config per source and not global
-#[allow(dead_code)]
 fn parse_pretty_date(mut date_str: &str) -> Result<DateTime<Utc>, HtmlError> {
 	enum DateTimeKind {
 		Today,
@@ -269,3 +278,4 @@ fn parse_pretty_date(mut date_str: &str) -> Result<DateTime<Utc>, HtmlError> {
 			.unwrap(), // unwrap NOTE: same as above
 	})
 }
+*/

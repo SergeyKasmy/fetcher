@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use fetcher_core::source;
+use fetcher_core::source::email::Filters as CFilters;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Filters {
@@ -16,8 +16,8 @@ pub struct Filters {
 }
 
 impl Filters {
-	pub fn parse(self) -> source::with_custom_rf::email::filters::Filters {
-		source::with_custom_rf::email::filters::Filters {
+	pub fn parse(self) -> CFilters {
+		CFilters {
 			sender: self.sender,
 			subjects: self.subjects,
 			exclude_subjects: self.exclude_subjects,

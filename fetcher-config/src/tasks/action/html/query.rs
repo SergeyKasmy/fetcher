@@ -102,12 +102,11 @@ impl HtmlQueryRegex {
 
 impl QueryData {
 	pub fn parse(self) -> Result<c_query::QueryData, Error> {
-		c_query::QueryData::new(
-			self.query.into_iter().map(Query::parse).collect(),
-			self.data_location.parse(),
-			self.regex.map(HtmlQueryRegex::parse).transpose()?,
-		)
-		.map_err(Into::into)
+		Ok(c_query::QueryData {
+			query: self.query.into_iter().map(Query::parse).collect(),
+			data_location: self.data_location.parse(),
+			regex: self.regex.map(HtmlQueryRegex::parse).transpose()?,
+		})
 	}
 }
 

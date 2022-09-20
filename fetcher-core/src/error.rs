@@ -4,9 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/// Errors that can happen in [`Sinks`](`crate::sink`)
+// Errors that can happen in [`Sinks`](`crate::sink`)
 pub mod sink;
-/// Errors that can happen in [`Sources`](`crate::source`)
+// Errors that can happen in [`Sources`](`crate::source`)
 pub mod source;
 
 pub mod transform;

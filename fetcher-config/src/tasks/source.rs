@@ -55,26 +55,26 @@ impl Source {
 					.map(|x| {
 						Ok(match x {
 							WithSharedReadFilter::Http(x) => {
-								source::with_shared_rf::Kind::Http(x.parse()?)
+								source::WithSharedRFKind::Http(x.parse()?)
 							}
 							WithSharedReadFilter::Twitter(x) => {
-								source::with_shared_rf::Kind::Twitter(x.parse(settings)?)
+								source::WithSharedRFKind::Twitter(x.parse(settings)?)
 							}
 							WithSharedReadFilter::File(x) => {
-								source::with_shared_rf::Kind::File(x.parse())
+								source::WithSharedRFKind::File(x.parse())
 							}
 						})
 					})
 					.collect::<Result<Vec<_>, Error>>()?;
 
 				source::Source::WithSharedReadFilter(
-					source::with_shared_rf::Source::new(sources)
+					source::WithSharedRF::new(sources)
 						.map_err(|e| Error::FetcherCoreSource(Box::new(e)))?,
 				)
 			}
 			Source::WithCustomReadFilter(s) => match s {
 				WithCustomReadFilter::Email(x) => source::Source::WithCustomReadFilter(
-					source::with_custom_rf::Source::Email(x.parse(settings)?),
+					source::WithCustomRF::Email(x.parse(settings)?),
 				),
 			},
 		})

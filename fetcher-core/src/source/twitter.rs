@@ -6,43 +6,35 @@
 
 use crate::entry::Entry;
 use crate::error::source::TwitterError;
-// use crate::read_filter::ReadFilter;
 use crate::sink::Media;
 use crate::sink::Message;
 
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
-// use std::sync::Arc;
-// use tokio::sync::RwLock;
 
+/// A source that fetches from a Twitter feed using the Twitter API
 pub struct Twitter {
 	handle: String,
 	api_key: String,
 	api_secret: String,
 	token: Option<Token>,
 	filter: Vec<String>,
-	// read_filter: Option<Arc<RwLock<ReadFilter>>>,
 }
 
 impl Twitter {
+	/// Creates a new [`Twitter`] source
 	#[must_use]
-	pub fn new(
-		handle: String,
-		api_key: String,
-		api_secret: String,
-		filter: Vec<String>,
-		// read_filter: Option<Arc<RwLock<ReadFilter>>>,
-	) -> Self {
+	pub fn new(handle: String, api_key: String, api_secret: String, filter: Vec<String>) -> Self {
 		Self {
 			handle,
 			api_key,
 			api_secret,
 			token: None,
 			filter,
-			// read_filter,
 		}
 	}
 
+	/// Fetches all tweets from the feed
 	#[tracing::instrument(skip_all)]
 	pub async fn get(&mut self) -> Result<Vec<Entry>, TwitterError> {
 		tracing::debug!("Getting tweets");
@@ -110,16 +102,16 @@ impl Twitter {
 							)
 							.as_str()
 							.try_into()
-							.unwrap(),
+							.expect("The URL is hand crafted and should always be valid"),
 						),
 						media: tweet.entities.media.as_ref().and_then(|x| {
 							x.iter()
 								.map(|x| match x.media_type {
 									MediaType::Photo => {
-										Some(Media::Photo(x.media_url.as_str().try_into().unwrap())) // unwrap NOTE: should be safe. If the string provided by tweeter is not an actual url, we should probably crash anyways
+										Some(Media::Photo(x.media_url.as_str().try_into().expect("The tweet URL provided by the Tweeter API should always be a valid URL")))
 									}
 									MediaType::Video => {
-										Some(Media::Video(x.media_url.as_str().try_into().unwrap()))
+										Some(Media::Video(x.media_url.as_str().try_into().expect("The tweet URL provided by the Tweeter API should always be a valid URL")))
 									}
 									MediaType::Gif => None,
 								})

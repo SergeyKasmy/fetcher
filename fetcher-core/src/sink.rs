@@ -4,10 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/// Contains [`Message`] and [`Media`]
+// Contains [`Message`] and [`Media`]
 pub mod message;
 pub(crate) mod stdout;
-/// Telegram sink
+// Telegram sink
 pub mod telegram;
 
 pub use message::{Media, Message};
@@ -24,6 +24,7 @@ pub enum Sink {
 	/// stdout sink
 	Stdout(Stdout),
 	/// null sink that discards any messages
+	// TODO: replace with just 'sink: Option<Sink>'
 	Null,
 }
 

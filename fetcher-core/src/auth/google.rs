@@ -23,15 +23,21 @@ struct AccessToken {
 	expires: Instant,
 }
 
+/// Google OAuth2 authenticator
+// TODO: link docs to the oauth2 spec
 #[derive(Clone, Debug)]
 pub struct Google {
+	/// OAuth2 client id
 	pub client_id: String,
+	/// OAuth2 client secret
 	pub client_secret: String,
+	/// OAuth2 refresh token
 	pub refresh_token: String,
 	access_token: Option<AccessToken>,
 }
 
 impl Google {
+	/// Creates a new Google OAuth2 authenticator
 	#[must_use]
 	pub fn new(client_id: String, client_secret: String, refresh_token: String) -> Self {
 		Self {
@@ -144,11 +150,10 @@ impl Google {
 			self.validate_access_token().await?;
 		}
 
-		// unwrap NOTE: should be safe, we just validated it up above
 		Ok(self
 			.access_token
 			.as_ref()
 			.map(|x| x.token.as_str())
-			.unwrap())
+			.expect("Token should have just been validated and thus be present and valid"))
 	}
 }

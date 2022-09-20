@@ -4,14 +4,18 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`Shorten`] transform
+
 use super::TransformField;
 use crate::action::transform::result::TransformResult;
 
 use std::convert::Infallible;
 use std::iter::repeat;
 
+/// Shorten a field to [`len`]. Makes the field completely empty if [`len`] is 0, or trims the field to [`len`] and adds "..." to the end
 #[derive(Debug)]
 pub struct Shorten {
+	/// The maximum length of the field string
 	pub len: usize,
 }
 

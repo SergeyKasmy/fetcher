@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the basic block of [`fetcher`](`crate`) that is a [`Task`]
+
 use crate::{action::Action, read_filter::ReadFilter, sink::Sink, source::Source};
 
 use std::sync::Arc;
@@ -16,6 +18,7 @@ use tokio::sync::RwLock;
 pub struct Task {
 	/// An optional tag that may be put near a message body to differentiate this task from others that may be similar
 	pub tag: Option<String>,
+	/// Read Filter responsible for marking entries as read and filtering already read entries out
 	pub rf: Option<Arc<RwLock<ReadFilter>>>,
 	/// The source where to fetch some data from
 	pub source: Source,

@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the transform [`UseRawContents`]
+
 use super::TransformEntry;
 use crate::action::transform::result::{
 	TransformResult as TrRes, TransformedEntry, TransformedMessage,
@@ -12,6 +14,7 @@ use crate::entry::Entry;
 
 use std::convert::Infallible;
 
+/// Use the [`Entry.raw_contents`] field as [`Message.body`]
 #[derive(Debug)]
 pub struct UseRawContents;
 
@@ -23,7 +26,7 @@ impl TransformEntry for UseRawContents {
 	}
 }
 
-pub fn transform_impl(entry: &Entry) -> TransformedEntry {
+fn transform_impl(entry: &Entry) -> TransformedEntry {
 	TransformedEntry {
 		msg: TransformedMessage {
 			body: TrRes::New(entry.raw_contents.clone()),

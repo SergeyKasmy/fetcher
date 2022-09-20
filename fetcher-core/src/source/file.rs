@@ -9,12 +9,15 @@ use crate::error::source::Error as SourceError;
 
 use std::path::PathBuf;
 
+/// File source. Reads contents of a file and puts them into [`raw_contents`]
 #[derive(Debug)]
 pub struct File {
+	/// Path of the file
 	pub path: PathBuf,
 }
 
 impl File {
+	/// Read data from a file from the file system, returning its contents in the [`Entry.raw_contents`] field
 	#[tracing::instrument(skip_all)]
 	pub async fn get(&self) -> Result<Entry, SourceError> {
 		let text = tokio::fs::read_to_string(&self.path)

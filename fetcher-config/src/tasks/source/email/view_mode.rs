@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use fetcher_core::source;
+use fetcher_core::source::email::ViewMode as CViewMode;
 
 #[derive(Deserialize, Serialize, Debug)]
 // #[serde(rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
@@ -18,13 +18,13 @@ pub enum ViewMode {
 }
 
 impl ViewMode {
-	pub fn parse(self) -> source::with_custom_rf::email::ViewMode {
+	pub fn parse(self) -> CViewMode {
 		use ViewMode::{Delete, MarkAsRead, ReadOnly};
 
 		match self {
-			ReadOnly => source::with_custom_rf::email::ViewMode::ReadOnly,
-			MarkAsRead => source::with_custom_rf::email::ViewMode::MarkAsRead,
-			Delete => source::with_custom_rf::email::ViewMode::Delete,
+			ReadOnly => CViewMode::ReadOnly,
+			MarkAsRead => CViewMode::MarkAsRead,
+			Delete => CViewMode::Delete,
 		}
 	}
 }

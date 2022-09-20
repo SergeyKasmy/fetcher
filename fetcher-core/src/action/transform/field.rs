@@ -4,6 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the trait [`TransformField`] as well as all types that implement it
+//! And [`Field`] enum that can be used to refer to a [`Message`]'s field
+
 pub mod caps;
 pub mod shorten;
 pub mod trim;
@@ -19,12 +22,18 @@ use crate::{
 
 use derive_more::From;
 
+/// A helper trait for transforms that transform a single field of an entry
 pub trait TransformField {
+	/// Error return type. May be [`Infallible`]
 	type Error: Into<TransformErrorKind>;
 
+	/// Transform the [`field`] into a new field or [`None`], specifying what happens if [`None`] is returned
+	#[allow(clippy::missing_errors_doc)]
 	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, Self::Error>;
 }
 
+/// Type that includes all available transforms that implement the [`TransformField`] trait
+#[allow(missing_docs)]
 #[derive(From, Debug)]
 pub enum Kind {
 	RegexExtract(Regex<Extract>),
@@ -34,17 +43,19 @@ pub enum Kind {
 	Shorten(Shorten),
 }
 
+/// List of all available fields for transformations
 #[derive(Debug)]
 pub enum Field {
+	/// The [`Message.title`] field
 	Title,
+	/// The [`Message.body`] field
 	Body,
 }
 
-impl Kind {
-	pub fn transform_field(
-		&self,
-		field: &str,
-	) -> Result<TransformResult<String>, TransformErrorKind> {
+impl TransformField for Kind {
+	type Error = TransformErrorKind;
+
+	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, TransformErrorKind> {
 		macro_rules! delegate {
 		    ($($k:tt),+) => {
 				match self {

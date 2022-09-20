@@ -4,11 +4,14 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`Trim`] field transform
+
 use super::TransformField;
 use crate::action::transform::result::TransformResult;
 
 use std::convert::Infallible;
 
+/// Trim whitespace from a field
 #[derive(Debug)]
 pub struct Trim;
 

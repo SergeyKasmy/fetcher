@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`TransformEntry`] trait as well as every type that implement it
+
 pub mod feed;
 pub mod html;
 pub mod json;
@@ -16,22 +18,25 @@ use self::json::Json;
 use self::use_raw_contents::UseRawContents;
 use super::result::TransformedEntry;
 use crate::error::transform::Error as TransformError;
-use crate::source::with_shared_rf::http;
-use crate::source::Http;
+use crate::source::http::{self, Http};
 use crate::{entry::Entry, error::transform::Kind as TransformErrorKind};
 
 use derive_more::From;
 
+/// A helper trait for transforms that transform a single entry into one or several separate entries
 pub trait TransformEntry {
+	/// Error return type. May be [`Infallible`]
 	type Error: Into<TransformErrorKind>;
 
+	/// Transform the entry [`entry`] into one or several separate entries
+	#[allow(clippy::missing_errors_doc)]
 	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error>;
 }
 
-/// Type that allows transformation of a single [`Entry`] into one or multiple separate entries.
-/// That includes everything from parsing a markdown format like JSON to simple transformations like making all text uppercase
+/// Type that includes all available transforms that implement the [`TransformEntry`] trait
+/// That includes everything from parsing a markdown format like JSON to just debug printing
 // NOTE: Feed (and probs others in the future) is a ZST, so there's always going to be some amount of variance of enum sizes but is trying to avoid that worth the hasle of a Box?
-#[allow(clippy::large_enum_variant)]
+#[allow(missing_docs, clippy::large_enum_variant)]
 #[derive(From, Debug)]
 pub enum Kind {
 	Http,
@@ -45,6 +50,12 @@ pub enum Kind {
 }
 
 impl Kind {
+	/// Calls each enum variant's [`transform_entry()`] impl
+	/// # Errors
+	/// for the same reason each of them may error. Refer to their individual docs
+	// This type doesn't implement TransformEntry trait itself since the Http impl of that requires an async function
+	// and there's no reason to add the overhead of a Box'ed future type (via #[async_trait]) just for that one impl.
+	// If more transforms will require async in the future, I may as well make TransformEntry async and implement it for Kind
 	pub async fn transform(&self, entry: Entry) -> Result<Vec<Entry>, TransformError> {
 		macro_rules! delegate {
 			($($t:tt),+ custom => { $($custom_t:pat => $custom_impl:expr),+ }) => {

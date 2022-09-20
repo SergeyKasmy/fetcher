@@ -6,8 +6,11 @@
 
 use crate::{auth, error::Error};
 
+/// Authentication type for IMAP
 pub enum Auth {
+	/// Google OAuth2 with full access to Gmail
 	GoogleAuth(auth::Google),
+	/// An insecure pure text password
 	Password(String),
 }
 

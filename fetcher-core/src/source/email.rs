@@ -5,14 +5,14 @@
  */
 
 mod auth;
-pub mod filters;
+mod filters;
 mod view_mode;
 
 pub use auth::Auth;
 pub use view_mode::ViewMode;
+pub use filters::Filters;
 
 use self::auth::GoogleAuthExt;
-use self::filters::Filters;
 use crate::auth::Google as GoogleAuth;
 use crate::entry::Entry;
 use crate::error::source::EmailError;
@@ -25,6 +25,7 @@ use std::fmt::Write as _;
 
 const IMAP_PORT: u16 = 993;
 
+/// Email source. Fetches an email's subject and body fields using IMAP
 pub struct Email {
 	imap: String,
 	email: String,
@@ -63,6 +64,24 @@ macro_rules! authenticate {
 }
 
 impl Email {
+	/// Creates an [`Email`] source for use with Gmail that uses [`Google OAuth2`](`crate::auth::Google`) to authenticate
+	#[must_use]
+	pub fn with_google_oauth2(
+		email: String,
+		auth: GoogleAuth,
+		filters: Filters,
+		view_mode: ViewMode,
+	) -> Self {
+		Self {
+			imap: "imap.gmail.com".to_owned(),
+			email,
+			auth: Auth::GoogleAuth(auth),
+			filters,
+			view_mode,
+		}
+	}
+
+	/// Creates an [`Email`] source that uses a password to authenticate via IMAP
 	#[must_use]
 	pub fn with_password(
 		imap: String,
@@ -75,22 +94,6 @@ impl Email {
 			imap,
 			email,
 			auth: Auth::Password(password),
-			filters,
-			view_mode,
-		}
-	}
-
-	#[must_use]
-	pub fn with_google_oauth2(
-		email: String,
-		auth: GoogleAuth,
-		filters: Filters,
-		view_mode: ViewMode,
-	) -> Self {
-		Self {
-			imap: "imap.gmail.com".to_owned(),
-			email,
-			auth: Auth::GoogleAuth(auth),
 			filters,
 			view_mode,
 		}

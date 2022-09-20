@@ -7,21 +7,28 @@
 pub mod filter;
 pub mod transform;
 
-// an action that is both a transform and a filter
+/// [`Regex`](`regex::Regex`) is both a transform and a filter
 pub mod regex;
 
 use self::transform::Transform;
 use crate::entry::Entry;
 use crate::error::transform::Error as TransformError;
 
+/// An action that modifies a list of entries in some way
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)] // TODO: is there any benefit to this?
 pub enum Action {
+	/// Filter out entries
 	Filter(filter::Kind),
+	/// Transform some entries into one or more new entries
 	Transform(Transform),
 }
 
 impl Action {
+	/// Processes the [`entries`] using the [`Action`]
+	///
+	/// # Errors
+	/// if there was error transforming [`entries`]. Filtering out never fails
 	pub async fn process(&self, mut entries: Vec<Entry>) -> Result<Vec<Entry>, TransformError> {
 		match self {
 			Action::Filter(f) => {

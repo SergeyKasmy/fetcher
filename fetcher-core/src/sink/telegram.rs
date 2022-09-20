@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`Telegram`] sink
+
 use crate::{
 	error::sink::Error as SinkError,
 	sink::{Media, Message},
@@ -27,23 +29,25 @@ use url::Url;
 // FIXME: it's 1024 for media captions and 4096 for normal messages
 const MAX_MSG_LEN: usize = 1024;
 
-/// Either embed the link into the title or put it as a separate "Link" button at the botton of the message.
-/// `PreferTitle` falls back to `Bottom` if Message.title is None
-#[derive(Clone, Copy, Default, Debug)]
-pub enum LinkLocation {
-	PreferTitle,
-	#[default]
-	Bottom,
-}
-
+/// Telegram sink. Supports text and media messages and embeds text into media captions if present. Automatically splits the text into separate messages if it's too long
 pub struct Telegram {
-	// bot: Throttle<Bot>,
 	bot: Bot,
 	chat_id: ChatId,
 	link_location: LinkLocation,
 }
 
+/// Where to put `message.link`
+#[derive(Clone, Copy, Default, Debug)]
+pub enum LinkLocation {
+	/// Try to put in the title but fall back to `Bottom` if `Message.link` is None
+	PreferTitle,
+	/// Put the link at the bottom of the message in a "Link" button
+	#[default]
+	Bottom,
+}
+
 impl Telegram {
+	/// Creates a new Telegram sink using the bot `token` that sends messages to chat with `chat_id` with `Message.link` put at `link_location`
 	#[must_use]
 	pub fn new(token: String, chat_id: i64, link_location: LinkLocation) -> Self {
 		Self {
@@ -56,6 +60,7 @@ impl Telegram {
 		}
 	}
 
+	/// Sends a `message` with `tag`, if specified
 	#[tracing::instrument(skip_all)]
 	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError> {
 		let Message {
@@ -67,7 +72,7 @@ impl Telegram {
 
 		tracing::debug!(
 			"Processing message: title: {title:?}, body len: {}, link: {}, media: {}",
-			body.as_ref().map(|s| s.len()).unwrap_or(0),
+			body.as_ref().map_or(0, String::len),
 			link.is_some(),
 			media.is_some(),
 		);
@@ -83,7 +88,7 @@ impl Telegram {
 		let text = {
 			if body.chars().count() + head.chars().count() + tail.chars().count() > MAX_MSG_LEN {
 				let mut msg_parts = split_msg_into_parts(head, body, tail);
-				let last = msg_parts.pop().unwrap(); // unwrap NOTE: we confirmed the entire message is too long, thus we should have at least one part
+				let last = msg_parts.pop().expect("The entire message is confirmed to be too long and thus the split fn should always return at least 2 message parts");
 
 				for msg_part in msg_parts {
 					self.send_text(&msg_part).await?;

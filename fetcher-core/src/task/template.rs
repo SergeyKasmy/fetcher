@@ -4,6 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#![allow(missing_docs)]
+//! FIXME: REMOVE
+
 use std::path::PathBuf;
 
 #[derive(Debug)]

@@ -4,11 +4,14 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the transform [`Caps`] that's used mostly for debugging or testing purposes
+
 use super::TransformField;
 use crate::action::transform::result::TransformResult;
 
 use std::convert::Infallible;
 
+/// Make all text in a field UPPERCASE
 #[derive(Debug)]
 pub struct Caps;
 

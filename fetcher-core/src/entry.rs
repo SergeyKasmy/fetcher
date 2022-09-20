@@ -3,10 +3,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
+// TODO: add message history via responce id -> message id hashmap
 
 use crate::sink::Message;
-
-// TODO: add message history via responce id -> message id hashmap
 
 /// A [`fetcher`](`crate`) primitive that contains a message and an id returned from a source that can be send to a sink
 #[derive(Clone, Default, Debug)]
@@ -16,7 +15,7 @@ pub struct Entry {
 
 	/// Raw contents gotten from a [`Source`].
 	///
-	/// It's used to compose a message using [`transformators`](`crate::action::transform::Transform`).
+	/// It's used to compose a message using [`transformators`](`crate::action::Transform`).
 	pub raw_contents: Option<String>,
 
 	/// The message itself

@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains [`TransformEntry`] and [`TransformField`] traits as well as all types that implement it
+
 pub mod entry;
 pub mod field;
 pub mod result;
@@ -16,17 +18,25 @@ pub use self::field::caps::Caps;
 pub use self::field::shorten::Shorten;
 pub use self::field::trim::Trim;
 
-use self::field::Field;
+use self::field::{Field, TransformField};
 use crate::{entry::Entry, error::transform::Error as TransformError, sink::Message};
 
+/// Either an entry or a field transform
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Transform {
+	/// Transform entry
 	Entry(entry::Kind),
+	/// Transform [`field`]
+	#[allow(missing_docs)]
 	Field { field: Field, kind: field::Kind },
 }
 
 impl Transform {
+	/// Transform [`entry`] with the current transform
+	///
+	/// # Errors
+	/// if the inner transform errored out. Refer to its docs
 	pub async fn transform(&self, mut entry: Entry) -> Result<Vec<Entry>, TransformError> {
 		match self {
 			Self::Entry(ent_tr) => ent_tr.transform(entry).await,

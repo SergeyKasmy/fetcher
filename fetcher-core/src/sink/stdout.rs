@@ -9,11 +9,12 @@ use crate::sink::Message;
 
 use tokio::io::AsyncWriteExt;
 
+/// Print message to stdout. Mostly used for debugging
 #[derive(Debug)]
 pub struct Stdout;
 
 impl Stdout {
-	/// Send a message with a tag to stdout
+	/// Prints a message with an optional tag to stdout
 	///
 	/// # Errors
 	/// if there was an error writing to stdout
