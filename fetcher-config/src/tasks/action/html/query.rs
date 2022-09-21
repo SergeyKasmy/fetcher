@@ -11,7 +11,6 @@ use fetcher_core::action::transform::entry::html::query as c_query;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
-// #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 #[serde(rename_all = "snake_case")]
 pub enum QueryKind {
 	Tag(String),
@@ -20,7 +19,6 @@ pub enum QueryKind {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-// #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)// TODO: check if deny_unknown_fields can be used here, esp with flatten]
 #[serde(rename_all = "snake_case")]
 pub enum DataLocation {
 	Text,

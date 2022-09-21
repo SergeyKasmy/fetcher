@@ -4,12 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// TODO: add deny_unknown_fields annotations to every config struct
 // TODO: mb rename .parse() into .into() or something of that sort? .into() is already used by From/Into traits though. Naming is hard, man... UPD: into_conf() and from_conf() are way better!
 
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)] // TODO
-// #![warn(missing_docs)]
 #![warn(clippy::unwrap_used)]
 
 pub mod error;
