@@ -7,14 +7,18 @@
 //! This module contains the [`Json`] parser
 
 use super::TransformEntry;
-use crate::action::transform::result::{
-	TransformResult as TrRes, TransformedEntry, TransformedMessage,
+use crate::{
+	action::{
+		regex::{action::Replace, Regex},
+		transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+	},
+	entry::Entry,
+	error::transform::{InvalidUrlError, JsonError, NothingToTransformError},
+	sink::Media,
 };
-use crate::entry::Entry;
-use crate::error::transform::{InvalidUrlError, JsonError, NothingToTransformError};
-use crate::sink::Media;
 
 use serde_json::Value;
+use std::borrow::Cow;
 use url::Url;
 
 /// JSON parser
@@ -26,23 +30,21 @@ pub struct Json {
 	/// Query to find the title of an item
 	pub titleq: Option<String>,
 	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
-	pub textq: Option<Vec<TextQuery>>, // adjecent
+	pub textq: Option<Vec<Query>>, // adjecent
 	/// Query to find the id of an item
 	// TODO: make optional
 	pub idq: String,
 	/// Query to find the link to an item
-	pub linkq: Option<TextQuery>,
+	pub linkq: Option<Query>,
 	/// Query to find the image of that item
 	pub imgq: Option<Vec<String>>, // nested
 }
 
 #[allow(missing_docs)]
 #[derive(Debug)]
-pub struct TextQuery {
+pub struct Query {
 	pub string: String,
-	// TODO: remove these, use regex instead
-	pub prepend: Option<String>,
-	pub append: Option<String>,
+	pub regex: Option<Regex<Replace>>,
 }
 
 impl TransformEntry for Json {
@@ -88,32 +90,25 @@ impl TransformEntry for Json {
 						let s = v
 							.iter()
 							.map(|query| {
-								let mut text_str = {
-									let text_val = item.get(&query.string).ok_or_else(|| {
-										JsonError::JsonParseKeyNotFound(query.string.clone())
-									})?;
+								let val = item.get(&query.string).ok_or_else(|| {
+									JsonError::JsonParseKeyNotFound(query.string.clone())
+								})?;
 
-									text_val
-										.as_str()
-										.ok_or_else(|| JsonError::JsonParseKeyWrongType {
-											key: query.string.clone(),
-											expected_type: "string",
-											found_type: format!("{text_val:?}"),
-										})?
-										.trim()
-										.to_owned()
+								let s = val
+									.as_str()
+									.ok_or_else(|| JsonError::JsonParseKeyWrongType {
+										key: query.string.clone(),
+										expected_type: "string",
+										found_type: format!("{val:?}"),
+									})?
+									.trim();
+
+								let s = match &query.regex {
+									Some(r) => r.replace(s).into_owned(),
+									None => s.to_owned(),
 								};
 
-								if query.prepend.is_some() || query.append.is_some() {
-									text_str = format!(
-										"{prepend}{original}{append}",
-										prepend = query.prepend.as_deref().unwrap_or_default(),
-										original = text_str,
-										append = query.append.as_deref().unwrap_or_default()
-									);
-								}
-
-								Ok(text_str)
+								Ok(s)
 							})
 							.collect::<Result<Vec<String>, JsonError>>()?
 							.join("\n\n");
@@ -146,29 +141,25 @@ impl TransformEntry for Json {
 					.linkq
 					.as_ref()
 					.map(|linkq| {
-						let link_val = item
+						let val = item
 							.get(&linkq.string)
 							.ok_or_else(|| JsonError::JsonParseKeyNotFound(linkq.string.clone()))?;
-						let mut link_str = link_val
+
+						let s = val
 							.as_str()
 							.ok_or_else(|| JsonError::JsonParseKeyWrongType {
 								key: linkq.string.clone(),
 								expected_type: "string",
-								found_type: format!("{link_val:?}"),
-							})?
-							.to_owned();
+								found_type: format!("{val:?}"),
+							})?;
 
-						if linkq.prepend.is_some() || linkq.append.is_some() {
-							link_str = format!(
-								"{prepend}{original}{append}",
-								prepend = linkq.prepend.as_deref().unwrap_or_default(),
-								original = link_str,
-								append = linkq.append.as_deref().unwrap_or_default()
-							);
-						}
+						let s = match &linkq.regex {
+							Some(r) => r.replace(s),
+							None => Cow::Borrowed(s),
+						};
 
-						Url::try_from(link_str.as_str())
-							.map_err(|e| JsonError::from(InvalidUrlError(e, link_str)))
+						Url::try_from(&*s)
+							.map_err(|e| JsonError::from(InvalidUrlError(e, s.into_owned())))
 					})
 					.transpose()?;
 

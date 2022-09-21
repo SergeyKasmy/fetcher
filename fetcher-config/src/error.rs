@@ -11,7 +11,6 @@ use std::path::PathBuf;
 
 // pub type Result<T> = std::result::Result<T, Error>;
 
-// TODO: rename to just Error
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error(transparent)]

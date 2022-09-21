@@ -55,7 +55,7 @@ impl Action {
 			Action::Take(x) => CAction::Filter(x.parse().into()),
 			Action::Http => CTransformEntryKind::Http.into(),
 			Action::Html(x) => x.parse()?.into(),
-			Action::Json(x) => x.parse().into(),
+			Action::Json(x) => x.parse()?.into(),
 			Action::Feed => CFeed.into(),
 			Action::Regex(x) => x.parse()?,
 			Action::UseRawContents => CUseRawContents.into(),
