@@ -23,6 +23,7 @@ struct AccessToken {
 	expires: Instant,
 }
 
+#[allow(clippy::doc_markdown)]
 /// Google OAuth2 authenticator
 // TODO: link docs to the oauth2 spec
 #[derive(Clone, Debug)]
@@ -37,6 +38,7 @@ pub struct Google {
 }
 
 impl Google {
+	#[allow(clippy::doc_markdown)]
 	/// Creates a new Google OAuth2 authenticator
 	#[must_use]
 	pub fn new(client_id: String, client_secret: String, refresh_token: String) -> Self {

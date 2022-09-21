@@ -56,7 +56,11 @@ impl Kind {
 	// This type doesn't implement TransformEntry trait itself since the Http impl of that requires an async function
 	// and there's no reason to add the overhead of a Box'ed future type (via #[async_trait]) just for that one impl.
 	// If more transforms will require async in the future, I may as well make TransformEntry async and implement it for Kind
-	pub async fn transform(&self, entry: Entry) -> Result<Vec<Entry>, TransformError> {
+	pub async fn transform(
+		&self,
+		entry: Entry,
+		output: &mut Vec<Entry>,
+	) -> Result<(), TransformError> {
 		macro_rules! delegate {
 			($($t:tt),+ custom => { $($custom_t:pat => $custom_impl:expr),+ }) => {
 				match self {
@@ -66,7 +70,7 @@ impl Kind {
 			};
 		}
 
-		let res: Result<Vec<TransformedEntry>, TransformErrorKind> = delegate!(
+		let v = delegate!(
 			Html, Json, Feed, UseRawContents
 
 			custom => {
@@ -81,16 +85,17 @@ impl Kind {
 					Ok(vec![TransformedEntry::default()])
 				}
 			}
-		);
-
-		res.map_err(|kind| TransformError {
+		)
+		.map_err(|kind| TransformError {
 			kind,
 			original_entry: entry.clone(),
-		})
-		.map(|v| {
+		})?;
+
+		output.extend(
 			v.into_iter()
-				.map(|new_entry| new_entry.into_entry(entry.clone()))
-				.collect()
-		})
+				.map(|new_entry| new_entry.into_entry(entry.clone())),
+		);
+
+		Ok(())
 	}
 }

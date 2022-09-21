@@ -37,15 +37,21 @@ impl Transform {
 	///
 	/// # Errors
 	/// if the inner transform errored out. Refer to its docs
-	pub async fn transform(&self, mut entry: Entry) -> Result<Vec<Entry>, TransformError> {
+	pub async fn transform(
+		&self,
+		mut entry: Entry,
+		output: &mut Vec<Entry>,
+	) -> Result<(), TransformError> {
 		match self {
-			Self::Entry(ent_tr) => ent_tr.transform(entry).await,
+			Self::Entry(ent_tr) => ent_tr.transform(entry, output).await,
 			Self::Field { field, kind } => {
+				// old value of the field
 				let old_val = match field {
 					Field::Title => entry.msg.title.take(),
 					Field::Body => entry.msg.body.take(),
 				};
 
+				// transformed value of the field
 				let new_val = old_val
 					.as_deref()
 					.map(|v| kind.transform_field(v))
@@ -55,12 +61,13 @@ impl Transform {
 						original_entry: entry.clone(),
 					})?;
 
+				// finalized value of the field. It's the new value that can get replaced with the old value if requested
 				let final_val = match new_val {
 					None => old_val,
 					Some(v) => v.get(old_val),
 				};
 
-				Ok(vec![match field {
+				let new_entry = match field {
 					Field::Title => Entry {
 						msg: Message {
 							title: final_val,
@@ -75,7 +82,10 @@ impl Transform {
 						},
 						..entry
 					},
-				}])
+				};
+
+				output.push(new_entry);
+				Ok(())
 			}
 		}
 	}

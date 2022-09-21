@@ -27,6 +27,7 @@ use tokio::sync::RwLock;
 
 /// A source that provides a way to get some data once
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum Source {
 	/// A [`WithSharedRF`] source and its [`ReadFilter`].
 	/// It isn't used in this module but is just kept here to be used externally elsewhere
