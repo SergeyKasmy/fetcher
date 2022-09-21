@@ -15,23 +15,3 @@ pub mod settings;
 pub mod tasks;
 
 pub use self::error::Error;
-
-use serde::Deserialize;
-use serde::Serialize;
-
-// TODO: either rename to OneOrSeveral or use serde_with's alternative instead
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(untagged)]
-pub enum OneOrMultiple<T> {
-	One(T),
-	Multiple(Vec<T>),
-}
-
-impl<T> From<OneOrMultiple<T>> for Vec<T> {
-	fn from(one_or_mltp: OneOrMultiple<T>) -> Self {
-		match one_or_mltp {
-			OneOrMultiple::One(x) => vec![x],
-			OneOrMultiple::Multiple(x) => x,
-		}
-	}
-}

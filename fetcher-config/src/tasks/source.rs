@@ -9,24 +9,21 @@ pub mod file;
 pub mod http;
 pub mod twitter;
 
-use self::email::Email;
-use self::file::File;
-use self::http::Http;
-use self::twitter::Twitter;
-use crate::Error;
-use crate::{tasks::TaskSettings, OneOrMultiple};
-use fetcher_core::read_filter::ReadFilter as CReadFilter;
-use fetcher_core::source;
+use self::{email::Email, file::File, http::Http, twitter::Twitter};
+use crate::{tasks::TaskSettings, Error};
+use fetcher_core::{read_filter::ReadFilter as CReadFilter, source};
 
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, OneOrMany};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[allow(clippy::large_enum_variant)]
+#[serde_as]
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(untagged)]
 pub enum Source {
-	WithSharedReadFilter(OneOrMultiple<WithSharedReadFilter>),
+	WithSharedReadFilter(#[serde_as(deserialize_as = "OneOrMany<_>")] Vec<WithSharedReadFilter>),
 	WithCustomReadFilter(WithCustomReadFilter),
 }
 
@@ -53,8 +50,6 @@ impl Source {
 	) -> Result<source::Source, Error> {
 		Ok(match self {
 			Source::WithSharedReadFilter(v) => {
-				let v: Vec<WithSharedReadFilter> = v.into();
-
 				let sources = v
 					.into_iter()
 					.map(|x| {
