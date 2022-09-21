@@ -4,6 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! A email source that uses IMAP to connect to an email server
+//!
+//! This module includes the [`Email`] source, the [`ViewMode`] enum, and the [`Filters`] struct
+
 mod auth;
 mod filters;
 mod view_mode;

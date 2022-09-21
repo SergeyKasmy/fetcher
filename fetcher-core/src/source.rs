@@ -7,13 +7,9 @@
 //! This module contains [`Source`]s that can fetch data and create new [`Entries`](`Entry`) out of it
 // TODO: add google calendar source. Google OAuth2 is already implemented :)
 
-/// Contains the [`Email`] source using IMAP, IMAP [`ViewMode`](`email::ViewMode`), and IMAP [`Filters`](`email::Filters`)
 pub mod email;
-/// Contains the [`File`] source
 pub mod file;
-/// Contains the [`Http`] source
 pub mod http;
-/// Contains the [`Twitter`] API source
 pub mod twitter;
 
 pub use self::email::Email;

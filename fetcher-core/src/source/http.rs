@@ -4,6 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! HTTP source
+//!
+//! This module contains the [`Http`] struct, that is a source as well as a transform
+
 use crate::action::transform::result::{TransformResult, TransformedEntry, TransformedMessage};
 use crate::entry::Entry;
 use crate::error::source::HttpError;

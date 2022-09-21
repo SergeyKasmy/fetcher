@@ -4,6 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! Twitter feed
+//!
+//! This module includes the [`Twitter`] struct that is a source that is able to parse a twitter feed via twitter API
+
 use crate::entry::Entry;
 use crate::error::source::TwitterError;
 use crate::sink::Media;

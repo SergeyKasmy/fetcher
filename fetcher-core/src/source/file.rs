@@ -4,6 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! Local file source
+//!
+//! This module contains [`File`] source
+
 use crate::entry::Entry;
 use crate::error::source::Error as SourceError;
 
