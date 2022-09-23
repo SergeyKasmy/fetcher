@@ -26,23 +26,30 @@ use url::Url;
 #[derive(Debug)]
 pub struct Json {
 	/// Query to find an item/entry/article in the list
-	pub itemq: Option<Vec<String>>,
+	pub itemq: Option<Keys>,
 	/// Query to find the title of an item
-	pub titleq: Option<String>,
+	pub titleq: Option<StringQuery>,
 	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
-	pub textq: Option<Vec<Query>>, // adjecent
+	pub textq: Option<Vec<StringQuery>>, // adjecent
 	/// Query to find the id of an item
-	pub idq: Option<String>,
+	pub idq: Option<StringQuery>,
 	/// Query to find the link to an item
-	pub linkq: Option<Query>,
+	pub linkq: Option<StringQuery>,
 	/// Query to find the image of that item
-	pub imgq: Option<Vec<String>>, // nested
+	pub imgq: Option<Vec<StringQuery>>, // nested
 }
 
-#[allow(missing_docs)]
+/// JSON key alias for improved readability
+pub type Key = String;
+/// JSON keys/array of [`Key`] alias for improved readability
+pub type Keys = Vec<String>;
+
+/// All data needed to query, extract, and finalize a string from JSON
 #[derive(Debug)]
-pub struct Query {
-	pub string: String,
+pub struct StringQuery {
+	/// chain of keys that are needed to be traversed to reach the quieried string
+	pub query: Keys,
+	/// a regex to finalize the string
 	pub regex: Option<Regex<Replace>>,
 }
 
@@ -66,7 +73,7 @@ impl TransformEntry for Json {
 			.transpose()?
 			.unwrap_or(&json);
 
-		let items_iter = if let Some(items) = items.as_array() {
+		let items = if let Some(items) = items.as_array() {
 			Either::Left(items.iter())
 		} else if let Some(items) = items.as_object() {
 			// ignore map keys, iterate over values only
@@ -82,140 +89,127 @@ impl TransformEntry for Json {
 			});
 		};
 
-		items_iter
+		items
 			.into_iter()
-			.map(|item| {
-				let title = self
-					.titleq
-					.as_ref()
-					.and_then(|s| item.get(s))
-					.and_then(serde_json::Value::as_str)
-					.map(|s| s.trim().to_owned());
-
-				let body = self
-					.textq
-					.as_ref()
-					.map(|v| {
-						let s = v
-							.iter()
-							.map(|query| {
-								let val = item.get(&query.string).ok_or_else(|| {
-									JsonError::JsonParseKeyNotFound(query.string.clone())
-								})?;
-
-								let s = val
-									.as_str()
-									.ok_or_else(|| JsonError::JsonParseKeyWrongType {
-										key: query.string.clone(),
-										expected_type: "string",
-										found_type: format!("{val:?}"),
-									})?
-									.trim();
-
-								let s = match &query.regex {
-									Some(r) => r.replace(s).into_owned(),
-									None => s.to_owned(),
-								};
-
-								Ok(s)
-							})
-							.collect::<Result<Vec<String>, JsonError>>()?
-							.join("\n\n");
-
-						Ok::<_, JsonError>(s)
-					})
-					.transpose()?;
-
-				let id = self
-					.idq
-					.as_ref()
-					.map(|idq| {
-						let id_val = item
-							.get(idq)
-							.ok_or_else(|| JsonError::JsonParseKeyNotFound(idq.clone()))?;
-
-						let res = if let Some(id) = id_val.as_str() {
-							id.to_owned()
-						} else if let Some(id) = id_val.as_i64() {
-							id.to_string()
-						} else if let Some(id) = id_val.as_u64() {
-							id.to_string()
-						} else {
-							return Err(JsonError::JsonParseKeyWrongType {
-								key: idq.clone(),
-								expected_type: "string/i64/u64",
-								found_type: format!("{id_val:?}"),
-							});
-						};
-
-						Ok(res)
-					})
-					.transpose()?;
-
-				let link = self
-					.linkq
-					.as_ref()
-					.map(|linkq| {
-						let val = item
-							.get(&linkq.string)
-							.ok_or_else(|| JsonError::JsonParseKeyNotFound(linkq.string.clone()))?;
-
-						let s = val
-							.as_str()
-							.ok_or_else(|| JsonError::JsonParseKeyWrongType {
-								key: linkq.string.clone(),
-								expected_type: "string",
-								found_type: format!("{val:?}"),
-							})?;
-
-						let s = match &linkq.regex {
-							Some(r) => r.replace(s),
-							None => Cow::Borrowed(s),
-						};
-
-						Url::try_from(&*s)
-							.map_err(|e| JsonError::from(InvalidUrlError(e, s.into_owned())))
-					})
-					.transpose()?;
-
-				let img: Option<Url> = self
-					.imgq
-					.as_ref()
-					.map(|imgq| {
-						let first = item
-							.get(&imgq[0])
-							.ok_or_else(|| JsonError::JsonParseKeyNotFound(imgq[0].clone()))?;
-
-						let img_val = imgq.iter().skip(1).try_fold(first, |val, x| {
-							val.get(x)
-								.ok_or_else(|| JsonError::JsonParseKeyNotFound(x.clone()))
-						})?;
-
-						let img_str = img_val
-							.as_str()
-							.ok_or_else(|| JsonError::JsonParseKeyWrongType {
-								key: imgq.last().unwrap().clone(),
-								expected_type: "string",
-								found_type: format!("{img_val:?}"),
-							})?
-							.to_owned();
-
-						Url::try_from(img_str.as_str())
-							.map_err(|e| JsonError::from(InvalidUrlError(e, img_str)))
-					})
-					.transpose()?;
-
-				Ok(TransformedEntry {
-					id: TrRes::Old(id),
-					raw_contents: TrRes::Old(body.clone()),
-					msg: TransformedMessage {
-						title: TrRes::Old(title),
-						body: TrRes::Old(body),
-						link: TrRes::Old(link),
-						media: TrRes::Old(img.map(|url| vec![Media::Photo(url)])),
-					},
-				})
-			})
-			.collect()
+			.map(|item| self.extract_entry(item))
+			.collect::<Result<Vec<_>, _>>()
 	}
+}
+
+impl Json {
+	fn extract_entry(&self, item: &Value) -> Result<TransformedEntry, JsonError> {
+		let title = self
+			.titleq
+			.as_ref()
+			.map(|q| extract_string(item, q))
+			.transpose()?;
+
+		let body = self
+			.textq
+			.as_ref()
+			.map(|v| extract_body(item, &v))
+			.transpose()?;
+
+		let id = self.idq.as_ref().map(|q| extract_id(item, q)).transpose()?;
+
+		let link = self
+			.linkq
+			.as_ref()
+			.map(|q| extract_url(item, q))
+			.transpose()?;
+
+		let img = self
+			.imgq
+			.as_ref()
+			.map(|v| {
+				v.iter()
+					.map(|q| extract_url(item, q))
+					.collect::<Result<Vec<_>, _>>()
+			})
+			.transpose()?;
+
+		Ok(TransformedEntry {
+			id: TrRes::Old(id),
+			raw_contents: TrRes::Old(body.clone()),
+			msg: TransformedMessage {
+				title: TrRes::Old(title),
+				body: TrRes::Old(body),
+				link: TrRes::Old(link),
+				media: TrRes::Old(
+					img.map(|v| v.into_iter().map(|url| Media::Photo(url)).collect()),
+				),
+			},
+		})
+	}
+}
+
+fn extract_data<'a>(item: &'a Value, queries: &Keys) -> Result<&'a Value, JsonError> {
+	let first = item
+		.get(&queries.get(0).unwrap())
+		.ok_or_else(|| JsonError::JsonParseKeyNotFound(queries.get(0).unwrap().clone()))?;
+
+	let data = queries.iter().skip(1).try_fold(first, |val, q| {
+		val.get(&q)
+			.ok_or_else(|| JsonError::JsonParseKeyNotFound(q.clone()))
+	})?;
+
+	Ok(data)
+}
+
+fn extract_string(item: &Value, query_data: &StringQuery) -> Result<String, JsonError> {
+	let data = extract_data(item, &query_data.query)?;
+
+	let s = data
+		.as_str()
+		.ok_or_else(|| JsonError::JsonParseKeyWrongType {
+			key: query_data.query.last().unwrap().clone(),
+			expected_type: "string",
+			found_type: format!("{data:?}"),
+		})?;
+
+	let s = match query_data.regex.as_ref() {
+		Some(r) => r.replace(s),
+		None => Cow::Borrowed(s),
+	};
+
+	Ok(s.trim().to_owned())
+}
+
+fn extract_body(item: &Value, bodyq: &[StringQuery]) -> Result<String, JsonError> {
+	Ok(bodyq
+		.iter()
+		.map(|query| extract_string(item, query))
+		.collect::<Result<Vec<String>, JsonError>>()?
+		.join("\n\n"))
+}
+
+fn extract_id(item: &Value, query: &StringQuery) -> Result<String, JsonError> {
+	let id_val = extract_data(item, &query.query)?;
+
+	let id = if let Some(id) = id_val.as_str() {
+		id.to_owned()
+	} else if let Some(id) = id_val.as_i64() {
+		id.to_string()
+	} else if let Some(id) = id_val.as_u64() {
+		id.to_string()
+	} else {
+		return Err(JsonError::JsonParseKeyWrongType {
+			key: query.query.last().unwrap().clone(),
+			expected_type: "string/i64/u64",
+			found_type: format!("{id_val:?}"),
+		});
+	};
+
+	let id = match query.regex.as_ref() {
+		Some(r) => r.replace(&id).into_owned(),
+		None => id,
+	};
+
+	Ok(id)
+}
+
+fn extract_url(item: &Value, query: &StringQuery) -> Result<Url, JsonError> {
+	let url_str = extract_string(item, query)?;
+
+	Url::try_from(url_str.as_str()).map_err(|e| JsonError::from(InvalidUrlError(e, url_str)))
 }

@@ -13,27 +13,30 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Json {
 	#[serde(rename = "item_query")]
-	pub itemq: Option<Vec<String>>,
+	pub itemq: Option<Keys>,
 
 	#[serde(rename = "title_query")]
-	pub titleq: Option<String>,
+	pub titleq: Option<StringQuery>,
 
 	#[serde(rename = "text_query")]
-	pub textq: Option<Vec<Query>>,
+	pub textq: Option<Vec<StringQuery>>,
 
 	#[serde(rename = "id_query")]
-	pub idq: Option<String>,
+	pub idq: Option<StringQuery>,
 
 	#[serde(rename = "link_query")]
-	pub linkq: Option<Query>,
+	pub linkq: Option<StringQuery>,
 
 	#[serde(rename = "img_query")]
-	pub imgq: Option<Vec<String>>,
+	pub imgq: Option<Vec<StringQuery>>,
 }
 
+pub type Key = String;
+pub type Keys = Vec<String>;
+
 #[derive(Deserialize, Serialize, Debug)]
-pub struct Query {
-	pub string: String,
+pub struct StringQuery {
+	pub query: Keys,
 	pub regex: Option<JsonQueryRegex>,
 }
 
@@ -47,22 +50,36 @@ impl Json {
 	pub fn parse(self) -> Result<c_json::Json, Error> {
 		Ok(c_json::Json {
 			itemq: self.itemq,
-			titleq: self.titleq,
+			titleq: self.titleq.map(StringQuery::parse).transpose()?,
+
 			textq: self
 				.textq
-				.map(|v| v.into_iter().map(Query::parse).collect::<Result<_, _>>())
+				.map(|v| {
+					v.into_iter()
+						.map(StringQuery::parse)
+						.collect::<Result<_, _>>()
+				})
 				.transpose()?,
-			idq: self.idq,
-			linkq: self.linkq.map(Query::parse).transpose()?,
-			imgq: self.imgq,
+
+			idq: self.idq.map(StringQuery::parse).transpose()?,
+			linkq: self.linkq.map(StringQuery::parse).transpose()?,
+
+			imgq: self
+				.imgq
+				.map(|v| {
+					v.into_iter()
+						.map(StringQuery::parse)
+						.collect::<Result<_, _>>()
+				})
+				.transpose()?,
 		})
 	}
 }
 
-impl Query {
-	pub fn parse(self) -> Result<c_json::Query, Error> {
-		Ok(c_json::Query {
-			string: self.string,
+impl StringQuery {
+	pub fn parse(self) -> Result<c_json::StringQuery, Error> {
+		Ok(c_json::StringQuery {
+			query: self.query,
 			regex: self.regex.map(JsonQueryRegex::parse).transpose()?,
 		})
 	}

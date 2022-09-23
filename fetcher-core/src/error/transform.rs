@@ -6,7 +6,11 @@
 
 #![allow(missing_docs)]
 
-use crate::{entry::Entry, source::http::TransformFromField};
+use crate::{
+	action::transform::entry::json::{Key as JsonKey, Keys as JsonKeys},
+	entry::Entry,
+	source::http::TransformFromField,
+};
 
 use std::convert::Infallible;
 
@@ -101,11 +105,11 @@ pub enum JsonError {
 	JsonParseInvalid(#[from] serde_json::error::Error),
 
 	#[error("JSON key {0} not found")]
-	JsonParseKeyNotFound(String),
+	JsonParseKeyNotFound(JsonKey),
 
 	#[error("JSON key {key} wrong type: expected {expected_type}, found {found_type}")]
 	JsonParseKeyWrongType {
-		key: String,
+		key: JsonKey,
 		expected_type: &'static str,
 		found_type: String,
 	},
