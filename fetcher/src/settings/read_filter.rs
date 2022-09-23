@@ -5,6 +5,7 @@
  */
 
 use super::DATA_PATH;
+use fetcher_config::tasks::external_data::{ExternalDataError, ExternalDataResult};
 use fetcher_config::tasks::read_filter::ReadFilter as ReadFilterConf;
 use fetcher_core::read_filter::Kind as ReadFilterKind;
 use fetcher_core::read_filter::{ExternalSave, ReadFilter};
@@ -17,7 +18,7 @@ use std::path::Path;
 const READ_DATA_DIR: &str = "read";
 
 #[tracing::instrument]
-pub fn get(name: &str, expected_rf_kind: ReadFilterKind) -> io::Result<ReadFilter> {
+pub fn get(name: &str, expected_rf_kind: ReadFilterKind) -> ExternalDataResult<ReadFilter> {
 	let path = DATA_PATH.get().unwrap().join(READ_DATA_DIR).join(name);
 
 	match fs::read_to_string(&path) {
@@ -39,7 +40,8 @@ pub fn get(name: &str, expected_rf_kind: ReadFilterKind) -> io::Result<ReadFilte
 		}
 		Ok(save_file_rf_raw) => {
 			let save_file_rf = {
-				let conf: ReadFilterConf = serde_json::from_str(&save_file_rf_raw)?;
+				let conf: ReadFilterConf =
+					serde_json::from_str(&save_file_rf_raw).map_err(|e| (e, &path))?;
 
 				conf.parse(Box::new(save_file(&path)?))
 			};
@@ -48,14 +50,10 @@ pub fn get(name: &str, expected_rf_kind: ReadFilterKind) -> io::Result<ReadFilte
 			if save_file_rf.to_kind() == expected_rf_kind {
 				Ok(save_file_rf)
 			} else {
-				// TODO: temporary. Return an option or a custom enum insteadP
-				Err(io::Error::new(
-					io::ErrorKind::Other,
-					format!(
-						"Incompatible read filter types: in config {} and on disk {}",
-						expected_rf_kind,
-						save_file_rf.to_kind()
-					),
+				Err(ExternalDataError::new_rf_incompat_with_path(
+					expected_rf_kind,
+					save_file_rf.to_kind(),
+					&path,
 				))
 			}
 		}

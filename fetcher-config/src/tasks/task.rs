@@ -5,7 +5,7 @@
  */
 
 use super::action::Action;
-use super::{read_filter, sink::Sink, source::Source, TaskSettings};
+use super::{external_data::ExternalData, read_filter, sink::Sink, source::Source};
 use crate::tasks::ParsedTask;
 use crate::Error;
 use fetcher_core as fcore;
@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 // that's used elsewhere
 pub struct Task {
 	#[serde(rename = "read_filter_type")]
-	read_filter_kind: Option<read_filter::Kind>,
+	read_filter_kind: Option<self::read_filter::Kind>,
 	tag: Option<String>,
 	refresh: u64,
 	source: Source,
@@ -32,11 +32,11 @@ pub struct Task {
 }
 
 impl Task {
-	pub fn parse(self, name: &str, settings: &dyn TaskSettings) -> Result<ParsedTask, Error> {
+	pub fn parse(self, name: &str, external: &dyn ExternalData) -> Result<ParsedTask, Error> {
 		let rf = self
 			.read_filter_kind
 			.map(read_filter::Kind::parse)
-			.map(|cfg_rf_kind| settings.read_filter(name, cfg_rf_kind))
+			.map(|cfg_rf_kind| external.read_filter(name, cfg_rf_kind))
 			.transpose()?
 			.map(|rf| Arc::new(RwLock::new(rf)));
 
@@ -62,9 +62,9 @@ impl Task {
 
 		let inner = fcore::task::Task {
 			tag: self.tag,
-			source: self.source.parse(rf, settings)?,
+			source: self.source.parse(rf, external)?,
 			actions,
-			sink: self.sink.map(|x| x.parse(settings)).transpose()?,
+			sink: self.sink.map(|x| x.parse(external)).transpose()?,
 		};
 
 		Ok(ParsedTask {

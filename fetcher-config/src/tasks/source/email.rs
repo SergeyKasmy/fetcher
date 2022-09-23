@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use self::auth::Auth;
 use self::filters::Filters;
 use self::view_mode::ViewMode;
-use crate::tasks::TaskSettings;
+use crate::tasks::external_data::ExternalData;
 use crate::Error;
 use fetcher_core::source;
 
@@ -27,11 +27,11 @@ pub struct Email {
 }
 
 impl Email {
-	pub fn parse(self, settings: &dyn TaskSettings) -> Result<source::Email, Error> {
+	pub fn parse(self, external: &dyn ExternalData) -> Result<source::Email, Error> {
 		Ok(match self.auth {
 			Auth::GoogleOAuth2 => source::Email::with_google_oauth2(
 				self.email,
-				settings
+				external
 					.google_oauth2()?
 					.ok_or(Error::GoogleOAuth2TokenMissing)?,
 				self.filters.parse(),
@@ -40,7 +40,7 @@ impl Email {
 			Auth::Password => source::Email::with_password(
 				self.imap.ok_or(Error::EmailImapFieldMissing)?,
 				self.email,
-				settings
+				external
 					.email_password()?
 					.ok_or(Error::EmailPasswordMissing)?,
 				self.filters.parse(),

@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::tasks::TaskSettings;
+use crate::tasks::external_data::ExternalData;
 use crate::Error;
 use fetcher_core::sink;
 
@@ -34,9 +34,9 @@ pub struct Telegram {
 }
 
 impl Telegram {
-	pub fn parse(self, settings: &dyn TaskSettings) -> Result<sink::Telegram, Error> {
+	pub fn parse(self, external: &dyn ExternalData) -> Result<sink::Telegram, Error> {
 		Ok(sink::Telegram::new(
-			settings
+			external
 				.telegram_bot_token()?
 				.ok_or(Error::TelegramBotTokenMissing)?,
 			self.chat_id,

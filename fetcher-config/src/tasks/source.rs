@@ -10,7 +10,7 @@ pub mod http;
 pub mod twitter;
 
 use self::{email::Email, file::File, http::Http, twitter::Twitter};
-use crate::{tasks::TaskSettings, Error};
+use crate::{tasks::external_data::ExternalData, Error};
 use fetcher_core::{read_filter::ReadFilter as CReadFilter, source};
 
 use serde::{Deserialize, Serialize};
@@ -42,11 +42,12 @@ pub enum WithCustomReadFilter {
 	Email(Email),
 }
 
+// TODO: clean up
 impl Source {
 	pub fn parse(
 		self,
 		rf: Option<Arc<RwLock<CReadFilter>>>,
-		settings: &dyn TaskSettings,
+		external: &dyn ExternalData,
 	) -> Result<source::Source, Error> {
 		Ok(match self {
 			Source::WithSharedReadFilter(v) => {
@@ -58,7 +59,7 @@ impl Source {
 								source::WithSharedRFKind::Http(x.parse()?)
 							}
 							WithSharedReadFilter::Twitter(x) => {
-								source::WithSharedRFKind::Twitter(x.parse(settings)?)
+								source::WithSharedRFKind::Twitter(x.parse(external)?)
 							}
 							WithSharedReadFilter::File(x) => {
 								source::WithSharedRFKind::File(x.parse())
@@ -75,7 +76,7 @@ impl Source {
 			}
 			Source::WithCustomReadFilter(s) => match s {
 				WithCustomReadFilter::Email(x) => source::Source::WithCustomReadFilter(
-					source::WithCustomRF::Email(x.parse(settings)?),
+					source::WithCustomRF::Email(x.parse(external)?),
 				),
 			},
 		})

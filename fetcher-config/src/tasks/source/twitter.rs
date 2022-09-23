@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::tasks::TaskSettings;
+use crate::tasks::external_data::ExternalData;
 use crate::Error;
 use fetcher_core::source;
 
@@ -17,8 +17,8 @@ pub struct Twitter {
 }
 
 impl Twitter {
-	pub fn parse(self, settings: &dyn TaskSettings) -> Result<source::Twitter, Error> {
-		let (api_key, api_secret) = settings
+	pub fn parse(self, external: &dyn ExternalData) -> Result<source::Twitter, Error> {
+		let (api_key, api_secret) = external
 			.twitter_token()?
 			.ok_or(Error::TwitterApiKeysMissing)?;
 

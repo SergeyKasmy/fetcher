@@ -101,7 +101,7 @@ pub async fn get(path: PathBuf, name: &str) -> Result<Option<ParsedTask>> {
 
 	let name = name.to_owned(); // ehhhh, such a wasteful clone, and just because tokio doesn't support scoped tasks
 	let parsed_task = tokio::task::spawn_blocking(move || {
-		task.parse(&name, &settings::TaskSettingsFromDataDir {})
+		task.parse(&name, &settings::ExternalDataFromDataDir {})
 	})
 	.await
 	.unwrap()?;

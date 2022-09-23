@@ -7,18 +7,18 @@
 use super::prompt_user_for;
 use crate::settings::DATA_PATH;
 use fetcher_config::settings::Google as Config;
+use fetcher_config::tasks::external_data::ExternalDataResult;
 use fetcher_core as fcore;
 
 use color_eyre as eyre;
 use std::fs;
-use std::io;
 
 const FILE_NAME: &str = "google_oauth2.json";
 
-pub fn get() -> io::Result<Option<fcore::auth::Google>> {
+pub fn get() -> ExternalDataResult<Option<fcore::auth::Google>> {
 	let path = DATA_PATH.get().unwrap().join(FILE_NAME);
-	let raw = fs::read_to_string(path)?;
-	let conf: Config = serde_json::from_str(&raw)?;
+	let raw = fs::read_to_string(&path).map_err(|e| (e, &path))?;
+	let conf: Config = serde_json::from_str(&raw).map_err(|e| (e, &path))?;
 
 	Ok(Some(conf.parse()))
 }
