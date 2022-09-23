@@ -17,6 +17,7 @@ use crate::{
 	sink::Media,
 };
 
+use either::Either;
 use serde_json::Value;
 use std::borrow::Cow;
 use url::Url;
@@ -25,15 +26,13 @@ use url::Url;
 #[derive(Debug)]
 pub struct Json {
 	/// Query to find an item/entry/article in the list
-	// TODO: make optional
-	pub itemq: Vec<String>,
+	pub itemq: Option<Vec<String>>,
 	/// Query to find the title of an item
 	pub titleq: Option<String>,
 	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
 	pub textq: Option<Vec<Query>>, // adjecent
 	/// Query to find the id of an item
-	// TODO: make optional
-	pub idq: String,
+	pub idq: Option<String>,
 	/// Query to find the link to an item
 	pub linkq: Option<Query>,
 	/// Query to find the image of that item
@@ -55,19 +54,29 @@ impl TransformEntry for Json {
 		let json: Value =
 			serde_json::from_str(entry.raw_contents.as_ref().ok_or(NothingToTransformError)?)?;
 
-		let items = self.itemq.iter().try_fold(&json, |acc, x| {
-			acc.get(x.as_str())
-				.ok_or_else(|| JsonError::JsonParseKeyNotFound(x.clone()))
-		})?;
+		let items = self
+			.itemq
+			.as_ref()
+			.map(|v| {
+				v.iter().try_fold(&json, |acc, x| {
+					acc.get(x.as_str())
+						.ok_or_else(|| JsonError::JsonParseKeyNotFound(x.clone()))
+				})
+			})
+			.transpose()?
+			.unwrap_or(&json);
 
-		let items_iter: Box<dyn Iterator<Item = &Value>> = if let Some(items) = items.as_array() {
-			Box::new(items.iter())
+		let items_iter = if let Some(items) = items.as_array() {
+			Either::Left(items.iter())
 		} else if let Some(items) = items.as_object() {
 			// ignore map keys, iterate over values only
-			Box::new(items.iter().map(|(_, v)| v))
+			Either::Right(items.iter().map(|(_, v)| v))
 		} else {
 			return Err(JsonError::JsonParseKeyWrongType {
-				key: self.itemq.last().unwrap().clone(),
+				key: self
+					.itemq
+					.as_ref()
+					.map_or_else(|| "Root".to_owned(), |v| v.last().unwrap().clone()),
 				expected_type: "iterator (array, map)",
 				found_type: format!("{items:?}"),
 			});
@@ -117,25 +126,31 @@ impl TransformEntry for Json {
 					})
 					.transpose()?;
 
-				let id = {
-					let id_val = item
-						.get(&self.idq)
-						.ok_or_else(|| JsonError::JsonParseKeyNotFound(self.idq.clone()))?;
+				let id = self
+					.idq
+					.as_ref()
+					.map(|idq| {
+						let id_val = item
+							.get(idq)
+							.ok_or_else(|| JsonError::JsonParseKeyNotFound(idq.clone()))?;
 
-					if let Some(id) = id_val.as_str() {
-						id.to_owned()
-					} else if let Some(id) = id_val.as_i64() {
-						id.to_string()
-					} else if let Some(id) = id_val.as_u64() {
-						id.to_string()
-					} else {
-						return Err(JsonError::JsonParseKeyWrongType {
-							key: self.idq.clone(),
-							expected_type: "string/i64/u64",
-							found_type: format!("{id_val:?}"),
-						});
-					}
-				};
+						let res = if let Some(id) = id_val.as_str() {
+							id.to_owned()
+						} else if let Some(id) = id_val.as_i64() {
+							id.to_string()
+						} else if let Some(id) = id_val.as_u64() {
+							id.to_string()
+						} else {
+							return Err(JsonError::JsonParseKeyWrongType {
+								key: idq.clone(),
+								expected_type: "string/i64/u64",
+								found_type: format!("{id_val:?}"),
+							});
+						};
+
+						Ok(res)
+					})
+					.transpose()?;
 
 				let link = self
 					.linkq
@@ -191,7 +206,7 @@ impl TransformEntry for Json {
 					.transpose()?;
 
 				Ok(TransformedEntry {
-					id: TrRes::New(Some(id)), // TODO: return Old(id) where id is None if json id query is None
+					id: TrRes::Old(id),
 					raw_contents: TrRes::Old(body.clone()),
 					msg: TransformedMessage {
 						title: TrRes::Old(title),

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Json {
 	#[serde(rename = "item_query")]
-	pub itemq: Vec<String>,
+	pub itemq: Option<Vec<String>>,
 
 	#[serde(rename = "title_query")]
 	pub titleq: Option<String>,
@@ -22,7 +22,7 @@ pub struct Json {
 	pub textq: Option<Vec<Query>>,
 
 	#[serde(rename = "id_query")]
-	pub idq: String,
+	pub idq: Option<String>,
 
 	#[serde(rename = "link_query")]
 	pub linkq: Option<Query>,
