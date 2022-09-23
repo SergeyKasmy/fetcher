@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Html {
 	#[serde(rename = "item_query")]
-	pub itemq: Vec<Query>,
+	pub itemq: Option<Vec<Query>>,
 
 	#[serde(rename = "title_query")]
 	pub titleq: Option<QueryData>,
@@ -36,7 +36,9 @@ pub struct Html {
 impl Html {
 	pub fn parse(self) -> Result<CoreHtml, Error> {
 		Ok(CoreHtml {
-			itemq: self.itemq.into_iter().map(Query::parse).collect(),
+			itemq: self
+				.itemq
+				.map(|v| v.into_iter().map(Query::parse).collect()),
 			titleq: self.titleq.map(QueryData::parse).transpose()?,
 			textq: self
 				.textq

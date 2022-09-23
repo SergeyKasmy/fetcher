@@ -22,16 +22,17 @@ use crate::error::transform::NothingToTransformError;
 use crate::sink::Media;
 
 //use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
+use either::Either;
 use html5ever::rcdom::Handle;
 use soup::{NodeExt, QueryBuilderExt, Soup};
+use std::iter;
 use url::Url;
 
 /// HTML parser
 #[derive(Debug)]
 pub struct Html {
-	/// Query to find an item/entry/article in a list on the page
-	// TODO: make optional
-	pub itemq: Vec<Query>,
+	/// Query to find an item/entry/article in a list on the page. None means to thread the entire page as a single item
+	pub itemq: Option<Vec<Query>>,
 	/// Query to find the title of an item
 	pub titleq: Option<QueryData>,
 	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
@@ -57,7 +58,11 @@ impl TransformEntry for Html {
 				.ok_or(NothingToTransformError)?
 				.as_str(),
 		);
-		let items = find_chain(&soup, &self.itemq);
+
+		let items = match self.itemq.as_ref() {
+			Some(itemq) => Either::Left(find_chain(&soup, itemq)),
+			None => Either::Right(iter::once(soup.get_handle())),
+		};
 
 		let entries = items
 			.map(|item| self.extract_entry(&item))
