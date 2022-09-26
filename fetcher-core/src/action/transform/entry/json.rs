@@ -15,6 +15,7 @@ use crate::{
 	entry::Entry,
 	error::transform::{InvalidUrlError, JsonError, NothingToTransformError},
 	sink::Media,
+	utils::OptionExt,
 };
 
 use either::Either;
@@ -64,13 +65,12 @@ impl TransformEntry for Json {
 		let items = self
 			.itemq
 			.as_ref()
-			.map(|v| {
+			.try_map(|v| {
 				v.iter().try_fold(&json, |acc, x| {
 					acc.get(x.as_str())
 						.ok_or_else(|| JsonError::JsonParseKeyNotFound(x.clone()))
 				})
-			})
-			.transpose()?
+			})?
 			.unwrap_or(&json);
 
 		let items = if let Some(items) = items.as_array() {
@@ -98,35 +98,16 @@ impl TransformEntry for Json {
 
 impl Json {
 	fn extract_entry(&self, item: &Value) -> Result<TransformedEntry, JsonError> {
-		let title = self
-			.titleq
-			.as_ref()
-			.map(|q| extract_string(item, q))
-			.transpose()?;
+		let title = self.titleq.as_ref().try_map(|q| extract_string(item, q))?;
+		let body = self.textq.as_ref().try_map(|v| extract_body(item, v))?;
+		let id = self.idq.as_ref().try_map(|q| extract_id(item, q))?;
+		let link = self.linkq.as_ref().try_map(|q| extract_url(item, q))?;
 
-		let body = self
-			.textq
-			.as_ref()
-			.map(|v| extract_body(item, &v))
-			.transpose()?;
-
-		let id = self.idq.as_ref().map(|q| extract_id(item, q)).transpose()?;
-
-		let link = self
-			.linkq
-			.as_ref()
-			.map(|q| extract_url(item, q))
-			.transpose()?;
-
-		let img = self
-			.imgq
-			.as_ref()
-			.map(|v| {
-				v.iter()
-					.map(|q| extract_url(item, q))
-					.collect::<Result<Vec<_>, _>>()
-			})
-			.transpose()?;
+		let img = self.imgq.as_ref().try_map(|v| {
+			v.iter()
+				.map(|q| extract_url(item, q))
+				.collect::<Result<Vec<_>, _>>()
+		})?;
 
 		Ok(TransformedEntry {
 			id: TrRes::Old(id),

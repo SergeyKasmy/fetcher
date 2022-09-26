@@ -5,8 +5,10 @@
  */
 
 use crate::Error;
-use fetcher_core::action::regex as c_regex;
-use fetcher_core::action::transform::entry::html::query as c_query;
+use fetcher_core::{
+	action::{regex as c_regex, transform::entry::html::query as c_query},
+	utils::OptionExt,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -86,7 +88,7 @@ impl ElementDataQuery {
 			optional: self.optional.unwrap_or(false),
 			query: self.query.into_iter().map(ElementQuery::parse).collect(),
 			data_location: self.data_location.parse(),
-			regex: self.regex.map(HtmlQueryRegex::parse).transpose()?,
+			regex: self.regex.try_map(HtmlQueryRegex::parse)?,
 		})
 	}
 }

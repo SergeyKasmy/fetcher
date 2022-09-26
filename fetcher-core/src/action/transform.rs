@@ -10,16 +10,15 @@ pub mod entry;
 pub mod field;
 pub mod result;
 
-pub use self::entry::feed::Feed;
-pub use self::entry::html::Html;
-pub use self::entry::json::Json;
-pub use self::entry::use_raw_contents::UseRawContents;
-pub use self::field::caps::Caps;
-pub use self::field::shorten::Shorten;
-pub use self::field::trim::Trim;
+pub use self::{
+	entry::{feed::Feed, html::Html, json::Json, use_raw_contents::UseRawContents},
+	field::{caps::Caps, shorten::Shorten, trim::Trim},
+};
 
 use self::field::{Field, TransformField};
-use crate::{entry::Entry, error::transform::Error as TransformError, sink::Message};
+use crate::{
+	entry::Entry, error::transform::Error as TransformError, sink::Message, utils::OptionExt,
+};
 
 /// Either an entry or a field transform
 #[allow(clippy::large_enum_variant)]
@@ -54,8 +53,7 @@ impl Transform {
 				// transformed value of the field
 				let new_val = old_val
 					.as_deref()
-					.map(|v| kind.transform_field(v))
-					.transpose()
+					.try_map(|v| kind.transform_field(v))
 					.map_err(|kind| TransformError {
 						kind,
 						original_entry: entry.clone(),

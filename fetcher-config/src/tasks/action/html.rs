@@ -8,7 +8,7 @@ pub mod query;
 
 use self::query::{ElementDataQuery, ElementQuery};
 use crate::Error;
-use fetcher_core::action::transform::Html as CoreHtml;
+use fetcher_core::{action::transform::Html as CoreHtml, utils::OptionExt};
 
 use serde::{Deserialize, Serialize};
 
@@ -39,18 +39,15 @@ impl Html {
 			itemq: self
 				.itemq
 				.map(|v| v.into_iter().map(ElementQuery::parse).collect()),
-			titleq: self.titleq.map(ElementDataQuery::parse).transpose()?,
-			textq: self
-				.textq
-				.map(|v| {
-					v.into_iter()
-						.map(ElementDataQuery::parse)
-						.collect::<Result<_, _>>()
-				})
-				.transpose()?,
-			idq: self.idq.map(ElementDataQuery::parse).transpose()?,
-			linkq: self.linkq.map(ElementDataQuery::parse).transpose()?,
-			imgq: self.imgq.map(ElementDataQuery::parse).transpose()?,
+			titleq: self.titleq.try_map(ElementDataQuery::parse)?,
+			textq: self.textq.try_map(|v| {
+				v.into_iter()
+					.map(ElementDataQuery::parse)
+					.collect::<Result<_, _>>()
+			})?,
+			idq: self.idq.try_map(ElementDataQuery::parse)?,
+			linkq: self.linkq.try_map(ElementDataQuery::parse)?,
+			imgq: self.imgq.try_map(ElementDataQuery::parse)?,
 		})
 	}
 }

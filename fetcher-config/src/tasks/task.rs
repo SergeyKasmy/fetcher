@@ -4,11 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::action::Action;
-use super::{external_data::ExternalData, read_filter, sink::Sink, source::Source};
-use crate::tasks::ParsedTask;
-use crate::Error;
+use super::{action::Action, external_data::ExternalData, read_filter, sink::Sink, source::Source};
+use crate::{tasks::ParsedTask, Error};
 use fetcher_core as fcore;
+use fetcher_core::utils::OptionExt;
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -36,35 +35,31 @@ impl Task {
 		let rf = self
 			.read_filter_kind
 			.map(read_filter::Kind::parse)
-			.map(|cfg_rf_kind| external.read_filter(name, cfg_rf_kind))
-			.transpose()?
+			.try_map(|cfg_rf_kind| external.read_filter(name, cfg_rf_kind))?
 			.map(|rf| Arc::new(RwLock::new(rf)));
 
-		let actions = self
-			.actions
-			.map(|x| {
-				x.into_iter()
-					.filter_map(|act| match act {
-						Action::ReadFilter => match rf.clone() {
-							Some(rf) => Some(Ok(fetcher_core::action::Action::Filter(
-								fetcher_core::action::filter::Kind::ReadFilter(rf),
-							))),
-							None => {
-								tracing::warn!("Can't use read filter transformer when no read filter is set up for the task!");
-								None
-							}
-						},
-						other => Some(other.parse()),
-					})
-					.collect::<Result<_, _>>()
-			})
-			.transpose()?;
+		let actions = self.actions.try_map(|x| {
+			x.into_iter()
+				.filter_map(|act| match act {
+					Action::ReadFilter => match rf.clone() {
+						Some(rf) => Some(Ok(fetcher_core::action::Action::Filter(
+							fetcher_core::action::filter::Kind::ReadFilter(rf),
+						))),
+						None => {
+							tracing::warn!("Can't use read filter transformer when no read filter is set up for the task!");
+							None
+						}
+					},
+					other => Some(other.parse()),
+				})
+				.collect::<Result<_, _>>()
+		})?;
 
 		let inner = fcore::task::Task {
 			tag: self.tag,
 			source: self.source.parse(rf, external)?,
 			actions,
-			sink: self.sink.map(|x| x.parse(external)).transpose()?,
+			sink: self.sink.try_map(|x| x.parse(external))?,
 		};
 
 		Ok(ParsedTask {

@@ -13,6 +13,7 @@ use crate::entry::Entry;
 use crate::error::source::HttpError;
 use crate::error::transform::{HttpError as HttpTransformError, InvalidUrlError};
 use crate::sink::Message;
+use crate::utils::OptionExt;
 
 use once_cell::sync::OnceCell;
 use std::fmt::{Debug, Display};
@@ -102,11 +103,9 @@ impl Http {
 	) -> Result<TransformedEntry, HttpTransformError> {
 		let link = match from_field {
 			TransformFromField::MessageLink => entry.msg.link.clone(),
-			TransformFromField::RawContents => entry
-				.raw_contents
-				.as_ref()
-				.map(|s| Url::try_from(s.as_str()).map_err(|e| InvalidUrlError(e, s.clone())))
-				.transpose()?,
+			TransformFromField::RawContents => entry.raw_contents.as_ref().try_map(|s| {
+				Url::try_from(s.as_str()).map_err(|e| InvalidUrlError(e, s.clone()))
+			})?,
 		};
 		let link = link.ok_or(HttpTransformError::MissingUrl(from_field))?;
 

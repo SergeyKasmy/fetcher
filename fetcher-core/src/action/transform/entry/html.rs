@@ -160,8 +160,7 @@ fn extract_url(
 	query: &ElementDataQuery,
 ) -> Result<Option<Url>, HtmlError> {
 	extract_data(html, query)?
-		.map(|url| Url::try_from(url.as_str()).map_err(|e| InvalidUrlError(e, url).into()))
-		.transpose()
+		.try_map(|url| Url::try_from(url.as_str()).map_err(|e| InvalidUrlError(e, url).into()))
 }
 
 /// Find all elements matching the query in all the provided HTML parts

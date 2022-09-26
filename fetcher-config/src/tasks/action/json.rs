@@ -5,8 +5,10 @@
  */
 
 use crate::Error;
-use fetcher_core::action::regex as c_regex;
-use fetcher_core::action::transform::entry::json as c_json;
+use fetcher_core::{
+	action::{regex as c_regex, transform::entry::json as c_json},
+	utils::OptionExt,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -50,28 +52,22 @@ impl Json {
 	pub fn parse(self) -> Result<c_json::Json, Error> {
 		Ok(c_json::Json {
 			itemq: self.itemq,
-			titleq: self.titleq.map(StringQuery::parse).transpose()?,
+			titleq: self.titleq.try_map(StringQuery::parse)?,
 
-			textq: self
-				.textq
-				.map(|v| {
-					v.into_iter()
-						.map(StringQuery::parse)
-						.collect::<Result<_, _>>()
-				})
-				.transpose()?,
+			textq: self.textq.try_map(|v| {
+				v.into_iter()
+					.map(StringQuery::parse)
+					.collect::<Result<_, _>>()
+			})?,
 
-			idq: self.idq.map(StringQuery::parse).transpose()?,
-			linkq: self.linkq.map(StringQuery::parse).transpose()?,
+			idq: self.idq.try_map(StringQuery::parse)?,
+			linkq: self.linkq.try_map(StringQuery::parse)?,
 
-			imgq: self
-				.imgq
-				.map(|v| {
-					v.into_iter()
-						.map(StringQuery::parse)
-						.collect::<Result<_, _>>()
-				})
-				.transpose()?,
+			imgq: self.imgq.try_map(|v| {
+				v.into_iter()
+					.map(StringQuery::parse)
+					.collect::<Result<_, _>>()
+			})?,
 		})
 	}
 }
@@ -80,7 +76,7 @@ impl StringQuery {
 	pub fn parse(self) -> Result<c_json::StringQuery, Error> {
 		Ok(c_json::StringQuery {
 			query: self.query,
-			regex: self.regex.map(JsonQueryRegex::parse).transpose()?,
+			regex: self.regex.try_map(JsonQueryRegex::parse)?,
 		})
 	}
 }
