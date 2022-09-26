@@ -8,7 +8,7 @@
 
 use crate::{
 	action::transform::entry::{
-		html::query::ElementQuery as HtmlElemQuery,
+		html::query::{DataLocation as HtmlDataLocation, ElementQuery as HtmlElemQuery},
 		json::{Key as JsonKey, Keys as JsonKeys},
 	},
 	entry::Entry,
@@ -77,11 +77,20 @@ pub enum HtmlError {
 	#[error(transparent)]
 	NothingToTransform(#[from] NothingToTransformError),
 
-	#[error("HTML element {0:?} not found")]
-	ElementNotFound(HtmlElemQuery),
+	#[error("HTML element {name:?} not found in {elem_list:?}")]
+	ElementNotFound {
+		name: HtmlElemQuery,
+		elem_list: Vec<HtmlElemQuery>,
+	},
+
+	#[error("Data not found at {data:?} in element {element:?}")]
+	DataNotFoundInElement {
+		data: HtmlDataLocation,
+		element: Vec<HtmlElemQuery>,
+	},
 
 	#[error("HTML element {0:?} is empty")]
-	ElementEmpty(HtmlElemQuery),
+	ElementEmpty(Vec<HtmlElemQuery>),
 
 	#[error(transparent)]
 	InvalidUrl(#[from] InvalidUrlError),

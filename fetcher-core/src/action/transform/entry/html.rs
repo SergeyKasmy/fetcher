@@ -59,7 +59,7 @@ impl TransformEntry for Html {
 		);
 
 		let items = match self.itemq.as_ref() {
-			Some(itemq) => Either::Left(find_chain(&soup, itemq)),
+			Some(itemq) => Either::Left(find_chain(&soup, itemq)?.into_iter()),
 			None => Either::Right(iter::once(soup.get_handle())),
 		};
 
@@ -82,11 +82,8 @@ impl Html {
 			.try_and_then(|q| extract_data(html, q))?;
 
 		let body = self.textq.as_ref().try_map(|q| extract_body(html, q))?;
-
 		let id = self.idq.as_ref().try_and_then(|q| extract_data(html, q))?;
-
 		let link = self.linkq.as_ref().try_and_then(|q| extract_url(html, q))?;
-
 		let img = self.imgq.as_ref().try_and_then(|q| extract_url(html, q))?;
 
 		Ok(TransformedEntry {
@@ -107,7 +104,8 @@ fn extract_data(
 	html: &impl QueryBuilderExt,
 	data_query: &ElementDataQuery,
 ) -> Result<Option<String>, HtmlError> {
-	let data = find_chain(html, &data_query.query)
+	let data = find_chain(html, &data_query.query)?
+		.into_iter()
 		.map(|hndl| match &data_query.data_location {
 			DataLocation::Text => Some(hndl.text()),
 			DataLocation::Attr(v) => hndl.get(v),
@@ -118,9 +116,10 @@ fn extract_data(
 		Some(v) => v,
 		None if data_query.optional => return Ok(None),
 		None => {
-			return Err(HtmlError::ElementNotFound(
-				data_query.query.last().unwrap().clone(),
-			))
+			return Err(HtmlError::DataNotFoundInElement {
+				data: data_query.data_location.clone(),
+				element: data_query.query.clone(),
+			});
 		}
 	};
 
@@ -128,9 +127,7 @@ fn extract_data(
 	let s = s.trim();
 
 	if s.is_empty() {
-		return Err(HtmlError::ElementEmpty(
-			data_query.query.last().unwrap().clone(),
-		));
+		return Err(HtmlError::ElementEmpty(data_query.query.clone()));
 	}
 
 	let s = match &data_query.regex {
@@ -164,59 +161,60 @@ fn extract_url(
 }
 
 /// Find all elements matching the query in all the provided HTML parts
-fn find_chain<'a>(
+fn find_chain(
 	html: &impl QueryBuilderExt,
-	elem_queries: &'a [ElementQuery],
-) -> Box<dyn Iterator<Item = HtmlNode> + 'a> {
-	// debug_assert!(!qs.is_empty());
-	let mut html_nodes: Option<Box<dyn Iterator<Item = HtmlNode>>> = None;
-
-	for elem_query in elem_queries {
-		html_nodes = Some(match html_nodes {
-			None => find(html, elem_query),
-			Some(handles) => Box::new(handles.flat_map(|hndl| find(&hndl, elem_query))),
-		});
+	elem_queries: &[ElementQuery],
+) -> Result<Vec<HtmlNode>, HtmlError> {
+	if elem_queries.is_empty() {
+		return Ok(vec![html.get_handle()]);
 	}
 
-	// TODO: make an assert instead
-	html_nodes.unwrap_or_else(|| Box::new(iter::empty())) // boxing is okay here since we never expect to recieve zero elem_queries in a normal program execution anyways, so this branch is extra cold
+	let mut html_nodes: Vec<HtmlNode> = Vec::new();
+
+	for elem_query in elem_queries {
+		html_nodes = html_nodes
+			.into_iter()
+			.flat_map(|html| find(&html, elem_query))
+			.collect();
+
+		if html_nodes.is_empty() {
+			return Err(HtmlError::ElementNotFound {
+				name: elem_query.clone(),
+				elem_list: elem_queries.to_vec(),
+			});
+		}
+	}
+
+	Ok(html_nodes)
 }
 
 /// Find items matching the query in the provided HTML part
-fn find<'a>(
-	html: &impl QueryBuilderExt,
-	elem_query: &'a ElementQuery,
-) -> Box<dyn Iterator<Item = HtmlNode> + 'a> {
-	Box::new(
-		match &elem_query.kind {
-			ElementKind::Tag(val) => html.tag(val.as_str()).find_all(),
-			ElementKind::Class(val) => html.class(val.as_str()).find_all(),
-			ElementKind::Attr { name, value } => {
-				html.attr(name.as_str(), value.as_str()).find_all()
-			}
-		}
-		.filter(move |found| {
-			if let Some(ignore) = &elem_query.ignore {
-				for i in ignore.iter() {
-					let should_be_ignored = match i {
-						ElementKind::Tag(tag) => found.name() == tag,
-						ElementKind::Class(class) => {
-							found.get("class").map_or(false, |c| &c == class)
-						}
-						ElementKind::Attr { name, value } => {
-							found.get(name).map_or(false, |a| &a == value)
-						}
-					};
-
-					if should_be_ignored {
-						return false;
+fn find(html: &impl QueryBuilderExt, elem_query: &ElementQuery) -> Vec<HtmlNode> {
+	match &elem_query.kind {
+		ElementKind::Tag(val) => html.tag(val.as_str()).find_all(),
+		ElementKind::Class(val) => html.class(val.as_str()).find_all(),
+		ElementKind::Attr { name, value } => html.attr(name.as_str(), value.as_str()).find_all(),
+	}
+	.filter(move |found| {
+		if let Some(ignore) = &elem_query.ignore {
+			for i in ignore.iter() {
+				let should_be_ignored = match i {
+					ElementKind::Tag(tag) => found.name() == tag,
+					ElementKind::Class(class) => found.get("class").map_or(false, |c| &c == class),
+					ElementKind::Attr { name, value } => {
+						found.get(name).map_or(false, |a| &a == value)
 					}
+				};
+
+				if should_be_ignored {
+					return false;
 				}
 			}
+		}
 
-			true
-		}),
-	)
+		true
+	})
+	.collect()
 }
 
 /*
