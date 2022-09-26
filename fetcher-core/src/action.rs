@@ -13,12 +13,11 @@ pub mod transform;
 pub mod regex;
 
 use self::transform::Transform;
-use crate::entry::Entry;
-use crate::error::transform::Error as TransformError;
+use crate::{entry::Entry, error::transform::Error as TransformError};
 
 /// An action that modifies a list of entries in some way
 #[derive(Debug)]
-#[allow(clippy::large_enum_variant)] // TODO: is there any benefit to this?
+#[allow(clippy::large_enum_variant)]
 pub enum Action {
 	/// Filter out entries
 	Filter(filter::Kind),

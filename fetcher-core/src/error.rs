@@ -24,7 +24,7 @@ pub enum Error {
 	Source(#[from] source::Error),
 
 	#[error("Can't transform data")]
-	Transform(#[from] TransformError),
+	Transform(#[from] Box<TransformError>),
 
 	#[error("Can't send data")]
 	Sink(#[from] sink::Error),
@@ -45,6 +45,12 @@ pub enum GoogleOAuth2Error {
 	/// An error received from Google, whatever it is
 	#[error("{0}")]
 	Auth(String),
+}
+
+/// Extention trait for [`std::error::Error`] to print the entire chain of the error
+pub trait ErrorChainExt {
+	/// Return a string intented for logging or printing that formats an error's entire error source chain
+	fn display_chain(&self) -> String;
 }
 
 impl Error {
@@ -92,12 +98,6 @@ impl Error {
 	}
 }
 
-/// Extention trait for [`std::error::Error`] to print the entire chain of the error
-pub trait ErrorChainExt {
-	/// Return a string intented for logging or printing that formats an error's entire error source chain
-	fn display_chain(&self) -> String;
-}
-
 impl<T: StdError> ErrorChainExt for T {
 	#[must_use]
 	fn display_chain(&self) -> String {
@@ -116,5 +116,11 @@ impl<T: StdError> ErrorChainExt for T {
 		}
 
 		output
+	}
+}
+
+impl From<TransformError> for Error {
+	fn from(e: TransformError) -> Self {
+		Error::Transform(Box::new(e))
 	}
 }

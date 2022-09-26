@@ -135,7 +135,7 @@ impl WithCustomRF {
 	/// if there was an error fetching from the source (such as a network connection error or maybe even an authentication error)
 	pub async fn get(&mut self) -> Result<Vec<Entry>, SourceError> {
 		Ok(match self {
-			Self::Email(x) => x.get().await.map_err(Box::new)?,
+			Self::Email(x) => x.get().await?,
 		})
 	}
 

@@ -71,3 +71,9 @@ pub enum TwitterError {
 	#[error(transparent)]
 	Other(#[from] egg_mode::error::Error),
 }
+
+impl From<EmailError> for Error {
+	fn from(e: EmailError) -> Self {
+		Error::Email(Box::new(e))
+	}
+}
