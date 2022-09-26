@@ -125,7 +125,7 @@ impl Google {
 
 		self.access_token = Some(AccessToken {
 			token: access_token,
-			expires: Instant::now() + Duration::from_secs(expires_in),
+			expires: Instant::now() + Duration::from_secs(expires_in - /* buffer */ 5), // add 5 seconds as buffer since some time could've passed since the server issued the token
 		});
 
 		Ok(())
