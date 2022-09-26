@@ -67,8 +67,10 @@ impl TransformEntry for Json {
 			.as_ref()
 			.try_map(|v| {
 				v.iter().try_fold(&json, |acc, x| {
-					acc.get(x.as_str())
-						.ok_or_else(|| JsonError::KeyNotFound(x.clone()))
+					acc.get(x.as_str()).ok_or_else(|| JsonError::KeyNotFound {
+						name: x.clone(),
+						key_list: v.clone(),
+					})
 				})
 			})?
 			.unwrap_or(&json);
@@ -80,10 +82,7 @@ impl TransformEntry for Json {
 			Either::Right(items.iter().map(|(_, v)| v))
 		} else {
 			return Err(JsonError::KeyWrongType {
-				key: self
-					.itemq
-					.as_ref()
-					.map_or_else(|| "Root".to_owned(), |v| v.last().unwrap().clone()),
+				key: self.itemq.as_ref().map_or_else(Vec::new, Clone::clone),
 				expected_type: "iterator (array, map)",
 				found_type: format!("{items:?}"),
 			});
@@ -116,36 +115,45 @@ impl Json {
 				title: TrRes::Old(title),
 				body: TrRes::Old(body),
 				link: TrRes::Old(link),
-				media: TrRes::Old(
-					img.map(|v| v.into_iter().map(|url| Media::Photo(url)).collect()),
-				),
+				media: TrRes::Old(img.map(|v| v.into_iter().map(Media::Photo).collect())),
 			},
 		})
 	}
 }
 
-fn extract_data<'a>(item: &'a Value, queries: &Keys) -> Result<&'a Value, JsonError> {
-	let first = item
-		.get(&queries.get(0).unwrap())
-		.ok_or_else(|| JsonError::KeyNotFound(queries.get(0).unwrap().clone()))?;
+fn extract_data<'a>(json: &'a Value, queries: &Keys) -> Result<&'a Value, JsonError> {
+	if queries.is_empty() {
+		return Ok(json);
+	}
+
+	let first = json
+		.get(&queries[0])
+		.ok_or_else(|| JsonError::KeyNotFound {
+			name: queries[0].clone(),
+			key_list: queries.clone(),
+		})?;
 
 	let data = queries.iter().skip(1).try_fold(first, |val, q| {
-		val.get(&q).ok_or_else(|| JsonError::KeyNotFound(q.clone()))
+		// val.get(q).ok_or_else(|| JsonError::KeyNotFound(q.clone()))
+		val.get(q).ok_or_else(|| JsonError::KeyNotFound {
+			name: q.clone(),
+			key_list: queries.clone(),
+		})
 	})?;
 
 	Ok(data)
 }
 
-fn extract_string(item: &Value, query_data: &StringQuery) -> Result<String, JsonError> {
-	let data = extract_data(item, &query_data.query)?;
+fn extract_string(item: &Value, str_query: &StringQuery) -> Result<String, JsonError> {
+	let data = extract_data(item, &str_query.query)?;
 
 	let s = data.as_str().ok_or_else(|| JsonError::KeyWrongType {
-		key: query_data.query.last().unwrap().clone(),
+		key: str_query.query.clone(),
 		expected_type: "string",
 		found_type: format!("{data:?}"),
 	})?;
 
-	let s = match query_data.regex.as_ref() {
+	let s = match str_query.regex.as_ref() {
 		Some(r) => r.replace(s),
 		None => Cow::Borrowed(s),
 	};
@@ -172,7 +180,7 @@ fn extract_id(item: &Value, query: &StringQuery) -> Result<String, JsonError> {
 		id.to_string()
 	} else {
 		return Err(JsonError::KeyWrongType {
-			key: query.query.last().unwrap().clone(),
+			key: query.query.clone(),
 			expected_type: "string/i64/u64",
 			found_type: format!("{id_val:?}"),
 		});

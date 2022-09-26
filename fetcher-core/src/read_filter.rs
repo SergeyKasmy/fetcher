@@ -101,8 +101,7 @@ impl ReadFilter {
 		}
 	}
 
-	#[allow(clippy::missing_errors_doc)] // TODO
-	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+	pub(crate) fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		use Inner::{NewerThanLastRead, NotPresentInReadList};
 
 		tracing::trace!("Marking {id} as read");

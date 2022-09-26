@@ -7,7 +7,10 @@
 #![allow(missing_docs)]
 
 use crate::{
-	action::transform::entry::{html::query::ElementQuery as HtmlElemQuery, json::Key as JsonKey},
+	action::transform::entry::{
+		html::query::ElementQuery as HtmlElemQuery,
+		json::{Key as JsonKey, Keys as JsonKeys},
+	},
 	entry::Entry,
 	source::http::TransformFromField,
 };
@@ -98,12 +101,12 @@ pub enum JsonError {
 	#[error("Invalid JSON")]
 	Invalid(#[from] serde_json::error::Error),
 
-	#[error("JSON key {0} not found")]
-	KeyNotFound(JsonKey),
+	#[error("JSON key {name} not found in {key_list:?}")]
+	KeyNotFound { name: JsonKey, key_list: JsonKeys },
 
-	#[error("JSON key {key} wrong type: expected {expected_type}, found {found_type}")]
+	#[error("JSON key {key:?} wrong type: expected {expected_type}, found {found_type}")]
 	KeyWrongType {
-		key: JsonKey,
+		key: JsonKeys,
 		expected_type: &'static str,
 		found_type: String,
 	},

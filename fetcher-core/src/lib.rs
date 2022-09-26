@@ -57,7 +57,7 @@ pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 				match &mut t.source {
 					source::Source::WithSharedReadFilter { rf, .. } => {
 						if let Some(rf) = rf {
-							rf.write().await.mark_as_read(id).await?;
+							rf.write().await.mark_as_read(id)?;
 						}
 					}
 					source::Source::WithCustomReadFilter(x) => x.mark_as_read(id).await?,
