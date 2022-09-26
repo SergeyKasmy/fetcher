@@ -7,12 +7,13 @@
 //! This module contains the [`Feed`] transform that can parse RSS and Atom feeds
 
 use super::TransformEntry;
-use crate::action::transform::result::{
-	TransformResult as TrRes, TransformedEntry, TransformedMessage,
+use crate::{
+	action::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+	entry::Entry,
+	error::transform::{FeedError, NothingToTransformError},
 };
-use crate::entry::Entry;
-use crate::error::transform::{FeedError, NothingToTransformError};
 
+use tap::{TapFallible, TapOptional};
 use url::Url;
 
 /// RSS or Atom feed parser
@@ -31,8 +32,7 @@ impl TransformEntry for Feed {
 				.as_ref()
 				.ok_or(NothingToTransformError)?
 				.as_bytes(),
-		)
-		.unwrap(); // TODO: check if feed is a valid feed
+		)?;
 
 		tracing::debug!("Got {num} feed entries total", num = feed.entries.len());
 
@@ -40,21 +40,23 @@ impl TransformEntry for Feed {
 			.entries
 			.into_iter()
 			.map(|mut feed_entry| {
-				// unwrap NOTE: "safe", these are required fields	// TODO: make an error
+				let title = feed_entry
+					.title
+					.tap_none(|| tracing::error!("Feed entry doesn't contain a title"))
+					.map(|x| x.content);
+
+				let body = feed_entry
+					.summary
+					.tap_none(|| {
+						tracing::error!("Feed entry doesn't contain a summary/description/body");
+					})
+					.map(|x| x.content);
+
 				let id = Some(feed_entry.id);
-				let title = Some(
-					feed_entry
-						.title
-						.expect("RSS/Atom feeds should always contain a title")
-						.content,
-				);
-				let body = Some(
-					feed_entry
-						.summary
-						.expect("RSS/Atom feeds should always contain a summary/desciption")
-						.content,
-				);
-				let link = Some(Url::try_from(feed_entry.links.remove(0).href.as_str()).unwrap()); // TODO: panics
+
+				let link = Url::try_from(feed_entry.links.remove(0).href.as_str())
+					.tap_err(|e| tracing::warn!("A feed entry's link is not a valid URL: {e:?}"))
+					.ok();
 
 				TransformedEntry {
 					id: TrRes::Old(id),

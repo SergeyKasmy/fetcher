@@ -7,8 +7,9 @@
 #![allow(missing_docs)]
 
 use crate::{
-	action::transform::entry::html::query::ElementQuery as HtmlElemQuery,
-	action::transform::entry::json::Key as JsonKey, entry::Entry, source::http::TransformFromField,
+	action::transform::entry::{html::query::ElementQuery as HtmlElemQuery, json::Key as JsonKey},
+	entry::Entry,
+	source::http::TransformFromField,
 };
 
 use std::convert::Infallible;
