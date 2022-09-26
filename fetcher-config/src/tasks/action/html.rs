@@ -6,7 +6,7 @@
 
 pub mod query;
 
-use self::query::{ImageQuery, Query, QueryData};
+use self::query::{ElementDataQuery, ElementQuery};
 use crate::Error;
 use fetcher_core::action::transform::Html as CoreHtml;
 
@@ -15,22 +15,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Html {
 	#[serde(rename = "item_query")]
-	pub itemq: Option<Vec<Query>>,
+	pub itemq: Option<Vec<ElementQuery>>,
 
 	#[serde(rename = "title_query")]
-	pub titleq: Option<QueryData>,
+	pub titleq: Option<ElementDataQuery>,
 
 	#[serde(rename = "text_query")]
-	pub textq: Option<Vec<QueryData>>,
+	pub textq: Option<Vec<ElementDataQuery>>,
 
 	#[serde(rename = "id_query")]
-	pub idq: Option<QueryData>,
+	pub idq: Option<ElementDataQuery>,
 
 	#[serde(rename = "link_query")]
-	pub linkq: Option<QueryData>,
+	pub linkq: Option<ElementDataQuery>,
 
 	#[serde(rename = "img_query")]
-	pub imgq: Option<ImageQuery>,
+	pub imgq: Option<ElementDataQuery>,
 }
 
 impl Html {
@@ -38,19 +38,19 @@ impl Html {
 		Ok(CoreHtml {
 			itemq: self
 				.itemq
-				.map(|v| v.into_iter().map(Query::parse).collect()),
-			titleq: self.titleq.map(QueryData::parse).transpose()?,
+				.map(|v| v.into_iter().map(ElementQuery::parse).collect()),
+			titleq: self.titleq.map(ElementDataQuery::parse).transpose()?,
 			textq: self
 				.textq
 				.map(|v| {
 					v.into_iter()
-						.map(QueryData::parse)
+						.map(ElementDataQuery::parse)
 						.collect::<Result<_, _>>()
 				})
 				.transpose()?,
-			idq: self.idq.map(QueryData::parse).transpose()?,
-			linkq: self.linkq.map(QueryData::parse).transpose()?,
-			imgq: self.imgq.map(ImageQuery::parse).transpose()?,
+			idq: self.idq.map(ElementDataQuery::parse).transpose()?,
+			linkq: self.linkq.map(ElementDataQuery::parse).transpose()?,
+			imgq: self.imgq.map(ElementDataQuery::parse).transpose()?,
 		})
 	}
 }

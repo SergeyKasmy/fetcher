@@ -12,7 +12,7 @@ use crate::action::regex::{action::Replace, Regex};
 
 /// The type of item that should be queried
 #[derive(Clone, Debug)]
-pub enum QueryKind {
+pub enum ElementKind {
 	/// An HTML tag
 	Tag(String),
 	/// An HTML class
@@ -27,7 +27,7 @@ pub enum QueryKind {
 }
 
 /// The location of the data in the quiried tag
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum DataLocation {
 	/// In the text part of the tag
 	Text,
@@ -36,12 +36,12 @@ pub enum DataLocation {
 }
 
 /// A query for an HTML tag
-#[derive(Debug)]
-pub struct Query {
+#[derive(Clone, Debug)]
+pub struct ElementQuery {
 	/// Query the tag should match against
-	pub kind: QueryKind,
+	pub kind: ElementKind,
 	/// Query the tag should never match
-	pub ignore: Option<Vec<QueryKind>>,
+	pub ignore: Option<Vec<ElementKind>>,
 }
 
 /// A query for a complete HTML tag. Traverses all queries one by one and extracts the data from it's [`DataLocation`], optionally transforming the data via regex
@@ -63,19 +63,13 @@ pub struct Query {
 /// ```
 /// and return "hello, world!"
 #[derive(Debug)]
-pub struct QueryData {
+pub struct ElementDataQuery {
+	/// Whether the query is optional. Ignore the fact it could've not been found if it is
+	pub optional: bool,
 	/// The queries to match against, one by one
-	pub query: Vec<Query>,
+	pub query: Vec<ElementQuery>,
 	/// location of the data to extract
 	pub data_location: DataLocation,
 	/// optional regex to match against and replace with if it matches
 	pub regex: Option<Regex<Replace>>,
-}
-
-// TODO: make query data optional instead
-#[allow(missing_docs)]
-#[derive(Debug)]
-pub struct ImageQuery {
-	pub inner: QueryData,
-	pub optional: bool,
 }

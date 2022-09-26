@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
-pub enum QueryKind {
+pub enum ElementKind {
 	Tag(String),
 	Class(String),
 	Attr { name: String, value: String },
@@ -26,10 +26,10 @@ pub enum DataLocation {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct Query {
+pub struct ElementQuery {
 	#[serde(flatten)]
-	pub kind: QueryKind,
-	pub ignore: Option<Vec<QueryKind>>,
+	pub kind: ElementKind,
+	pub ignore: Option<Vec<ElementKind>>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -39,27 +39,21 @@ pub struct HtmlQueryRegex {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct QueryData {
-	pub query: Vec<Query>,
+pub struct ElementDataQuery {
+	pub optional: Option<bool>,
+	pub query: Vec<ElementQuery>,
 	pub data_location: DataLocation,
 	pub regex: Option<HtmlQueryRegex>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct ImageQuery {
-	optional: Option<bool>,
-	#[serde(flatten)]
-	inner: QueryData,
-}
-
-impl QueryKind {
-	pub fn parse(self) -> c_query::QueryKind {
-		use QueryKind::{Attr, Class, Tag};
+impl ElementKind {
+	pub fn parse(self) -> c_query::ElementKind {
+		use ElementKind::{Attr, Class, Tag};
 
 		match self {
-			Tag(val) => c_query::QueryKind::Tag(val),
-			Class(val) => c_query::QueryKind::Class(val),
-			Attr { name, value } => c_query::QueryKind::Attr { name, value },
+			Tag(val) => c_query::ElementKind::Tag(val),
+			Class(val) => c_query::ElementKind::Class(val),
+			Attr { name, value } => c_query::ElementKind::Attr { name, value },
 		}
 	}
 }
@@ -75,14 +69,25 @@ impl DataLocation {
 	}
 }
 
-impl Query {
-	pub fn parse(self) -> c_query::Query {
-		c_query::Query {
+impl ElementQuery {
+	pub fn parse(self) -> c_query::ElementQuery {
+		c_query::ElementQuery {
 			kind: self.kind.parse(),
 			ignore: self
 				.ignore
-				.map(|v| v.into_iter().map(QueryKind::parse).collect::<Vec<_>>()),
+				.map(|v| v.into_iter().map(ElementKind::parse).collect::<Vec<_>>()),
 		}
+	}
+}
+
+impl ElementDataQuery {
+	pub fn parse(self) -> Result<c_query::ElementDataQuery, Error> {
+		Ok(c_query::ElementDataQuery {
+			optional: self.optional.unwrap_or(false),
+			query: self.query.into_iter().map(ElementQuery::parse).collect(),
+			data_location: self.data_location.parse(),
+			regex: self.regex.map(HtmlQueryRegex::parse).transpose()?,
+		})
 	}
 }
 
@@ -95,24 +100,5 @@ impl HtmlQueryRegex {
 			},
 		)
 		.map_err(Into::into)
-	}
-}
-
-impl QueryData {
-	pub fn parse(self) -> Result<c_query::QueryData, Error> {
-		Ok(c_query::QueryData {
-			query: self.query.into_iter().map(Query::parse).collect(),
-			data_location: self.data_location.parse(),
-			regex: self.regex.map(HtmlQueryRegex::parse).transpose()?,
-		})
-	}
-}
-
-impl ImageQuery {
-	pub fn parse(self) -> Result<c_query::ImageQuery, Error> {
-		Ok(c_query::ImageQuery {
-			optional: self.optional.unwrap_or(false),
-			inner: self.inner.parse()?,
-		})
 	}
 }

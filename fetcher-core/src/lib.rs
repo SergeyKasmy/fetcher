@@ -17,8 +17,8 @@ pub mod error;
 pub mod read_filter;
 pub mod sink;
 pub mod source;
-#[allow(missing_docs)] // TODO
 pub mod task;
+pub mod utils;
 
 use crate::{
 	action::Action,

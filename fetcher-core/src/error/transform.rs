@@ -7,9 +7,8 @@
 #![allow(missing_docs)]
 
 use crate::{
-	action::transform::entry::json::{Key as JsonKey, Keys as JsonKeys},
-	entry::Entry,
-	source::http::TransformFromField,
+	action::transform::entry::html::query::ElementQuery as HtmlElemQuery,
+	action::transform::entry::json::Key as JsonKey, entry::Entry, source::http::TransformFromField,
 };
 
 use std::convert::Infallible;
@@ -74,17 +73,11 @@ pub enum HtmlError {
 	#[error(transparent)]
 	NothingToTransform(#[from] NothingToTransformError),
 
-	#[error("Title not found")]
-	TitleNotFound,
+	#[error("HTML element {0:?} not found")]
+	ElementNotFound(HtmlElemQuery),
 
-	#[error("URL not found")]
-	UrlNotFound,
-
-	#[error("ID not found")]
-	IdNotFound,
-
-	#[error("Image not found but it's not optional")]
-	ImageNotFound,
+	#[error("HTML element {0:?} is empty")]
+	ElementEmpty(HtmlElemQuery),
 
 	#[error(transparent)]
 	InvalidUrl(#[from] InvalidUrlError),
