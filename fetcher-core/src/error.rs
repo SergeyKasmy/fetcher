@@ -6,17 +6,16 @@
 
 //! This module contains all errors that [`fetcher`](`crate`) can emit
 
-// Errors that can happen in [`Sinks`](`crate::sink`)
 pub mod sink;
-// Errors that can happen in [`Sources`](`crate::source`)
 pub mod source;
-
 pub mod transform;
 
-use std::error::Error as StdError;
-use std::fmt::Write as _;
+use self::{
+	source::{ImapError, TwitterError},
+	transform::Error as TransformError,
+};
 
-use self::transform::Error as TransformError;
+use std::{error::Error as StdError, fmt::Write as _};
 
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
@@ -53,43 +52,39 @@ impl Error {
 	#[allow(clippy::match_same_arms)]
 	#[must_use]
 	pub fn is_connection_error(&self) -> Option<&(dyn StdError + Send + Sync)> {
+		// I know it will match any future variants automatically but I actually want it to do that anyways
+		#[allow(clippy::match_wildcard_for_single_variants)]
 		match self {
 			Error::Source(source_err) => match source_err {
 				source::Error::EmptySourceList => None,
 				source::Error::SourceListHasDifferentVariants => None,
 				source::Error::FileRead(_, _) => None,
-				source::Error::Http(http_err) => Some(http_err),
-				// I know it will match any future variants automatically but I actually want it to do that anyways
-				#[allow(clippy::match_wildcard_for_single_variants)]
+				source::Error::Http(_) => Some(self),
 				source::Error::Email(email_err) => match &**email_err {
-					source::EmailError::Imap(imap_err) => Some(imap_err),
+					source::EmailError::Imap(ImapError::TlsInitFailed(_)) => Some(self),
+					source::EmailError::Imap(_) => None,
 					_ => None,
 				},
 				source::Error::Twitter(twitter_err) => match twitter_err {
-					source::TwitterError::Auth(auth_err) => match auth_err {
-						egg_mode::error::Error::NetError(net_err) => Some(net_err),
-						_ => None,
-					},
-					source::TwitterError::Other(other_err) => match other_err {
-						egg_mode::error::Error::NetError(net_err) => Some(net_err),
-						_ => None,
-					},
+					TwitterError::Auth(egg_mode::error::Error::NetError(_)) => Some(self),
+					TwitterError::Other(egg_mode::error::Error::NetError(_)) => Some(self),
+					_ => None,
 				},
 			},
 			Error::Transform(tr_err) => match &tr_err.kind {
-				transform::Kind::Http(transform::HttpError::Other(http_err)) => Some(http_err),
+				transform::Kind::Http(transform::HttpError::Other(_)) => Some(self),
 				_ => None,
 			},
 			Error::Sink(sink_err) => match sink_err {
 				sink::Error::StdoutWrite(_) => None,
 				sink::Error::Telegram {
-					source: teloxide::RequestError::Network(teloxide_network_err),
+					source: teloxide::RequestError::Network(_),
 					..
-				} => Some(teloxide_network_err),
+				} => Some(self),
 				sink::Error::Telegram { .. } => None,
 			},
 			Error::GoogleOAuth2(google_oauth2_err) => match google_oauth2_err {
-				GoogleOAuth2Error::Post(post_err) => Some(post_err),
+				GoogleOAuth2Error::Post(_) => Some(self),
 				GoogleOAuth2Error::Auth(_) => None,
 			},
 			Error::ReadFilterExternalWrite(_) => None,
