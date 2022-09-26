@@ -95,13 +95,13 @@ pub enum JsonError {
 	NothingToTransform(#[from] NothingToTransformError),
 
 	#[error("Invalid JSON")]
-	JsonParseInvalid(#[from] serde_json::error::Error),
+	Invalid(#[from] serde_json::error::Error),
 
 	#[error("JSON key {0} not found")]
-	JsonParseKeyNotFound(JsonKey),
+	KeyNotFound(JsonKey),
 
 	#[error("JSON key {key} wrong type: expected {expected_type}, found {found_type}")]
-	JsonParseKeyWrongType {
+	KeyWrongType {
 		key: JsonKey,
 		expected_type: &'static str,
 		found_type: String,

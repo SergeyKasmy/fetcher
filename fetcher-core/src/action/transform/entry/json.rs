@@ -68,7 +68,7 @@ impl TransformEntry for Json {
 			.try_map(|v| {
 				v.iter().try_fold(&json, |acc, x| {
 					acc.get(x.as_str())
-						.ok_or_else(|| JsonError::JsonParseKeyNotFound(x.clone()))
+						.ok_or_else(|| JsonError::KeyNotFound(x.clone()))
 				})
 			})?
 			.unwrap_or(&json);
@@ -79,7 +79,7 @@ impl TransformEntry for Json {
 			// ignore map keys, iterate over values only
 			Either::Right(items.iter().map(|(_, v)| v))
 		} else {
-			return Err(JsonError::JsonParseKeyWrongType {
+			return Err(JsonError::KeyWrongType {
 				key: self
 					.itemq
 					.as_ref()
@@ -127,11 +127,10 @@ impl Json {
 fn extract_data<'a>(item: &'a Value, queries: &Keys) -> Result<&'a Value, JsonError> {
 	let first = item
 		.get(&queries.get(0).unwrap())
-		.ok_or_else(|| JsonError::JsonParseKeyNotFound(queries.get(0).unwrap().clone()))?;
+		.ok_or_else(|| JsonError::KeyNotFound(queries.get(0).unwrap().clone()))?;
 
 	let data = queries.iter().skip(1).try_fold(first, |val, q| {
-		val.get(&q)
-			.ok_or_else(|| JsonError::JsonParseKeyNotFound(q.clone()))
+		val.get(&q).ok_or_else(|| JsonError::KeyNotFound(q.clone()))
 	})?;
 
 	Ok(data)
@@ -140,13 +139,11 @@ fn extract_data<'a>(item: &'a Value, queries: &Keys) -> Result<&'a Value, JsonEr
 fn extract_string(item: &Value, query_data: &StringQuery) -> Result<String, JsonError> {
 	let data = extract_data(item, &query_data.query)?;
 
-	let s = data
-		.as_str()
-		.ok_or_else(|| JsonError::JsonParseKeyWrongType {
-			key: query_data.query.last().unwrap().clone(),
-			expected_type: "string",
-			found_type: format!("{data:?}"),
-		})?;
+	let s = data.as_str().ok_or_else(|| JsonError::KeyWrongType {
+		key: query_data.query.last().unwrap().clone(),
+		expected_type: "string",
+		found_type: format!("{data:?}"),
+	})?;
 
 	let s = match query_data.regex.as_ref() {
 		Some(r) => r.replace(s),
@@ -174,7 +171,7 @@ fn extract_id(item: &Value, query: &StringQuery) -> Result<String, JsonError> {
 	} else if let Some(id) = id_val.as_u64() {
 		id.to_string()
 	} else {
-		return Err(JsonError::JsonParseKeyWrongType {
+		return Err(JsonError::KeyWrongType {
 			key: query.query.last().unwrap().clone(),
 			expected_type: "string/i64/u64",
 			found_type: format!("{id_val:?}"),
