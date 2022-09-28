@@ -42,6 +42,8 @@ pub struct Html {
 	pub linkq: Option<ElementDataQuery>,
 	/// Query to find the image of that item
 	pub imgq: Option<ElementDataQuery>,
+	/// Don't error out if the HTML page contains an empty body, e.g. if we are being rate-limited
+	pub ignore_empty: bool,
 }
 
 impl TransformEntry for Html {
@@ -58,9 +60,30 @@ impl TransformEntry for Html {
 				.as_str(),
 		);
 
+		let body = soup
+			.get_handle()
+			.tag("body") // use body as the root html node
+			.find()
+			.unwrap_or_else(|| {
+				tracing::debug!("HTML doesn't contain a body, using the root as the body");
+
+				// or use the entire html if it doesn't exist for some reason (I don't think it should?)
+				soup.get_handle()
+			});
+
+		if body.text().trim().is_empty() {
+			tracing::warn!("HTML body is completely empty");
+
+			return if self.ignore_empty {
+				Ok(Vec::new())
+			} else {
+				Err(NothingToTransformError.into())
+			};
+		}
+
 		let items = match self.itemq.as_ref() {
-			Some(itemq) => Either::Left(find_chain(&soup.get_handle(), itemq)?.into_iter()),
-			None => Either::Right(iter::once(soup.get_handle())),
+			Some(itemq) => Either::Left(find_chain(&body, itemq)?.into_iter()),
+			None => Either::Right(iter::once(body)),
 		};
 
 		let entries = items
@@ -127,7 +150,11 @@ fn extract_data(
 	let s = s.trim();
 
 	if s.is_empty() {
-		return Err(HtmlError::ElementEmpty(data_query.query.clone()));
+		return if data_query.optional {
+			Ok(None)
+		} else {
+			Err(HtmlError::ElementEmpty(data_query.query.clone()))
+		};
 	}
 
 	let s = match &data_query.regex {

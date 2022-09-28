@@ -53,8 +53,8 @@ pub enum ImapError {
 	#[error("Failed to init TLS")]
 	TlsInitFailed(#[source] imap::Error),
 
-	#[error("Error authenticating with Google")]
-	GoogleAuth(#[source] Box<crate::Error>),
+	#[error(transparent)]
+	GoogleAuth(Box<crate::Error>),
 
 	#[error("Authentication error")]
 	Auth(#[source] imap::Error),
