@@ -169,7 +169,7 @@ fn find_chain(
 		return Ok(vec![html.get_handle()]);
 	}
 
-	let mut html_nodes: Vec<HtmlNode> = Vec::new();
+	let mut html_nodes = vec![html.get_handle()];
 
 	for elem_query in elem_queries {
 		html_nodes = html_nodes
