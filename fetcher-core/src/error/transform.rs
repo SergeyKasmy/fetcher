@@ -8,7 +8,9 @@
 
 use crate::{
 	action::transform::entry::{
-		html::query::{DataLocation as HtmlDataLocation, ElementQuery as HtmlElemQuery},
+		html::query::{
+			DataLocation as HtmlDataLocation, ElementQuery as HtmlElemQuery, ElementQuerySliceExt,
+		},
 		json::{Key as JsonKey, Keys as JsonKeys},
 	},
 	entry::Entry,
@@ -77,9 +79,9 @@ pub enum HtmlError {
 	#[error(transparent)]
 	NothingToTransform(#[from] NothingToTransformError),
 
-	#[error("HTML element #{} from {:?} not found",
+	#[error("HTML element #{} not found. From query list: \n{}",
 			.num + 1,
-			.elem_list.iter().enumerate().map(|(i, x)| (i + 1, &x.kind)).collect::<Box<[_]>>()
+			.elem_list.display()
 			)]
 	ElementNotFound {
 		num: usize,

@@ -8,6 +8,8 @@
 //! and [`QueryData`] that has everything needed to traverse an entire HTML document in search for a tag,
 //! as well as a way to parse the data contained in it
 
+use std::fmt::Display;
+
 use crate::action::regex::{action::Replace, Regex};
 
 /// The type of item that should be queried
@@ -72,4 +74,45 @@ pub struct ElementDataQuery {
 	pub data_location: DataLocation,
 	/// optional regex to match against and replace with if it matches
 	pub regex: Option<Regex<Replace>>,
+}
+
+/// Extention trait for `&[ElementQuery]` that adds a method that return a pretty Display implementation for itself
+pub trait ElementQuerySliceExt {
+	/// Return a type that implements Display for itself
+	fn display(&self) -> ElementQuerySliceDisplay<'_>;
+}
+
+/// Display implementation for `&[ElementQuery]`
+pub struct ElementQuerySliceDisplay<'a> {
+	slice: &'a [ElementQuery],
+}
+
+impl ElementQuerySliceExt for [ElementQuery] {
+	fn display(&self) -> ElementQuerySliceDisplay<'_> {
+		ElementQuerySliceDisplay { slice: self }
+	}
+}
+
+impl Display for ElementQuerySliceDisplay<'_> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		if self.slice.is_empty() {
+			return write!(f, "[]");
+		}
+
+		writeln!(f, "[")?;
+		for (i, elem) in self.slice.iter().enumerate() {
+			write!(f, "    #{}: ", i + 1)?;
+
+			match &elem.kind {
+				ElementKind::Tag(t) => write!(f, "<{t}/>")?,
+				ElementKind::Class(c) => write!(f, "<tag class=\"{c}\">")?,
+				ElementKind::Attr { name, value } => write!(f, "<tag {name}=\"{value}\"/>")?,
+			}
+
+			writeln!(f, ",")?;
+		}
+		writeln!(f, "]")?;
+
+		Ok(())
+	}
 }
