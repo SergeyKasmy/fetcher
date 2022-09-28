@@ -59,7 +59,7 @@ impl TransformEntry for Html {
 		);
 
 		let items = match self.itemq.as_ref() {
-			Some(itemq) => Either::Left(find_chain(&soup, itemq)?.into_iter()),
+			Some(itemq) => Either::Left(find_chain(&soup.get_handle(), itemq)?.into_iter()),
 			None => Either::Right(iter::once(soup.get_handle())),
 		};
 
@@ -75,7 +75,7 @@ impl TransformEntry for Html {
 
 // TODO: make sure (and add tests!) that it errors if no item was found
 impl Html {
-	fn extract_entry(&self, html: &impl QueryBuilderExt) -> Result<TransformedEntry, HtmlError> {
+	fn extract_entry(&self, html: &HtmlNode) -> Result<TransformedEntry, HtmlError> {
 		let title = self
 			.titleq
 			.as_ref()
@@ -101,7 +101,7 @@ impl Html {
 
 /// Extract data from the provided HTML tags and join them
 fn extract_data(
-	html: &impl QueryBuilderExt,
+	html: &HtmlNode,
 	data_query: &ElementDataQuery,
 ) -> Result<Option<String>, HtmlError> {
 	let data = find_chain(html, &data_query.query)?
@@ -138,10 +138,7 @@ fn extract_data(
 	Ok(Some(s))
 }
 
-fn extract_body(
-	html: &impl QueryBuilderExt,
-	data_queries: &[ElementDataQuery],
-) -> Result<String, HtmlError> {
+fn extract_body(html: &HtmlNode, data_queries: &[ElementDataQuery]) -> Result<String, HtmlError> {
 	Ok(data_queries
 		.iter()
 		.map(|query| extract_data(html, query))
@@ -152,19 +149,13 @@ fn extract_body(
 		.join("\n\n"))
 }
 
-fn extract_url(
-	html: &impl QueryBuilderExt,
-	query: &ElementDataQuery,
-) -> Result<Option<Url>, HtmlError> {
+fn extract_url(html: &HtmlNode, query: &ElementDataQuery) -> Result<Option<Url>, HtmlError> {
 	extract_data(html, query)?
 		.try_map(|url| Url::try_from(url.as_str()).map_err(|e| InvalidUrlError(e, url).into()))
 }
 
 /// Find all elements matching the query in all the provided HTML parts
-fn find_chain(
-	html: &impl QueryBuilderExt,
-	elem_queries: &[ElementQuery],
-) -> Result<Vec<HtmlNode>, HtmlError> {
+fn find_chain(html: &HtmlNode, elem_queries: &[ElementQuery]) -> Result<Vec<HtmlNode>, HtmlError> {
 	if elem_queries.is_empty() {
 		return Ok(vec![html.get_handle()]);
 	}
@@ -174,7 +165,7 @@ fn find_chain(
 	for elem_query in elem_queries {
 		html_nodes = html_nodes
 			.into_iter()
-			.flat_map(|html| find(&html, elem_query))
+			.flat_map(|html| find(html, elem_query))
 			.collect();
 
 		if html_nodes.is_empty() {
@@ -189,7 +180,9 @@ fn find_chain(
 }
 
 /// Find items matching the query in the provided HTML part
-fn find(html: &impl QueryBuilderExt, elem_query: &ElementQuery) -> Vec<HtmlNode> {
+// I'm pretty sure this shouldn't capture from elem_query, so this is probably a bug in Soup
+#[allow(clippy::needless_pass_by_value)]
+fn find(html: HtmlNode, elem_query: &ElementQuery) -> impl Iterator<Item = HtmlNode> + '_ {
 	match &elem_query.kind {
 		ElementKind::Tag(val) => html.tag(val.as_str()).find_all(),
 		ElementKind::Class(val) => html.class(val.as_str()).find_all(),
@@ -214,7 +207,6 @@ fn find(html: &impl QueryBuilderExt, elem_query: &ElementQuery) -> Vec<HtmlNode>
 
 		true
 	})
-	.collect()
 }
 
 /*
