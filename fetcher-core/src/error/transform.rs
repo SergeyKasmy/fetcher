@@ -77,9 +77,12 @@ pub enum HtmlError {
 	#[error(transparent)]
 	NothingToTransform(#[from] NothingToTransformError),
 
-	#[error("HTML element {name:?} not found in {elem_list:?}")]
+	#[error("HTML element #{} from {:?} not found",
+			.num + 1,
+			.elem_list.iter().enumerate().map(|(i, x)| (i + 1, &x.kind)).collect::<Box<[_]>>()
+			)]
 	ElementNotFound {
-		name: HtmlElemQuery,
+		num: usize,
 		elem_list: Vec<HtmlElemQuery>,
 	},
 

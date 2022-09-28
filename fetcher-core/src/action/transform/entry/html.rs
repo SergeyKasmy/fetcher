@@ -162,7 +162,7 @@ fn find_chain(html: &HtmlNode, elem_queries: &[ElementQuery]) -> Result<Vec<Html
 
 	let mut html_nodes = vec![html.get_handle()];
 
-	for elem_query in elem_queries {
+	for (i, elem_query) in elem_queries.iter().enumerate() {
 		html_nodes = html_nodes
 			.into_iter()
 			.flat_map(|html| find(html, elem_query))
@@ -170,7 +170,7 @@ fn find_chain(html: &HtmlNode, elem_queries: &[ElementQuery]) -> Result<Vec<Html
 
 		if html_nodes.is_empty() {
 			return Err(HtmlError::ElementNotFound {
-				name: elem_query.clone(),
+				num: i,
 				elem_list: elem_queries.to_vec(),
 			});
 		}
