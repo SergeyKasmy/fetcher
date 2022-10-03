@@ -76,7 +76,14 @@ impl TransformEntry for Html {
 		}
 
 		let items = match self.itemq.as_ref() {
-			Some(itemq) => Either::Left(find_chain(&body, itemq)?.into_iter()),
+			Some(itemq) => Either::Left(
+				find_chain(&body, itemq)
+					.map_err(|i| HtmlError::ElementNotFound {
+						num: i,
+						elem_list: itemq.clone(),
+					})?
+					.into_iter(),
+			),
 			None => Either::Right(iter::once(body)),
 		};
 
@@ -121,21 +128,29 @@ fn extract_data(
 	html: &HtmlNode,
 	data_query: &ElementDataQuery,
 ) -> Result<Option<String>, HtmlError> {
-	let data = find_chain(html, &data_query.query)?
-		.into_iter()
-		.map(|hndl| match &data_query.data_location {
-			DataLocation::Text => Some(hndl.text()),
-			DataLocation::Attr(v) => hndl.get(v),
-		})
-		.collect::<Option<Vec<_>>>();
+	let data = find_chain(html, &data_query.query).map(|nodes| {
+		nodes
+			.into_iter()
+			.map(|hndl| match &data_query.data_location {
+				DataLocation::Text => Some(hndl.text()),
+				DataLocation::Attr(v) => hndl.get(v),
+			})
+			.collect::<Option<Vec<_>>>()
+	});
 
 	let data = match data {
-		Some(v) => v,
-		None if data_query.optional => return Ok(None),
-		None => {
+		Ok(Some(v)) => v,
+		Ok(None) | Err(_) if data_query.optional => return Ok(None),
+		Ok(None) => {
 			return Err(HtmlError::DataNotFoundInElement {
 				data: data_query.data_location.clone(),
 				element: data_query.query.clone(),
+			});
+		}
+		Err(i) => {
+			return Err(HtmlError::ElementNotFound {
+				num: i,
+				elem_list: data_query.query.clone(),
 			});
 		}
 	};
@@ -176,7 +191,10 @@ fn extract_url(html: &HtmlNode, query: &ElementDataQuery) -> Result<Option<Url>,
 }
 
 /// Find all elements matching the query in all the provided HTML parts
-fn find_chain(html: &HtmlNode, elem_queries: &[ElementQuery]) -> Result<Vec<HtmlNode>, HtmlError> {
+///
+/// # Errors
+/// Errors if the element in the `elem_queries` list wasn't found and returns the id of the query that wasn't found
+fn find_chain(html: &HtmlNode, elem_queries: &[ElementQuery]) -> Result<Vec<HtmlNode>, usize> {
 	if elem_queries.is_empty() {
 		return Ok(vec![html.get_handle()]);
 	}
@@ -190,10 +208,7 @@ fn find_chain(html: &HtmlNode, elem_queries: &[ElementQuery]) -> Result<Vec<Html
 			.collect();
 
 		if html_nodes.is_empty() {
-			return Err(HtmlError::ElementNotFound {
-				num: i,
-				elem_list: elem_queries.to_vec(),
-			});
+			return Err(i);
 		}
 	}
 
