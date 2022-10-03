@@ -58,17 +58,9 @@ pub enum HttpError {
 }
 
 #[derive(thiserror::Error, Debug)]
-#[error("There's nothing to transform")]
-pub struct NothingToTransformError;
-
-#[derive(thiserror::Error, Debug)]
-#[error("Invalid URL: {1}")]
-pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
-
-#[derive(thiserror::Error, Debug)]
 pub enum FeedError {
 	#[error(transparent)]
-	NothingToTransform(#[from] NothingToTransformError),
+	RawContentsNotSet(#[from] RawContentsNotSetError),
 
 	#[error(transparent)]
 	Other(#[from] feed_rs::parser::ParseFeedError),
@@ -77,7 +69,7 @@ pub enum FeedError {
 #[derive(thiserror::Error, Debug)]
 pub enum HtmlError {
 	#[error(transparent)]
-	NothingToTransform(#[from] NothingToTransformError),
+	RawContentsNotSet(#[from] RawContentsNotSetError),
 
 	#[error("HTML element #{} not found. From query list: \n{}",
 			.num + 1,
@@ -110,7 +102,7 @@ pub enum HtmlError {
 #[derive(thiserror::Error, Debug)]
 pub enum JsonError {
 	#[error(transparent)]
-	NothingToTransform(#[from] NothingToTransformError),
+	RawContentsNotSet(#[from] RawContentsNotSetError),
 
 	#[error("Invalid JSON")]
 	Invalid(#[from] serde_json::error::Error),
@@ -140,6 +132,14 @@ pub enum RegexError {
 	#[error("No match found in {0:?}")]
 	NoMatchFound(String),
 }
+
+#[derive(thiserror::Error, Debug)]
+#[error("There's nothing to transform from")]
+pub struct RawContentsNotSetError;
+
+#[derive(thiserror::Error, Debug)]
+#[error("Invalid URL: {1}")]
+pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
 
 impl From<Infallible> for Kind {
 	fn from(inf: Infallible) -> Self {

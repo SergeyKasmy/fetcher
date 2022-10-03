@@ -15,7 +15,7 @@ use super::TransformEntry;
 use crate::{
 	action::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
 	entry::Entry,
-	error::transform::{HtmlError, InvalidUrlError, NothingToTransformError},
+	error::transform::{HtmlError, InvalidUrlError, RawContentsNotSetError},
 	sink::Media,
 	utils::OptionExt,
 };
@@ -42,8 +42,6 @@ pub struct Html {
 	pub linkq: Option<ElementDataQuery>,
 	/// Query to find the image of that item
 	pub imgq: Option<ElementDataQuery>,
-	/// Don't error out if the HTML page contains an empty body, e.g. if we are being rate-limited
-	pub ignore_empty: bool,
 }
 
 impl TransformEntry for Html {
@@ -56,7 +54,7 @@ impl TransformEntry for Html {
 			entry
 				.raw_contents
 				.as_ref()
-				.ok_or(NothingToTransformError)?
+				.ok_or(RawContentsNotSetError)?
 				.as_str(),
 		);
 
@@ -74,11 +72,7 @@ impl TransformEntry for Html {
 		if body.text().trim().is_empty() {
 			tracing::warn!("HTML body is completely empty");
 
-			return if self.ignore_empty {
-				Ok(Vec::new())
-			} else {
-				Err(NothingToTransformError.into())
-			};
+			return Ok(Vec::new());
 		}
 
 		let items = match self.itemq.as_ref() {
@@ -111,7 +105,7 @@ impl Html {
 
 		Ok(TransformedEntry {
 			id: TrRes::Old(id),
-			raw_contents: TrRes::Old(body.clone()), // TODO: add an ability to choose if raw_contents should be kept from prev step
+			raw_contents: TrRes::Old(body.clone()),
 			msg: TransformedMessage {
 				title: TrRes::Old(title),
 				body: TrRes::Old(body),

@@ -10,7 +10,7 @@ use super::TransformEntry;
 use crate::{
 	action::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
 	entry::Entry,
-	error::transform::{FeedError, NothingToTransformError},
+	error::transform::{FeedError, RawContentsNotSetError},
 };
 
 use tap::{TapFallible, TapOptional};
@@ -30,7 +30,7 @@ impl TransformEntry for Feed {
 			entry
 				.raw_contents
 				.as_ref()
-				.ok_or(NothingToTransformError)?
+				.ok_or(RawContentsNotSetError)?
 				.as_bytes(),
 		)?;
 

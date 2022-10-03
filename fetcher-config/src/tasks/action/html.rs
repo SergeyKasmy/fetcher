@@ -31,8 +31,6 @@ pub struct Html {
 
 	#[serde(rename = "img_query")]
 	pub imgq: Option<ElementDataQuery>,
-
-	pub ignore_empty: Option<bool>,
 }
 
 impl Html {
@@ -50,7 +48,6 @@ impl Html {
 			idq: self.idq.try_map(ElementDataQuery::parse)?,
 			linkq: self.linkq.try_map(ElementDataQuery::parse)?,
 			imgq: self.imgq.try_map(ElementDataQuery::parse)?,
-			ignore_empty: self.ignore_empty.unwrap_or(true),
 		})
 	}
 }

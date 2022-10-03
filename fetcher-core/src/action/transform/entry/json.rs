@@ -13,7 +13,7 @@ use crate::{
 		transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
-	error::transform::{InvalidUrlError, JsonError, NothingToTransformError},
+	error::transform::{InvalidUrlError, JsonError, RawContentsNotSetError},
 	sink::Media,
 	utils::OptionExt,
 };
@@ -60,7 +60,7 @@ impl TransformEntry for Json {
 	#[tracing::instrument(skip_all)]
 	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
 		let json: Value =
-			serde_json::from_str(entry.raw_contents.as_ref().ok_or(NothingToTransformError)?)?;
+			serde_json::from_str(entry.raw_contents.as_ref().ok_or(RawContentsNotSetError)?)?;
 
 		let items = self
 			.itemq
