@@ -34,17 +34,20 @@ use std::collections::HashSet;
 /// # Errors
 /// If there was an error fetching the data, sending the data, or saving what data was successfully sent to an external location
 pub async fn run_task(t: &mut Task) -> Result<(), Error> {
-	tracing::trace!("Running task: {:#?}", t);
+	tracing::trace!("Running task");
 
 	let entries = {
 		let raw = t.source.get().await?;
+
+		tracing::trace!("Got {} raw entries from the source(s)", raw.len());
 
 		let processed = match &t.actions {
 			Some(actions) => process_entries(raw, actions).await?,
 			None => raw,
 		};
 
-		// TODO: make this an action mb?
+		tracing::trace!("Got {} fully processed entries", processed.len());
+
 		remove_duplicates(processed)
 	};
 
@@ -81,6 +84,8 @@ async fn process_entries(
 }
 
 fn remove_duplicates(entries: Vec<Entry>) -> Vec<Entry> {
+	let num_og_entries = entries.len();
+
 	let mut uniq = Vec::new();
 	let mut used_ids = HashSet::new();
 
@@ -94,6 +99,11 @@ fn remove_duplicates(entries: Vec<Entry>) -> Vec<Entry> {
 			}
 			None => uniq.push(ent),
 		}
+	}
+
+	let num_removed = num_og_entries - uniq.len();
+	if num_removed > 0 {
+		tracing::trace!("Removed {} duplicate entries", num_removed);
 	}
 
 	uniq

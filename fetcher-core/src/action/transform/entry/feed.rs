@@ -24,7 +24,7 @@ impl TransformEntry for Feed {
 	type Error = FeedError;
 
 	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
-		tracing::debug!("Parsing feed entries");
+		tracing::trace!("Parsing feed entries");
 
 		let feed = feed_rs::parser::parse(
 			entry

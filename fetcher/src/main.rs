@@ -35,7 +35,9 @@ use tracing::Instrument;
 
 fn main() -> Result<()> {
 	set_up_logging()?;
-	async_main()
+	async_main()?;
+
+	Ok(())
 }
 
 fn set_up_logging() -> Result<()> {
