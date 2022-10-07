@@ -131,9 +131,12 @@ fn extract_data(
 	let data = find_chain(html, &data_query.query).map(|nodes| {
 		nodes
 			.into_iter()
-			.map(|hndl| match &data_query.data_location {
-				DataLocation::Text => Some(hndl.text()),
-				DataLocation::Attr(v) => hndl.get(v),
+			.map(|hndl| {
+				match &data_query.data_location {
+					DataLocation::Text => Some(hndl.text()),
+					DataLocation::Attr(v) => hndl.get(v),
+				}
+				.map(|s| s.trim().to_owned())
 			})
 			.collect::<Option<Vec<_>>>()
 	});
@@ -155,8 +158,7 @@ fn extract_data(
 		}
 	};
 
-	let s = data.join("\n\n"); // lifetime workaround
-	let s = s.trim();
+	let s = data.join("\n\n");
 
 	if s.is_empty() {
 		return if data_query.optional {
@@ -167,8 +169,8 @@ fn extract_data(
 	}
 
 	let s = match &data_query.regex {
-		Some(r) => r.replace(s).into_owned(),
-		None => s.to_owned(),
+		Some(r) => r.replace(&s).into_owned(),
+		None => s,
 	};
 
 	Ok(Some(s))

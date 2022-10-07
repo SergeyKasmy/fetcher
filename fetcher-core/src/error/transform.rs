@@ -11,7 +11,7 @@ use crate::{
 		html::query::{
 			DataLocation as HtmlDataLocation, ElementQuery as HtmlElemQuery, ElementQuerySliceExt,
 		},
-		json::{Key as JsonKey, Keys as JsonKeys},
+		json::Keys as JsonKeys,
 	},
 	entry::Entry,
 	source::http::TransformFromField,
@@ -80,7 +80,8 @@ pub enum HtmlError {
 		elem_list: Vec<HtmlElemQuery>,
 	},
 
-	#[error("Data not found at {data:?} in element {element:?}")]
+	#[error("Data not found at {data:?} in element fount at {}",
+			.element.display())]
 	DataNotFoundInElement {
 		data: HtmlDataLocation,
 		element: Vec<HtmlElemQuery>,
@@ -107,8 +108,8 @@ pub enum JsonError {
 	#[error("Invalid JSON")]
 	Invalid(#[from] serde_json::error::Error),
 
-	#[error("JSON key {name} not found in {key_list:?}")]
-	KeyNotFound { name: JsonKey, key_list: JsonKeys },
+	#[error("JSON key #{num} not found. From query list: {key_list:?}")]
+	KeyNotFound { num: usize, key_list: JsonKeys },
 
 	#[error("JSON key {key:?} wrong type: expected {expected_type}, found {found_type}")]
 	KeyWrongType {

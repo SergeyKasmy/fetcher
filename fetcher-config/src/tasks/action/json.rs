@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Json {
 	#[serde(rename = "item_query")]
-	pub itemq: Option<Keys>,
+	pub itemq: Option<Query>,
 
 	#[serde(rename = "title_query")]
 	pub titleq: Option<StringQuery>,
@@ -38,8 +38,16 @@ pub type Keys = Vec<String>;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct StringQuery {
-	pub query: Keys,
+	#[serde(flatten)]
+	pub query: Query,
 	pub regex: Option<JsonQueryRegex>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct Query {
+	#[serde(rename = "query")]
+	pub keys: Keys,
+	pub optional: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -51,7 +59,7 @@ pub struct JsonQueryRegex {
 impl Json {
 	pub fn parse(self) -> Result<c_json::Json, Error> {
 		Ok(c_json::Json {
-			itemq: self.itemq,
+			itemq: self.itemq.map(Query::parse),
 			titleq: self.titleq.try_map(StringQuery::parse)?,
 
 			textq: self.textq.try_map(|v| {
@@ -75,9 +83,18 @@ impl Json {
 impl StringQuery {
 	pub fn parse(self) -> Result<c_json::StringQuery, Error> {
 		Ok(c_json::StringQuery {
-			query: self.query,
+			query: self.query.parse(),
 			regex: self.regex.try_map(JsonQueryRegex::parse)?,
 		})
+	}
+}
+
+impl Query {
+	pub fn parse(self) -> c_json::Query {
+		c_json::Query {
+			keys: self.keys,
+			optional: self.optional.unwrap_or(false),
+		}
 	}
 }
 
