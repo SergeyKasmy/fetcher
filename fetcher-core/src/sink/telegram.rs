@@ -13,7 +13,7 @@ use crate::{
 
 use std::time::Duration;
 use teloxide::{
-	payloads::SendMessageSetters,
+	payloads::{SendMediaGroupSetters, SendMessageSetters},
 	requests::{Request, Requester},
 	types::{
 		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, Message as TelMessage,
@@ -100,19 +100,27 @@ impl Telegram {
 				tail: tail.as_deref(),
 			};
 
+			let mut previous_message = None;
+
 			// if the message contains media, send it and MAX_MEDIA_MSG_LEN chars first
 			if let Some(media) = media {
 				let media_caption = msg_parts
 					.split_msg_at(MAX_MEDIA_MSG_LEN)
 					.expect("should always return a valid split at least once since msg char len is > max_char_limit");
 
-				self.send_media(&media, &media_caption).await?;
+				let sent_msg = self
+					.send_media_with_reply_id(&media, &media_caption, previous_message)
+					.await?;
+				previous_message = Some(sent_msg[0].id);
 			}
 
 			// send all remaining text in splits of MAX_TEXT_MSG_LEN
 			// whether we sent a media message first is not important
 			while let Some(text) = msg_parts.split_msg_at(MAX_TEXT_MSG_LEN) {
-				self.send_text(&text).await?;
+				let sent_msg = self
+					.send_text_with_reply_id(&text, previous_message)
+					.await?;
+				previous_message = Some(sent_msg.id);
 			}
 		} else {
 			let text = format!(
@@ -132,20 +140,33 @@ impl Telegram {
 		Ok(())
 	}
 
-	// TODO: move error handling out to dedup send_text & send_media
 	async fn send_text(&self, message: &str) -> Result<TelMessage, SinkError> {
+		self.send_text_with_reply_id(message, None).await
+	}
+
+	// TODO: move error handling out to dedup send_text & send_media
+	async fn send_text_with_reply_id(
+		&self,
+		message: &str,
+		reply_to_msg_id: Option<i32>,
+	) -> Result<TelMessage, SinkError> {
 		tracing::trace!("About to send a text message with contents: {message:?}");
 		loop {
 			tracing::info!("Sending text message");
 
-			match self
+			let send_msg_cmd = self
 				.bot
 				.send_message(self.chat_id, message)
 				.parse_mode(ParseMode::Html)
-				.disable_web_page_preview(true)
-				.send()
-				.await
-			{
+				.disable_web_page_preview(true);
+
+			let send_msg_cmd = if let Some(id) = reply_to_msg_id {
+				send_msg_cmd.reply_to_message_id(id)
+			} else {
+				send_msg_cmd
+			};
+
+			match send_msg_cmd.send().await {
 				Ok(message) => return Ok(message),
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tracing::warn!(
@@ -168,6 +189,15 @@ impl Telegram {
 		&self,
 		media: &[Media],
 		caption: &str,
+	) -> Result<Vec<TelMessage>, SinkError> {
+		self.send_media_with_reply_id(media, caption, None).await
+	}
+
+	async fn send_media_with_reply_id(
+		&self,
+		media: &[Media],
+		caption: &str,
+		reply_to_msg_id: Option<i32>,
 	) -> Result<Vec<TelMessage>, SinkError> {
 		tracing::trace!(
 			"About to send a media message with caption: {caption:?}, and media: {media:?}"
@@ -194,12 +224,15 @@ impl Telegram {
 		loop {
 			tracing::info!("Sending media message");
 
-			match self
-				.bot
-				.send_media_group(self.chat_id, media.clone())
-				.send()
-				.await
-			{
+			let send_msg_cmd = self.bot.send_media_group(self.chat_id, media.clone());
+
+			let send_msg_cmd = if let Some(id) = reply_to_msg_id {
+				send_msg_cmd.reply_to_message_id(id)
+			} else {
+				send_msg_cmd
+			};
+
+			match send_msg_cmd.send().await {
 				Ok(messages) => return Ok(messages),
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tracing::warn!(
