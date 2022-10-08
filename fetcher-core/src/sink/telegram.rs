@@ -13,21 +13,18 @@ use crate::{
 
 use std::time::Duration;
 use teloxide::{
-	// adaptors::{throttle::Limits, Throttle},
 	payloads::SendMessageSetters,
 	requests::{Request, Requester},
 	types::{
 		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, Message as TelMessage,
 		ParseMode,
 	},
-	ApiError,
-	Bot,
-	RequestError,
+	ApiError, Bot, RequestError,
 };
 use url::Url;
 
-// FIXME: it's 1024 for media captions and 4096 for normal messages
-const MAX_MSG_LEN: usize = 1024;
+const MAX_MEDIA_MSG_LEN: usize = 1024;
+const MAX_TEXT_MSG_LEN: usize = 4096;
 
 /// Telegram sink. Supports text and media messages and embeds text into media captions if present. Automatically splits the text into separate messages if it's too long
 pub struct Telegram {
@@ -77,62 +74,59 @@ impl Telegram {
 			media.is_some(),
 		);
 
-		let title = title.map(|s| teloxide::utils::html::escape(&s));
 		let body = body.map(|s| teloxide::utils::html::escape(&s));
+		let (head, tail) = format_head_tail(
+			title.map(|s| teloxide::utils::html::escape(&s)),
+			link,
+			tag,
+			self.link_location,
+		);
 
-		let (head, tail) = self.format_head_tail(title, link, tag);
-		let body = body.unwrap_or_default();
-
-		// TODO: send media with the first message
-		// TODO: maybe add an option to make all consecutive messages reply to the prev ones
-		let text = {
-			if body.chars().count() + head.chars().count() + tail.chars().count() > MAX_MSG_LEN {
-				let mut msg_parts = split_msg_into_parts(head, body, tail);
-				let last = msg_parts.pop().expect("The entire message is confirmed to be too long and thus the split fn should always return at least 2 message parts");
-
-				for msg_part in msg_parts {
-					self.send_text(&msg_part).await?;
-				}
-
-				last
-			} else {
-				format!("{head}{body}{tail}")
-			}
+		let max_char_limit = if media.is_some() {
+			MAX_MEDIA_MSG_LEN
+		} else {
+			MAX_TEXT_MSG_LEN
 		};
 
-		if let Some(media) = media {
-			let media = media
-				.into_iter()
-				.map(|x| match x {
-					Media::Photo(url) => InputMedia::Photo(
-						InputMediaPhoto::new(InputFile::url(url))
-							.caption(text.clone())
-							.parse_mode(ParseMode::Html),
-					),
-					Media::Video(url) => InputMedia::Video(
-						InputMediaVideo::new(InputFile::url(url))
-							.caption(text.clone())
-							.parse_mode(ParseMode::Html),
-					),
-				})
-				.collect::<Vec<InputMedia>>();
+		// if total message char len is bigger than max_char_limit (depending on whether the message contains media)
+		if head.as_ref().map_or(0, |s| s.chars().count())
+			+ body.as_ref().map_or(0, |s| s.chars().count())
+			+ tail.as_ref().map_or(0, |s| s.chars().count())
+			> max_char_limit
+		{
+			let mut msg_parts = MsgParts {
+				head: head.as_deref(),
+				body: body.as_deref(),
+				tail: tail.as_deref(),
+			};
 
-			match self.send_media(media).await {
-				Err(SinkError::Telegram {
-					source: RequestError::Api(ApiError::Unknown(e)),
-					msg: _,
-				}) if e.contains("Failed to get HTTP URL content")
-					|| e.contains("Wrong file identifier/HTTP URL specified") =>
-				{
-					// TODO: reupload the image manually if this happens
-					tracing::warn!("Telegram disapproved of the media URL ({e}), sending the message as pure text");
-					self.send_text(&text).await?;
-				}
-				Ok(_) => (),
-				Err(e) => return Err(e),
+			// if the message contains media, send it and MAX_MEDIA_MSG_LEN chars first
+			if let Some(media) = media {
+				let media_caption = msg_parts
+					.split_msg_at(MAX_MEDIA_MSG_LEN)
+					.expect("should always return a valid split at least once since msg char len is > max_char_limit");
+
+				self.send_media(&media, &media_caption).await?;
+			}
+
+			// send all remaining text in splits of MAX_TEXT_MSG_LEN
+			// whether we sent a media message first is not important
+			while let Some(text) = msg_parts.split_msg_at(MAX_TEXT_MSG_LEN) {
+				self.send_text(&text).await?;
 			}
 		} else {
-			self.send_text(&text).await?;
+			let text = format!(
+				"{}{}{}",
+				head.as_deref().unwrap_or_default(),
+				body.as_deref().unwrap_or_default(),
+				tail.as_deref().unwrap_or_default()
+			);
+
+			if let Some(media) = media {
+				self.send_media(&media, &text).await?;
+			} else {
+				self.send_text(&text).await?;
+			}
 		}
 
 		Ok(())
@@ -140,10 +134,9 @@ impl Telegram {
 
 	// TODO: move error handling out to dedup send_text & send_media
 	async fn send_text(&self, message: &str) -> Result<TelMessage, SinkError> {
+		tracing::trace!("About to send a text message with contents: {message:?}");
 		loop {
 			tracing::info!("Sending text message");
-			// TODO: move to the Sink::send() despetcher method mb
-			tracing::trace!("Message contents: {message:?}");
 
 			match self
 				.bot
@@ -171,10 +164,35 @@ impl Telegram {
 		}
 	}
 
-	async fn send_media(&self, media: Vec<InputMedia>) -> Result<Vec<TelMessage>, SinkError> {
+	async fn send_media(
+		&self,
+		media: &[Media],
+		caption: &str,
+	) -> Result<Vec<TelMessage>, SinkError> {
+		tracing::trace!(
+			"About to send a media message with caption: {caption:?}, and media: {media:?}"
+		);
+
+		let media = media
+			.iter()
+			.map(|x| match x {
+				Media::Photo(url) => InputMedia::Photo(
+					InputMediaPhoto::new(InputFile::url(url.clone()))
+						.caption(caption)
+						.parse_mode(ParseMode::Html),
+				),
+				Media::Video(url) => InputMedia::Video(
+					InputMediaVideo::new(InputFile::url(url.clone()))
+						.caption(caption)
+						.parse_mode(ParseMode::Html),
+				),
+			})
+			.collect::<Vec<InputMedia>>();
+
+		let mut retry_counter = 0;
+
 		loop {
 			tracing::info!("Sending media message");
-			tracing::trace!("Message contents: {media:?}");
 
 			match self
 				.bot
@@ -190,11 +208,26 @@ impl Telegram {
 					);
 					tokio::time::sleep(retry_after).await;
 				}
-				Err(RequestError::Api(ApiError::Unknown(err_str)))
-					if err_str == "Bad Request: failed to get HTTP URL content" =>
-				{
-					tracing::warn!("{err_str}. Retrying in 30 seconds");
+				Err(e @ RequestError::Api(ApiError::FailedToGetUrlContent)) => {
+					if retry_counter > 5 {
+						tracing::error!(
+							"Telegram failed tp get URL content too many times, exiting..."
+						);
+
+						return Err(SinkError::Telegram {
+							source: e,
+							msg: Box::new(media),
+						});
+					}
+					tracing::warn!("Telegram failed to get URL content. Retrying in 30 seconds");
 					tokio::time::sleep(Duration::from_secs(30)).await;
+
+					retry_counter += 1;
+				}
+				Err(RequestError::Api(ApiError::WrongFileIdOrUrl)) => {
+					// TODO: reupload the image manually if this happens
+					tracing::warn!("Telegram disliked the media URL (\"Bad Request: wrong file identifier/HTTP URL specified\"), sending the message as pure text");
+					self.send_text(caption).await?;
 				}
 				Err(e) => {
 					return Err(SinkError::Telegram {
@@ -205,104 +238,111 @@ impl Telegram {
 			}
 		}
 	}
-
-	fn format_head_tail(
-		&self,
-		title: Option<String>,
-		link: Option<Url>,
-		tag: Option<&str>,
-	) -> (String, String) {
-		// tried using Option here but ended up using unwrap_or_default() later anyways, so I'd thought why not use empty strings directly.
-		// Sadly they aren't ZST but 24 bytes but that shouldn't be ~too~ much...
-		let (mut head, tail) = match (title, link) {
-			// if title and link are both presend
-			(Some(title), Some(link)) => match self.link_location {
-				// and the link should be in the title, then combine them
-				LinkLocation::PreferTitle => {
-					(format!("<a href=\"{link}\">{title}</a>\n"), String::new())
-				}
-				// even it should be at the bottom, return both separately
-				LinkLocation::Bottom => (
-					format!("{title}\n\n"),
-					format!("\n<a href=\"{link}\">Link</a>"),
-				),
-			},
-			// if only the title is presend, just print itself with an added newline
-			(Some(title), None) => (format!("{title}\n\n"), String::new()),
-			// and if only the link is present, but it at the bottom of the message, even if it should try to be in the title
-			(None, Some(link)) => (String::new(), format!("\n<a href=\"{link}\">Link</a>")),
-			(None, None) => (String::new(), String::new()),
-		};
-
-		if let Some(tag) = tag {
-			let tag = tag.replace(
-				|c| match c {
-					'_' => false,
-					c if c.is_alphabetic() || c.is_ascii_digit() => false,
-					_ => true,
-				},
-				"_",
-			);
-
-			head.insert_str(0, &format!("#{tag}\n\n",));
-		}
-
-		(head, tail)
-	}
 }
 
-#[allow(clippy::needless_pass_by_value)] // I want to take ownership of the msg parts to avoid using them later by mistake
-fn split_msg_into_parts(head: String, body: String, tail: String) -> Vec<String> {
-	let body_char_num = body.chars().count();
-	let head_char_num = head.chars().count();
-	let tail_char_num = tail.chars().count();
+fn format_head_tail(
+	title: Option<String>,
+	link: Option<Url>,
+	tag: Option<&str>,
+	link_location: LinkLocation,
+) -> (Option<String>, Option<String>) {
+	let (mut head, tail) = match (title, link) {
+		// if title and link are both presend
+		(Some(title), Some(link)) => match link_location {
+			// and the link should be in the title, then combine them
+			LinkLocation::PreferTitle => (Some(format!("<a href=\"{link}\">{title}</a>\n")), None),
+			// even it should be at the bottom, return both separately
+			LinkLocation::Bottom => (
+				Some(format!("{title}\n\n")),
+				Some(format!("\n<a href=\"{link}\">Link</a>")),
+			),
+		},
+		// if only the title is presend, just print itself with an added newline
+		(Some(title), None) => (Some(format!("{title}\n\n")), None),
+		// and if only the link is present, but it at the bottom of the message, even if it should try to be in the title
+		(None, Some(link)) => (None, Some(format!("\n<a href=\"{link}\">Link</a>"))),
+		(None, None) => (None, None),
+	};
 
-	assert!(head_char_num < MAX_MSG_LEN);
-	assert!(tail_char_num < MAX_MSG_LEN);
+	if let Some(tag) = tag {
+		let tag = tag.replace(
+			|c| match c {
+				'_' => false,
+				c if c.is_alphabetic() || c.is_ascii_digit() => false,
+				_ => true,
+			},
+			"_",
+		);
 
-	let mut parts: Vec<String> = Vec::new();
+		let mut head_wip = head.unwrap_or_default();
+		head_wip.insert_str(0, &format!("#{tag}\n\n"));
 
-	// first part with head and as much body as we can fit
-	let send_till = MAX_MSG_LEN - head.chars().count();
-	let body_first_part = body.chars().take(send_till).collect::<String>();
-	parts.push(format!("{head}{body_first_part}"));
-
-	let mut next_body_part_from = send_till + 1;
-
-	// split the rest of body into parts
-	loop {
-		if next_body_part_from >= body_char_num {
-			break;
-		}
-
-		let next_body_part_chars_count =
-			std::cmp::min(MAX_MSG_LEN, body_char_num - next_body_part_from);
-
-		let part = body
-			.chars()
-			.skip(next_body_part_from)
-			.take(MAX_MSG_LEN)
-			.collect::<String>();
-
-		if !part.is_empty() {
-			parts.push(part);
-		}
-
-		next_body_part_from += next_body_part_chars_count;
+		head = Some(head_wip);
 	}
 
-	// put tail into the last part of body if it fits, otherwise put it into it's owm part
-	if let Some(last) = parts.last_mut() {
-		if last.chars().count() < MAX_MSG_LEN - tail_char_num {
-			last.push_str(&tail);
-		} else {
-			parts.push(tail);
-		}
-	} else {
-		parts.push(tail);
-	}
+	(head, tail)
+}
 
-	parts
+/// All parts of a message. `head` and `tail` can't be split over several messages, `body` can
+#[derive(Debug)]
+struct MsgParts<'a> {
+	head: Option<&'a str>,
+	body: Option<&'a str>,
+	tail: Option<&'a str>,
+}
+
+impl MsgParts<'_> {
+	/// returns head/body/tail as a formatted message at most `len` long.
+	/// Acts similarly to a fused iterator and returns Some(msg) until every part of the message has been sent, afterwards always returns None
+	fn split_msg_at(&mut self, len: usize) -> Option<String> {
+		if self.head.is_none() && self.body.is_none() && self.tail.is_none() {
+			return None;
+		}
+
+		// make sure the entire head or tail can fit into the requested split
+		assert!(len >= self.head.map_or(0, |s| s.chars().count()));
+		assert!(len >= self.tail.map_or(0, |s| s.chars().count()));
+
+		let mut split_part = String::with_capacity(len);
+
+		// put the entire head into the split
+		if let Some(head) = self.head.take() {
+			split_part.push_str(head);
+		}
+
+		if let Some(body) = self.body.take() {
+			// find out how much space has remained for the body
+			let space_left_for_body = len.checked_sub(split_part.chars().count()).expect("only the head should've been pushed to the split and we asserted that it isn't longer than len");
+
+			// find the index at which point the body no longer fits into the split
+			let body_fits_till = body
+				.char_indices()
+				.nth(space_left_for_body)
+				.map_or_else(|| body.len(), |(idx, _)| idx);
+
+			// if at least some of the body does fit
+			if body_fits_till > 0 {
+				split_part.push_str(&body[..body_fits_till]);
+
+				// if there are some bytes remaining in the body, put them back into itself
+				let remaining_body = &body[body_fits_till..];
+				if !remaining_body.is_empty() {
+					self.body = Some(remaining_body);
+				}
+			}
+		}
+
+		// add the tail if it can still fit into the split
+		if split_part.chars().count() > self.tail.map_or(0, |s| s.chars().count()) {
+			if let Some(tail) = self.tail.take() {
+				split_part.push_str(tail);
+			}
+		}
+
+		// make sure we haven't crossed our character limit
+		assert!(split_part.chars().count() <= len);
+		Some(split_part)
+	}
 }
 
 impl std::fmt::Debug for Telegram {
@@ -313,6 +353,8 @@ impl std::fmt::Debug for Telegram {
 	}
 }
 
+/*
+// TODO: rewrite these outdated tests
 #[cfg(test)]
 mod tests {
 	mod split_msg {
@@ -369,3 +411,4 @@ mod tests {
 		}
 	}
 }
+*/
