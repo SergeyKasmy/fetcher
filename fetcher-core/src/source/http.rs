@@ -28,6 +28,7 @@ static CLIENT: OnceCell<reqwest::Client> = OnceCell::new();
 pub struct Http {
 	/// The URL to fetch from
 	pub url: Url,
+	request: Request,
 	client: reqwest::Client,
 }
 
@@ -40,43 +41,62 @@ pub enum TransformFromField {
 	RawContents,
 }
 
+#[derive(Debug)]
+enum Request {
+	Get,
+	Post(serde_json::Value),
+}
+
 impl Http {
-	/// Create a new HTTP client
+	/// Create a new HTTP client that sends GET requests
 	///
 	/// # Errors
 	/// This method fails if TLS couldn't be initialized
-	pub fn new(url: Url) -> Result<Self, HttpError> {
-		let client = CLIENT
-			.get_or_try_init(|| {
-				reqwest::ClientBuilder::new()
-					.timeout(std::time::Duration::from_secs(30))
-					.build()
-					.map_err(HttpError::TlsInitFailed)
-			})?
-			.clone();
-
-		Ok(Self { url, client })
+	pub fn new_get(url: Url) -> Result<Self, HttpError> {
+		Self::new(url, Request::Get)
 	}
 
-	/// Send a GET request to the [`URL`](`self.url`) and return the result in the [`Entry.raw_contents`] field
+	/// Create a new HTTP client that sends POST requests
+	///
+	/// # Errors
+	/// This method fails if body isn't valid JSON or TLS couldn't be initialized
+	pub fn new_post(url: Url, body: &str) -> Result<Self, HttpError> {
+		Self::new(url, Request::Post(serde_json::from_str(body)?))
+	}
+
+	/// Send a request to the [`URL`](`self.url`) and return the result in the [`Entry.raw_contents`] field
 	#[tracing::instrument(skip_all)]
 	pub async fn get(&self) -> Result<Entry, HttpError> {
-		tracing::debug!("Fetching HTTP source");
+		tracing::debug!("Sending an HTTP request");
 
-		tracing::trace!("Making a request to {:?}", self.url.as_str());
-		let request = self
-			.client
-			.get(self.url.as_str())
+		let request = match &self.request {
+			Request::Get => {
+				tracing::trace!("Making an HTTP GET request to {:?}", self.url.as_str());
+
+				self.client.get(self.url.as_str())
+			}
+			Request::Post(json) => {
+				tracing::trace!(
+					"Making an HTTP POST request to {:?} with {:#?}",
+					self.url.as_str(),
+					json
+				);
+
+				self.client.post(self.url.as_str()).json(json)
+			}
+		};
+
+		let response = request
 			.header(reqwest::header::USER_AGENT, USER_AGENT)
 			.send()
 			.await
-			.map_err(|e| HttpError::Get(e, self.url.to_string()))?;
+			.map_err(|e| HttpError::BadRequest(e, self.url.to_string()))?;
 
-		tracing::trace!("Getting text body of the responce");
-		let page = request
+		tracing::trace!("Getting text body of the response");
+		let page = response
 			.text()
 			.await
-			.map_err(|e| HttpError::Get(e, self.url.to_string()))?;
+			.map_err(|e| HttpError::BadRequest(e, self.url.to_string()))?;
 
 		// tracing::trace!("Done. Body: ----------------------------------------\n{page:?}\n----------------------------------------\n");
 		tracing::trace!("Done");
@@ -113,7 +133,7 @@ impl Http {
 			raw_contents,
 			msg: Message { link, .. },
 			..
-		} = Self::new(link)?.get().await?;
+		} = Self::new(link, Request::Get)?.get().await?;
 
 		Ok(TransformedEntry {
 			raw_contents: TransformResult::New(raw_contents),
@@ -126,10 +146,30 @@ impl Http {
 	}
 }
 
+impl Http {
+	fn new(url: Url, request: Request) -> Result<Self, HttpError> {
+		let client = CLIENT
+			.get_or_try_init(|| {
+				reqwest::ClientBuilder::new()
+					.timeout(std::time::Duration::from_secs(30))
+					.build()
+					.map_err(HttpError::TlsInitFailed)
+			})?
+			.clone();
+
+		Ok(Self {
+			url,
+			request,
+			client,
+		})
+	}
+}
+
 impl Debug for Http {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Http")
 			.field("url", &self.url.as_str())
+			.field("request", &self.request)
 			.finish_non_exhaustive()
 	}
 }

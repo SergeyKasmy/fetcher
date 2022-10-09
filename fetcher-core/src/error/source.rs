@@ -31,11 +31,14 @@ pub enum Error {
 
 #[derive(thiserror::Error, Debug)]
 pub enum HttpError {
+	#[error("Invalid JSON for the POST request")]
+	BadJson(#[from] serde_json::Error),
+
 	#[error("Failed to init TLS")]
 	TlsInitFailed(#[source] reqwest::Error),
 
-	#[error("Can't send GET request to {1:?}")]
-	Get(#[source] reqwest::Error, String),
+	#[error("Can't send an HTTP request to {1:?}")]
+	BadRequest(#[source] reqwest::Error, String),
 }
 
 #[allow(clippy::large_enum_variant)] // the entire enum is already boxed up above

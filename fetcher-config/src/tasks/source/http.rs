@@ -4,20 +4,23 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use fetcher_core::{error::source::HttpError as CHttpError, source::Http as CHttp};
+
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use fetcher_core::error;
-use fetcher_core::source;
-
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(transparent)]
-pub struct Http {
-	pub url: Url,
+#[serde(untagged)]
+pub enum Http {
+	Get(Url),
+	Post { url: Url, post_body: String },
 }
 
 impl Http {
-	pub fn parse(self) -> Result<source::Http, error::source::HttpError> {
-		source::Http::new(self.url)
+	pub fn parse(self) -> Result<CHttp, CHttpError> {
+		match self {
+			Http::Get(url) => CHttp::new_get(url),
+			Http::Post { url, post_body } => CHttp::new_post(url, &post_body),
+		}
 	}
 }
