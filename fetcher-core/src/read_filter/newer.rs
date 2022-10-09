@@ -106,7 +106,7 @@ mod tests {
 	}
 
 	#[test]
-	fn remove_read() {
+	fn remove_read_long_list() {
 		let mut rf = Newer::new();
 		rf.mark_as_read("3");
 
@@ -161,5 +161,37 @@ mod tests {
 			&entries,
 			&[None, Some("5"), Some("4"), None, Some("0"), Some("1")]
 		);
+	}
+
+	#[test]
+	fn remove_read_single_different() {
+		let mut rf = Newer::new();
+		rf.mark_as_read("3");
+
+		let mut entries = vec![Entry {
+			id: Some("1".to_owned()),
+			..Default::default()
+		}];
+
+		rf.remove_read_from(&mut entries);
+
+		// remove msgs
+		let entries_ids = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
+		assert_eq!(&entries_ids, &[Some("1")]);
+	}
+
+	#[test]
+	fn remove_read_single_same() {
+		let mut rf = Newer::new();
+		rf.mark_as_read("1");
+
+		let mut entries = vec![Entry {
+			id: Some("1".to_owned()),
+			..Default::default()
+		}];
+		rf.remove_read_from(&mut entries);
+
+		let entries_ids = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
+		assert_eq!(&entries_ids, &[]);
 	}
 }

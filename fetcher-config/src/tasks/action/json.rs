@@ -33,21 +33,26 @@ pub struct Json {
 	pub imgq: Option<Vec<StringQuery>>,
 }
 
-pub type Key = String;
-pub type Keys = Vec<String>;
-
 #[derive(Deserialize, Serialize, Debug)]
-pub struct StringQuery {
-	#[serde(flatten)]
-	pub query: Query,
-	pub regex: Option<JsonQueryRegex>,
+#[serde(untagged)]
+pub enum Key {
+	String(String),
+	Usize(usize),
 }
+pub type Keys = Vec<Key>;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Query {
 	#[serde(rename = "query")]
 	pub keys: Keys,
 	pub optional: Option<bool>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct StringQuery {
+	#[serde(flatten)]
+	pub query: Query,
+	pub regex: Option<JsonQueryRegex>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -80,21 +85,30 @@ impl Json {
 	}
 }
 
-impl StringQuery {
-	pub fn parse(self) -> Result<c_json::StringQuery, Error> {
-		Ok(c_json::StringQuery {
-			query: self.query.parse(),
-			regex: self.regex.try_map(JsonQueryRegex::parse)?,
-		})
+impl Key {
+	pub fn parse(self) -> c_json::Key {
+		match self {
+			Key::String(s) => c_json::Key::String(s),
+			Key::Usize(u) => c_json::Key::Usize(u),
+		}
 	}
 }
 
 impl Query {
 	pub fn parse(self) -> c_json::Query {
 		c_json::Query {
-			keys: self.keys,
+			keys: self.keys.into_iter().map(Key::parse).collect(),
 			optional: self.optional.unwrap_or(false),
 		}
+	}
+}
+
+impl StringQuery {
+	pub fn parse(self) -> Result<c_json::StringQuery, Error> {
+		Ok(c_json::StringQuery {
+			query: self.query.parse(),
+			regex: self.regex.try_map(JsonQueryRegex::parse)?,
+		})
 	}
 }
 

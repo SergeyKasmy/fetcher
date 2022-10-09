@@ -40,10 +40,16 @@ pub struct Json {
 	pub imgq: Option<Vec<StringQuery>>, // nested
 }
 
-/// JSON key alias for improved readability
-pub type Key = String;
+/// JSON key
+#[derive(Clone, Debug)]
+pub enum Key {
+	/// object property
+	String(String),
+	/// array index
+	Usize(usize),
+}
 /// JSON keys/array of [`Key`] alias for improved readability
-pub type Keys = Vec<String>;
+pub type Keys = Vec<Key>;
 
 /// All data needed to query, extract, and finalize a string from JSON
 #[derive(Debug)]
@@ -59,7 +65,6 @@ pub struct StringQuery {
 pub struct Query {
 	/// a chain of JSON keys that are needed to be traversed to get to this key
 	pub keys: Keys,
-
 	/// whether this query is fine to be ignored if not found
 	pub optional: bool,
 }
@@ -138,14 +143,17 @@ impl Json {
 }
 
 fn extract_data<'a>(json: &'a Value, query: &Query) -> Result<Option<&'a Value>, JsonError> {
-	let data = query
-		.keys
-		.iter()
-		.enumerate()
-		.try_fold(json, |val, (i, q)| match val.get(q) {
+	let data = query.keys.iter().enumerate().try_fold(json, |val, (i, q)| {
+		let res_val = match q {
+			Key::String(s) => val.get(s),
+			Key::Usize(u) => val.get(u),
+		};
+
+		match res_val {
 			Some(v) => ControlFlow::Continue(v),
 			None => ControlFlow::Break(i),
-		});
+		}
+	});
 
 	let data = match data {
 		ControlFlow::Continue(v) => v,

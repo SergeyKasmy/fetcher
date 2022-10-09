@@ -14,7 +14,7 @@ pub mod settings;
 
 use crate::args::{Args, Setting};
 use fetcher_config::tasks::{ParsedTask, ParsedTasks};
-use fetcher_core::{error::Error, error::ErrorChainExt};
+use fetcher_core::error::{Error, ErrorChainExt};
 
 use color_eyre::{eyre::eyre, Report, Result};
 use futures::{future::try_join_all, StreamExt};
