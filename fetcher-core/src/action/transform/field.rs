@@ -8,12 +8,11 @@
 //! And [`Field`] enum that can be used to refer to a [`Message`](`crate::sink::Message`)'s field
 
 pub mod caps;
+pub mod set;
 pub mod shorten;
 pub mod trim;
 
-use self::caps::Caps;
-use self::shorten::Shorten;
-use self::trim::Trim;
+use self::{caps::Caps, set::Set, shorten::Shorten, trim::Trim};
 use super::result::TransformResult;
 use crate::{
 	action::regex::{action::Extract, action::Replace, Regex},
@@ -38,6 +37,7 @@ pub trait TransformField {
 pub enum Kind {
 	RegexExtract(Regex<Extract>),
 	RegexReplace(Regex<Replace>),
+	Set(Set),
 	Caps(Caps),
 	Trim(Trim),
 	Shorten(Shorten),
@@ -67,6 +67,6 @@ impl TransformField for Kind {
 		    };
 		}
 
-		delegate!(RegexExtract, RegexReplace, Caps, Trim, Shorten)
+		delegate!(RegexExtract, RegexReplace, Set, Caps, Trim, Shorten)
 	}
 }

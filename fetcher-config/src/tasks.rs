@@ -18,6 +18,8 @@ use fetcher_core::task::Task as CoreTask;
 use std::collections::HashMap;
 
 pub type ParsedTasks = HashMap<String, ParsedTask>;
+
+#[derive(Debug)]
 pub struct ParsedTask {
 	pub inner: CoreTask,
 	pub refresh: u64,

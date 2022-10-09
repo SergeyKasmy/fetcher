@@ -212,6 +212,8 @@ async fn run_tasks(tasks: ParsedTasks, shutdown_rx: Receiver<()>, once: bool) ->
 
 		let task_handle = tokio::spawn(
 			async move {
+				tracing::trace!("Task {} contents: {:#?}", name, t);
+
 				let res = select! {
 					r = task_loop(&mut t, once) => r,
 					_ = shutdown_rx.changed() => Ok(()),

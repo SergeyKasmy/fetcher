@@ -7,11 +7,14 @@
 pub mod html;
 pub mod json;
 pub mod regex;
+pub mod set;
 pub mod shorten;
 pub mod take;
 pub mod trim;
 
-use self::{html::Html, json::Json, regex::Regex, shorten::Shorten, take::Take, trim::Trim};
+use self::{
+	html::Html, json::Json, regex::Regex, set::Set, shorten::Shorten, take::Take, trim::Trim,
+};
 use crate::Error;
 use fetcher_core::action::{
 	transform::{
@@ -40,6 +43,7 @@ pub enum Action {
 	Print,
 
 	// field transforms
+	Set(Set),
 	Caps,
 	Trim(Trim),
 	Shorten(Shorten),
@@ -57,15 +61,16 @@ impl Action {
 			Action::Html(x) => x.parse()?.into(),
 			Action::Json(x) => x.parse()?.into(),
 			Action::Feed => CFeed.into(),
-			Action::Regex(x) => x.parse()?,
 			Action::UseRawContents => CUseRawContents.into(),
+			Action::Print => CTransformEntryKind::Print.into(),
+			Action::Set(s) => s.parse().into(),
 			Action::Caps => CAction::Transform(CTransform::Field {
 				field: CField::Title,
 				kind: CFieldTransformKind::Caps(CCaps),
 			}),
 			Action::Trim(x) => x.parse().into(),
 			Action::Shorten(x) => x.parse().into(),
-			Action::Print => CTransformEntryKind::Print.into(),
+			Action::Regex(x) => x.parse()?,
 		})
 	}
 }
@@ -75,7 +80,6 @@ impl Action {
 pub enum Field {
 	Title,
 	Body,
-	// All,
 }
 
 impl Field {
