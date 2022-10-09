@@ -59,7 +59,12 @@ impl Regex<Extract> {
 impl TransformField for Regex<Extract> {
 	type Error = RegexError;
 
-	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, RegexError> {
+	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, RegexError> {
+		let field = match field {
+			Some(v) => v,
+			None => return Ok(TransformResult::Old(None)),
+		};
+
 		let transformed = match self.extract(field) {
 			Some(s) => s,
 			None if self.action.passthrough_if_not_found => field,
@@ -100,8 +105,10 @@ impl Regex<Replace> {
 impl TransformField for Regex<Replace> {
 	type Error = Infallible;
 
-	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, Self::Error> {
-		Ok(TransformResult::New(Some(self.replace(field).into_owned())))
+	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Self::Error> {
+		Ok(TransformResult::New(
+			field.map(|field| self.replace(field).into_owned()),
+		))
 	}
 }
 

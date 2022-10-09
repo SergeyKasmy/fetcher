@@ -29,7 +29,7 @@ pub trait TransformField {
 
 	/// Transform the `field` into a new field or `None` specifying what happens if `None` is returned
 	#[allow(clippy::missing_errors_doc)]
-	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, Self::Error>;
+	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Self::Error>;
 }
 
 /// Type that includes all available transforms that implement the [`TransformField`] trait
@@ -55,7 +55,10 @@ pub enum Field {
 impl TransformField for Kind {
 	type Error = TransformErrorKind;
 
-	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, TransformErrorKind> {
+	fn transform_field(
+		&self,
+		field: Option<&str>,
+	) -> Result<TransformResult<String>, TransformErrorKind> {
 		macro_rules! delegate {
 		    ($($k:tt),+) => {
 				match self {

@@ -18,7 +18,7 @@ pub struct Trim;
 impl TransformField for Trim {
 	type Error = Infallible;
 
-	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, Infallible> {
-		Ok(TransformResult::New(Some(field.trim().to_owned())))
+	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Infallible> {
+		Ok(TransformResult::New(field.map(|s| s.trim().to_owned())))
 	}
 }

@@ -22,14 +22,17 @@ pub struct Shorten {
 impl TransformField for Shorten {
 	type Error = Infallible;
 
-	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, Infallible> {
-		let new_val = (self.len != 0).then(|| {
-			field
-				.chars()
-				.take(self.len)
-				.chain(repeat('.').take(3))
-				.collect::<String>()
-		});
+	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Infallible> {
+		let new_val = if self.len != 0 {
+			field.map(|s| {
+				s.chars()
+					.take(self.len)
+					.chain(repeat('.').take(3))
+					.collect::<String>()
+			})
+		} else {
+			None
+		};
 
 		Ok(TransformResult::New(new_val))
 	}

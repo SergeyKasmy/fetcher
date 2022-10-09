@@ -16,9 +16,7 @@ pub use self::{
 };
 
 use self::field::{Field, TransformField};
-use crate::{
-	entry::Entry, error::transform::Error as TransformError, sink::Message, utils::OptionExt,
-};
+use crate::{entry::Entry, error::transform::Error as TransformError, sink::Message};
 
 /// Either an entry or a field transform
 #[allow(clippy::large_enum_variant)]
@@ -50,20 +48,15 @@ impl Transform {
 					Field::Body => entry.msg.body.take(),
 				};
 
-				// transformed value of the field
-				let new_val = old_val
-					.as_deref()
-					.try_map(|v| kind.transform_field(v))
-					.map_err(|kind| TransformError {
-						kind,
-						original_entry: entry.clone(),
-					})?;
+				let new_val =
+					kind.transform_field(old_val.as_deref())
+						.map_err(|kind| TransformError {
+							kind,
+							original_entry: entry.clone(),
+						})?;
 
 				// finalized value of the field. It's the new value that can get replaced with the old value if requested
-				let final_val = match new_val {
-					None => old_val,
-					Some(v) => v.get(old_val),
-				};
+				let final_val = new_val.get(old_val);
 
 				let new_entry = match field {
 					Field::Title => Entry {

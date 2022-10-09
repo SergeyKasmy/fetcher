@@ -18,7 +18,7 @@ pub struct Caps;
 impl TransformField for Caps {
 	type Error = Infallible;
 
-	fn transform_field(&self, field: &str) -> Result<TransformResult<String>, Infallible> {
-		Ok(TransformResult::New(Some(field.to_uppercase())))
+	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Infallible> {
+		Ok(TransformResult::New(field.map(|s| s.to_uppercase())))
 	}
 }
