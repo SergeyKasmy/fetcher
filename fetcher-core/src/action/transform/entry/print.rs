@@ -16,7 +16,7 @@ pub async fn print(entry: &Entry) {
 
 	// append id and raw_contents entry fields to the body to help in debugging
 	msg.body = {
-		let mut body = msg.body.unwrap_or_default();
+		let mut body = msg.body.unwrap_or_else(|| "None".to_owned());
 		let _ = write!(
 			body,
 			"\n\nid: {:?}\n\nraw_contents: {:?}",
