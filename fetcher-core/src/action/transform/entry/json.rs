@@ -13,7 +13,10 @@ use crate::{
 		transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
-	error::transform::{InvalidUrlError, JsonError, RawContentsNotSetError},
+	error::{
+		transform::{JsonError, RawContentsNotSetError},
+		InvalidUrlError,
+	},
 	sink::Media,
 	utils::OptionExt,
 };

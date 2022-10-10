@@ -8,6 +8,8 @@
 
 use std::path::PathBuf;
 
+use super::InvalidUrlError;
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error("Can't create a source with an empty source list")]
@@ -27,6 +29,9 @@ pub enum Error {
 
 	#[error("Twitter error")]
 	Twitter(#[from] TwitterError),
+
+	#[error("Reddit error")]
+	Reddit(#[from] RedditError),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -73,6 +78,15 @@ pub enum TwitterError {
 
 	#[error(transparent)]
 	Other(#[from] egg_mode::error::Error),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum RedditError {
+	#[error(transparent)]
+	Reddit(#[from] roux::util::RouxError),
+
+	#[error("Reddit API returned an invalid URL to a post/post's contents, which really shouldn't happen...")]
+	InvalidUrl(#[from] InvalidUrlError),
 }
 
 impl From<EmailError> for Error {

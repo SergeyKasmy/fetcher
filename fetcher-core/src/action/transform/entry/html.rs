@@ -15,7 +15,10 @@ use super::TransformEntry;
 use crate::{
 	action::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
 	entry::Entry,
-	error::transform::{HtmlError, InvalidUrlError, RawContentsNotSetError},
+	error::{
+		transform::{HtmlError, RawContentsNotSetError},
+		InvalidUrlError,
+	},
 	sink::Media,
 	utils::OptionExt,
 };

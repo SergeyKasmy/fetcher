@@ -17,8 +17,8 @@ pub use self::{
 };
 use crate::utils::OptionExt;
 use crate::{
-	entry::Entry, error::transform::Error as TransformError, error::transform::InvalidUrlError,
-	error::transform::Kind as TransformErrorKind, sink::Message,
+	entry::Entry, error::transform::Error as TransformError,
+	error::transform::Kind as TransformErrorKind, error::InvalidUrlError, sink::Message,
 };
 
 use reqwest::Url;

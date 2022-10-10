@@ -14,6 +14,7 @@ use crate::{
 		json::Keys as JsonKeys,
 	},
 	entry::Entry,
+	error::InvalidUrlError,
 	source::http::TransformFromField,
 };
 
@@ -140,10 +141,6 @@ pub enum RegexError {
 #[derive(thiserror::Error, Debug)]
 #[error("There's nothing to transform from")]
 pub struct RawContentsNotSetError;
-
-#[derive(thiserror::Error, Debug)]
-#[error("Invalid URL: {1}")]
-pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
 
 impl From<Infallible> for Kind {
 	fn from(inf: Infallible) -> Self {

@@ -10,11 +10,13 @@
 pub mod email;
 pub mod file;
 pub mod http;
+pub mod reddit;
 pub mod twitter;
 
 pub use self::email::Email;
 pub use self::file::File;
 pub use self::http::Http;
+pub use self::reddit::Reddit;
 pub use self::twitter::Twitter;
 
 use crate::entry::Entry;
@@ -56,6 +58,8 @@ pub enum WithSharedRFKind {
 	Http(Http),
 	/// Refer to [`Twitter`]
 	Twitter(Twitter),
+	/// Refer to [`Reddit`]
+	Reddit(Reddit),
 }
 
 /// All sources that don't support a built-in Read Filter and handle filtering logic themselves. They all must provide a way to mark an entry as read.
@@ -121,6 +125,7 @@ impl WithSharedRF {
 				K::Http(x) => vec![x.get().await?],
 				K::Twitter(x) => x.get().await?,
 				K::File(x) => vec![x.get().await?],
+				K::Reddit(x) => x.get().await?,
 			});
 		}
 

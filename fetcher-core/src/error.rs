@@ -10,8 +10,10 @@ pub mod sink;
 pub mod source;
 pub mod transform;
 
+use roux::util::RouxError;
+
 use self::{
-	source::{ImapError, TwitterError},
+	source::{ImapError, RedditError, TwitterError},
 	transform::Error as TransformError,
 };
 
@@ -35,6 +37,11 @@ pub enum Error {
 	#[error("Error writing to the external read filter")]
 	ReadFilterExternalWrite(#[source] std::io::Error),
 }
+
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+#[error("Invalid URL: {1}")]
+pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
 
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
@@ -74,6 +81,10 @@ impl Error {
 				source::Error::Twitter(twitter_err) => match twitter_err {
 					TwitterError::Auth(egg_mode::error::Error::NetError(_)) => Some(self),
 					TwitterError::Other(egg_mode::error::Error::NetError(_)) => Some(self),
+					_ => None,
+				},
+				source::Error::Reddit(reddit_err) => match reddit_err {
+					RedditError::Reddit(RouxError::Network(_)) => Some(self),
 					_ => None,
 				},
 			},

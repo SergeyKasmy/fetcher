@@ -7,9 +7,10 @@
 pub mod email;
 pub mod file;
 pub mod http;
+pub mod reddit;
 pub mod twitter;
 
-use self::{email::Email, file::File, http::Http, twitter::Twitter};
+use self::{email::Email, file::File, http::Http, reddit::Reddit, twitter::Twitter};
 use crate::{tasks::external_data::ExternalData, Error};
 use fetcher_core::{read_filter::ReadFilter as CReadFilter, source};
 
@@ -34,6 +35,7 @@ pub enum WithSharedReadFilter {
 	Http(Http),
 	Twitter(Twitter),
 	File(File),
+	Reddit(Reddit),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -63,6 +65,9 @@ impl Source {
 							}
 							WithSharedReadFilter::File(x) => {
 								source::WithSharedRFKind::File(x.parse())
+							}
+							WithSharedReadFilter::Reddit(x) => {
+								source::WithSharedRFKind::Reddit(x.parse())
 							}
 						})
 					})

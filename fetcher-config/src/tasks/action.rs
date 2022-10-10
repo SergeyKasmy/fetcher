@@ -52,6 +52,14 @@ pub enum Action {
 	Regex(Regex),
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum Field {
+	Title,
+	Body,
+	Link,
+}
+
 impl Action {
 	pub fn parse(self) -> Result<CAction, Error> {
 		Ok(match self {
@@ -73,14 +81,6 @@ impl Action {
 			Action::Regex(x) => x.parse()?,
 		})
 	}
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum Field {
-	Title,
-	Body,
-	Link,
 }
 
 impl Field {

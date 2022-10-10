@@ -8,12 +8,13 @@
 //!
 //! This module contains the [`Http`] struct, that is a source as well as a transform
 
-use crate::action::transform::result::{TransformResult, TransformedEntry, TransformedMessage};
-use crate::entry::Entry;
-use crate::error::source::HttpError;
-use crate::error::transform::{HttpError as HttpTransformError, InvalidUrlError};
-use crate::sink::Message;
-use crate::utils::OptionExt;
+use crate::{
+	action::transform::result::{TransformResult, TransformedEntry, TransformedMessage},
+	entry::Entry,
+	error::{source::HttpError, transform::HttpError as HttpTransformError, InvalidUrlError},
+	sink::Message,
+	utils::OptionExt,
+};
 
 use once_cell::sync::OnceCell;
 use std::fmt::{Debug, Display};
