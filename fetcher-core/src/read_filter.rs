@@ -4,12 +4,17 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// pub mod mark_as_read;
-pub mod newer;
-pub mod not_present;
+//! This module contains the [`ReadFilter`] that is used for keeping track of what Entry has been or not been read,
+//! including all of its stragedies
 
-use self::newer::Newer;
-use self::not_present::NotPresent;
+// pub mod mark_as_read;
+mod newer;
+mod not_present;
+
+pub use newer::Newer;
+pub use not_present::NotPresent;
+
+use crate::action::filter::Filter;
 use crate::entry::Entry;
 use crate::error::Error;
 
@@ -20,21 +25,30 @@ pub trait ExternalSave {
 	///
 	/// # Errors
 	/// It may return an error if there has been issues saving, e.g. writing to disk
-	fn save(&mut self, read_filter: &ReadFilterInner) -> std::io::Result<()>;
+	fn save(&mut self, read_filter: &Inner) -> std::io::Result<()>;
 }
 
+/// A built-in read filter that uses any of the
 // TODO: add field `since` that marks the first time that read filter was used and ignores everything before
 pub struct ReadFilter {
-	pub inner: ReadFilterInner,
+	#[allow(missing_docs)]
+	pub inner: Inner,
+
+	/// An external save destination
 	pub external_save: Box<dyn ExternalSave + Send + Sync>,
 }
 
+/// All different read filtering stragedies
+// TODO: make private?
+#[allow(missing_docs)]
 #[derive(Debug)]
-pub enum ReadFilterInner {
+pub enum Inner {
 	NewerThanLastRead(Newer),
 	NotPresentInReadList(NotPresent),
 }
 
+/// A list of all supported read filtering stragedies
+#[allow(missing_docs)]
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Kind {
 	NewerThanLastRead,
@@ -42,11 +56,12 @@ pub enum Kind {
 }
 
 impl ReadFilter {
+	/// Creates a new Read Filter using [`kind`](`Kind`) filter stragedy and `external_save` external saving implementation
 	#[must_use]
 	pub fn new(kind: Kind, external_save: Box<dyn ExternalSave + Send + Sync>) -> Self {
 		let inner = match kind {
-			Kind::NewerThanLastRead => ReadFilterInner::NewerThanLastRead(Newer::new()),
-			Kind::NotPresentInReadList => ReadFilterInner::NotPresentInReadList(NotPresent::new()),
+			Kind::NewerThanLastRead => Inner::NewerThanLastRead(Newer::new()),
+			Kind::NotPresentInReadList => Inner::NotPresentInReadList(NotPresent::new()),
 		};
 
 		Self {
@@ -55,9 +70,10 @@ impl ReadFilter {
 		}
 	}
 
+	/// Returns the current read filtering stragedy
 	#[must_use]
 	pub fn to_kind(&self) -> Kind {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+		use Inner::{NewerThanLastRead, NotPresentInReadList};
 
 		match &self.inner {
 			NewerThanLastRead(_) => Kind::NewerThanLastRead,
@@ -65,17 +81,19 @@ impl ReadFilter {
 		}
 	}
 
+	/*
 	pub(crate) fn last_read(&self) -> Option<&str> {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+		use Inner::{NewerThanLastRead, NotPresentInReadList};
 
 		match &self.inner {
 			NewerThanLastRead(x) => x.last_read(),
 			NotPresentInReadList(x) => x.last_read(),
 		}
 	}
+	*/
 
 	pub(crate) fn remove_read_from(&self, list: &mut Vec<Entry>) {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+		use Inner::{NewerThanLastRead, NotPresentInReadList};
 
 		match &self.inner {
 			NewerThanLastRead(x) => x.remove_read_from(list),
@@ -83,9 +101,8 @@ impl ReadFilter {
 		}
 	}
 
-	#[allow(clippy::missing_errors_doc)] // TODO
-	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
-		use ReadFilterInner::{NewerThanLastRead, NotPresentInReadList};
+	pub(crate) fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+		use Inner::{NewerThanLastRead, NotPresentInReadList};
 
 		tracing::trace!("Marking {id} as read");
 
@@ -97,6 +114,12 @@ impl ReadFilter {
 		self.external_save
 			.save(&self.inner)
 			.map_err(Error::ReadFilterExternalWrite)
+	}
+}
+
+impl Filter for ReadFilter {
+	fn filter(&self, entries: &mut Vec<Entry>) {
+		self.remove_read_from(entries);
 	}
 }
 

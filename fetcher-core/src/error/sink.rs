@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#![allow(missing_docs)]
+
 use std::fmt::Debug;
 
 /// An error that happened while sending to a sink

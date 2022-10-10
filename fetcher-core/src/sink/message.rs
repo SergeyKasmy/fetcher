@@ -4,16 +4,31 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::fmt::Debug;
+//! This module contains [`Message`] and [`Media`]
 
+use std::fmt::Debug;
 use url::Url;
 
+/// The finalized and composed message meant to be sent to a sink
 #[derive(Clone, Default)]
 pub struct Message {
+	/// title of the message
 	pub title: Option<String>,
+	/// body of the message
 	pub body: Option<String>,
+	/// a url to the full contents or source of the message
 	pub link: Option<Url>,
+	/// a list of photos or videos included in the message. They are usually attached to the message itself if the sink supports it. Otherwise they may be left as links
 	pub media: Option<Vec<Media>>,
+}
+
+/// A link to some kind of external media
+#[derive(Clone)]
+pub enum Media {
+	/// A link to a photo
+	Photo(Url),
+	/// A link to a video
+	Video(Url),
 }
 
 impl Debug for Message {
@@ -25,12 +40,6 @@ impl Debug for Message {
 			.field("media", &self.media)
 			.finish()
 	}
-}
-
-#[derive(Clone)]
-pub enum Media {
-	Photo(Url),
-	Video(Url),
 }
 
 impl Debug for Media {

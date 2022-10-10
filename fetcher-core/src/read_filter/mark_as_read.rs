@@ -4,9 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use async_trait::async_trait;
-
 use crate::error::Error;
+
+use async_trait::async_trait;
 
 #[async_trait]
 pub trait MarkAsRead {

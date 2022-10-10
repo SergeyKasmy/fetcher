@@ -4,10 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/// Contains [`Message`] and [`Media`]
+//! This module contains [`Sink`] that can be used to consume a composed [`Message`],
+//! as well as [`Message`](`message`) itself
+
 pub mod message;
 pub(crate) mod stdout;
-/// Telegram sink
 pub mod telegram;
 
 pub use message::{Media, Message};
@@ -23,8 +24,6 @@ pub enum Sink {
 	Telegram(Telegram),
 	/// stdout sink
 	Stdout(Stdout),
-	/// null sink that discards any messages
-	Null,
 }
 
 impl Sink {
@@ -36,7 +35,6 @@ impl Sink {
 		match self {
 			Self::Telegram(t) => t.send(message, tag).await,
 			Self::Stdout(s) => s.send(message, tag).await,
-			Self::Null => Ok(()),
 		}
 	}
 }

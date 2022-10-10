@@ -4,25 +4,29 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use crate::entry::Entry;
+
 use chrono::{DateTime, Utc};
 use std::collections::VecDeque;
 
-use crate::entry::Entry;
-
 const MAX_LIST_LEN: usize = 500;
 
+/// Read Filter that stores a list of all entries read
 #[derive(Debug)]
 pub struct NotPresent {
 	read_list: VecDeque<(String, DateTime<Utc>)>,
 }
 
 impl NotPresent {
+	/// Creates a new empty [`NotPresent`] Read Filter
+	#[must_use]
 	pub fn new() -> Self {
 		Self {
 			read_list: VecDeque::default(),
 		}
 	}
 
+	/// Marks the `id` as already read
 	pub fn mark_as_read(&mut self, id: &str) {
 		self.read_list
 			.push_back((id.to_owned(), chrono::Utc::now()));
@@ -32,10 +36,7 @@ impl NotPresent {
 		}
 	}
 
-	pub fn last_read(&self) -> Option<&str> {
-		self.read_list.back().map(|(s, _)| s.as_str())
-	}
-
+	/// Removes all entries that have been marked as read from `list`
 	pub fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		list.retain(|elem| {
 			// retain elements with no id
@@ -51,14 +52,25 @@ impl NotPresent {
 		});
 	}
 
+	/// Returns the id of the last read entry, if any
+	#[must_use]
+	pub fn last_read(&self) -> Option<&str> {
+		self.read_list.back().map(|(s, _)| s.as_str())
+	}
+
+	/// Checks if the `id` is unread
+	#[must_use]
 	pub fn is_unread(&self, id: &str) -> bool {
 		!self.read_list.iter().any(|(ent_id, _)| ent_id == id)
 	}
 
+	/// Provides a read only view into the inner collection
 	pub fn iter(&self) -> impl Iterator<Item = &(String, DateTime<Utc>)> {
 		self.read_list.iter()
 	}
 
+	/// Checks if there wasn't any entry marked as read yet
+	#[must_use]
 	pub fn is_empty(&self) -> bool {
 		self.read_list.is_empty()
 	}

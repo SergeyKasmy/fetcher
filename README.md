@@ -32,7 +32,7 @@ The final binary will be located in `target/release/fetcher` which you can then 
 
 ## Setup
 
-The main unit of execution in fetcher is a task. A task consists of a source where to fetch some kind of data from, (a) parser(s) which process the data, and a sink where to send that data to. To create a task, create a `foo.yaml` file in `$XDG_CONFIG_HOME/fetcher/tasks` or `/etc/xdg/fetcher/tasks` where `foo` is the name you want that task to have. A proper task config file looks something like this:
+The main unit of execution in fetcher is a task. A task consists of a source where to fetch some kind of data from, (a) action(s) which process the data, and a sink where to send that data to. To create a task, create a `foo.yaml` file in `$XDG_CONFIG_HOME/fetcher/tasks` or `/etc/xdg/fetcher/tasks` where `foo` is the name you want that task to have. A proper task config file looks something like this:
 
 ```yaml
 # optional
@@ -42,33 +42,38 @@ refresh: 30	 # in minutes
 read_filter_type: newer_than_read	# save only the last one sent/read
 source:
   http: '<your_rss_feed_url>'
-transform:
-  - rss
+process:
+  - feed
   - read_filter	# leave out only entries newer than the last one read
 sink:
   telegram:
     chat_id: <your_telegram_chat_id>
 ```
 
-Currently available source types:
+Currently available sources:
 
 * email
 * twitter
 * http
 * file
 
-transform types:
+actions:
 
+* read_filter: filters out read entries
+* take: takes any num of entries from the beginning or the end
 * http: follows url
 * html: parses html
-* rss: parses rss
 * json: parses json
-* read_filter: filters out read entries
+* feed: parses rss and atom feeds
 * use_raw_contents: use unparsed data from a source as the body of the message, e.g. raw html
 * print: debug prints current entry contents  (mostly for testing)
+* set: set a field in a message to a predefined value or null (e.g. used when you don't care or have nothing to extract from the source)
 * caps: make all message text uppercase (mostly for testing)
+* trim: remove leading and trailing whitespace
+* shorten: shorten a field to be no longer than the max len
+* regex: extract string from a different string; filter out strings that don't match; replace a match with a replacement string (with capture group support)
 
-sink types:
+sinks:
 
 * telegram
 * stdout

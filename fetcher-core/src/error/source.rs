@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#![allow(missing_docs)]
+
 use std::path::PathBuf;
 
 #[derive(thiserror::Error, Debug)]
@@ -29,14 +31,14 @@ pub enum Error {
 
 #[derive(thiserror::Error, Debug)]
 pub enum HttpError {
+	#[error("Invalid JSON for the POST request")]
+	BadJson(#[from] serde_json::Error),
+
 	#[error("Failed to init TLS")]
 	TlsInitFailed(#[source] reqwest::Error),
 
-	#[error("Can't send GET request to {1:?}")]
-	Get(#[source] reqwest::Error, String),
-
-	#[error("Reqwest Client wasn't initialized")]
-	ClientNotInitialized,
+	#[error("Can't send an HTTP request to {1:?}")]
+	BadRequest(#[source] reqwest::Error, String),
 }
 
 #[allow(clippy::large_enum_variant)] // the entire enum is already boxed up above
@@ -54,8 +56,8 @@ pub enum ImapError {
 	#[error("Failed to init TLS")]
 	TlsInitFailed(#[source] imap::Error),
 
-	#[error("Error authenticating with Google")]
-	GoogleAuth(#[source] Box<crate::Error>),
+	#[error(transparent)]
+	GoogleAuth(Box<crate::Error>),
 
 	#[error("Authentication error")]
 	Auth(#[source] imap::Error),
@@ -71,4 +73,10 @@ pub enum TwitterError {
 
 	#[error(transparent)]
 	Other(#[from] egg_mode::error::Error),
+}
+
+impl From<EmailError> for Error {
+	fn from(e: EmailError) -> Self {
+		Error::Email(Box::new(e))
+	}
 }

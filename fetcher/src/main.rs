@@ -4,23 +4,24 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// TODO: proper argument parser. Something like clap or argh or something
-
 #![warn(clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)] // TODO
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::module_name_repetitions)]
 
-mod config;
-mod error;
-mod settings;
-mod task;
+pub mod args;
+pub mod settings;
 
-use color_eyre::{eyre::eyre, Report};
-use futures::{future::join_all, StreamExt};
+use crate::args::{Args, Setting};
+use fetcher_config::tasks::{ParsedTask, ParsedTasks};
+use fetcher_core::error::{Error, ErrorChainExt};
+
+use color_eyre::{eyre::eyre, Report, Result};
+use futures::{future::try_join_all, StreamExt};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
 use std::{
-	future::Future,
-	pin::Pin,
+	collections::HashMap,
 	sync::{atomic::AtomicBool, Arc},
 	time::Duration,
 };
@@ -32,29 +33,26 @@ use tokio::{
 };
 use tracing::Instrument;
 
-use crate::config::DataSettings;
-use crate::task::Task;
-use crate::task::Tasks;
-use fetcher_core::{error::Error, error::ErrorChainExt};
-
-fn main() -> color_eyre::Result<()> {
+fn main() -> Result<()> {
 	set_up_logging()?;
-	async_main()
+	async_main()?;
+
+	Ok(())
 }
 
-fn set_up_logging() -> color_eyre::Result<()> {
-	use tracing_subscriber::fmt::time::OffsetTime;
-	use tracing_subscriber::layer::SubscriberExt;
-	use tracing_subscriber::EnvFilter;
-	use tracing_subscriber::Layer;
+fn set_up_logging() -> Result<()> {
+	use tracing_subscriber::{
+		filter::LevelFilter, fmt::time::OffsetTime, layer::SubscriberExt, EnvFilter, Layer,
+	};
 
 	let env_filter = EnvFilter::try_from_env("FETCHER_LOG")
 		.unwrap_or_else(|_| EnvFilter::from("fetcher=info,fetcher_core=info"));
+
 	let stdout = tracing_subscriber::fmt::layer()
 		.pretty()
 		// hide source code/debug info on release builds
-		.with_file(cfg!(debug_assertions))
-		.with_line_number(cfg!(debug_assertions))
+		// .with_file(cfg!(debug_assertions))
+		// .with_line_number(cfg!(debug_assertions))
 		.with_timer(OffsetTime::local_rfc_3339().expect("could not get local time offset"));
 
 	// enable journald logging only on release to avoid log spam on dev machines
@@ -65,7 +63,7 @@ fn set_up_logging() -> color_eyre::Result<()> {
 	};
 
 	let subscriber = tracing_subscriber::registry()
-		.with(journald.with_filter(tracing_subscriber::filter::LevelFilter::INFO))
+		.with(journald.with_filter(LevelFilter::INFO))
 		.with(stdout.with_filter(env_filter));
 	tracing::subscriber::set_global_default(subscriber).unwrap();
 
@@ -74,7 +72,47 @@ fn set_up_logging() -> color_eyre::Result<()> {
 }
 
 #[tokio::main]
-async fn async_main() -> color_eyre::Result<()> {
+async fn async_main() -> Result<()> {
+	let args: Args = argh::from_env();
+	settings::DATA_PATH
+		.set(match args.data_path {
+			Some(p) => p,
+			None => settings::data::default_data_path()?,
+		})
+		.unwrap();
+	settings::CONF_PATHS
+		.set(match args.config_path {
+			Some(p) => vec![p],
+			None => settings::config::default_cfg_dirs()?,
+		})
+		.unwrap();
+
+	match args.subcommand {
+		args::TopLvlSubcommand::Run(arg) => {
+			run(
+				arg.once,
+				if arg.tasks.is_empty() {
+					None
+				} else {
+					Some(arg.tasks)
+				},
+			)
+			.await?;
+		}
+		args::TopLvlSubcommand::Save(save) => match save.setting {
+			Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt().await?,
+			Setting::EmailPassword => settings::data::email_password::prompt()?,
+			Setting::Telegram => settings::data::telegram::prompt()?,
+			Setting::Twitter => settings::data::twitter::prompt()?,
+		},
+	}
+
+	Ok(())
+}
+
+/// Run once or loop?
+/// If specified, run only tasks in `run_by_name`
+async fn run(once: bool, run_by_name: Option<Vec<String>>) -> Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -89,34 +127,7 @@ async fn async_main() -> color_eyre::Result<()> {
 	};
 	tracing::info!("Running fetcher {}", version);
 
-	match std::env::args().nth(1).as_deref() {
-		Some("--save-google-oauth2") => settings::data::prompt_google_oauth2().await?,
-		Some("--save-email-password") => settings::data::prompt_email_password().await?,
-		Some("--save-telegram") => settings::data::prompt_telegram().await?,
-		Some("--save-twitter") => settings::data::prompt_twitter_auth().await?,
-
-		Some("--once") => run(true).await?,
-		None => run(false).await?,
-		Some(_) => panic!("error"),
-	};
-
-	Ok(())
-}
-
-async fn run(once: bool) -> color_eyre::Result<()> {
-	let read_filter_getter = |current, name: String| -> Pin<Box<dyn Future<Output = _>>> {
-		Box::pin(async move { settings::read_filter::get(current, &name).await })
-	};
-
-	let data_settings = DataSettings {
-		twitter_auth: settings::data::twitter().await?,
-		google_oauth2: settings::data::google_oauth2().await?,
-		email_password: settings::data::email_password().await?,
-		telegram: settings::data::telegram().await?,
-		read_filter: Box::new(read_filter_getter),
-	};
-
-	let tasks = settings::config::tasks::get_all(&data_settings).await?;
+	let mut tasks = settings::config::tasks::get_all().await?;
 
 	if tasks.is_empty() {
 		tracing::info!("No enabled tasks provided");
@@ -124,13 +135,33 @@ async fn run(once: bool) -> color_eyre::Result<()> {
 	}
 
 	tracing::info!(
-		"Found {num} enabled tasks: {names:?}",
-		num = tasks.len(),
-		names = tasks
-			.iter()
-			.map(|(name, _)| name.as_str())
-			.collect::<Vec<_>>(),
+		"Found {} enabled tasks: {:?}",
+		tasks.len(),
+		tasks.keys().collect::<Vec<_>>()
 	);
+
+	if let Some(run_by_name) = run_by_name {
+		let mut new_tasks = HashMap::new();
+
+		for name in run_by_name {
+			let task = tasks.remove(&name);
+
+			match task {
+				Some(task) => {
+					new_tasks.insert(name, task);
+				}
+				None => {
+					return Err(eyre!(
+						"Task {name} not found. All available tasks: {:?}",
+						tasks.keys().collect::<Vec<_>>()
+					));
+				}
+			}
+		}
+
+		tracing::info!("Running tasks {:?}", new_tasks.keys().collect::<Vec<_>>());
+		tasks = new_tasks;
+	}
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
 
@@ -173,7 +204,7 @@ async fn run(once: bool) -> color_eyre::Result<()> {
 	Ok(())
 }
 
-async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> color_eyre::Result<()> {
+async fn run_tasks(tasks: ParsedTasks, shutdown_rx: Receiver<()>, once: bool) -> Result<()> {
 	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
 		let name2 = name.clone();
@@ -181,24 +212,23 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> color
 
 		let task_handle = tokio::spawn(
 			async move {
+				tracing::trace!("Task {} contents: {:#?}", name, t);
+
 				let res = select! {
 					r = task_loop(&mut t, once) => r,
 					_ = shutdown_rx.changed() => Ok(()),
 				};
 
-				if let Err(err) = &res {
-					let err_str = err.display_chain();
-					tracing::error!("{err_str}");
-
-					// production error reporting
-					if !cfg!(debug_assertions) {
-						if let Err(e) = report_error(&name, &err_str).await {
+				// production error reporting
+				if !cfg!(debug_assertions) {
+					if let Err(err) = &res {
+						if let Err(e) = report_error(&name, &err.display_chain()).await {
 							tracing::error!("Unable to send error report to the admin: {e:?}",);
 						}
 					}
 				}
+				tracing::info!("Task {name} shut down...");
 
-				tracing::info!("Shutting down...");
 				res
 			}
 			.instrument(tracing::info_span!("task", name = name2.as_str())),
@@ -207,29 +237,30 @@ async fn run_tasks(tasks: Tasks, shutdown_rx: Receiver<()>, once: bool) -> color
 		running_tasks.push(flatten_task_result(task_handle));
 	}
 
-	// return the first error
-	let mut first_err = None;
-	for res in join_all(running_tasks).await {
-		if let Err(e) = res {
-			if first_err.is_none() {
-				first_err = Some(e);
-			}
-		}
-	}
-
-	// TODO: aggregate multiple errors into one using color_eyre Section trait
-	match first_err {
-		None => Ok(()),
-		Some(e) => Err(e.into()),
-	}
+	try_join_all(running_tasks).await?;
+	Ok(())
 }
 
-async fn task_loop(t: &mut Task, once: bool) -> Result<(), Error> {
+async fn task_loop(t: &mut ParsedTask, once: bool) -> Result<(), Error> {
+	// allow only 5 transform errors, count any number higher than that as a critical error
+	const TRANSFORM_ERR_MAX_COUNT: u32 = 5;
+	let mut transform_err_count = 0;
+
 	loop {
+		// return critical errors and just log non critical ones
 		match fetcher_core::run_task(&mut t.inner).await {
 			Ok(()) => (),
 			Err(Error::Transform(transform_err)) => {
-				tracing::error!("Transform error: {}", transform_err.display_chain());
+				transform_err_count += 1;
+
+				if transform_err_count > TRANSFORM_ERR_MAX_COUNT {
+					return Err(Error::Transform(transform_err));
+				}
+
+				tracing::error!(
+					"Transform error ({transform_err_count} out of {TRANSFORM_ERR_MAX_COUNT}): {}",
+					transform_err.display_chain()
+				);
 			}
 			Err(e) => {
 				if let Some(network_err) = e.is_connection_error() {
@@ -252,7 +283,7 @@ async fn task_loop(t: &mut Task, once: bool) -> Result<(), Error> {
 }
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
-async fn report_error(task_name: &str, err: &str) -> color_eyre::Result<()> {
+async fn report_error(task_name: &str, err: &str) -> Result<()> {
 	use fetcher_core::sink::telegram::LinkLocation;
 	use fetcher_core::sink::Message;
 	use fetcher_core::sink::Telegram;
@@ -265,7 +296,7 @@ async fn report_error(task_name: &str, err: &str) -> color_eyre::Result<()> {
 			));
 		}
 	};
-	let bot = match settings::data::telegram().await? {
+	let bot = match settings::data::telegram::get()? {
 		Some(b) => b,
 		None => {
 			return Err(eyre!("Telegram bot token not provided"));
@@ -287,6 +318,6 @@ async fn flatten_task_result<T, E>(h: JoinHandle<Result<T, E>>) -> Result<T, E> 
 	match h.await {
 		Ok(Ok(res)) => Ok(res),
 		Ok(Err(err)) => Err(err),
-		e => e.unwrap(), // unwrap NOTE: crash if there was an error joining the thread
+		e => e.expect("Thread panicked"),
 	}
 }

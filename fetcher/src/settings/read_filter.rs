@@ -4,87 +4,63 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::path::Path;
-use std::{io::Write, path::PathBuf};
-use tokio::fs;
-
-use super::PREFIX;
-use crate::config;
-use crate::error::ConfigError;
-use fetcher_core as fcore;
+use super::DATA_PATH;
+use fetcher_config::tasks::external_data::{ExternalDataError, ExternalDataResult};
+use fetcher_config::tasks::read_filter::ReadFilter as ReadFilterConf;
+use fetcher_core::read_filter::Kind as ReadFilterKind;
 use fetcher_core::read_filter::{ExternalSave, ReadFilter};
+
+use std::fs;
+use std::io;
+use std::io::Write;
+use std::path::Path;
 
 const READ_DATA_DIR: &str = "read";
 
-/// Returns a read filter for the task name from the filesystem.
-///
-/// # Errors
-/// * if the file is inaccessible
-/// * if the file is corrupted
-#[tracing::instrument(skip(currently_set_rf_kind))]
-pub(crate) async fn get(
-	currently_set_rf_kind: Option<fcore::read_filter::Kind>,
-	name: &str,
-) -> Result<Option<ReadFilter>, ConfigError> {
-	match currently_set_rf_kind {
-		None => Ok(None),
-		Some(currently_set_rf_kind) => {
-			let path = read_filter_path(name)?;
+#[tracing::instrument]
+pub fn get(name: &str, expected_rf_kind: ReadFilterKind) -> ExternalDataResult<ReadFilter> {
+	let path = DATA_PATH.get().unwrap().join(READ_DATA_DIR).join(name);
 
-			match fs::read_to_string(&path).await {
-				Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
-					tracing::debug!("Read filter save file is empty");
+	match fs::read_to_string(&path) {
+		Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
+			tracing::debug!("Read filter save file is empty");
 
-					Ok(Some(ReadFilter::new(
-						currently_set_rf_kind,
-						Box::new(save_file(&path)?),
-					)))
-				}
-				Err(e) => {
-					tracing::debug!("Read filter save file doesn't exist or is inaccessible: {e}");
+			Ok(ReadFilter::new(
+				expected_rf_kind,
+				Box::new(save_file(&path)?),
+			))
+		}
+		Err(e) => {
+			tracing::debug!("Read filter save file doesn't exist or is inaccessible: {e}");
 
-					Ok(Some(ReadFilter::new(
-						currently_set_rf_kind,
-						Box::new(save_file(&path)?),
-					)))
-				}
-				Ok(save_file_rf_raw) => {
-					let save_file_rf = {
-						let save_file_rf_conf: config::read_filter::ReadFilter =
-							serde_json::from_str(&save_file_rf_raw).map_err(|e| {
-								ConfigError::CorruptedConfig(Box::new(e), path.clone())
-							})?;
+			Ok(ReadFilter::new(
+				expected_rf_kind,
+				Box::new(save_file(&path)?),
+			))
+		}
+		Ok(save_file_rf_raw) => {
+			let save_file_rf = {
+				let conf: ReadFilterConf =
+					serde_json::from_str(&save_file_rf_raw).map_err(|e| (e, &path))?;
 
-						save_file_rf_conf.parse(Box::new(save_file(&path)?))
-					};
+				conf.parse(Box::new(save_file(&path)?))
+			};
 
-					// the old read filter saved on disk is of the same type as the one set in config
-					if save_file_rf.to_kind() == currently_set_rf_kind {
-						Ok(Some(save_file_rf))
-					} else {
-						Err(ConfigError::IncompatibleReadFilterTypes {
-							in_config: save_file_rf.to_kind(),
-							on_disk: currently_set_rf_kind,
-							disk_rf_path: path,
-						})
-					}
-				}
+			// the old read filter saved on disk is of the same type as the one set in config
+			if save_file_rf.to_kind() == expected_rf_kind {
+				Ok(save_file_rf)
+			} else {
+				Err(ExternalDataError::new_rf_incompat_with_path(
+					expected_rf_kind,
+					save_file_rf.to_kind(),
+					&path,
+				))
 			}
 		}
 	}
 }
 
-fn read_filter_path(name: &str) -> Result<PathBuf, ConfigError> {
-	debug_assert!(!name.is_empty());
-	Ok(if cfg!(debug_assertions) {
-		PathBuf::from(format!("debug_data/read/{name}"))
-	} else {
-		xdg::BaseDirectories::with_profile(PREFIX, READ_DATA_DIR)?
-			.place_data_file(name)
-			.map_err(|e| ConfigError::Read(e, format!("READ_DATA_DIR/{name}").into()))?
-	})
-}
-
+// TODO: move to a new mod
 struct TruncatingFileWriter {
 	file: std::fs::File,
 }
@@ -104,11 +80,10 @@ impl std::io::Write for TruncatingFileWriter {
 }
 
 impl ExternalSave for TruncatingFileWriter {
-	fn save(
-		&mut self,
-		read_filter: &fetcher_core::read_filter::ReadFilterInner,
-	) -> std::io::Result<()> {
-		if let Some(filter_conf) = crate::config::read_filter::ReadFilter::unparse(read_filter) {
+	fn save(&mut self, read_filter: &fetcher_core::read_filter::Inner) -> io::Result<()> {
+		if let Some(filter_conf) =
+			fetcher_config::tasks::read_filter::ReadFilter::unparse(read_filter)
+		{
 			let s = serde_json::to_string(&filter_conf).unwrap();
 			return self.write_all(s.as_bytes());
 		}
@@ -117,16 +92,15 @@ impl ExternalSave for TruncatingFileWriter {
 	}
 }
 
-fn save_file(path: &Path) -> Result<TruncatingFileWriter, ConfigError> {
+fn save_file(path: &Path) -> io::Result<TruncatingFileWriter> {
 	if let Some(parent) = path.parent() {
-		std::fs::create_dir_all(parent).map_err(|e| ConfigError::Write(e, parent.to_owned()))?;
+		std::fs::create_dir_all(parent)?;
 	}
 
 	let file = std::fs::OpenOptions::new()
 		.create(true)
 		.write(true)
-		.open(&path)
-		.map_err(|e| ConfigError::Write(e, path.to_path_buf()))?;
+		.open(&path)?;
 
 	Ok(TruncatingFileWriter { file })
 }

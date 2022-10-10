@@ -10,27 +10,21 @@
 #![warn(missing_docs)]
 #![warn(clippy::unwrap_used)]
 
-/// Everything concerning some kind of non-primitive authentication
+pub mod action;
 pub mod auth;
-/// Contains [`Entry`] - a struct that contains a message that can be fed into a [`Sink`] and an id that can be used with a [`ReadFilter`](`read_filter::ReadFilter`)
 pub mod entry;
-/// Every error this crate and any of its modules may return, plus some helper functions
 pub mod error;
-/// Filtering already read entries and marking what entries have already been read
 pub mod read_filter;
-/// Sending fetched data
 pub mod sink;
-/// Fetching data
 pub mod source;
-/// Contains [`Task`] - a struct that combines everything from the above into a one coherent entity
 pub mod task;
-pub mod transform;
+pub mod utils;
 
 use crate::{
+	action::Action,
 	entry::Entry,
 	error::{transform::Error as TransformError, Error},
 	task::Task,
-	transform::Transform,
 };
 
 use std::collections::HashSet;
@@ -40,31 +34,37 @@ use std::collections::HashSet;
 /// # Errors
 /// If there was an error fetching the data, sending the data, or saving what data was successfully sent to an external location
 pub async fn run_task(t: &mut Task) -> Result<(), Error> {
-	tracing::trace!("Running task: {:#?}", t);
+	tracing::trace!("Running task");
 
 	let entries = {
-		let untransformed = t.source.get().await?;
+		let raw = t.source.get().await?;
 
-		let transformed = match &t.transforms {
-			Some(transforms) => transform_entries(untransformed, transforms).await?,
-			None => untransformed,
+		tracing::trace!("Got {} raw entries from the source(s)", raw.len());
+
+		let processed = match &t.actions {
+			Some(actions) => process_entries(raw, actions).await?,
+			None => raw,
 		};
 
-		remove_duplicates(transformed)
+		tracing::trace!("Got {} fully processed entries", processed.len());
+
+		remove_duplicates(processed)
 	};
 
-	// entries should be sorted newer to oldest but we should send oldest first
-	for entry in entries.into_iter().rev() {
-		t.sink.send(entry.msg, t.tag.as_deref()).await?;
+	if let Some(sink) = t.sink.as_ref() {
+		// entries should be sorted newest to oldest but we should send oldest first
+		for entry in entries.into_iter().rev() {
+			sink.send(entry.msg, t.tag.as_deref()).await?;
 
-		if let Some(id) = &entry.id {
-			match &mut t.source {
-				source::Source::WithSharedReadFilter(_) => {
-					if let Some(rf) = &t.rf {
-						rf.write().await.mark_as_read(id).await?;
+			if let Some(id) = &entry.id {
+				match &mut t.source {
+					source::Source::WithSharedReadFilter { rf, .. } => {
+						if let Some(rf) = rf {
+							rf.write().await.mark_as_read(id)?;
+						}
 					}
+					source::Source::WithCustomReadFilter(x) => x.mark_as_read(id).await?,
 				}
-				source::Source::WithCustomReadFilter(x) => x.mark_as_read(id).await?,
 			}
 		}
 	}
@@ -72,18 +72,20 @@ pub async fn run_task(t: &mut Task) -> Result<(), Error> {
 	Ok(())
 }
 
-async fn transform_entries(
+async fn process_entries(
 	mut entries: Vec<Entry>,
-	transforms: &[Transform],
+	actions: &[Action],
 ) -> Result<Vec<Entry>, TransformError> {
-	for tr in transforms {
-		entries = tr.transform(entries).await?;
+	for a in actions {
+		entries = a.process(entries).await?;
 	}
 
 	Ok(entries)
 }
 
 fn remove_duplicates(entries: Vec<Entry>) -> Vec<Entry> {
+	let num_og_entries = entries.len();
+
 	let mut uniq = Vec::new();
 	let mut used_ids = HashSet::new();
 
@@ -97,6 +99,11 @@ fn remove_duplicates(entries: Vec<Entry>) -> Vec<Entry> {
 			}
 			None => uniq.push(ent),
 		}
+	}
+
+	let num_removed = num_og_entries - uniq.len();
+	if num_removed > 0 {
+		tracing::trace!("Removed {} duplicate entries", num_removed);
 	}
 
 	uniq

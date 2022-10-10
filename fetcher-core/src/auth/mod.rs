@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains all external manual authentication implementations. For now it's just [`Google OAuth2`](`Google`)
+
 mod google;
 
 pub use google::Google;

@@ -6,21 +6,20 @@
 
 // TODO: add trace logging, e.g. all config dirs, all config files, stuff like that
 
+use super::CONFIG_FILE_EXT;
+use crate::settings::{self, CONF_PATHS};
+use fetcher_config::tasks::task::Task as ConfigTask;
+use fetcher_config::tasks::ParsedTask;
+use fetcher_config::tasks::ParsedTasks;
+
+use color_eyre::eyre::eyre;
+use color_eyre::Result;
 use figment::{
 	providers::{Format, Yaml},
 	Figment,
 };
 use serde::Deserialize;
 use std::path::PathBuf;
-
-use super::CONFIG_FILE_EXT;
-use crate::error::ConfigError;
-use crate::settings;
-use crate::task::Task;
-use crate::{
-	config::{self, DataSettings},
-	task::Tasks,
-};
 
 #[derive(Deserialize, Debug)]
 struct DisabledField {
@@ -33,81 +32,63 @@ struct TemplatesField {
 }
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]
-#[tracing::instrument(skip(settings))]
-pub(crate) async fn get_all(settings: &DataSettings) -> Result<Tasks, ConfigError> {
-	let mut tasks = Tasks::new();
-	for dir in super::cfg_dirs()?.into_iter().map(|mut p| {
-		p.push("tasks");
-		p
-	}) {
-		tasks.extend(get_all_from(dir, settings).await?);
+#[tracing::instrument]
+pub async fn get_all() -> Result<ParsedTasks> {
+	let mut tasks = ParsedTasks::new();
+	for dir in CONF_PATHS.get().unwrap().iter().map(|p| p.join("tasks")) {
+		// TODO: make a stream?
+		tasks.extend(get_all_from(dir).await?);
 	}
 
 	Ok(tasks)
 }
 
-pub(crate) async fn get_all_from(
-	tasks_dir: PathBuf,
-	settings: &DataSettings,
-) -> Result<Tasks, ConfigError> {
+pub async fn get_all_from(tasks_dir: PathBuf) -> Result<ParsedTasks> {
 	let glob_str = format!(
 		"{tasks_dir}/**/*.{CONFIG_FILE_EXT}",
-		tasks_dir = tasks_dir.to_str().expect("Path is illegal UTF-8") // .ok_or_else(|| ConfigError::BadPath(tasks_dir.clone()))?
+		tasks_dir = tasks_dir.to_str().expect("Path is illegal UTF-8")
 	);
 
-	let cfgs = glob::glob(&glob_str).unwrap(); // unwrap NOTE: should be safe if the glob pattern is correct
+	let cfgs = glob::glob(&glob_str)
+		.expect("The glob pattern is hand-made and should never fail to be parsed");
 
-	let mut tasks = Tasks::new();
+	let mut tasks = ParsedTasks::new();
 	for cfg in cfgs {
-		let cfg = cfg.map_err(|e| ConfigError::Read(e.into_error(), tasks_dir.clone()))?;
+		let cfg = cfg?;
 		let name = cfg
 			.strip_prefix(&tasks_dir)
-			.unwrap()
+			.expect("The prefix was just appended up above in the glob pattern and thus should never fail")
 			.with_extension("")
-			.to_string_lossy()
+			.to_string_lossy()	// TODO: choose if we should use lossy or fail on invalid UTF-8 like in read_filter::get. This inconsistent behavior is probably even worse than any of the two
 			.into_owned();
 
-		get(cfg, &name, settings)
-			.await?
-			.map(|task| tasks.insert(name, task));
+		get(cfg, &name).await?.map(|task| tasks.insert(name, task));
 	}
 
 	Ok(tasks)
 }
 
-#[tracing::instrument(skip(settings))]
-pub(crate) async fn get(
-	path: PathBuf,
-	name: &str,
-	settings: &DataSettings,
-) -> Result<Option<Task>, ConfigError> {
+#[tracing::instrument]
+pub async fn get(path: PathBuf, name: &str) -> Result<Option<ParsedTask>> {
 	tracing::trace!("Parsing a task from file");
 
 	let task_file = Figment::new().merge(Yaml::file(&path));
 
-	let DisabledField { disabled } = task_file
-		.extract()
-		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
+	let DisabledField { disabled } = task_file.extract()?;
 
 	if disabled.unwrap_or(false) {
 		tracing::trace!("Task is disabled, skipping...");
 		return Ok(None);
 	}
 
-	let TemplatesField { templates } = task_file
-		.extract()
-		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
+	let TemplatesField { templates } = task_file.extract()?;
 
 	let mut full_conf = Figment::new();
 
 	if let Some(templates) = templates {
 		for tmpl_name in templates {
-			let tmpl = settings::config::templates::find(&tmpl_name)?.ok_or_else(|| {
-				ConfigError::TemplateNotFound {
-					template: tmpl_name.clone(),
-					from_task: name.to_owned(),
-				}
-			})?;
+			let tmpl = settings::config::templates::find(&tmpl_name)?
+				.ok_or_else(|| eyre!("Template not found"))?;
 
 			tracing::trace!("Using template: {:?}", tmpl.path);
 
@@ -116,10 +97,15 @@ pub(crate) async fn get(
 	}
 
 	let full_conf = full_conf.merge(Yaml::file(&path));
+	let task: ConfigTask = full_conf.extract()?;
 
-	let task: config::Task = full_conf
-		.extract()
-		.map_err(|e| ConfigError::CorruptedConfig(Box::new(e), path.clone()))?;
+	let name = name.to_owned(); // ehhhh, such a wasteful clone, and just because tokio doesn't support scoped tasks
+	let parsed_task = tokio::task::spawn_blocking(move || {
+		task.parse(&name, &settings::ExternalDataFromDataDir {})
+	})
+	.await
+	.unwrap()?;
+	// let parsed_task = task.parse(name, &settings::TaskSettingsFetcherDefault)?;
 
-	Ok(Some(task.parse(name, settings).await?))
+	Ok(Some(parsed_task))
 }

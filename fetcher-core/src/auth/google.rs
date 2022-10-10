@@ -4,10 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use crate::error::GoogleOAuth2Error;
+
 use serde::Deserialize;
 use std::time::{Duration, Instant};
-
-use crate::error::GoogleOAuth2Error;
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
 
@@ -23,15 +23,23 @@ struct AccessToken {
 	expires: Instant,
 }
 
+#[allow(clippy::doc_markdown)]
+/// Google OAuth2 authenticator
+// TODO: link docs to the oauth2 spec
 #[derive(Clone, Debug)]
 pub struct Google {
-	client_id: String,
-	client_secret: String,
-	refresh_token: String,
+	/// OAuth2 client id
+	pub client_id: String,
+	/// OAuth2 client secret
+	pub client_secret: String,
+	/// OAuth2 refresh token
+	pub refresh_token: String,
 	access_token: Option<AccessToken>,
 }
 
 impl Google {
+	#[allow(clippy::doc_markdown)]
+	/// Creates a new Google OAuth2 authenticator
 	#[must_use]
 	pub fn new(client_id: String, client_secret: String, refresh_token: String) -> Self {
 		Self {
@@ -117,7 +125,7 @@ impl Google {
 
 		self.access_token = Some(AccessToken {
 			token: access_token,
-			expires: Instant::now() + Duration::from_secs(expires_in),
+			expires: Instant::now() + Duration::from_secs(expires_in - /* buffer */ 5), // add 5 seconds as buffer since some time could've passed since the server issued the token
 		});
 
 		Ok(())
@@ -144,11 +152,10 @@ impl Google {
 			self.validate_access_token().await?;
 		}
 
-		// unwrap NOTE: should be safe, we just validated it up above
 		Ok(self
 			.access_token
 			.as_ref()
 			.map(|x| x.token.as_str())
-			.unwrap())
+			.expect("Token should have just been validated and thus be present and valid"))
 	}
 }

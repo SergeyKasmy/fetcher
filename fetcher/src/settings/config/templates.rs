@@ -4,21 +4,30 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::fs;
-use std::path::Path;
-
 use super::CONFIG_FILE_EXT;
-use crate::error::ConfigError;
-use fetcher_core::task::template::Template;
+use crate::settings::CONF_PATHS;
+
+use color_eyre::Result;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 const TEMPLATES_DIR: &str = "templates";
 
+#[derive(Debug)]
+pub struct Template {
+	pub name: String,
+	pub path: PathBuf,
+	pub contents: String,
+}
+
 #[tracing::instrument(name = "template")]
-pub(crate) fn find(name: &str) -> Result<Option<Template>, ConfigError> {
-	for template_dir_path in super::cfg_dirs()?.into_iter().map(|mut p| {
-		p.push(TEMPLATES_DIR);
-		p
-	}) {
+pub fn find(name: &str) -> Result<Option<Template>> {
+	for template_dir_path in CONF_PATHS
+		.get()
+		.unwrap()
+		.iter()
+		.map(|p| p.join(TEMPLATES_DIR))
+	{
 		if let Some(template) = find_in(&template_dir_path, name)? {
 			return Ok(Some(template));
 		}
@@ -27,16 +36,15 @@ pub(crate) fn find(name: &str) -> Result<Option<Template>, ConfigError> {
 	Ok(None)
 }
 
-pub(crate) fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>, ConfigError> {
+pub fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>> {
 	tracing::trace!("Searching for template in {}", templates_path.display());
 	let path = templates_path.join(name).with_extension(CONFIG_FILE_EXT);
 	if !path.is_file() {
 		tracing::trace!("{path:?} is not a file");
-		// return Err(Error::TemplateNotFound(name));
 		return Ok(None);
 	}
 
-	let contents = fs::read_to_string(&path).map_err(|e| ConfigError::Read(e, path.clone()))?;
+	let contents = fs::read_to_string(&path)?;
 
 	Ok(Some(Template {
 		name: name.to_owned(),
