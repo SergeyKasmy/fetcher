@@ -23,13 +23,23 @@ impl TransformField for Shorten {
 	type Error = Infallible;
 
 	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Infallible> {
-		let new_val = if self.len != 0 {
-			field.map(|s| {
-				s.chars()
-					.take(self.len)
-					.chain(repeat('.').take(3))
-					.collect::<String>()
-			})
+		// len == 0 means we should unset the field. Same effect as Set with value: None here
+		let new_val = if self.len == 0 {
+			None
+		} else if let Some(field) = field {
+			// pass-through the field if it's shorter than max len
+			if field.len() < self.len {
+				Some(field.to_owned())
+			} else {
+				// take self.len chars from field and append ...
+				Some(
+					field
+						.chars()
+						.take(self.len)
+						.chain(repeat('.').take(3))
+						.collect::<String>(),
+				)
+			}
 		} else {
 			None
 		};
