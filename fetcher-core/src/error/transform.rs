@@ -29,6 +29,9 @@ pub struct Error {
 
 #[derive(thiserror::Error, Debug)]
 pub enum Kind {
+	#[error("Message link is not a valid URL after transforming")]
+	FieldLinkTransformInvalidUrl(#[source] InvalidUrlError),
+
 	#[error("HTTP error")]
 	Http(#[from] HttpError),
 

@@ -10,13 +10,18 @@ pub mod entry;
 pub mod field;
 pub mod result;
 
+use self::field::{Field, TransformField};
 pub use self::{
 	entry::{feed::Feed, html::Html, json::Json, use_raw_contents::UseRawContents},
 	field::{caps::Caps, shorten::Shorten, trim::Trim},
 };
+use crate::utils::OptionExt;
+use crate::{
+	entry::Entry, error::transform::Error as TransformError, error::transform::InvalidUrlError,
+	error::transform::Kind as TransformErrorKind, sink::Message,
+};
 
-use self::field::{Field, TransformField};
-use crate::{entry::Entry, error::transform::Error as TransformError, sink::Message};
+use reqwest::Url;
 
 /// Either an entry or a field transform
 #[allow(clippy::large_enum_variant)]
@@ -46,6 +51,7 @@ impl Transform {
 				let old_val = match field {
 					Field::Title => entry.msg.title.take(),
 					Field::Body => entry.msg.body.take(),
+					Field::Link => entry.msg.link.take().map(|u| u.to_string()),
 				};
 
 				let new_val =
@@ -73,6 +79,21 @@ impl Transform {
 						},
 						..entry
 					},
+					Field::Link => {
+						let link = final_val.try_map(|s| {
+							Url::try_from(s.as_str()).map_err(|e| TransformError {
+								kind: TransformErrorKind::FieldLinkTransformInvalidUrl(
+									InvalidUrlError(e, s),
+								),
+								original_entry: entry.clone(),
+							})
+						})?;
+
+						Entry {
+							msg: Message { link, ..entry.msg },
+							..entry
+						}
+					}
 				};
 
 				output.push(new_entry);

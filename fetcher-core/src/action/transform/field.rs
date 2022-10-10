@@ -46,10 +46,12 @@ pub enum Kind {
 /// List of all available fields for transformations
 #[derive(Debug)]
 pub enum Field {
-	/// The [`Message.title`] field
+	/// [`Message.title`] field
 	Title,
-	/// The [`Message.body`] field
+	/// [`Message.body`] field
 	Body,
+	/// [`Message.link`] field
+	Link,
 }
 
 impl TransformField for Kind {

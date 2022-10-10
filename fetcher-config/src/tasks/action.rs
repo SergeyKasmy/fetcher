@@ -80,6 +80,7 @@ impl Action {
 pub enum Field {
 	Title,
 	Body,
+	Link,
 }
 
 impl Field {
@@ -87,6 +88,7 @@ impl Field {
 		match self {
 			Field::Title => CField::Title,
 			Field::Body => CField::Body,
+			Field::Link => CField::Link,
 		}
 	}
 }

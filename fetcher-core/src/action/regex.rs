@@ -79,13 +79,14 @@ impl Filter for Regex<Find> {
 	fn filter(&self, entries: &mut Vec<Entry>) {
 		entries.retain(|ent| {
 			let s = match self.action.in_field {
-				Field::Title => ent.msg.title.as_deref(),
-				Field::Body => ent.msg.body.as_deref(),
+				Field::Title => ent.msg.title.as_deref().map(Cow::Borrowed),
+				Field::Body => ent.msg.body.as_deref().map(Cow::Borrowed),
+				Field::Link => ent.msg.link.as_ref().map(|s| Cow::Owned(s.to_string())),
 			};
 
 			match s {
 				None => false,
-				Some(s) => match find(&self.re, s) {
+				Some(s) => match find(&self.re, &s) {
 					Matched | Extracted(_) => true,
 					NotMatched => false,
 				},
