@@ -12,25 +12,25 @@ chrono = "0.4.22"
 derive_more = "0.99.17"
 egg-mode = { version = "0.16.0", features = ["rustls"], default-features = false }
 either = "1.8.0"
-feed-rs = "1.1.0"
-futures = "0.3.21"
+feed-rs = "1.2.0"
+futures = "0.3.24"
 # NOTE: 0.22 is a hard requirement by soup, make sure not to update it when doing cargo upgrade
 html5ever = "0.22"
-imap = { version = "3.0.0-alpha.8", features = [ "rustls-tls" ], default-features = false }
-itertools = "0.10.3"
+imap = { version = "3.0.0-alpha.9", features = [ "rustls-tls" ], default-features = false }
+itertools = "0.10.5"
 mailparse = "0.13.8"
-once_cell = "1.13.0"
+once_cell = "1.15.0"
 regex = "1.6.0"
-reqwest = { version = "0.11.11", features = ["rustls-tls", "gzip"], default-features = false }
-serde = { version = "1.0.143", features = ["derive"] }
-serde_json = "1.0.83"
+reqwest = { version = "0.11.12", features = ["rustls-tls", "gzip"], default-features = false }
+serde = { version = "1.0.145", features = ["derive"] }
+serde_json = "1.0.86"
 soup = "0.5.1"
 tap = "1.0.1"
-teloxide = { version = "0.10.1", features = ["rustls"], default-features = false }
-thiserror = "1.0.32"
-tokio = { version = "1.20.1", features = ["fs", "io-std"] }
-tracing = "0.1.36"
-url = "2.2.2"
+teloxide = { version = "0.11.0", features = ["rustls"], default-features = false }
+thiserror = "1.0.37"
+tokio = { version = "1.21.2", features = ["fs", "io-std"] }
+tracing = "0.1.37"
+url = "2.3.1"
 
 [dev-dependencies]
 assert_matches = "1.5"

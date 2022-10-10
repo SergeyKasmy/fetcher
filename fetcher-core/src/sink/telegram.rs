@@ -17,7 +17,7 @@ use teloxide::{
 	requests::{Request, Requester},
 	types::{
 		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, Message as TelMessage,
-		ParseMode,
+		MessageId, ParseMode,
 	},
 	ApiError, Bot, RequestError,
 };
@@ -148,7 +148,7 @@ impl Telegram {
 	async fn send_text_with_reply_id(
 		&self,
 		message: &str,
-		reply_to_msg_id: Option<i32>,
+		reply_to_msg_id: Option<MessageId>,
 	) -> Result<TelMessage, SinkError> {
 		tracing::trace!("About to send a text message with contents: {message:?}");
 		loop {
@@ -197,7 +197,7 @@ impl Telegram {
 		&self,
 		media: &[Media],
 		caption: &str,
-		reply_to_msg_id: Option<i32>,
+		reply_to_msg_id: Option<MessageId>,
 	) -> Result<Vec<TelMessage>, SinkError> {
 		tracing::trace!(
 			"About to send a media message with caption: {caption:?}, and media: {media:?}"
