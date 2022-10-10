@@ -1,13 +1,13 @@
 [package]
 name = "fetcher-config"
 description = "fetcher config"
-version = "0.9.2"
+version = "0.10.0"
 license = "MPL-2.0"
 repository = "https://github.com/SergeyKasmy/fetcher"
 edition = "2021"
 
 [dependencies]
-fetcher-core = { version = "0.9.1", path = "../fetcher-core" }
+fetcher-core = { version = "0.10.0", path = "../fetcher-core" }
 
 chrono = "0.4.22"
 serde = { version = "1.0.145", features = ["derive"] }
