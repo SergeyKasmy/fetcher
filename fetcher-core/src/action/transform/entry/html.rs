@@ -20,10 +20,8 @@ use crate::{
 	utils::OptionExt,
 };
 
-//use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use either::Either;
-use html5ever::rcdom::Handle as HtmlNode;
-use soup::{NodeExt, QueryBuilderExt, Soup};
+use soup::{Handle as HtmlNode, NodeExt, QueryBuilderExt, Soup};
 use std::iter;
 use url::Url;
 
@@ -50,23 +48,17 @@ impl TransformEntry for Html {
 	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
 		tracing::debug!("Parsing HTML");
 
-		let soup = Soup::new(
-			entry
-				.raw_contents
-				.as_ref()
-				.ok_or(RawContentsNotSetError)?
-				.as_str(),
-		);
+		let dom =
+			Soup::new(entry.raw_contents.as_ref().ok_or(RawContentsNotSetError)?).get_handle();
 
-		let body = soup
-			.get_handle()
+		let body = dom
 			.tag("body") // use body as the root html node
 			.find()
 			.unwrap_or_else(|| {
 				tracing::debug!("HTML doesn't contain a body, using the root as the body");
 
 				// or use the entire html if it doesn't exist for some reason (I don't think it should?)
-				soup.get_handle()
+				dom
 			});
 
 		if body.text().trim().is_empty() {
