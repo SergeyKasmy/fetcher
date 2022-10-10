@@ -15,14 +15,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Set {
 	pub field: Field,
-	pub text: String,
+	pub value: Option<String>,
 }
 
 impl Set {
 	pub fn parse(self) -> CTransform {
 		CTransform::Field {
 			field: self.field.parse(),
-			kind: CFieldTransformKind::Set(CSet(self.text)),
+			kind: CFieldTransformKind::Set(CSet(self.value)),
 		}
 	}
 }

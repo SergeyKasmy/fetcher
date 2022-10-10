@@ -13,12 +13,12 @@ use std::convert::Infallible;
 
 /// Set a field to a hardcoded value
 #[derive(Debug)]
-pub struct Set(pub String);
+pub struct Set(pub Option<String>);
 
 impl TransformField for Set {
 	type Error = Infallible;
 
 	fn transform_field(&self, _old_field: Option<&str>) -> Result<TrRes<String>, Self::Error> {
-		Ok(TrRes::New(Some(self.0.clone())))
+		Ok(TrRes::New(self.0.clone()))
 	}
 }

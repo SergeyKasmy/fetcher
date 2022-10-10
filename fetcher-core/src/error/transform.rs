@@ -20,7 +20,7 @@ use crate::{
 use std::convert::Infallible;
 
 #[derive(thiserror::Error, Debug)]
-#[error("Error transforming entry. Contents:\n{original_entry:?}")]
+#[error("Error transforming entry. Contents:\n------------------------\n{original_entry:#?}\n------------------------")]
 pub struct Error {
 	#[source]
 	pub kind: Kind,
