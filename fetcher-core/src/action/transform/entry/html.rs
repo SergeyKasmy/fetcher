@@ -5,8 +5,6 @@
  */
 
 //! This module contains the [`Html`] parser as well as a way to query an HTML tag via [`QueryData`]
-// TODO: better handle invalid config values
-// TODO: make sure read_filter_type not_present_in_read_list only works with id_query.kind = id
 
 pub mod query;
 
@@ -94,6 +92,7 @@ impl TransformEntry for Html {
 }
 
 // TODO: make sure (and add tests!) that it errors if no item was found
+// Won't remove this one till I add these goddamned tests >:(
 impl Html {
 	fn extract_entry(&self, html: &HtmlNode) -> Result<TransformedEntry, HtmlError> {
 		let title = self

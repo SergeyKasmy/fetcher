@@ -66,10 +66,10 @@ impl Telegram {
 		} = message;
 
 		tracing::debug!(
-			"Processing message: title: {title:?}, body len: {}, link: {}, media: {}",
+			"Processing message: title: {title:?}, body len: {}, link: {}, media count: {}",
 			body.as_ref().map_or(0, String::len),
 			link.is_some(),
-			media.is_some(),
+			media.as_ref().map_or(0, Vec::len),
 		);
 
 		let body = body.map(|s| teloxide::utils::html::escape(&s));
@@ -201,36 +201,54 @@ impl Telegram {
 			"About to send a media message with caption: {caption:?}, and media: {media:?}"
 		);
 
+		// mark if caption has already been included.
+		// which it should be only once
+		let mut caption_included = false;
+
 		let media = media
 			.iter()
-			.map(|x| match x {
-				Media::Photo(url) => InputMedia::Photo(
-					InputMediaPhoto::new(InputFile::url(url.clone()))
-						.caption(caption)
-						.parse_mode(ParseMode::Html),
-				),
-				Media::Video(url) => InputMedia::Video(
-					InputMediaVideo::new(InputFile::url(url.clone()))
-						.caption(caption)
-						.parse_mode(ParseMode::Html),
-				),
-			})
-			.collect::<Vec<InputMedia>>();
+			.map(|m| {
+				macro_rules! input_media {
+					($type:tt, $full_type:tt, $url:expr) => {{
+						// $type example: Photo
+						// $full_type example: InputMediaPhoto
 
+						let input_media = $full_type::new(InputFile::url($url.clone()))
+							.parse_mode(ParseMode::Html);
+
+						let input_media = if caption_included {
+							input_media
+						} else {
+							caption_included = true;
+							input_media.caption(caption)
+						};
+
+						InputMedia::$type(input_media)
+					}};
+				}
+
+				match m {
+					Media::Photo(url) => input_media!(Photo, InputMediaPhoto, url),
+					Media::Video(url) => input_media!(Video, InputMediaVideo, url),
+				}
+			})
+			.collect::<Vec<_>>();
+
+		// number of "failed to get url content" error retried tries
 		let mut retry_counter = 0;
 
 		loop {
 			tracing::info!("Sending media message");
 
-			let send_msg_cmd = self.bot.send_media_group(self.chat_id, media.clone());
+			let msg_cmd = self.bot.send_media_group(self.chat_id, media.clone());
 
-			let send_msg_cmd = if let Some(id) = reply_to_msg_id {
-				send_msg_cmd.reply_to_message_id(id)
+			let msg_cmd = if let Some(id) = reply_to_msg_id {
+				msg_cmd.reply_to_message_id(id)
 			} else {
-				send_msg_cmd
+				msg_cmd
 			};
 
-			match send_msg_cmd.send().await {
+			match msg_cmd.send().await {
 				Ok(messages) => return Ok(messages),
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tracing::warn!(

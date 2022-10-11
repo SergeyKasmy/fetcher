@@ -100,7 +100,6 @@ impl Http {
 			.map_err(|e| HttpError::BadRequest(e, self.url.to_string()))?;
 
 		// tracing::trace!("Done. Body: ----------------------------------------\n{page:?}\n----------------------------------------\n");
-		tracing::trace!("Done");
 
 		Ok(Entry {
 			raw_contents: Some(page),
