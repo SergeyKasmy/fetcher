@@ -23,12 +23,12 @@ use std::path::PathBuf;
 
 #[derive(Deserialize, Debug)]
 struct DisabledField {
-	disabled: Option<bool>,
+	disabled: fetcher_config::tasks::task::DisabledField,
 }
 
 #[derive(Deserialize, Debug)]
 struct TemplatesField {
-	templates: Option<Vec<String>>,
+	templates: fetcher_config::tasks::task::TemplatesField,
 }
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]

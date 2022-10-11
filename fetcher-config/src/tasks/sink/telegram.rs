@@ -10,27 +10,19 @@ use crate::tasks::external_data::ExternalData;
 use crate::Error;
 use fetcher_core::sink;
 
-/// Refer to [`crate::sink::message::LinkLocation`]
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum LinkLocation {
-	PreferTitle,
-	Bottom,
-}
-
-impl LinkLocation {
-	pub fn parse(self) -> sink::telegram::LinkLocation {
-		match self {
-			LinkLocation::PreferTitle => sink::telegram::LinkLocation::PreferTitle,
-			LinkLocation::Bottom => sink::telegram::LinkLocation::Bottom,
-		}
-	}
-}
-
-#[derive(Deserialize, Serialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Telegram {
 	chat_id: i64,
 	link_location: LinkLocation,
+}
+
+/// Refer to [`crate::sink::message::LinkLocation`]
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub enum LinkLocation {
+	PreferTitle,
+	Bottom,
 }
 
 impl Telegram {
@@ -42,5 +34,14 @@ impl Telegram {
 			self.chat_id,
 			self.link_location.parse(),
 		))
+	}
+}
+
+impl LinkLocation {
+	pub fn parse(self) -> sink::telegram::LinkLocation {
+		match self {
+			LinkLocation::PreferTitle => sink::telegram::LinkLocation::PreferTitle,
+			LinkLocation::Bottom => sink::telegram::LinkLocation::Bottom,
+		}
 	}
 }

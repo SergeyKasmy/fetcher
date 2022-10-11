@@ -4,10 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::action::transform::field::shorten::Shorten as CShorten;
-use fetcher_core::action::transform::field::Field as CField;
-use fetcher_core::action::transform::field::Kind as CFieldTransformKind;
-use fetcher_core::action::transform::Transform as CTransform;
+use fetcher_core::action::transform::{
+	field::{shorten::Shorten as CShorten, Field as CField, Kind as CFieldTransformKind},
+	Transform as CTransform,
+};
 
 use serde::{Deserialize, Serialize};
 

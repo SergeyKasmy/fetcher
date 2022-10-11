@@ -4,13 +4,14 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use serde::{Deserialize, Serialize};
-
 use crate::tasks::external_data::ExternalData;
 use crate::Error;
 use fetcher_core::source;
 
+use serde::{Deserialize, Serialize};
+
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Twitter {
 	handle: String,
 	filter: Vec<String>,

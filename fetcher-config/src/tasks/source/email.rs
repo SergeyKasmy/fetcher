@@ -18,6 +18,7 @@ use crate::Error;
 use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Email {
 	imap: Option<String>,
 	email: String,

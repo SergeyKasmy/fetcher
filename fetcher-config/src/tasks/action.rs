@@ -28,7 +28,7 @@ use fetcher_core::action::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
 	// filters
 	ReadFilter,
@@ -53,7 +53,7 @@ pub enum Action {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Field {
 	Title,
 	Body,

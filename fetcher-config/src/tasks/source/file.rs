@@ -4,10 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use fetcher_core::source;
+
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-
-use fetcher_core::source;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(transparent)]

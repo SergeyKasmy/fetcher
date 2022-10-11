@@ -9,6 +9,7 @@ use fetcher_core::auth::Google as CoreGoogleAuth;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Google {
 	client_id: String,
 	client_secret: String,

@@ -13,11 +13,11 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+pub type DisabledField = Option<bool>;
+pub type TemplatesField = Option<Vec<String>>;
+
 #[derive(Deserialize, Serialize, Debug)]
-// TODO: add
-// #[serde(deny_unknown_fields)]
-// but allow templates templates field
-// that's used elsewhere
+#[serde(deny_unknown_fields)]
 pub struct Task {
 	#[serde(rename = "read_filter_type")]
 	read_filter_kind: Option<self::read_filter::Kind>,
@@ -28,6 +28,10 @@ pub struct Task {
 	actions: Option<Vec<Action>>,
 	// TODO: several sinks
 	sink: Option<Sink>,
+
+	// these are meant to be used externally and are unused here
+	disabled: DisabledField,
+	templates: TemplatesField,
 }
 
 impl Task {

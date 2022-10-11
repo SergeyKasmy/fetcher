@@ -10,6 +10,7 @@ use fetcher_core::source::reddit::Sort as CSort;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Reddit {
 	subreddit: String,
 	sort: Sort,
@@ -17,7 +18,7 @@ pub struct Reddit {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 #[rustfmt::skip]	// to put new and latest side by side
 pub enum Sort {
 	Latest, New,
@@ -27,7 +28,7 @@ pub enum Sort {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum TimePeriod {
 	Today,
 	ThisWeek,

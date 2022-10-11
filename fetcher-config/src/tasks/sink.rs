@@ -6,14 +6,14 @@
 
 mod telegram;
 
-use serde::{Deserialize, Serialize};
-
 use self::telegram::Telegram;
 use crate::{tasks::external_data::ExternalData, Error};
 use fetcher_core::sink;
 
+use serde::{Deserialize, Serialize};
+
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Sink {
 	Telegram(Telegram),
 	Stdout,

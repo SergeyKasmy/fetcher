@@ -7,7 +7,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Auth {
 	#[serde(rename = "google_oauth2")]
 	GoogleOAuth2,

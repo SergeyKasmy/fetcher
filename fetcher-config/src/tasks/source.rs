@@ -22,7 +22,7 @@ use tokio::sync::RwLock;
 #[allow(clippy::large_enum_variant)]
 #[serde_as]
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(untagged)]
+#[serde(untagged, deny_unknown_fields)]
 pub enum Source {
 	WithSharedReadFilter(#[serde_as(deserialize_as = "OneOrMany<_>")] Vec<WithSharedReadFilter>),
 	WithCustomReadFilter(WithCustomReadFilter),
@@ -30,7 +30,7 @@ pub enum Source {
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum WithSharedReadFilter {
 	Http(Http),
 	Twitter(Twitter),
@@ -39,7 +39,7 @@ pub enum WithSharedReadFilter {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum WithCustomReadFilter {
 	Email(Email),
 }
