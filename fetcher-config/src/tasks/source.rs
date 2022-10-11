@@ -22,6 +22,7 @@ use tokio::sync::RwLock;
 #[allow(clippy::large_enum_variant)]
 #[serde_as]
 #[derive(Deserialize, Serialize, Debug)]
+// TODO: this untagged messes up error messages if a source contains a bad field
 #[serde(untagged, deny_unknown_fields)]
 pub enum Source {
 	WithSharedReadFilter(#[serde_as(deserialize_as = "OneOrMany<_>")] Vec<WithSharedReadFilter>),

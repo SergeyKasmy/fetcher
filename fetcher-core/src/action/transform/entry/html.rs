@@ -24,6 +24,7 @@ use crate::{
 };
 
 use either::Either;
+use itertools::Itertools;
 use soup::{Handle as HtmlNode, NodeExt, QueryBuilderExt, Soup};
 use std::iter;
 use url::Url;
@@ -98,12 +99,21 @@ impl Html {
 		let title = self
 			.titleq
 			.as_ref()
-			.try_and_then(|q| extract_data(html, q))?;
+			.try_and_then(|q| extract_title(html, q))?;
 
 		let body = self.textq.as_ref().try_map(|q| extract_body(html, q))?;
-		let id = self.idq.as_ref().try_and_then(|q| extract_data(html, q))?;
-		let link = self.linkq.as_ref().try_and_then(|q| extract_url(html, q))?;
-		let img = self.imgq.as_ref().try_and_then(|q| extract_url(html, q))?;
+		let id = self.idq.as_ref().try_and_then(|q| extract_id(html, q))?;
+
+		let link = self
+			.linkq
+			.as_ref()
+			.try_and_then(|q| extract_url(html, q))?
+			.try_map(|mut x| {
+				x.next()
+					.expect("iterator shouldn't be empty, otherwise it would've been None before")
+			})?;
+
+		let img = self.imgq.as_ref().try_and_then(|q| extract_imgs(html, q))?;
 
 		Ok(TransformedEntry {
 			id: TrRes::Old(id),
@@ -112,24 +122,24 @@ impl Html {
 				title: TrRes::Old(title),
 				body: TrRes::Old(body),
 				link: TrRes::Old(link),
-				media: TrRes::Old(img.map(|url| vec![Media::Photo(url)])),
+				media: TrRes::Old(img),
 			},
 		})
 	}
 }
 
-/// Extract data from the provided HTML tags and join them
-fn extract_data(
+/// Extract data from the provided HTML tags
+fn extract_data<'a>(
 	html: &HtmlNode,
-	data_query: &ElementDataQuery,
-) -> Result<Option<String>, HtmlError> {
+	data_query: &'a ElementDataQuery,
+) -> Result<Option<impl Iterator<Item = String> + 'a>, HtmlError> {
 	let data = find_chain(html, &data_query.query).map(|nodes| {
 		nodes
 			.into_iter()
-			.map(|hndl| {
+			.map(|html| {
 				match &data_query.data_location {
-					DataLocation::Text => Some(hndl.text()),
-					DataLocation::Attr(v) => hndl.get(v),
+					DataLocation::Text => Some(html.text()),
+					DataLocation::Attr(v) => html.get(v),
 				}
 				.map(|s| s.trim().to_owned())
 			})
@@ -153,9 +163,7 @@ fn extract_data(
 		}
 	};
 
-	let s = data.join("\n\n");
-
-	if s.is_empty() {
+	if data.iter().all(String::is_empty) {
 		return if data_query.optional {
 			Ok(None)
 		} else {
@@ -163,12 +171,17 @@ fn extract_data(
 		};
 	}
 
-	let s = match &data_query.regex {
+	Ok(Some(data.into_iter().map(|s| match &data_query.regex {
 		Some(r) => r.replace(&s).into_owned(),
 		None => s,
-	};
+	})))
+}
 
-	Ok(Some(s))
+fn extract_title(
+	html: &HtmlNode,
+	data_query: &ElementDataQuery,
+) -> Result<Option<String>, HtmlError> {
+	Ok(extract_data(html, data_query)?.map(|mut it| it.join("\n\n"))) // concat string with "\n\n" as sep
 }
 
 fn extract_body(html: &HtmlNode, data_queries: &[ElementDataQuery]) -> Result<String, HtmlError> {
@@ -177,14 +190,32 @@ fn extract_body(html: &HtmlNode, data_queries: &[ElementDataQuery]) -> Result<St
 		.map(|query| extract_data(html, query))
 		.collect::<Result<Vec<_>, _>>()?
 		.into_iter()
-		.flatten()
-		.collect::<Vec<_>>()
+		.flatten() // flatten options, ignore none's
+		.flatten() // flatten inner iterator
 		.join("\n\n"))
 }
 
-fn extract_url(html: &HtmlNode, query: &ElementDataQuery) -> Result<Option<Url>, HtmlError> {
-	extract_data(html, query)?
-		.try_map(|url| Url::try_from(url.as_str()).map_err(|e| InvalidUrlError(e, url).into()))
+fn extract_id(html: &HtmlNode, data_query: &ElementDataQuery) -> Result<Option<String>, HtmlError> {
+	Ok(extract_data(html, data_query)?.map(Iterator::collect)) // concat strings if several
+}
+
+fn extract_url<'a>(
+	html: &HtmlNode,
+	query: &'a ElementDataQuery,
+) -> Result<Option<impl Iterator<Item = Result<Url, HtmlError>> + 'a>, HtmlError> {
+	Ok(extract_data(html, query)?.map(|it| {
+		it.map(|url| Url::try_from(url.as_str()).map_err(|e| InvalidUrlError(e, url).into()))
+	}))
+}
+
+fn extract_imgs(
+	html: &HtmlNode,
+	data_query: &ElementDataQuery,
+) -> Result<Option<Vec<Media>>, HtmlError> {
+	extract_url(html, data_query)?.try_map(|it| {
+		it.map(|url| url.map(Media::Photo))
+			.collect::<Result<Vec<_>, _>>()
+	})
 }
 
 /// Find all elements matching the query in all the provided HTML parts
@@ -202,7 +233,7 @@ fn find_chain(html: &HtmlNode, elem_queries: &[ElementQuery]) -> Result<Vec<Html
 		html_nodes = html_nodes
 			.into_iter()
 			.flat_map(|html| find(html, elem_query))
-			.collect();
+			.collect(); // can't avoid this collect, using iterators directly produces "infinite cycle error"
 
 		if html_nodes.is_empty() {
 			return Err(i);
