@@ -61,7 +61,7 @@ impl ElementKind {
 }
 
 impl DataLocation {
-	fn parse(self) -> c_query::DataLocation {
+	pub fn parse(self) -> c_query::DataLocation {
 		use DataLocation::{Attr, Text};
 
 		match self {

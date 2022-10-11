@@ -41,15 +41,16 @@ impl Task {
 		let actions = self.actions.try_map(|x| {
 			x.into_iter()
 				.filter_map(|act| match act {
-					Action::ReadFilter => match rf.clone() {
-						Some(rf) => Some(Ok(fetcher_core::action::Action::Filter(
-							fetcher_core::action::filter::Kind::ReadFilter(rf),
-						))),
-						None => {
+					Action::ReadFilter => {
+						if let Some(rf) = rf.clone() {
+							Some(Ok(fetcher_core::action::Action::Filter(
+								fetcher_core::action::filter::Kind::ReadFilter(rf),
+							)))
+						} else {
 							tracing::warn!("Can't use read filter transformer when no read filter is set up for the task!");
 							None
 						}
-					},
+					}
 					other => Some(other.parse()),
 				})
 				.collect::<Result<_, _>>()

@@ -13,7 +13,6 @@ pub struct Twitter {
 }
 
 impl Twitter {
-	#[must_use]
 	pub fn parse(self) -> (String, String) {
 		let Self {
 			api_key,

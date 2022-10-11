@@ -100,7 +100,7 @@ fn save_file(path: &Path) -> io::Result<TruncatingFileWriter> {
 	let file = std::fs::OpenOptions::new()
 		.create(true)
 		.write(true)
-		.open(&path)?;
+		.open(path)?;
 
 	Ok(TruncatingFileWriter { file })
 }

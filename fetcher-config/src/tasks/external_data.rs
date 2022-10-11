@@ -31,12 +31,12 @@ pub trait ExternalData {
 
 #[derive(Error, Debug)]
 pub enum ExternalDataError {
-	#[error("IO error{}", if let Some(p) = payload { format!(": {p}") } else { "".into() })]
+	#[error("IO error{}", if let Some(p) = payload { format!(": {p}") } else { String::new() })]
 	Io {
 		source: io::Error,
 		payload: Option<Box<dyn DisplayDebug + Send + Sync>>,
 	},
-	#[error("Incompatible read filter types: in config: \"{expected}\" and found: \"{found}\"{}", if let Some(p) = payload { format!(": {p}") } else { "".into() })]
+	#[error("Incompatible read filter types: in config: \"{expected}\" and found: \"{found}\"{}", if let Some(p) = payload { format!(": {p}") } else { String::new() })]
 	ReadFilterIncompatibleTypes {
 		expected: ReadFilterKind,
 		found: ReadFilterKind,
@@ -47,7 +47,6 @@ pub enum ExternalDataError {
 pub type ExternalDataResult<T, E = ExternalDataError> = Result<T, E>;
 
 impl ExternalDataError {
-	#[must_use]
 	pub fn new_io_with_path(io_err: io::Error, path: &Path) -> Self {
 		Self::Io {
 			source: io_err,

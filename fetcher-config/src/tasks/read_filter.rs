@@ -33,7 +33,6 @@ pub enum ReadFilter {
 }
 
 impl ReadFilter {
-	#[must_use]
 	pub fn parse(
 		self,
 		external_save: Box<dyn core_rf::ExternalSave + Send + Sync>,
