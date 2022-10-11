@@ -13,8 +13,9 @@ use crate::{
 
 use std::time::Duration;
 use teloxide::{
+	adaptors::{throttle::Limits, Throttle},
 	payloads::{SendMediaGroupSetters, SendMessageSetters},
-	requests::{Request, Requester},
+	requests::{Request, Requester, RequesterExt},
 	types::{
 		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, Message as TelMessage,
 		MessageId, ParseMode,
@@ -28,7 +29,7 @@ const MAX_TEXT_MSG_LEN: usize = 4096;
 
 /// Telegram sink. Supports text and media messages and embeds text into media captions if present. Automatically splits the text into separate messages if it's too long
 pub struct Telegram {
-	bot: Bot,
+	bot: Throttle<Bot>,
 	chat_id: ChatId,
 	link_location: LinkLocation,
 }
@@ -48,10 +49,7 @@ impl Telegram {
 	#[must_use]
 	pub fn new(token: String, chat_id: i64, link_location: LinkLocation) -> Self {
 		Self {
-			// TODO: THIS BLOCKS. WHY??????
-			// #2 throttle() spawns a tokio task but we are in sync. Maybe that causes the hangup?
-			// bot: bot.throttle(Limits::default()),
-			bot: Bot::new(token),
+			bot: Bot::new(token).throttle(Limits::default()),
 			chat_id: ChatId(chat_id),
 			link_location,
 		}
