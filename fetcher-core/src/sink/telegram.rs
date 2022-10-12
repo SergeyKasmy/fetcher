@@ -24,8 +24,8 @@ use teloxide::{
 };
 use url::Url;
 
-const MAX_MEDIA_MSG_LEN: usize = 1024;
 const MAX_TEXT_MSG_LEN: usize = 4096;
+const MAX_MEDIA_MSG_LEN: usize = 1024;
 
 /// Telegram sink. Supports text and media messages and embeds text into media captions if present. Automatically splits the text into separate messages if it's too long
 pub struct Telegram {
@@ -121,10 +121,25 @@ impl Telegram {
 				previous_message = Some(sent_msg.id);
 			}
 		} else {
+			// if head.is some and either body or tail is some
+			let should_insert_newline_after_head =
+				head.is_some() && (body.is_some() || tail.is_some());
+			let should_insert_newline_after_body = body.is_some() && tail.is_some();
+
 			let text = format!(
-				"{}{}{}",
+				"{}{}{}{}{}",
 				head.as_deref().unwrap_or_default(),
+				if should_insert_newline_after_head {
+					"\n"
+				} else {
+					""
+				},
 				body.as_deref().unwrap_or_default(),
+				if should_insert_newline_after_body {
+					"\n"
+				} else {
+					""
+				},
 				tail.as_deref().unwrap_or_default()
 			);
 
@@ -295,20 +310,17 @@ fn format_head_tail(
 	link_location: LinkLocation,
 ) -> (Option<String>, Option<String>) {
 	let (mut head, tail) = match (title, link) {
-		// if title and link are both presend
+		// if title and link are both present
 		(Some(title), Some(link)) => match link_location {
 			// and the link should be in the title, then combine them
-			LinkLocation::PreferTitle => (Some(format!("<a href=\"{link}\">{title}</a>\n")), None),
+			LinkLocation::PreferTitle => (Some(format!("<a href=\"{link}\">{title}</a>")), None),
 			// even it should be at the bottom, return both separately
-			LinkLocation::Bottom => (
-				Some(format!("{title}\n\n")),
-				Some(format!("\n<a href=\"{link}\">Link</a>")),
-			),
+			LinkLocation::Bottom => (Some(title), Some(format!("<a href=\"{link}\">Link</a>"))),
 		},
 		// if only the title is presend, just print itself with an added newline
-		(Some(title), None) => (Some(format!("{title}\n\n")), None),
+		(Some(title), None) => (Some(title), None),
 		// and if only the link is present, but it at the bottom of the message, even if it should try to be in the title
-		(None, Some(link)) => (None, Some(format!("\n<a href=\"{link}\">Link</a>"))),
+		(None, Some(link)) => (None, Some(format!("<a href=\"{link}\">Link</a>"))),
 		(None, None) => (None, None),
 	};
 
@@ -370,6 +382,11 @@ impl MsgParts<'_> {
 
 			// if at least some of the body does fit
 			if body_fits_till > 0 {
+				// insert a new line to separate body from everything else
+				if !split_part.is_empty() {
+					split_part.push('\n');
+				}
+
 				split_part.push_str(&body[..body_fits_till]);
 
 				// if there are some bytes remaining in the body, put them back into itself
@@ -383,6 +400,11 @@ impl MsgParts<'_> {
 		// add the tail if it can still fit into the split
 		if split_part.chars().count() > self.tail.map_or(0, |s| s.chars().count()) {
 			if let Some(tail) = self.tail.take() {
+				// insert a newline to separate tail from everything else
+				if !split_part.is_empty() {
+					split_part.push('\n');
+				}
+
 				split_part.push_str(tail);
 			}
 		}
