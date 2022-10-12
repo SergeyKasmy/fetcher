@@ -12,6 +12,7 @@
 pub mod args;
 pub mod settings;
 
+use self::settings::context::StaticContext as Context;
 use crate::args::{Args, Setting};
 use fetcher_config::tasks::{ParsedTask, ParsedTasks};
 use fetcher_core::error::{Error, ErrorChainExt};
@@ -74,22 +75,26 @@ fn set_up_logging() -> Result<()> {
 #[tokio::main]
 async fn async_main() -> Result<()> {
 	let args: Args = argh::from_env();
-	settings::DATA_PATH
-		.set(match args.data_path {
+	let context: Context = {
+		let data_path = match args.data_path {
 			Some(p) => p,
 			None => settings::data::default_data_path()?,
-		})
-		.unwrap();
-	settings::CONF_PATHS
-		.set(match args.config_path {
+		};
+		let conf_paths = match args.config_path {
 			Some(p) => vec![p],
 			None => settings::config::default_cfg_dirs()?,
-		})
-		.unwrap();
+		};
+
+		Box::leak(Box::new(crate::settings::context::Context {
+			data_path,
+			conf_paths,
+		}))
+	};
 
 	match args.subcommand {
 		args::TopLvlSubcommand::Run(arg) => {
 			run(
+				context,
 				arg.once,
 				if arg.tasks.is_empty() {
 					None
@@ -100,10 +105,10 @@ async fn async_main() -> Result<()> {
 			.await?;
 		}
 		args::TopLvlSubcommand::Save(save) => match save.setting {
-			Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt().await?,
-			Setting::EmailPassword => settings::data::email_password::prompt()?,
-			Setting::Telegram => settings::data::telegram::prompt()?,
-			Setting::Twitter => settings::data::twitter::prompt()?,
+			Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt(context).await?,
+			Setting::EmailPassword => settings::data::email_password::prompt(context)?,
+			Setting::Telegram => settings::data::telegram::prompt(context)?,
+			Setting::Twitter => settings::data::twitter::prompt(context)?,
 		},
 	}
 
@@ -112,7 +117,7 @@ async fn async_main() -> Result<()> {
 
 /// Run once or loop?
 /// If specified, run only tasks in `run_by_name`
-async fn run(once: bool, run_by_name: Option<Vec<String>>) -> Result<()> {
+async fn run(context: Context, once: bool, run_by_name: Option<Vec<String>>) -> Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -127,7 +132,7 @@ async fn run(once: bool, run_by_name: Option<Vec<String>>) -> Result<()> {
 	};
 	tracing::info!("Running fetcher {}", version);
 
-	let mut tasks = settings::config::tasks::get_all().await?;
+	let mut tasks = settings::config::tasks::get_all(context).await?;
 
 	if tasks.is_empty() {
 		tracing::info!("No enabled tasks provided");
@@ -195,7 +200,7 @@ async fn run(once: bool, run_by_name: Option<Vec<String>>) -> Result<()> {
 		Ok::<(), Report>(())
 	});
 
-	run_tasks(tasks, shutdown_rx, once).await?;
+	run_tasks(tasks, shutdown_rx, once, context).await?;
 
 	sig_handle.close(); // TODO: figure out wtf this is and why
 	sig_task
@@ -204,7 +209,12 @@ async fn run(once: bool, run_by_name: Option<Vec<String>>) -> Result<()> {
 	Ok(())
 }
 
-async fn run_tasks(tasks: ParsedTasks, shutdown_rx: Receiver<()>, once: bool) -> Result<()> {
+async fn run_tasks(
+	tasks: ParsedTasks,
+	shutdown_rx: Receiver<()>,
+	once: bool,
+	context: Context,
+) -> Result<()> {
 	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
 		let name2 = name.clone();
@@ -222,7 +232,7 @@ async fn run_tasks(tasks: ParsedTasks, shutdown_rx: Receiver<()>, once: bool) ->
 				// production error reporting
 				if !cfg!(debug_assertions) {
 					if let Err(err) = &res {
-						if let Err(e) = report_error(&name, &err.display_chain()).await {
+						if let Err(e) = report_error(&name, &err.display_chain(), &context).await {
 							tracing::error!("Unable to send error report to the admin: {e:?}",);
 						}
 					}
@@ -283,7 +293,7 @@ async fn task_loop(t: &mut ParsedTask, once: bool) -> Result<(), Error> {
 }
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
-async fn report_error(task_name: &str, err: &str) -> Result<()> {
+async fn report_error(task_name: &str, err: &str, context: &Context) -> Result<()> {
 	use fetcher_core::sink::telegram::LinkLocation;
 	use fetcher_core::sink::Message;
 	use fetcher_core::sink::Telegram;
@@ -296,7 +306,7 @@ async fn report_error(task_name: &str, err: &str) -> Result<()> {
 			));
 		}
 	};
-	let bot = match settings::data::telegram::get()? {
+	let bot = match settings::data::telegram::get(&context)? {
 		Some(b) => b,
 		None => {
 			return Err(eyre!("Telegram bot token not provided"));

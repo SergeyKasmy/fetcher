@@ -606,7 +606,6 @@ dependencies = [
  "figment",
  "futures",
  "glob",
- "once_cell",
  "serde",
  "serde_json",
  "signal-hook",

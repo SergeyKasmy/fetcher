@@ -4,10 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub mod config;
-pub mod context;
-pub mod data;
-pub mod external_data;
-pub mod read_filter;
+use std::path::PathBuf;
 
-const PREFIX: &str = "fetcher";
+pub type StaticContext = &'static Context;
+
+#[derive(Debug)]
+pub struct Context {
+	pub data_path: PathBuf,
+	pub conf_paths: Vec<PathBuf>,
+}

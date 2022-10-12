@@ -4,11 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::DATA_PATH;
-use fetcher_config::tasks::external_data::{ExternalDataError, ExternalDataResult};
-use fetcher_config::tasks::read_filter::ReadFilter as ReadFilterConf;
-use fetcher_core::read_filter::Kind as ReadFilterKind;
-use fetcher_core::read_filter::{ExternalSave, ReadFilter};
+use crate::settings::context::StaticContext as Context;
+use fetcher_config::tasks::{
+	external_data::{ExternalDataError, ExternalDataResult},
+	read_filter::ReadFilter as ReadFilterConf,
+};
+use fetcher_core::read_filter::{ExternalSave, Kind as ReadFilterKind, ReadFilter};
 
 use std::fs;
 use std::io;
@@ -18,8 +19,12 @@ use std::path::Path;
 const READ_DATA_DIR: &str = "read";
 
 #[tracing::instrument]
-pub fn get(name: &str, expected_rf_kind: ReadFilterKind) -> ExternalDataResult<ReadFilter> {
-	let path = DATA_PATH.get().unwrap().join(READ_DATA_DIR).join(name);
+pub fn get(
+	name: &str,
+	expected_rf_kind: ReadFilterKind,
+	context: Context,
+) -> ExternalDataResult<ReadFilter> {
+	let path = context.data_path.join(READ_DATA_DIR).join(name);
 
 	match fs::read_to_string(&path) {
 		Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
