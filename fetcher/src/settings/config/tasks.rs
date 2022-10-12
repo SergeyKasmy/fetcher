@@ -7,10 +7,8 @@
 // TODO: add trace logging, e.g. all config dirs, all config files, stuff like that
 
 use super::CONFIG_FILE_EXT;
-use crate::settings::{self, CONF_PATHS};
-use fetcher_config::tasks::task::Task as ConfigTask;
-use fetcher_config::tasks::ParsedTask;
-use fetcher_config::tasks::ParsedTasks;
+use crate::settings::{self, external_data::ExternalDataFromDataDir, CONF_PATHS};
+use fetcher_config::tasks::{task::Task as ConfigTask, ParsedTask, ParsedTasks};
 
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
@@ -100,11 +98,10 @@ pub async fn get(path: PathBuf, name: &str) -> Result<Option<ParsedTask>> {
 	let task: ConfigTask = full_conf.extract()?;
 
 	let name = name.to_owned(); // ehhhh, such a wasteful clone, and just because tokio doesn't support scoped tasks
-	let parsed_task = tokio::task::spawn_blocking(move || {
-		task.parse(&name, &settings::ExternalDataFromDataDir {})
-	})
-	.await
-	.unwrap()?;
+	let parsed_task =
+		tokio::task::spawn_blocking(move || task.parse(&name, &ExternalDataFromDataDir {}))
+			.await
+			.unwrap()?;
 	// let parsed_task = task.parse(name, &settings::TaskSettingsFetcherDefault)?;
 
 	Ok(Some(parsed_task))
