@@ -10,12 +10,9 @@ mod view_mode;
 
 use serde::{Deserialize, Serialize};
 
-use self::auth::Auth;
-use self::filters::Filters;
-use self::view_mode::ViewMode;
-use crate::tasks::external_data::ExternalData;
-use crate::Error;
-use fetcher_core::source;
+use self::{auth::Auth, filters::Filters, view_mode::ViewMode};
+use crate::{tasks::external_data::ExternalData, Error as ConfigError};
+use fetcher_core::source::{Email as CEmail, WithCustomRF as CWithCustomRF};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -28,25 +25,27 @@ pub struct Email {
 }
 
 impl Email {
-	pub fn parse(self, external: &dyn ExternalData) -> Result<source::Email, Error> {
-		Ok(match self.auth {
-			Auth::GoogleOAuth2 => source::Email::with_google_oauth2(
+	pub fn parse(self, external: &dyn ExternalData) -> Result<CWithCustomRF, ConfigError> {
+		let email_source = match self.auth {
+			Auth::GoogleOAuth2 => CEmail::with_google_oauth2(
 				self.email,
 				external
 					.google_oauth2()?
-					.ok_or(Error::GoogleOAuth2TokenMissing)?,
+					.ok_or(ConfigError::GoogleOAuth2TokenMissing)?,
 				self.filters.parse(),
 				self.view_mode.parse(),
 			),
-			Auth::Password => source::Email::with_password(
-				self.imap.ok_or(Error::EmailImapFieldMissing)?,
+			Auth::Password => CEmail::with_password(
+				self.imap.ok_or(ConfigError::EmailImapFieldMissing)?,
 				self.email,
 				external
 					.email_password()?
-					.ok_or(Error::EmailPasswordMissing)?,
+					.ok_or(ConfigError::EmailPasswordMissing)?,
 				self.filters.parse(),
 				self.view_mode.parse(),
 			),
-		})
+		};
+
+		Ok(CWithCustomRF::Email(email_source))
 	}
 }

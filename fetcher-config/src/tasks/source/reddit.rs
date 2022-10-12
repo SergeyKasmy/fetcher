@@ -4,14 +4,22 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::source::reddit::Reddit as CReddit;
-use fetcher_core::source::reddit::Sort as CSort;
+use fetcher_core::source::{
+	reddit::Sort as CSort, Reddit as CReddit, WithSharedRF as CWithSharedRF,
+	WithSharedRFKind as CWithSharedRFKind,
+};
 
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, OneOrMany};
+
+#[serde_as]
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(transparent)]
+pub struct Reddit(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<Inner>);
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct Reddit {
+pub struct Inner {
 	subreddit: String,
 	sort: Sort,
 	score_threshold: Option<u32>,
@@ -38,6 +46,19 @@ pub enum TimePeriod {
 }
 
 impl Reddit {
+	pub fn parse(self) -> CWithSharedRF {
+		let reddit_sources = self
+			.0
+			.into_iter()
+			.map(|x| CWithSharedRFKind::Reddit(x.parse()))
+			.collect();
+
+		CWithSharedRF::new(reddit_sources)
+			.expect("should always be the same since we are deserializing only Reddit here")
+	}
+}
+
+impl Inner {
 	pub fn parse(self) -> CReddit {
 		CReddit::new(&self.subreddit, self.sort.parse(), self.score_threshold)
 	}

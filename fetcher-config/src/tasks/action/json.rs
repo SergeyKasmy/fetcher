@@ -35,7 +35,7 @@ pub struct Json {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(untagged, deny_unknown_fields)]
+#[serde(untagged)]
 pub enum Key {
 	String(String),
 	Usize(usize),

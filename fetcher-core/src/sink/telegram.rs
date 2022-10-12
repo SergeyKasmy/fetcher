@@ -142,7 +142,6 @@ impl Telegram {
 		self.send_text_with_reply_id(message, None).await
 	}
 
-	// TODO: move error handling out to dedup send_text & send_media
 	async fn send_text_with_reply_id(
 		&self,
 		message: &str,
@@ -167,8 +166,8 @@ impl Telegram {
 			match send_msg_cmd.send().await {
 				Ok(message) => return Ok(message),
 				Err(RequestError::RetryAfter(retry_after)) => {
-					tracing::warn!(
-						"Exceeded rate limit, retrying in {}s",
+					tracing::error!(
+						"Exceeded rate limit while using Throttle Bot adapter, this shouldn't happen... Retrying in {}s",
 						retry_after.as_secs()
 					);
 					tokio::time::sleep(retry_after).await;
@@ -250,13 +249,6 @@ impl Telegram {
 
 			match msg_cmd.send().await {
 				Ok(messages) => return Ok(messages),
-				Err(RequestError::RetryAfter(retry_after)) => {
-					tracing::warn!(
-						"Exceeded rate limit, retrying in {}s",
-						retry_after.as_secs()
-					);
-					tokio::time::sleep(retry_after).await;
-				}
 				Err(e @ RequestError::Api(ApiError::FailedToGetUrlContent)) => {
 					if retry_counter > 5 {
 						tracing::error!(
@@ -277,6 +269,13 @@ impl Telegram {
 					// TODO: reupload the image manually if this happens
 					tracing::warn!("Telegram disliked the media URL (\"Bad Request: wrong file identifier/HTTP URL specified\"), sending the message as pure text");
 					self.send_text(caption).await?;
+				}
+				Err(RequestError::RetryAfter(retry_after)) => {
+					tracing::error!(
+						"Exceeded rate limit while using Throttle Bot adapter, this shouldn't happen... Retrying in {}s",
+						retry_after.as_secs()
+					);
+					tokio::time::sleep(retry_after).await;
 				}
 				Err(e) => {
 					return Err(SinkError::Telegram {
