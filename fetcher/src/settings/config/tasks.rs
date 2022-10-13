@@ -36,15 +36,16 @@ struct TemplatesField {
 // #[tracing::instrument(name = "settings:task", skip(settings))]
 #[tracing::instrument(skip(cx))]
 pub fn get_all(cx: Context) -> Result<ParsedTasks> {
-	let mut tasks = ParsedTasks::new();
-	for dir in &cx.conf_paths {
-		get_all_from(dir, &mut tasks, cx)?;
-	}
-
-	Ok(tasks)
+	cx.conf_paths
+		.iter()
+		.flat_map(|dir| get_all_from(dir, cx))
+		.collect()
 }
 
-pub fn get_all_from(cfg_dir: &Path, out_tasks: &mut ParsedTasks, cx: Context) -> Result<()> {
+pub fn get_all_from(
+	cfg_dir: &Path,
+	cx: Context,
+) -> impl Iterator<Item = Result<(String, ParsedTask)>> + '_ {
 	let glob_str = format!(
 		"{cfg_dir}/{TASKS_DIR_NAME}/**/*.{CONFIG_FILE_EXT}",
 		cfg_dir = cfg_dir.to_str().expect("Path is illegal UTF-8") // FIXME
@@ -53,8 +54,12 @@ pub fn get_all_from(cfg_dir: &Path, out_tasks: &mut ParsedTasks, cx: Context) ->
 	let cfgs = glob::glob(&glob_str)
 		.expect("The glob pattern is hand-made and should never fail to be parsed");
 
-	for cfg in cfgs {
-		let cfg = cfg?;
+	cfgs.filter_map(move |cfg| {
+		let cfg = match cfg {
+			Ok(v) => v,
+			Err(e) => return Some(Err(e.into())),
+		};
+
 		let name = cfg
 			.strip_prefix(cfg_dir)
 			.expect("shouldn't fail since cfg_dir has just been prepended")
@@ -64,10 +69,11 @@ pub fn get_all_from(cfg_dir: &Path, out_tasks: &mut ParsedTasks, cx: Context) ->
 			.to_string_lossy()
 			.into_owned();
 
-		get(cfg, &name, cx)?.map(|task| out_tasks.insert(name, task));
-	}
+		let task = get(cfg, &name, cx).transpose()?;
+		let named_task = task.map(|t| (name, t));
 
-	Ok(())
+		Some(named_task)
+	})
 }
 
 #[tracing::instrument(skip(cx))]
