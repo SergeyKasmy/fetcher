@@ -132,7 +132,9 @@ async fn run(context: Context, once: bool, run_by_name: Option<Vec<String>>) -> 
 	};
 	tracing::info!("Running fetcher {}", version);
 
-	let mut tasks = settings::config::tasks::get_all(context).await?;
+	let mut tasks = tokio::task::spawn_blocking(|| settings::config::tasks::get_all(context))
+		.await
+		.expect("Thread crashed")?;
 
 	if tasks.is_empty() {
 		tracing::info!("No enabled tasks provided");

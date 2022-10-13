@@ -34,21 +34,17 @@ struct TemplatesField {
 }
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]
-#[tracing::instrument]
-pub async fn get_all(context: Context) -> Result<ParsedTasks> {
+#[tracing::instrument(skip(cx))]
+pub fn get_all(cx: Context) -> Result<ParsedTasks> {
 	let mut tasks = ParsedTasks::new();
-	for dir in &context.conf_paths {
-		get_all_from(dir, &mut tasks, context).await?;
+	for dir in &cx.conf_paths {
+		get_all_from(dir, &mut tasks, cx)?;
 	}
 
 	Ok(tasks)
 }
 
-pub async fn get_all_from(
-	cfg_dir: &Path,
-	out_tasks: &mut ParsedTasks,
-	context: Context,
-) -> Result<()> {
+pub fn get_all_from(cfg_dir: &Path, out_tasks: &mut ParsedTasks, cx: Context) -> Result<()> {
 	let glob_str = format!(
 		"{cfg_dir}/{TASKS_DIR_NAME}/**/*.{CONFIG_FILE_EXT}",
 		cfg_dir = cfg_dir.to_str().expect("Path is illegal UTF-8") // FIXME
@@ -68,16 +64,14 @@ pub async fn get_all_from(
 			.to_string_lossy()
 			.into_owned();
 
-		get(cfg, &name, context)
-			.await?
-			.map(|task| out_tasks.insert(name, task));
+		get(cfg, &name, cx)?.map(|task| out_tasks.insert(name, task));
 	}
 
 	Ok(())
 }
 
-#[tracing::instrument]
-pub async fn get(path: PathBuf, name: &str, context: Context) -> Result<Option<ParsedTask>> {
+#[tracing::instrument(skip(cx))]
+pub fn get(path: PathBuf, name: &str, cx: Context) -> Result<Option<ParsedTask>> {
 	tracing::trace!("Parsing a task from file");
 
 	let task_file = Figment::new().merge(Yaml::file(&path));
@@ -95,7 +89,7 @@ pub async fn get(path: PathBuf, name: &str, context: Context) -> Result<Option<P
 
 	if let Some(templates) = templates {
 		for tmpl_name in templates {
-			let tmpl = settings::config::templates::find(&tmpl_name, context)?
+			let tmpl = settings::config::templates::find(&tmpl_name, cx)?
 				.ok_or_else(|| eyre!("Template not found"))?;
 
 			tracing::trace!("Using template: {:?}", tmpl.path);
@@ -107,13 +101,5 @@ pub async fn get(path: PathBuf, name: &str, context: Context) -> Result<Option<P
 	let full_conf = full_conf.merge(Yaml::file(&path));
 	let task: ConfigTask = full_conf.extract()?;
 
-	let name = name.to_owned(); // ehhhh, such a wasteful clone, and just because tokio doesn't support scoped tasks
-	let parsed_task = tokio::task::spawn_blocking(move || {
-		task.parse(&name, &ExternalDataFromDataDir { cx: context })
-	})
-	.await
-	.unwrap()?;
-	// let parsed_task = task.parse(name, &settings::TaskSettingsFetcherDefault)?;
-
-	Ok(Some(parsed_task))
+	Ok(Some(task.parse(name, &ExternalDataFromDataDir { cx })?))
 }
