@@ -22,19 +22,17 @@ pub struct Twitter {
 	api_key: String,
 	api_secret: String,
 	token: Option<Token>,
-	filter: Vec<String>,
 }
 
 impl Twitter {
 	/// Creates a new [`Twitter`] source
 	#[must_use]
-	pub fn new(handle: String, api_key: String, api_secret: String, filter: Vec<String>) -> Self {
+	pub fn new(handle: String, api_key: String, api_secret: String) -> Self {
 		Self {
 			handle,
 			api_key,
 			api_secret,
 			token: None,
-			filter,
 		}
 	}
 
@@ -87,14 +85,8 @@ impl Twitter {
 
 		let messages = tweets
 			.iter()
-			.filter_map(|tweet| {
-				if !self.filter.is_empty()
-					&& !Self::tweet_contains_filters(&tweet.text, self.filter.as_slice())
-				{
-					return None;
-				}
-
-				Some(Entry {
+			.map(|tweet| {
+				Entry {
 					id: Some(tweet.id.to_string()),
 					msg: Message {
 						body: Some(tweet.text.clone()),
@@ -124,7 +116,7 @@ impl Twitter {
 						..Default::default()
 					},
 					..Default::default()
-				})
+				}
 			})
 			.collect::<Vec<_>>();
 
@@ -137,23 +129,12 @@ impl Twitter {
 
 		Ok(messages)
 	}
-
-	fn tweet_contains_filters(tweet: &str, filters: &[String]) -> bool {
-		for filter in filters {
-			if !tweet.to_lowercase().contains(&filter.to_lowercase()) {
-				return false;
-			}
-		}
-
-		true
-	}
 }
 
 impl std::fmt::Debug for Twitter {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Twitter")
 			.field("handle", &self.handle)
-			.field("filter", &self.filter)
 			.finish_non_exhaustive()
 	}
 }
