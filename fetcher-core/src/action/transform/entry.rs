@@ -10,16 +10,15 @@ pub mod feed;
 pub mod html;
 pub mod json;
 pub mod print;
-pub mod use_raw_contents;
+pub mod use_as;
 
-use self::feed::Feed;
-use self::html::Html;
-use self::json::Json;
-use self::use_raw_contents::UseRawContents;
+use self::{feed::Feed, html::Html, json::Json, use_as::Use};
 use super::result::TransformedEntry;
-use crate::error::transform::Error as TransformError;
-use crate::source::http::{self, Http};
-use crate::{entry::Entry, error::transform::Kind as TransformErrorKind};
+use crate::{
+	entry::Entry,
+	error::transform::{Error as TransformError, Kind as TransformErrorKind},
+	source::http::{self, Http},
+};
 
 use derive_more::From;
 
@@ -44,8 +43,8 @@ pub enum Kind {
 	Json(Json),
 	Feed(Feed),
 
-	/// use [`raw_contents`](`crate::entry::Entry::raw_contents`) as message's [`body`](`crate::sink::Message::body`)
-	UseRawContents(UseRawContents),
+	/// use the contents of a field as a different field
+	Use(Use),
 	Print,
 }
 
@@ -71,7 +70,7 @@ impl Kind {
 		}
 
 		let v = delegate!(
-			Html, Json, Feed, UseRawContents
+			Html, Json, Feed, Use
 
 			custom => {
 				Self::Http => {

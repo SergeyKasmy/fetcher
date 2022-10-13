@@ -10,15 +10,20 @@ pub mod entry;
 pub mod field;
 pub mod result;
 
-use self::field::{Field, TransformField};
 pub use self::{
-	entry::{feed::Feed, html::Html, json::Json, use_raw_contents::UseRawContents},
+	entry::{feed::Feed, html::Html, json::Json, use_as::Use},
 	field::{caps::Caps, shorten::Shorten, trim::Trim},
 };
-use crate::utils::OptionExt;
+
+use self::field::{Field, TransformField};
 use crate::{
-	entry::Entry, error::transform::Error as TransformError,
-	error::transform::Kind as TransformErrorKind, error::InvalidUrlError, sink::Message,
+	entry::Entry,
+	error::{
+		transform::{Error as TransformError, Kind as TransformErrorKind},
+		InvalidUrlError,
+	},
+	sink::Message,
+	utils::OptionExt,
 };
 
 use reqwest::Url;
