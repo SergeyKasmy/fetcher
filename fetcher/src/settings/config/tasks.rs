@@ -35,17 +35,18 @@ struct TemplatesField {
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]
 #[tracing::instrument(skip(cx))]
-pub fn get_all(cx: Context) -> Result<ParsedTasks> {
+pub fn get_all(by_name: Option<&[&str]>, cx: Context) -> Result<ParsedTasks> {
 	cx.conf_paths
 		.iter()
-		.flat_map(|dir| get_all_from(dir, cx))
+		.flat_map(|dir| get_all_from(dir, by_name, cx))
 		.collect()
 }
 
-pub fn get_all_from(
-	cfg_dir: &Path,
+pub fn get_all_from<'a>(
+	cfg_dir: &'a Path,
+	by_name: Option<&'a [&'a str]>,
 	cx: Context,
-) -> impl Iterator<Item = Result<(String, ParsedTask)>> + '_ {
+) -> impl Iterator<Item = Result<(String, ParsedTask)>> + 'a {
 	let glob_str = format!(
 		"{cfg_dir}/{TASKS_DIR_NAME}/**/*.{CONFIG_FILE_EXT}",
 		cfg_dir = cfg_dir.to_str().expect("Path is illegal UTF-8") // FIXME
@@ -68,6 +69,12 @@ pub fn get_all_from(
 			.with_extension("")
 			.to_string_lossy()
 			.into_owned();
+
+		if let Some(by_name) = by_name {
+			if !by_name.iter().any(|x| *x == name) {
+				return None;
+			}
+		}
 
 		let task = get(cfg, &name, cx).transpose()?;
 		let named_task = task.map(|t| (name, t));

@@ -22,7 +22,6 @@ use futures::{future::try_join_all, StreamExt};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
 use std::{
-	collections::HashMap,
 	sync::{atomic::AtomicBool, Arc},
 	time::Duration,
 };
@@ -94,13 +93,13 @@ async fn async_main() -> Result<()> {
 	match args.subcommand {
 		args::TopLvlSubcommand::Run(arg) => {
 			run(
-				context,
-				arg.once,
 				if arg.tasks.is_empty() {
 					None
 				} else {
 					Some(arg.tasks)
 				},
+				arg.once,
+				context,
 			)
 			.await?;
 		}
@@ -117,7 +116,7 @@ async fn async_main() -> Result<()> {
 
 /// Run once or loop?
 /// If specified, run only tasks in `run_by_name`
-async fn run(context: Context, once: bool, run_by_name: Option<Vec<String>>) -> Result<()> {
+async fn run(run_by_name: Option<Vec<String>>, once: bool, cx: Context) -> Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -132,42 +131,38 @@ async fn run(context: Context, once: bool, run_by_name: Option<Vec<String>>) -> 
 	};
 	tracing::info!("Running fetcher {}", version);
 
-	let mut tasks = tokio::task::spawn_blocking(|| settings::config::tasks::get_all(context))
-		.await
-		.expect("Thread crashed")?;
+	let run_by_name_is_some = run_by_name.is_some();
+	let tasks = get_all_tasks(run_by_name, cx).await?;
 
-	if tasks.is_empty() {
-		tracing::info!("No enabled tasks provided");
-		return Ok(());
-	}
+	if run_by_name_is_some {
+		if tasks.is_empty() {
+			tracing::info!("No enabled tasks found for the provided query");
 
-	tracing::info!(
-		"Found {} enabled tasks: {:?}",
-		tasks.len(),
-		tasks.keys().collect::<Vec<_>>()
-	);
+			let all_tasks = get_all_tasks(None, cx).await?;
+			tracing::info!(
+				"All available enabled tasks: {:?}",
+				all_tasks.keys().collect::<Vec<_>>()
+			);
 
-	if let Some(run_by_name) = run_by_name {
-		let mut new_tasks = HashMap::new();
-
-		for name in run_by_name {
-			let task = tasks.remove(&name);
-
-			match task {
-				Some(task) => {
-					new_tasks.insert(name, task);
-				}
-				None => {
-					return Err(eyre!(
-						"Task {name} not found. All available tasks: {:?}",
-						tasks.keys().collect::<Vec<_>>()
-					));
-				}
-			}
+			return Ok(());
 		}
 
-		tracing::info!("Running tasks {:?}", new_tasks.keys().collect::<Vec<_>>());
-		tasks = new_tasks;
+		tracing::info!(
+			"Found {} enabled tasks for the provided query: {:?}",
+			tasks.len(),
+			tasks.keys().collect::<Vec<_>>()
+		);
+	} else {
+		if tasks.is_empty() {
+			tracing::info!("No enabled tasks found");
+			return Ok(());
+		}
+
+		tracing::info!(
+			"Found {} enabled tasks: {:?}",
+			tasks.len(),
+			tasks.keys().collect::<Vec<_>>()
+		);
 	}
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
@@ -202,13 +197,27 @@ async fn run(context: Context, once: bool, run_by_name: Option<Vec<String>>) -> 
 		Ok::<(), Report>(())
 	});
 
-	run_tasks(tasks, shutdown_rx, once, context).await?;
+	run_tasks(tasks, shutdown_rx, once, cx).await?;
 
 	sig_handle.close(); // TODO: figure out wtf this is and why
 	sig_task
 		.await
 		.expect("Error shutting down of signal handler")?;
 	Ok(())
+}
+
+async fn get_all_tasks(run_by_name: Option<Vec<String>>, cx: Context) -> Result<ParsedTasks> {
+	tokio::task::spawn_blocking(move || {
+		settings::config::tasks::get_all(
+			run_by_name
+				.as_ref()
+				.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
+				.as_deref(),
+			cx,
+		)
+	})
+	.await
+	.expect("Thread crashed")
 }
 
 async fn run_tasks(
@@ -308,7 +317,7 @@ async fn report_error(task_name: &str, err: &str, context: &Context) -> Result<(
 			));
 		}
 	};
-	let bot = match settings::data::telegram::get(&context)? {
+	let bot = match settings::data::telegram::get(context)? {
 		Some(b) => b,
 		None => {
 			return Err(eyre!("Telegram bot token not provided"));
