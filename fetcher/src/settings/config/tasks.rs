@@ -19,7 +19,9 @@ use figment::{
 	Figment,
 };
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+const TASKS_DIR_NAME: &str = "tasks";
 
 #[derive(Deserialize, Debug)]
 struct DisabledField {
@@ -35,7 +37,7 @@ struct TemplatesField {
 #[tracing::instrument]
 pub async fn get_all(context: Context) -> Result<ParsedTasks> {
 	let mut tasks = ParsedTasks::new();
-	for dir in context.conf_paths.iter().map(|p| p.join("tasks")) {
+	for dir in &context.conf_paths {
 		get_all_from(dir, &mut tasks, context).await?;
 	}
 
@@ -43,13 +45,13 @@ pub async fn get_all(context: Context) -> Result<ParsedTasks> {
 }
 
 pub async fn get_all_from(
-	tasks_dir: PathBuf,
+	cfg_dir: &Path,
 	out_tasks: &mut ParsedTasks,
 	context: Context,
 ) -> Result<()> {
 	let glob_str = format!(
-		"{tasks_dir}/**/*.{CONFIG_FILE_EXT}",
-		tasks_dir = tasks_dir.to_str().expect("Path is illegal UTF-8")
+		"{cfg_dir}/{TASKS_DIR_NAME}/**/*.{CONFIG_FILE_EXT}",
+		cfg_dir = cfg_dir.to_str().expect("Path is illegal UTF-8") // FIXME
 	);
 
 	let cfgs = glob::glob(&glob_str)
@@ -58,8 +60,10 @@ pub async fn get_all_from(
 	for cfg in cfgs {
 		let cfg = cfg?;
 		let name = cfg
-			.strip_prefix(&tasks_dir)
-			.expect("The prefix was just appended up above in the glob pattern and thus should never fail")
+			.strip_prefix(cfg_dir)
+			.expect("shouldn't fail since cfg_dir has just been prepended")
+			.strip_prefix(TASKS_DIR_NAME)
+			.expect("shouldn't fail since TASKS_DIR_NAME has just been prepended")
 			.with_extension("")
 			.to_string_lossy()
 			.into_owned();
