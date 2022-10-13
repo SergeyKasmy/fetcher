@@ -36,14 +36,17 @@ struct TemplatesField {
 pub async fn get_all(context: Context) -> Result<ParsedTasks> {
 	let mut tasks = ParsedTasks::new();
 	for dir in context.conf_paths.iter().map(|p| p.join("tasks")) {
-		// TODO: make a stream?
-		tasks.extend(get_all_from(dir, context).await?);
+		get_all_from(dir, &mut tasks, context).await?;
 	}
 
 	Ok(tasks)
 }
 
-pub async fn get_all_from(tasks_dir: PathBuf, context: Context) -> Result<ParsedTasks> {
+pub async fn get_all_from(
+	tasks_dir: PathBuf,
+	out_tasks: &mut ParsedTasks,
+	context: Context,
+) -> Result<()> {
 	let glob_str = format!(
 		"{tasks_dir}/**/*.{CONFIG_FILE_EXT}",
 		tasks_dir = tasks_dir.to_str().expect("Path is illegal UTF-8")
@@ -52,22 +55,21 @@ pub async fn get_all_from(tasks_dir: PathBuf, context: Context) -> Result<Parsed
 	let cfgs = glob::glob(&glob_str)
 		.expect("The glob pattern is hand-made and should never fail to be parsed");
 
-	let mut tasks = ParsedTasks::new();
 	for cfg in cfgs {
 		let cfg = cfg?;
 		let name = cfg
 			.strip_prefix(&tasks_dir)
 			.expect("The prefix was just appended up above in the glob pattern and thus should never fail")
 			.with_extension("")
-			.to_string_lossy()	// TODO: choose if we should use lossy or fail on invalid UTF-8 like in read_filter::get. This inconsistent behavior is probably even worse than any of the two
+			.to_string_lossy()
 			.into_owned();
 
 		get(cfg, &name, context)
 			.await?
-			.map(|task| tasks.insert(name, task));
+			.map(|task| out_tasks.insert(name, task));
 	}
 
-	Ok(tasks)
+	Ok(())
 }
 
 #[tracing::instrument]
