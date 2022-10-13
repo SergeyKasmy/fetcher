@@ -82,6 +82,7 @@ impl Filter for Regex<Find> {
 				Field::Title => ent.msg.title.as_deref().map(Cow::Borrowed),
 				Field::Body => ent.msg.body.as_deref().map(Cow::Borrowed),
 				Field::Link => ent.msg.link.as_ref().map(|s| Cow::Owned(s.to_string())),
+				Field::RawContets => ent.raw_contents.as_deref().map(Cow::Borrowed),
 			};
 
 			match s {

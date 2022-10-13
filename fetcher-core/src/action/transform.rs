@@ -52,6 +52,7 @@ impl Transform {
 					Field::Title => entry.msg.title.take(),
 					Field::Body => entry.msg.body.take(),
 					Field::Link => entry.msg.link.take().map(|u| u.to_string()),
+					Field::RawContets => entry.raw_contents.take(),
 				};
 
 				let new_val =
@@ -94,6 +95,10 @@ impl Transform {
 							..entry
 						}
 					}
+					Field::RawContets => Entry {
+						raw_contents: final_val,
+						..entry
+					},
 				};
 
 				output.push(new_entry);
