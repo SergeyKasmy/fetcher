@@ -121,12 +121,12 @@ impl WithSharedRF {
 		let mut entries = Vec::new();
 
 		for s in &mut self.0 {
-			entries.extend(match s {
-				K::Http(x) => vec![x.get().await?],
-				K::Twitter(x) => x.get().await?,
-				K::File(x) => vec![x.get().await?],
-				K::Reddit(x) => x.get().await?,
-			});
+			match s {
+				K::Http(x) => entries.push(x.get().await?),
+				K::Twitter(x) => entries.extend(x.get().await?),
+				K::File(x) => entries.push(x.get().await?),
+				K::Reddit(x) => entries.extend(x.get().await?),
+			};
 		}
 
 		Ok(entries)
