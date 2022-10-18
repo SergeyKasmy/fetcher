@@ -335,7 +335,7 @@ fn format_head_tail(
 		);
 
 		let mut head_wip = head.unwrap_or_default();
-		head_wip.insert_str(0, &format!("#{tag}\n\n"));
+		head_wip.insert_str(0, &format!("#{tag}\n"));
 
 		head = Some(head_wip);
 	}
