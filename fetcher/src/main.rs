@@ -17,7 +17,10 @@ use crate::args::{Args, Setting};
 use fetcher_config::tasks::{ParsedTask, ParsedTasks};
 use fetcher_core::error::{Error, ErrorChainExt};
 
-use color_eyre::{eyre::eyre, Report, Result};
+use color_eyre::{
+	eyre::{eyre, WrapErr},
+	Report, Result,
+};
 use futures::{future::try_join_all, StreamExt};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook_tokio::Signals;
@@ -236,14 +239,14 @@ async fn run_tasks(
 				tracing::trace!("Task {} contents: {:#?}", name, t);
 
 				let res = select! {
-					r = task_loop(&mut t, &name, once) => r,
+					r = task_loop(&mut t, &name, once, context) => r,
 					_ = shutdown_rx.changed() => Ok(()),
 				};
 
 				// production error reporting
 				if !cfg!(debug_assertions) {
 					if let Err(err) = &res {
-						if let Err(e) = report_error(&name, &format!("{:#}", err), &context).await {
+						if let Err(e) = report_error(&name, &format!("{:#}", err), context).await {
 							tracing::error!("Unable to send error report to the admin: {e:?}",);
 						}
 					}
@@ -262,7 +265,7 @@ async fn run_tasks(
 	Ok(())
 }
 
-async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool) -> Result<()> {
+async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context) -> Result<()> {
 	// exit with an error if there were too many consecutive transform errors
 	let transform_err_max_count: u32 = if once { 0 } else { 255 };
 	// number of consecutive(!!!) transform errors.
@@ -282,12 +285,23 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool) -> Result<()
 					return Err(Error::Transform(transform_err).into());
 				}
 
-				tracing::error!(
+				let err_msg = format!(
 					"Transform error ({} out of {} max allowed):\n{}",
 					transform_err_count + 1, // +1 cause we are counting from 0 but it'd be strange to show "Error (0 out of 255)" to users
 					transform_err_max_count + 1,
 					transform_err.display_chain()
 				);
+				tracing::error!("{}", err_msg);
+
+				// production error reporting
+				if !cfg!(debug_assertions) {
+					let mut err_msg = err_msg;
+					err_msg.insert_str(0, "Non-critical:\n");
+
+					if let Err(e) = report_error(task_name, &err_msg, cx).await {
+						tracing::error!("Unable to send error report to the admin: {e:?}",);
+					}
+				}
 
 				// sleep in exponention amount of minutes, begginning with 2^0 = 1 minute
 				let sleep_dur = 2u64.saturating_pow(transform_err_count);
@@ -319,17 +333,14 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool) -> Result<()
 }
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
-async fn report_error(task_name: &str, err: &str, context: &Context) -> Result<()> {
+async fn report_error(task_name: &str, err: &str, context: Context) -> Result<()> {
 	use fetcher_core::sink::{telegram::LinkLocation, Message, Telegram};
 
-	let admin_chat_id = match std::env::var("FETCHER_TELEGRAM_ADMIN_CHAT_ID")?.parse::<i64>() {
-		Ok(num) => num,
-		Err(e) => {
-			return Err(eyre!(
-				"FETCHER_TELEGRAM_ADMIN_CHAT_ID isn't a valid chat id ({e})"
-			));
-		}
-	};
+	let admin_chat_id = std::env::var("FETCHER_TELEGRAM_ADMIN_CHAT_ID")
+		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID")?
+		.parse::<i64>()
+		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID isn't a valid chat id")?;
+
 	let bot = match settings::data::telegram::get(context)? {
 		Some(b) => b,
 		None => {
