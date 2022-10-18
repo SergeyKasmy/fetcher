@@ -4,24 +4,23 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::source::email::Filters as CFilters;
+use super::Field;
+use fetcher_core::action::transform::Use as CUse;
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct Filters {
-	sender: Option<String>,
-	subjects: Option<Vec<String>>,
-	exclude_subjects: Option<Vec<String>>,
+pub struct Use {
+	pub field: Field,
+	pub as_field: Field,
 }
 
-impl Filters {
-	pub fn parse(self) -> CFilters {
-		CFilters {
-			sender: self.sender,
-			subjects: self.subjects,
-			exclude_subjects: self.exclude_subjects,
+impl Use {
+	pub fn parse(self) -> CUse {
+		CUse {
+			field: self.field.parse(),
+			as_field: self.as_field.parse(),
 		}
 	}
 }

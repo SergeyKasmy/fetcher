@@ -13,7 +13,7 @@ use fetcher_core::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")] // deny_unknown_fields not allowed since it's flattened in [`Query`]
 pub enum ElementKind {
 	Tag(String),
 	Class(String),
@@ -21,13 +21,13 @@ pub enum ElementKind {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum DataLocation {
 	Text,
 	Attr(String),
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)] // deny_unknown_fields not allowed since it uses flatten
 pub struct ElementQuery {
 	#[serde(flatten)]
 	pub kind: ElementKind,
@@ -35,12 +35,13 @@ pub struct ElementQuery {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct HtmlQueryRegex {
 	re: String,
 	replace_with: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)] // deny_unknown_fields not allowed since it's flattened in [`ImageQuery`]
 pub struct ElementDataQuery {
 	pub optional: Option<bool>,
 	pub query: Vec<ElementQuery>,
@@ -61,7 +62,7 @@ impl ElementKind {
 }
 
 impl DataLocation {
-	fn parse(self) -> c_query::DataLocation {
+	pub fn parse(self) -> c_query::DataLocation {
 		use DataLocation::{Attr, Text};
 
 		match self {

@@ -19,6 +19,6 @@ impl TransformField for Caps {
 	type Error = Infallible;
 
 	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Infallible> {
-		Ok(TransformResult::New(field.map(|s| s.to_uppercase())))
+		Ok(TransformResult::New(field.map(str::to_uppercase)))
 	}
 }

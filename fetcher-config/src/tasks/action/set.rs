@@ -13,6 +13,7 @@ use fetcher_core::action::transform::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Set {
 	pub field: Field,
 	pub value: Option<String>,

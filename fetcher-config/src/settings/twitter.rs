@@ -7,13 +7,13 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Twitter {
 	api_key: String,
 	api_secret: String,
 }
 
 impl Twitter {
-	#[must_use]
 	pub fn parse(self) -> (String, String) {
 		let Self {
 			api_key,

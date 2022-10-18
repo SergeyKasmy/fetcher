@@ -10,10 +10,29 @@ use serde::{Deserialize, Serialize};
 use fetcher_core::read_filter as core_rf;
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Kind {
 	NewerThanRead,
 	NotPresentInReadList,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+pub enum ReadFilter {
+	NewerThanRead(Newer),
+	NotPresentInReadList(NotPresent),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct Newer {
+	last_read_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct NotPresent {
+	read_list: Vec<(String, chrono::DateTime<Utc>)>,
 }
 
 impl Kind {
@@ -25,15 +44,7 @@ impl Kind {
 	}
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum ReadFilter {
-	NewerThanRead(Newer),
-	NotPresentInReadList(NotPresent),
-}
-
 impl ReadFilter {
-	#[must_use]
 	pub fn parse(
 		self,
 		external_save: Box<dyn core_rf::ExternalSave + Send + Sync>,
@@ -59,11 +70,6 @@ impl ReadFilter {
 	}
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct Newer {
-	last_read_id: String,
-}
-
 impl Newer {
 	pub fn parse(self) -> core_rf::Newer {
 		core_rf::Newer {
@@ -76,11 +82,6 @@ impl Newer {
 			last_read_id: last_read_id.clone(),
 		})
 	}
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct NotPresent {
-	read_list: Vec<(String, chrono::DateTime<Utc>)>,
 }
 
 impl NotPresent {

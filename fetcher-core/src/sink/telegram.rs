@@ -13,8 +13,9 @@ use crate::{
 
 use std::time::Duration;
 use teloxide::{
+	adaptors::{throttle::Limits, Throttle},
 	payloads::{SendMediaGroupSetters, SendMessageSetters},
-	requests::{Request, Requester},
+	requests::{Request, Requester, RequesterExt},
 	types::{
 		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, Message as TelMessage,
 		MessageId, ParseMode,
@@ -23,12 +24,12 @@ use teloxide::{
 };
 use url::Url;
 
-const MAX_MEDIA_MSG_LEN: usize = 1024;
 const MAX_TEXT_MSG_LEN: usize = 4096;
+const MAX_MEDIA_MSG_LEN: usize = 1024;
 
 /// Telegram sink. Supports text and media messages and embeds text into media captions if present. Automatically splits the text into separate messages if it's too long
 pub struct Telegram {
-	bot: Bot,
+	bot: Throttle<Bot>,
 	chat_id: ChatId,
 	link_location: LinkLocation,
 }
@@ -48,10 +49,7 @@ impl Telegram {
 	#[must_use]
 	pub fn new(token: String, chat_id: i64, link_location: LinkLocation) -> Self {
 		Self {
-			// TODO: THIS BLOCKS. WHY??????
-			// #2 throttle() spawns a tokio task but we are in sync. Maybe that causes the hangup?
-			// bot: bot.throttle(Limits::default()),
-			bot: Bot::new(token),
+			bot: Bot::new(token).throttle(Limits::default()),
 			chat_id: ChatId(chat_id),
 			link_location,
 		}
@@ -68,10 +66,10 @@ impl Telegram {
 		} = message;
 
 		tracing::debug!(
-			"Processing message: title: {title:?}, body len: {}, link: {}, media: {}",
+			"Processing message: title: {title:?}, body len: {}, link: {}, media count: {}",
 			body.as_ref().map_or(0, String::len),
 			link.is_some(),
-			media.is_some(),
+			media.as_ref().map_or(0, Vec::len),
 		);
 
 		let body = body.map(|s| teloxide::utils::html::escape(&s));
@@ -123,10 +121,25 @@ impl Telegram {
 				previous_message = Some(sent_msg.id);
 			}
 		} else {
+			// if head.is some and either body or tail is some
+			let should_insert_newline_after_head =
+				head.is_some() && (body.is_some() || tail.is_some());
+			let should_insert_newline_after_body = body.is_some() && tail.is_some();
+
 			let text = format!(
-				"{}{}{}",
+				"{}{}{}{}{}",
 				head.as_deref().unwrap_or_default(),
+				if should_insert_newline_after_head {
+					"\n"
+				} else {
+					""
+				},
 				body.as_deref().unwrap_or_default(),
+				if should_insert_newline_after_body {
+					"\n"
+				} else {
+					""
+				},
 				tail.as_deref().unwrap_or_default()
 			);
 
@@ -144,7 +157,6 @@ impl Telegram {
 		self.send_text_with_reply_id(message, None).await
 	}
 
-	// TODO: move error handling out to dedup send_text & send_media
 	async fn send_text_with_reply_id(
 		&self,
 		message: &str,
@@ -169,8 +181,8 @@ impl Telegram {
 			match send_msg_cmd.send().await {
 				Ok(message) => return Ok(message),
 				Err(RequestError::RetryAfter(retry_after)) => {
-					tracing::warn!(
-						"Exceeded rate limit, retrying in {}s",
+					tracing::error!(
+						"Exceeded rate limit while using Throttle Bot adapter, this shouldn't happen... Retrying in {}s",
 						retry_after.as_secs()
 					);
 					tokio::time::sleep(retry_after).await;
@@ -203,44 +215,55 @@ impl Telegram {
 			"About to send a media message with caption: {caption:?}, and media: {media:?}"
 		);
 
+		// mark if caption has already been included.
+		// which it should be only once
+		let mut caption_included = false;
+
 		let media = media
 			.iter()
-			.map(|x| match x {
-				Media::Photo(url) => InputMedia::Photo(
-					InputMediaPhoto::new(InputFile::url(url.clone()))
-						.caption(caption)
-						.parse_mode(ParseMode::Html),
-				),
-				Media::Video(url) => InputMedia::Video(
-					InputMediaVideo::new(InputFile::url(url.clone()))
-						.caption(caption)
-						.parse_mode(ParseMode::Html),
-				),
-			})
-			.collect::<Vec<InputMedia>>();
+			.map(|m| {
+				macro_rules! input_media {
+					($type:tt, $full_type:tt, $url:expr) => {{
+						// $type example: Photo
+						// $full_type example: InputMediaPhoto
 
+						let input_media = $full_type::new(InputFile::url($url.clone()))
+							.parse_mode(ParseMode::Html);
+
+						let input_media = if caption_included {
+							input_media
+						} else {
+							caption_included = true;
+							input_media.caption(caption)
+						};
+
+						InputMedia::$type(input_media)
+					}};
+				}
+
+				match m {
+					Media::Photo(url) => input_media!(Photo, InputMediaPhoto, url),
+					Media::Video(url) => input_media!(Video, InputMediaVideo, url),
+				}
+			})
+			.collect::<Vec<_>>();
+
+		// number of "failed to get url content" error retried tries
 		let mut retry_counter = 0;
 
 		loop {
 			tracing::info!("Sending media message");
 
-			let send_msg_cmd = self.bot.send_media_group(self.chat_id, media.clone());
+			let msg_cmd = self.bot.send_media_group(self.chat_id, media.clone());
 
-			let send_msg_cmd = if let Some(id) = reply_to_msg_id {
-				send_msg_cmd.reply_to_message_id(id)
+			let msg_cmd = if let Some(id) = reply_to_msg_id {
+				msg_cmd.reply_to_message_id(id)
 			} else {
-				send_msg_cmd
+				msg_cmd
 			};
 
-			match send_msg_cmd.send().await {
+			match msg_cmd.send().await {
 				Ok(messages) => return Ok(messages),
-				Err(RequestError::RetryAfter(retry_after)) => {
-					tracing::warn!(
-						"Exceeded rate limit, retrying in {}s",
-						retry_after.as_secs()
-					);
-					tokio::time::sleep(retry_after).await;
-				}
 				Err(e @ RequestError::Api(ApiError::FailedToGetUrlContent)) => {
 					if retry_counter > 5 {
 						tracing::error!(
@@ -262,6 +285,13 @@ impl Telegram {
 					tracing::warn!("Telegram disliked the media URL (\"Bad Request: wrong file identifier/HTTP URL specified\"), sending the message as pure text");
 					self.send_text(caption).await?;
 				}
+				Err(RequestError::RetryAfter(retry_after)) => {
+					tracing::error!(
+						"Exceeded rate limit while using Throttle Bot adapter, this shouldn't happen... Retrying in {}s",
+						retry_after.as_secs()
+					);
+					tokio::time::sleep(retry_after).await;
+				}
 				Err(e) => {
 					return Err(SinkError::Telegram {
 						source: e,
@@ -280,20 +310,17 @@ fn format_head_tail(
 	link_location: LinkLocation,
 ) -> (Option<String>, Option<String>) {
 	let (mut head, tail) = match (title, link) {
-		// if title and link are both presend
+		// if title and link are both present
 		(Some(title), Some(link)) => match link_location {
 			// and the link should be in the title, then combine them
-			LinkLocation::PreferTitle => (Some(format!("<a href=\"{link}\">{title}</a>\n")), None),
+			LinkLocation::PreferTitle => (Some(format!("<a href=\"{link}\">{title}</a>")), None),
 			// even it should be at the bottom, return both separately
-			LinkLocation::Bottom => (
-				Some(format!("{title}\n\n")),
-				Some(format!("\n<a href=\"{link}\">Link</a>")),
-			),
+			LinkLocation::Bottom => (Some(title), Some(format!("<a href=\"{link}\">Link</a>"))),
 		},
 		// if only the title is presend, just print itself with an added newline
-		(Some(title), None) => (Some(format!("{title}\n\n")), None),
+		(Some(title), None) => (Some(title), None),
 		// and if only the link is present, but it at the bottom of the message, even if it should try to be in the title
-		(None, Some(link)) => (None, Some(format!("\n<a href=\"{link}\">Link</a>"))),
+		(None, Some(link)) => (None, Some(format!("<a href=\"{link}\">Link</a>"))),
 		(None, None) => (None, None),
 	};
 
@@ -308,7 +335,7 @@ fn format_head_tail(
 		);
 
 		let mut head_wip = head.unwrap_or_default();
-		head_wip.insert_str(0, &format!("#{tag}\n\n"));
+		head_wip.insert_str(0, &format!("#{tag}\n"));
 
 		head = Some(head_wip);
 	}
@@ -355,6 +382,11 @@ impl MsgParts<'_> {
 
 			// if at least some of the body does fit
 			if body_fits_till > 0 {
+				// insert a new line to separate body from everything else
+				if !split_part.is_empty() {
+					split_part.push('\n');
+				}
+
 				split_part.push_str(&body[..body_fits_till]);
 
 				// if there are some bytes remaining in the body, put them back into itself
@@ -368,6 +400,11 @@ impl MsgParts<'_> {
 		// add the tail if it can still fit into the split
 		if split_part.chars().count() > self.tail.map_or(0, |s| s.chars().count()) {
 			if let Some(tail) = self.tail.take() {
+				// insert a newline to separate tail from everything else
+				if !split_part.is_empty() {
+					split_part.push('\n');
+				}
+
 				split_part.push_str(tail);
 			}
 		}

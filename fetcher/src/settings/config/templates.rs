@@ -5,7 +5,7 @@
  */
 
 use super::CONFIG_FILE_EXT;
-use crate::settings::CONF_PATHS;
+use crate::settings::context::StaticContext as Context;
 
 use color_eyre::Result;
 use std::fs;
@@ -21,13 +21,8 @@ pub struct Template {
 }
 
 #[tracing::instrument(name = "template")]
-pub fn find(name: &str) -> Result<Option<Template>> {
-	for template_dir_path in CONF_PATHS
-		.get()
-		.unwrap()
-		.iter()
-		.map(|p| p.join(TEMPLATES_DIR))
-	{
+pub fn find(name: &str, context: Context) -> Result<Option<Template>> {
+	for template_dir_path in context.conf_paths.iter().map(|p| p.join(TEMPLATES_DIR)) {
 		if let Some(template) = find_in(&template_dir_path, name)? {
 			return Ok(Some(template));
 		}

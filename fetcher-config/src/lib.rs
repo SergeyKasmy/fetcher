@@ -7,7 +7,10 @@
 // TODO: mb rename .parse() into .into() or something of that sort? .into() is already used by From/Into traits though. Naming is hard, man... UPD: into_conf() and from_conf() are way better!
 
 #![warn(clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)] // TODO
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::must_use_candidate)]
 #![warn(clippy::unwrap_used)]
 
 pub mod error;

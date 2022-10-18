@@ -43,28 +43,3 @@ pub enum Error {
 	#[error("Error setting up a source")]
 	FetcherCoreSource(#[source] Box<fetcher_core::error::source::Error>),
 }
-
-/*
- * Unused error variants
-
-#[error("Error reading config {1}")]
-Read(#[source] std::io::Error, PathBuf),
-
-#[error("Config {1} is corrupted")]
-CorruptedConfig(
-	#[source] Box<(dyn std::error::Error + Send + Sync)>,
-	PathBuf,
-),
-
-#[error("Error writing to config {1}")]
-Write(#[source] std::io::Error, PathBuf),
-
-#[error("Template {template} not found for task {from_task}")]
-TemplateNotFound { template: String, from_task: String },
-
-#[error("Error reading stdin")]
-StdinRead(#[source] std::io::Error),
-
-#[error("Error writing to stdout")]
-StdoutWrite(#[source] std::io::Error),
-*/

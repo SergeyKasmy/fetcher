@@ -13,8 +13,8 @@ mod filters;
 mod view_mode;
 
 pub use auth::Auth;
-pub use view_mode::ViewMode;
 pub use filters::Filters;
+pub use view_mode::ViewMode;
 
 use self::auth::GoogleAuthExt;
 use crate::auth::Google as GoogleAuth;
@@ -39,7 +39,7 @@ pub struct Email {
 }
 
 macro_rules! authenticate {
-    ($login:expr, $auth:expr, $client:expr) => {{
+	($login:expr, $auth:expr, $client:expr) => {{
 		let auth = $auth;
 
 		match auth {
@@ -172,7 +172,7 @@ impl Email {
 					.body()
 					.expect("Body should always be present because we explicitly requested it");
 
-				let uid = 
+let uid =
 					x.uid.expect("UIDs should always be present because we used uid_fetch(). The server probably doesn't support them which isn't something ~we~ support for now").to_string();
 
 				parse(

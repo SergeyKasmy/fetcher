@@ -4,12 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use serde::{Deserialize, Serialize};
-
 use fetcher_core::source::email::ViewMode as CViewMode;
 
+use serde::{Deserialize, Serialize};
+
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum ViewMode {
 	ReadOnly,
 	MarkAsRead,

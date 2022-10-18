@@ -13,11 +13,11 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+pub type DisabledField = Option<bool>;
+pub type TemplatesField = Option<Vec<String>>;
+
 #[derive(Deserialize, Serialize, Debug)]
-// TODO: add
-// #[serde(deny_unknown_fields)]
-// but allow templates templates field
-// that's used elsewhere
+#[serde(deny_unknown_fields)]
 pub struct Task {
 	#[serde(rename = "read_filter_type")]
 	read_filter_kind: Option<self::read_filter::Kind>,
@@ -28,6 +28,10 @@ pub struct Task {
 	actions: Option<Vec<Action>>,
 	// TODO: several sinks
 	sink: Option<Sink>,
+
+	// these are meant to be used externally and are unused here
+	disabled: DisabledField,
+	templates: TemplatesField,
 }
 
 impl Task {
@@ -41,15 +45,16 @@ impl Task {
 		let actions = self.actions.try_map(|x| {
 			x.into_iter()
 				.filter_map(|act| match act {
-					Action::ReadFilter => match rf.clone() {
-						Some(rf) => Some(Ok(fetcher_core::action::Action::Filter(
-							fetcher_core::action::filter::Kind::ReadFilter(rf),
-						))),
-						None => {
+					Action::ReadFilter => {
+						if let Some(rf) = rf.clone() {
+							Some(Ok(fetcher_core::action::Action::Filter(
+								fetcher_core::action::filter::Kind::ReadFilter(rf),
+							)))
+						} else {
 							tracing::warn!("Can't use read filter transformer when no read filter is set up for the task!");
 							None
 						}
-					},
+					}
 					other => Some(other.parse()),
 				})
 				.collect::<Result<_, _>>()

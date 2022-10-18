@@ -18,13 +18,14 @@ use fetcher_core::action::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Regex {
 	pub re: String,
 	pub action: Action,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
 	Find {
 		in_field: Field,

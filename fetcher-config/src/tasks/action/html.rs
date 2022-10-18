@@ -13,6 +13,7 @@ use fetcher_core::{action::transform::Html as CoreHtml, utils::OptionExt};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Html {
 	#[serde(rename = "item_query")]
 	pub itemq: Option<Vec<ElementQuery>>,

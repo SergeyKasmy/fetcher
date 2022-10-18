@@ -4,12 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub enum Auth {
-	#[serde(rename = "google_oauth2")]
-	GoogleOAuth2,
-	Password,
+pub type StaticContext = &'static Context;
+
+#[derive(Debug)]
+pub struct Context {
+	pub data_path: PathBuf,
+	pub conf_paths: Vec<PathBuf>,
 }

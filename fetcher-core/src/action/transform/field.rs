@@ -52,6 +52,8 @@ pub enum Field {
 	Body,
 	/// [`Message.link`] field
 	Link,
+	/// [`Entry.raw_contents`] field
+	RawContets,
 }
 
 impl TransformField for Kind {

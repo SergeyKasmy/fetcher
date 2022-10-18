@@ -1,7 +1,7 @@
 [package]
 name = "fetcher-core"
 description = "Core fetcher functionality"
-version = "0.10.0"
+version = "0.11.0"
 license = "MPL-2.0"
 repository = "https://github.com/SergeyKasmy/fetcher"
 edition = "2021"
@@ -14,19 +14,18 @@ egg-mode = { version = "0.16.0", features = ["rustls"], default-features = false
 either = "1.8.0"
 feed-rs = "1.2.0"
 futures = "0.3.24"
-# NOTE: 0.22 is a hard requirement by soup, make sure not to update it when doing cargo upgrade
-html5ever = "0.22"
 imap = { version = "3.0.0-alpha.9", features = [ "rustls-tls" ], default-features = false }
 itertools = "0.10.5"
 mailparse = "0.13.8"
 once_cell = "1.15.0"
 regex = "1.6.0"
 reqwest = { version = "0.11.12", features = ["rustls-tls", "gzip"], default-features = false }
+roux = { version = "2.2.3", default-features = false, features = ["rustls"] }
 serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.86"
-soup = "0.5.1"
+soup = { git = "https://gitlab.com/luksan_swe/soup", branch = "kuchiki_port" }
 tap = "1.0.1"
-teloxide = { version = "0.11.0", features = ["rustls"], default-features = false }
+teloxide = { version = "0.11.0", features = ["rustls", "throttle"], default-features = false }
 thiserror = "1.0.37"
 tokio = { version = "1.21.2", features = ["fs", "io-std"] }
 tracing = "0.1.37"

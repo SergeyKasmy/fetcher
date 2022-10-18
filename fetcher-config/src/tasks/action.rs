@@ -11,16 +11,17 @@ pub mod set;
 pub mod shorten;
 pub mod take;
 pub mod trim;
+pub mod use_as;
 
 use self::{
 	html::Html, json::Json, regex::Regex, set::Set, shorten::Shorten, take::Take, trim::Trim,
+	use_as::Use,
 };
 use crate::Error;
 use fetcher_core::action::{
 	transform::{
 		entry::Kind as CTransformEntryKind, field::caps::Caps as CCaps, field::Field as CField,
 		field::Kind as CFieldTransformKind, Feed as CFeed, Transform as CTransform,
-		UseRawContents as CUseRawContents,
 	},
 	Action as CAction,
 };
@@ -28,7 +29,7 @@ use fetcher_core::action::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
 	// filters
 	ReadFilter,
@@ -39,7 +40,7 @@ pub enum Action {
 	Html(Html),
 	Json(Json),
 	Feed,
-	UseRawContents,
+	Use(Use),
 	Print,
 
 	// field transforms
@@ -52,6 +53,15 @@ pub enum Action {
 	Regex(Regex),
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub enum Field {
+	Title,
+	Body,
+	Link,
+	RawContents,
+}
+
 impl Action {
 	pub fn parse(self) -> Result<CAction, Error> {
 		Ok(match self {
@@ -61,7 +71,7 @@ impl Action {
 			Action::Html(x) => x.parse()?.into(),
 			Action::Json(x) => x.parse()?.into(),
 			Action::Feed => CFeed.into(),
-			Action::UseRawContents => CUseRawContents.into(),
+			Action::Use(x) => x.parse().into(),
 			Action::Print => CTransformEntryKind::Print.into(),
 			Action::Set(s) => s.parse().into(),
 			Action::Caps => CAction::Transform(CTransform::Field {
@@ -75,20 +85,13 @@ impl Action {
 	}
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum Field {
-	Title,
-	Body,
-	Link,
-}
-
 impl Field {
 	pub fn parse(self) -> CField {
 		match self {
 			Field::Title => CField::Title,
 			Field::Body => CField::Body,
 			Field::Link => CField::Link,
+			Field::RawContents => CField::RawContets,
 		}
 	}
 }

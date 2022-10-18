@@ -7,78 +7,50 @@
 pub mod email;
 pub mod file;
 pub mod http;
+pub mod reddit;
 pub mod twitter;
 
-use self::{email::Email, file::File, http::Http, twitter::Twitter};
+use self::{email::Email, file::File, http::Http, reddit::Reddit, twitter::Twitter};
 use crate::{tasks::external_data::ExternalData, Error};
-use fetcher_core::{read_filter::ReadFilter as CReadFilter, source};
+use fetcher_core::{read_filter::ReadFilter as CReadFilter, source::Source as CSource};
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, OneOrMany};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[allow(clippy::large_enum_variant)]
-#[serde_as]
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(untagged)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Source {
-	WithSharedReadFilter(#[serde_as(deserialize_as = "OneOrMany<_>")] Vec<WithSharedReadFilter>),
-	WithCustomReadFilter(WithCustomReadFilter),
-}
-
-#[allow(clippy::large_enum_variant)]
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum WithSharedReadFilter {
+	// with shared read filter
 	Http(Http),
 	Twitter(Twitter),
 	File(File),
-}
+	Reddit(Reddit),
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum WithCustomReadFilter {
+	// with custom read filter
 	Email(Email),
 }
 
-// TODO: clean up
 impl Source {
 	pub fn parse(
 		self,
 		rf: Option<Arc<RwLock<CReadFilter>>>,
 		external: &dyn ExternalData,
-	) -> Result<source::Source, Error> {
-		Ok(match self {
-			Source::WithSharedReadFilter(v) => {
-				let sources = v
-					.into_iter()
-					.map(|x| {
-						Ok(match x {
-							WithSharedReadFilter::Http(x) => {
-								source::WithSharedRFKind::Http(x.parse()?)
-							}
-							WithSharedReadFilter::Twitter(x) => {
-								source::WithSharedRFKind::Twitter(x.parse(external)?)
-							}
-							WithSharedReadFilter::File(x) => {
-								source::WithSharedRFKind::File(x.parse())
-							}
-						})
-					})
-					.collect::<Result<Vec<_>, Error>>()?;
+	) -> Result<CSource, Error> {
+		// make a CSource::WithSharedReadFilter out of a CWithSharedRFKind
+		macro_rules! WithSharedRF {
+			($source:expr) => {
+				CSource::WithSharedReadFilter { rf, kind: $source }
+			};
+		}
 
-				source::Source::WithSharedReadFilter {
-					rf,
-					kind: source::WithSharedRF::new(sources)
-						.map_err(|e| Error::FetcherCoreSource(Box::new(e)))?,
-				}
-			}
-			Source::WithCustomReadFilter(s) => match s {
-				WithCustomReadFilter::Email(x) => source::Source::WithCustomReadFilter(
-					source::WithCustomRF::Email(x.parse(external)?),
-				),
-			},
+		Ok(match self {
+			Self::Http(x) => WithSharedRF!(x.parse()?),
+			Self::Twitter(x) => WithSharedRF!(x.parse(external)?),
+			Self::File(x) => WithSharedRF!(x.parse()),
+			Self::Reddit(x) => WithSharedRF!(x.parse()),
+			Self::Email(x) => CSource::WithCustomReadFilter(x.parse(external)?),
 		})
 	}
 }

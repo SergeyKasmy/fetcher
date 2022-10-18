@@ -7,10 +7,10 @@
 // TODO: add trace logging, e.g. all config dirs, all config files, stuff like that
 
 use super::CONFIG_FILE_EXT;
-use crate::settings::{self, CONF_PATHS};
-use fetcher_config::tasks::task::Task as ConfigTask;
-use fetcher_config::tasks::ParsedTask;
-use fetcher_config::tasks::ParsedTasks;
+use crate::settings::{
+	self, context::StaticContext as Context, external_data::ExternalDataFromDataDir,
+};
+use fetcher_config::tasks::{task::Task as ConfigTask, ParsedTask, ParsedTasks};
 
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
@@ -19,57 +19,72 @@ use figment::{
 	Figment,
 };
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+const TASKS_DIR_NAME: &str = "tasks";
 
 #[derive(Deserialize, Debug)]
 struct DisabledField {
-	disabled: Option<bool>,
+	disabled: fetcher_config::tasks::task::DisabledField,
 }
 
 #[derive(Deserialize, Debug)]
 struct TemplatesField {
-	templates: Option<Vec<String>>,
+	templates: fetcher_config::tasks::task::TemplatesField,
 }
 
 // #[tracing::instrument(name = "settings:task", skip(settings))]
-#[tracing::instrument]
-pub async fn get_all() -> Result<ParsedTasks> {
-	let mut tasks = ParsedTasks::new();
-	for dir in CONF_PATHS.get().unwrap().iter().map(|p| p.join("tasks")) {
-		// TODO: make a stream?
-		tasks.extend(get_all_from(dir).await?);
-	}
-
-	Ok(tasks)
+#[tracing::instrument(skip(cx))]
+pub fn get_all(by_name: Option<&[&str]>, cx: Context) -> Result<ParsedTasks> {
+	cx.conf_paths
+		.iter()
+		.flat_map(|dir| get_all_from(dir, by_name, cx))
+		.collect()
 }
 
-pub async fn get_all_from(tasks_dir: PathBuf) -> Result<ParsedTasks> {
+pub fn get_all_from<'a>(
+	cfg_dir: &'a Path,
+	by_name: Option<&'a [&'a str]>,
+	cx: Context,
+) -> impl Iterator<Item = Result<(String, ParsedTask)>> + 'a {
 	let glob_str = format!(
-		"{tasks_dir}/**/*.{CONFIG_FILE_EXT}",
-		tasks_dir = tasks_dir.to_str().expect("Path is illegal UTF-8")
+		"{cfg_dir}/{TASKS_DIR_NAME}/**/*.{CONFIG_FILE_EXT}",
+		cfg_dir = cfg_dir.to_str().expect("Path is illegal UTF-8") // FIXME
 	);
 
 	let cfgs = glob::glob(&glob_str)
 		.expect("The glob pattern is hand-made and should never fail to be parsed");
 
-	let mut tasks = ParsedTasks::new();
-	for cfg in cfgs {
-		let cfg = cfg?;
+	cfgs.filter_map(move |cfg| {
+		let cfg = match cfg {
+			Ok(v) => v,
+			Err(e) => return Some(Err(e.into())),
+		};
+
 		let name = cfg
-			.strip_prefix(&tasks_dir)
-			.expect("The prefix was just appended up above in the glob pattern and thus should never fail")
+			.strip_prefix(cfg_dir)
+			.expect("shouldn't fail since cfg_dir has just been prepended")
+			.strip_prefix(TASKS_DIR_NAME)
+			.expect("shouldn't fail since TASKS_DIR_NAME has just been prepended")
 			.with_extension("")
-			.to_string_lossy()	// TODO: choose if we should use lossy or fail on invalid UTF-8 like in read_filter::get. This inconsistent behavior is probably even worse than any of the two
+			.to_string_lossy()
 			.into_owned();
 
-		get(cfg, &name).await?.map(|task| tasks.insert(name, task));
-	}
+		if let Some(by_name) = by_name {
+			if !by_name.iter().any(|x| *x == name) {
+				return None;
+			}
+		}
 
-	Ok(tasks)
+		let task = get(cfg, &name, cx).transpose()?;
+		let named_task = task.map(|t| (name, t));
+
+		Some(named_task)
+	})
 }
 
-#[tracing::instrument]
-pub async fn get(path: PathBuf, name: &str) -> Result<Option<ParsedTask>> {
+#[tracing::instrument(skip(cx))]
+pub fn get(path: PathBuf, name: &str, cx: Context) -> Result<Option<ParsedTask>> {
 	tracing::trace!("Parsing a task from file");
 
 	let task_file = Figment::new().merge(Yaml::file(&path));
@@ -87,7 +102,7 @@ pub async fn get(path: PathBuf, name: &str) -> Result<Option<ParsedTask>> {
 
 	if let Some(templates) = templates {
 		for tmpl_name in templates {
-			let tmpl = settings::config::templates::find(&tmpl_name)?
+			let tmpl = settings::config::templates::find(&tmpl_name, cx)?
 				.ok_or_else(|| eyre!("Template not found"))?;
 
 			tracing::trace!("Using template: {:?}", tmpl.path);
@@ -99,13 +114,5 @@ pub async fn get(path: PathBuf, name: &str) -> Result<Option<ParsedTask>> {
 	let full_conf = full_conf.merge(Yaml::file(&path));
 	let task: ConfigTask = full_conf.extract()?;
 
-	let name = name.to_owned(); // ehhhh, such a wasteful clone, and just because tokio doesn't support scoped tasks
-	let parsed_task = tokio::task::spawn_blocking(move || {
-		task.parse(&name, &settings::ExternalDataFromDataDir {})
-	})
-	.await
-	.unwrap()?;
-	// let parsed_task = task.parse(name, &settings::TaskSettingsFetcherDefault)?;
-
-	Ok(Some(parsed_task))
+	Ok(Some(task.parse(name, &ExternalDataFromDataDir { cx })?))
 }
