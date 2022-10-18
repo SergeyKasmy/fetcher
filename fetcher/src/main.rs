@@ -263,28 +263,40 @@ async fn run_tasks(
 }
 
 async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool) -> Result<()> {
-	// allow only 5 transform errors, count any number higher than that as a critical error
-	// TODO: don't exit outright, just timeout the task increasingly more as errors come
-	const TRANSFORM_ERR_MAX_COUNT: u32 = 5;
+	// exit with an error if there were too many consecutive transform errors
+	let transform_err_max_count: u32 = if once { 0 } else { 255 };
+	// number of consecutive(!!!) transform errors.
+	// we tolerate a pretty big amount for various reasons (being rate limited, server error, etc) but not infinite
 	let mut transform_err_count = 0;
 
 	loop {
 		// return critical errors and just log non critical ones
 		match fetcher_core::run_task(&mut t.inner).await {
-			Ok(()) => (),
+			Ok(()) => {
+				transform_err_count = 0;
+			}
 			Err(Error::Transform(transform_err)) => {
-				transform_err_count += 1;
-
 				settings::state::log_transform_err(&transform_err, task_name).await?;
 
-				if transform_err_count > TRANSFORM_ERR_MAX_COUNT {
+				if transform_err_count == transform_err_max_count {
 					return Err(Error::Transform(transform_err).into());
 				}
 
 				tracing::error!(
-					"Transform error ({transform_err_count} out of {TRANSFORM_ERR_MAX_COUNT}): {}",
+					"Transform error ({} out of {} max allowed):\n{}",
+					transform_err_count + 1, // +1 cause we are counting from 0 but it'd be strange to show "Error (0 out of 255)" to users
+					transform_err_max_count + 1,
 					transform_err.display_chain()
 				);
+
+				// sleep in exponention amount of minutes, begginning with 2^0 = 1 minute
+				let sleep_dur = 2u64.saturating_pow(transform_err_count);
+				tracing::info!("Pausing task {task_name} for {sleep_dur}m");
+
+				sleep(Duration::from_secs(sleep_dur * 60 /* secs in a min*/)).await;
+				transform_err_count += 1;
+
+				continue;
 			}
 			Err(e) => {
 				if let Some(network_err) = e.is_connection_error() {
