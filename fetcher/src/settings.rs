@@ -9,5 +9,6 @@ pub mod context;
 pub mod data;
 pub mod external_data;
 pub mod read_filter;
+pub mod state;
 
 const PREFIX: &str = "fetcher";

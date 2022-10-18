@@ -236,14 +236,14 @@ async fn run_tasks(
 				tracing::trace!("Task {} contents: {:#?}", name, t);
 
 				let res = select! {
-					r = task_loop(&mut t, once) => r,
+					r = task_loop(&mut t, &name, once) => r,
 					_ = shutdown_rx.changed() => Ok(()),
 				};
 
 				// production error reporting
 				if !cfg!(debug_assertions) {
 					if let Err(err) = &res {
-						if let Err(e) = report_error(&name, &err.display_chain(), &context).await {
+						if let Err(e) = report_error(&name, &format!("{:#}", err), &context).await {
 							tracing::error!("Unable to send error report to the admin: {e:?}",);
 						}
 					}
@@ -262,8 +262,9 @@ async fn run_tasks(
 	Ok(())
 }
 
-async fn task_loop(t: &mut ParsedTask, once: bool) -> Result<(), Error> {
+async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool) -> Result<()> {
 	// allow only 5 transform errors, count any number higher than that as a critical error
+	// TODO: don't exit outright, just timeout the task increasingly more as errors come
 	const TRANSFORM_ERR_MAX_COUNT: u32 = 5;
 	let mut transform_err_count = 0;
 
@@ -274,8 +275,10 @@ async fn task_loop(t: &mut ParsedTask, once: bool) -> Result<(), Error> {
 			Err(Error::Transform(transform_err)) => {
 				transform_err_count += 1;
 
+				settings::state::log_transform_err(&transform_err, task_name).await?;
+
 				if transform_err_count > TRANSFORM_ERR_MAX_COUNT {
-					return Err(Error::Transform(transform_err));
+					return Err(Error::Transform(transform_err).into());
 				}
 
 				tracing::error!(
@@ -287,7 +290,7 @@ async fn task_loop(t: &mut ParsedTask, once: bool) -> Result<(), Error> {
 				if let Some(network_err) = e.is_connection_error() {
 					tracing::warn!("Network error: {}", network_err.display_chain());
 				} else {
-					return Err(e);
+					return Err(e.into());
 				}
 			}
 		}
@@ -305,9 +308,7 @@ async fn task_loop(t: &mut ParsedTask, once: bool) -> Result<(), Error> {
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
 async fn report_error(task_name: &str, err: &str, context: &Context) -> Result<()> {
-	use fetcher_core::sink::telegram::LinkLocation;
-	use fetcher_core::sink::Message;
-	use fetcher_core::sink::Telegram;
+	use fetcher_core::sink::{telegram::LinkLocation, Message, Telegram};
 
 	let admin_chat_id = match std::env::var("FETCHER_TELEGRAM_ADMIN_CHAT_ID")?.parse::<i64>() {
 		Ok(num) => num,
