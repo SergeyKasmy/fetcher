@@ -12,7 +12,9 @@
 pub mod args;
 pub mod settings;
 
-use self::settings::context::StaticContext as Context;
+use self::settings::{
+	context::Context as OwnedContext, context::StaticContext as Context, run_mode::RunMode,
+};
 use crate::args::{Args, Setting};
 use fetcher_config::tasks::{ParsedTask, ParsedTasks};
 use fetcher_core::error::{Error, ErrorChainExt};
@@ -87,7 +89,7 @@ async fn async_main() -> Result<()> {
 			None => settings::config::default_cfg_dirs()?,
 		};
 
-		Box::leak(Box::new(crate::settings::context::Context {
+		Box::leak(Box::new(OwnedContext {
 			data_path,
 			conf_paths,
 		}))
@@ -95,13 +97,22 @@ async fn async_main() -> Result<()> {
 
 	match args.subcommand {
 		args::TopLvlSubcommand::Run(arg) => {
+			let mode = if arg.verify_only {
+				RunMode::VerifyOnly
+			} else {
+				RunMode::Normal {
+					once: arg.once,
+					dry_run: arg.dry_run,
+				}
+			};
+
 			run(
 				if arg.tasks.is_empty() {
 					None
 				} else {
 					Some(arg.tasks)
 				},
-				arg.once,
+				mode,
 				context,
 			)
 			.await?;
@@ -119,7 +130,7 @@ async fn async_main() -> Result<()> {
 
 /// Run once or loop?
 /// If specified, run only tasks in `run_by_name`
-async fn run(run_by_name: Option<Vec<String>>, once: bool, cx: Context) -> Result<()> {
+async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -200,12 +211,21 @@ async fn run(run_by_name: Option<Vec<String>>, once: bool, cx: Context) -> Resul
 		Ok::<(), Report>(())
 	});
 
-	run_tasks(tasks, shutdown_rx, once, cx).await?;
+	match mode {
+		RunMode::Normal {
+			once,
+			dry_run: _dry_run,
+		} => run_tasks(tasks, shutdown_rx, once, cx).await?,
+		RunMode::VerifyOnly => {
+			tracing::info!("Everything verified to be working properly, exiting...");
+		}
+	}
 
 	sig_handle.close(); // TODO: figure out wtf this is and why
 	sig_task
 		.await
 		.expect("Error shutting down of signal handler")?;
+
 	Ok(())
 }
 

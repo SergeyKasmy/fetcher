@@ -34,17 +34,21 @@ pub enum TopLvlSubcommand {
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "run")]
 pub struct Run {
+	/// verify only, don't run
+	#[argh(switch)]
+	pub verify_only: bool,
+
 	/// run once (instead of looping forever)
 	#[argh(switch)]
 	pub once: bool,
 
+	/// dry run, make no permanent changes to the system
+	#[argh(switch)]
+	pub dry_run: bool,
+
 	/// run only these tasks
 	#[argh(positional)]
 	pub tasks: Vec<String>,
-	// TODO: implement dry running
-	// make no permanent changes to the fs or other io
-	// #[argh(switch)]
-	// pub dry_run: bool,
 }
 
 /// save a setting

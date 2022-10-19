@@ -4,12 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub mod config;
-pub mod context;
-pub mod data;
-pub mod external_data;
-pub mod read_filter;
-pub mod run_mode;
-pub mod state;
-
-const PREFIX: &str = "fetcher";
+#[derive(Debug)]
+pub enum RunMode {
+	Normal { once: bool, dry_run: bool },
+	VerifyOnly,
+}
