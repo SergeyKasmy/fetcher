@@ -199,7 +199,25 @@ impl Telegram {
 		};
 
 		if let Some(media) = media {
-			self.send_media(media, text.as_deref()).await?;
+			// send several media only messages (i.e. without caption) if all the media wouldn't fit into a single message, and then a separate text message containing the caption
+			if media.len() > 10 {
+				let mut previous_message = None;
+
+				for ch in media.chunks(10) {
+					let sent_msg = self
+						.send_media_with_reply_id(ch, None, previous_message)
+						.await?;
+					previous_message = Some(sent_msg[0].id);
+				}
+
+				if let Some(text) = text {
+					self.send_text_with_reply_id(&text, previous_message)
+						.await?;
+				}
+			} else {
+				self.send_media(media, text.as_deref()).await?;
+			}
+		// self.send_media(media, text.as_deref()).await?;
 		} else {
 			match text {
 				Some(text) => {
