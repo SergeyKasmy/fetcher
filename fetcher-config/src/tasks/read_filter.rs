@@ -56,7 +56,7 @@ impl ReadFilter {
 
 		core_rf::ReadFilter {
 			inner,
-			external_save,
+			external_save: Some(external_save),
 		}
 	}
 

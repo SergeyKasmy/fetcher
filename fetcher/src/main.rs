@@ -212,10 +212,17 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 	});
 
 	match mode {
-		RunMode::Normal {
-			once,
-			dry_run: _dry_run,
-		} => run_tasks(tasks, shutdown_rx, once, cx).await?,
+		RunMode::Normal { once, dry_run } => {
+			let mut tasks = tasks;
+
+			if dry_run {
+				tracing::debug!("Making all tasks dry");
+
+				make_tasks_dry(&mut tasks).await;
+			}
+
+			run_tasks(tasks, shutdown_rx, once, cx).await?;
+		}
 		RunMode::VerifyOnly => {
 			tracing::info!("Everything verified to be working properly, exiting...");
 		}
@@ -241,6 +248,32 @@ async fn get_all_tasks(run_by_name: Option<Vec<String>>, cx: Context) -> Result<
 	})
 	.await
 	.expect("Thread crashed")
+}
+
+async fn make_tasks_dry(tasks: &mut ParsedTasks) {
+	use fetcher_core::{
+		sink::{Sink, Stdout},
+		source::{email, Source, WithCustomRF},
+	};
+
+	for task in tasks.values_mut() {
+		// don't save read filtered items to the fs
+		match &mut task.inner.source {
+			Source::WithSharedReadFilter { rf, kind: _ } => {
+				if let Some(rf) = rf {
+					rf.write().await.external_save = None;
+				}
+			}
+			Source::WithCustomReadFilter(custom_rf_source) => match custom_rf_source {
+				WithCustomRF::Email(e) => e.view_mode = email::ViewMode::ReadOnly,
+			},
+		}
+
+		// don't send anything anywhere, just print
+		if task.inner.sink.is_some() {
+			task.inner.sink = Some(Sink::Stdout(Stdout));
+		}
+	}
 }
 
 async fn run_tasks(

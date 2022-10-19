@@ -35,7 +35,7 @@ pub struct ReadFilter {
 	pub inner: Inner,
 
 	/// An external save destination
-	pub external_save: Box<dyn ExternalSave + Send + Sync>,
+	pub external_save: Option<Box<dyn ExternalSave + Send + Sync>>,
 }
 
 /// All different read filtering stragedies
@@ -58,7 +58,7 @@ pub enum Kind {
 impl ReadFilter {
 	/// Creates a new Read Filter using [`kind`](`Kind`) filter stragedy and `external_save` external saving implementation
 	#[must_use]
-	pub fn new(kind: Kind, external_save: Box<dyn ExternalSave + Send + Sync>) -> Self {
+	pub fn new(kind: Kind, external_save: Option<Box<dyn ExternalSave + Send + Sync>>) -> Self {
 		let inner = match kind {
 			Kind::NewerThanLastRead => Inner::NewerThanLastRead(Newer::new()),
 			Kind::NotPresentInReadList => Inner::NotPresentInReadList(NotPresent::new()),
@@ -111,9 +111,13 @@ impl ReadFilter {
 			NotPresentInReadList(x) => x.mark_as_read(id),
 		}
 
-		self.external_save
-			.save(&self.inner)
-			.map_err(Error::ReadFilterExternalWrite)
+		if let Some(external_save) = &mut self.external_save {
+			external_save
+				.save(&self.inner)
+				.map_err(Error::ReadFilterExternalWrite)?;
+		}
+
+		Ok(())
 	}
 }
 
