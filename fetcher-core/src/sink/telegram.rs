@@ -80,10 +80,10 @@ impl Telegram {
 			self.link_location,
 		);
 
-		let max_char_limit = if media.is_some() {
-			MAX_MEDIA_MSG_LEN
-		} else {
-			MAX_TEXT_MSG_LEN
+		let text = MsgParts {
+			head: head.as_deref(),
+			body: body.as_deref(),
+			tail: tail.as_deref(),
 		};
 
 		// fugure out if additional newline charaters should be added
@@ -92,7 +92,13 @@ impl Telegram {
 		let should_insert_newline_after_head = head.is_some() && (body.is_some() || tail.is_some());
 		let should_insert_newline_after_body = body.is_some() && tail.is_some();
 
-		// if total message char len is bigger than max_char_limit (depending on whether the message contains media)
+		let max_char_limit = if media.is_some() {
+			MAX_MEDIA_MSG_LEN
+		} else {
+			MAX_TEXT_MSG_LEN
+		};
+
+		// if total single message char len would be bigger than max_char_limit (depending on whether the message contains media)
 		if head.as_ref().map_or(0, |s| s.chars().count())
 			+ body.as_ref().map_or(0, |s| s.chars().count())
 			+ tail.as_ref().map_or(0, |s| s.chars().count())
@@ -100,56 +106,108 @@ impl Telegram {
 			+ usize::from(should_insert_newline_after_body)
 			> max_char_limit
 		{
-			let mut msg_parts = MsgParts {
-				head: head.as_deref(),
-				body: body.as_deref(),
-				tail: tail.as_deref(),
-			};
+			self.process_long_message(text, media.as_deref()).await?;
+		} else {
+			self.process_short_message(
+				text,
+				media.as_deref(),
+				should_insert_newline_after_head,
+				should_insert_newline_after_body,
+			)
+			.await?;
+		}
 
-			let mut previous_message = None;
+		Ok(())
+	}
 
-			// if the message contains media, send it and MAX_MEDIA_MSG_LEN chars first
-			if let Some(media) = media {
-				let media_caption = msg_parts
-					.split_msg_at(MAX_MEDIA_MSG_LEN)
-					.expect("should always return a valid split at least once since msg char len is > max_char_limit");
+	async fn process_long_message(
+		&self,
+		mut text: MsgParts<'_>,
+		media: Option<&[Media]>,
+	) -> Result<(), SinkError> {
+		let mut previous_message = None;
+
+		// if the message contains media, send it and MAX_MEDIA_MSG_LEN chars first
+		if let Some(media) = media {
+			// send media only (i.e. without caption) if all the media wouldn't fit in a single message
+			if media.len() > 10 {
+				for ch in media.chunks(10) {
+					let sent_msg = self
+						.send_media_with_reply_id(ch, None, previous_message)
+						.await?;
+					previous_message = Some(sent_msg[0].id);
+				}
+			} else {
+				let media_caption = text
+						.split_msg_at(MAX_MEDIA_MSG_LEN)
+						.expect("should always return a valid split at least once since msg char len is > max_char_limit");
 
 				let sent_msg = self
-					.send_media_with_reply_id(&media, &media_caption, previous_message)
+					.send_media_with_reply_id(media, Some(&media_caption), previous_message)
 					.await?;
 				previous_message = Some(sent_msg[0].id);
 			}
+		}
 
-			// send all remaining text in splits of MAX_TEXT_MSG_LEN
-			// whether we sent a media message first is not important
-			while let Some(text) = msg_parts.split_msg_at(MAX_TEXT_MSG_LEN) {
-				let sent_msg = self
-					.send_text_with_reply_id(&text, previous_message)
-					.await?;
-				previous_message = Some(sent_msg.id);
-			}
+		// send all remaining text in splits of MAX_TEXT_MSG_LEN
+		// whether we sent a media message first is not important
+		while let Some(text) = text.split_msg_at(MAX_TEXT_MSG_LEN) {
+			let sent_msg = self
+				.send_text_with_reply_id(&text, previous_message)
+				.await?;
+			previous_message = Some(sent_msg.id);
+		}
+
+		Ok(())
+	}
+
+	async fn process_short_message(
+		&self,
+		text: MsgParts<'_>,
+		media: Option<&[Media]>,
+
+		// passthrough these to avoid recalculation or desync with the previous calculations
+		// even though they do make this fn signature uglier
+		should_insert_newline_after_head: bool,
+		should_insert_newline_after_body: bool,
+	) -> Result<(), SinkError> {
+		macro_rules! newline_if {
+			($bool:expr) => {
+				if $bool {
+					"\n"
+				} else {
+					""
+				}
+			};
+		}
+
+		let MsgParts { head, body, tail } = text;
+
+		let text = format!(
+			"{}{}{}{}{}",
+			head.unwrap_or_default(),
+			newline_if!(should_insert_newline_after_head),
+			body.unwrap_or_default(),
+			newline_if!(should_insert_newline_after_body),
+			tail.unwrap_or_default()
+		);
+
+		let text = if text.trim().is_empty() {
+			None
 		} else {
-			let text = format!(
-				"{}{}{}{}{}",
-				head.as_deref().unwrap_or_default(),
-				if should_insert_newline_after_head {
-					"\n"
-				} else {
-					""
-				},
-				body.as_deref().unwrap_or_default(),
-				if should_insert_newline_after_body {
-					"\n"
-				} else {
-					""
-				},
-				tail.as_deref().unwrap_or_default()
-			);
+			Some(text)
+		};
 
-			if let Some(media) = media {
-				self.send_media(&media, &text).await?;
-			} else {
-				self.send_text(&text).await?;
+		if let Some(media) = media {
+			self.send_media(media, text.as_deref()).await?;
+		} else {
+			match text {
+				Some(text) => {
+					self.send_text(&text).await?;
+				}
+				None => {
+					tracing::warn!("Skipping sending completely empty Telegram text message");
+				}
 			}
 		}
 
@@ -203,24 +261,28 @@ impl Telegram {
 	async fn send_media(
 		&self,
 		media: &[Media],
-		caption: &str,
+		caption: Option<&str>,
 	) -> Result<Vec<TelMessage>, SinkError> {
 		self.send_media_with_reply_id(media, caption, None).await
 	}
 
+	/// # Panics
+	/// if media.len() is more than 10
 	async fn send_media_with_reply_id(
 		&self,
 		media: &[Media],
-		caption: &str,
+		mut caption: Option<&str>,
 		reply_to_msg_id: Option<MessageId>,
 	) -> Result<Vec<TelMessage>, SinkError> {
+		assert!(
+			media.len() <= 10,
+			"Trying to send more media items: {}, than max supported 10",
+			media.len()
+		);
+
 		tracing::trace!(
 			"About to send a media message with caption: {caption:?}, and media: {media:?}"
 		);
-
-		// mark if caption has already been included.
-		// which it should be only once
-		let mut caption_included = false;
 
 		let media = media
 			.iter()
@@ -233,11 +295,10 @@ impl Telegram {
 						let input_media = $full_type::new(InputFile::url($url.clone()))
 							.parse_mode(ParseMode::Html);
 
-						let input_media = if caption_included {
-							input_media
-						} else {
-							caption_included = true;
+						let input_media = if let Some(caption) = caption.take() {
 							input_media.caption(caption)
+						} else {
+							input_media
 						};
 
 						InputMedia::$type(input_media)
@@ -285,8 +346,12 @@ impl Telegram {
 				}
 				Err(RequestError::Api(ApiError::WrongFileIdOrUrl)) => {
 					// TODO: reupload the image manually if this happens
-					tracing::warn!("Telegram disliked the media URL (\"Bad Request: wrong file identifier/HTTP URL specified\"), sending the message as pure text");
-					self.send_text(caption).await?;
+					if let Some(caption) = caption {
+						tracing::warn!("Telegram disliked the media URL (\"Bad Request: wrong file identifier/HTTP URL specified\"), sending the message as pure text");
+						self.send_text(caption).await?;
+					} else {
+						tracing::warn!("Telegram disliked the media URL (\"Bad Request: wrong file identifier/HTTP URL specified\") but the caption was empty, skipping...");
+					}
 				}
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tracing::error!(
