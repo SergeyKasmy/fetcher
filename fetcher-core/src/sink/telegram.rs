@@ -11,7 +11,7 @@ use crate::{
 	sink::{Media, Message},
 };
 
-use std::time::Duration;
+use std::{fmt::Debug, time::Duration};
 use teloxide::{
 	adaptors::{throttle::Limits, Throttle},
 	payloads::{SendMediaGroupSetters, SendMessageSetters},
@@ -86,10 +86,18 @@ impl Telegram {
 			MAX_TEXT_MSG_LEN
 		};
 
+		// fugure out if additional newline charaters should be added
+		// and include them in calculations on whether the message will end up too long.
+		// add newline after head if head.is some and either body or tail is some
+		let should_insert_newline_after_head = head.is_some() && (body.is_some() || tail.is_some());
+		let should_insert_newline_after_body = body.is_some() && tail.is_some();
+
 		// if total message char len is bigger than max_char_limit (depending on whether the message contains media)
 		if head.as_ref().map_or(0, |s| s.chars().count())
 			+ body.as_ref().map_or(0, |s| s.chars().count())
 			+ tail.as_ref().map_or(0, |s| s.chars().count())
+			+ usize::from(should_insert_newline_after_head)
+			+ usize::from(should_insert_newline_after_body)
 			> max_char_limit
 		{
 			let mut msg_parts = MsgParts {
@@ -121,11 +129,6 @@ impl Telegram {
 				previous_message = Some(sent_msg.id);
 			}
 		} else {
-			// if head.is some and either body or tail is some
-			let should_insert_newline_after_head =
-				head.is_some() && (body.is_some() || tail.is_some());
-			let should_insert_newline_after_body = body.is_some() && tail.is_some();
-
 			let text = format!(
 				"{}{}{}{}{}",
 				head.as_deref().unwrap_or_default(),
@@ -380,10 +383,17 @@ impl MsgParts<'_> {
 				.nth(space_left_for_body)
 				.map_or_else(|| body.len(), |(idx, _)| idx);
 
+			// mark if we should add a newline character and leave some space for it
+			let (body_fits_till, add_newline) = if split_part.is_empty() {
+				(body_fits_till, false)
+			} else {
+				(body_fits_till - 1, true)
+			};
+
 			// if at least some of the body does fit
 			if body_fits_till > 0 {
 				// insert a new line to separate body from everything else
-				if !split_part.is_empty() {
+				if add_newline {
 					split_part.push('\n');
 				}
 
@@ -397,28 +407,43 @@ impl MsgParts<'_> {
 			}
 		}
 
-		// add the tail if it can still fit into the split
-		if split_part.chars().count() > self.tail.map_or(0, |s| s.chars().count()) {
-			if let Some(tail) = self.tail.take() {
-				// insert a newline to separate tail from everything else
-				if !split_part.is_empty() {
-					split_part.push('\n');
-				}
+		// tail
+		{
+			let tail_len = self.tail.map_or(0, |s| s.chars().count());
+			// mark if we should add a newline character and leave some space for it
+			let (tail_len, add_newline) = if split_part.is_empty() {
+				(tail_len, false)
+			} else {
+				(tail_len - 1, true)
+			};
 
-				split_part.push_str(tail);
+			// add the tail if it can still fit into the split
+			if split_part.chars().count() > tail_len {
+				if let Some(tail) = self.tail.take() {
+					// insert a newline to separate tail from everything else
+					if add_newline {
+						split_part.push('\n');
+					}
+
+					split_part.push_str(tail);
+				}
 			}
 		}
 
+		let split_part_chars = split_part.chars().count();
+		tracing::trace!("Final part len: {}", split_part_chars);
 		// make sure we haven't crossed our character limit
-		assert!(split_part.chars().count() <= len);
+		assert!(split_part_chars <= len);
+
 		Some(split_part)
 	}
 }
 
-impl std::fmt::Debug for Telegram {
+impl Debug for Telegram {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Telegram")
 			.field("chat_id", &self.chat_id)
+			.field("link_location", &self.link_location)
 			.finish_non_exhaustive()
 	}
 }
