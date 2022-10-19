@@ -457,24 +457,21 @@ impl MsgParts<'_> {
 
 		// make sure the entire head or tail can fit into the requested split
 		// since they can't be split into parts
-		{
-			let head_len = self.head.map_or(0, |s| s.chars().count());
-			assert!(
-				len >= head_len,
-				"head has more characters: {}, than can be fit in a msg part of max len: {}",
-				head_len,
-				len
-			);
-		}
-		{
-			let tail_len = self.tail.map_or(0, |s| s.chars().count());
-			assert!(
-				len >= tail_len,
-				"tail has more characters: {}, than can be fit in a msg part of max len: {}",
-				tail_len,
-				len
-			);
-		}
+		let head_len = self.head.map_or(0, |s| s.chars().count());
+		assert!(
+			len >= head_len,
+			"head has more characters: {}, than can be fit in a msg part of max len: {}",
+			head_len,
+			len
+		);
+
+		let tail_len = self.tail.map_or(0, |s| s.chars().count());
+		assert!(
+			len >= tail_len,
+			"tail has more characters: {}, than can be fit in a msg part of max len: {}",
+			tail_len,
+			len
+		);
 
 		let mut split_part = String::with_capacity(len);
 
@@ -498,7 +495,7 @@ impl MsgParts<'_> {
 			let (body_fits_till, add_newline) = if split_part.is_empty() {
 				(body_fits_till, false)
 			} else {
-				(body_fits_till - 1, true)
+				(body_fits_till.saturating_sub(1), true)
 			};
 
 			// if at least some of the body does fit
@@ -515,21 +512,22 @@ impl MsgParts<'_> {
 				if !remaining_body.is_empty() {
 					self.body = Some(remaining_body);
 				}
+			} else {
+				self.body = Some(body);
 			}
 		}
 
 		// tail
 		{
-			let tail_len = self.tail.map_or(0, |s| s.chars().count());
 			// mark if we should add a newline character and leave some space for it
 			let (tail_len, add_newline) = if split_part.is_empty() {
 				(tail_len, false)
 			} else {
-				(tail_len - 1, true)
+				(tail_len + 1, true)
 			};
 
 			// add the tail if it can still fit into the split
-			if split_part.chars().count() > tail_len {
+			if len.saturating_sub(split_part.chars().count()) >= tail_len {
 				if let Some(tail) = self.tail.take() {
 					// insert a newline to separate tail from everything else
 					if add_newline {
@@ -565,27 +563,36 @@ impl Debug for Telegram {
 	}
 }
 
-/*
-// TODO: rewrite these outdated tests
 #[cfg(test)]
 mod tests {
-	mod split_msg {
-		use super::super::{split_msg_into_parts, MAX_MSG_LEN};
+	mod msg_split {
+		use super::super::{MsgParts, MAX_TEXT_MSG_LEN};
+
 		const MSG_COUNT: usize = 3;
+
+		// yield message splits with MAX_TEXT_MSG_LEN len
+		impl Iterator for MsgParts<'_> {
+			type Item = String;
+
+			fn next(&mut self) -> Option<Self::Item> {
+				self.split_msg_at(MAX_TEXT_MSG_LEN)
+			}
+		}
 
 		#[test]
 		fn empty_head_tail() {
-			let head = String::new();
-
 			let mut body = String::new();
-			for _ in 0..MAX_MSG_LEN * MSG_COUNT {
+			for _ in 0..MAX_TEXT_MSG_LEN * MSG_COUNT {
 				body.push('b');
 			}
 
-			let tail = String::new();
+			let parts = MsgParts {
+				head: None,
+				body: Some(&body),
+				tail: None,
+			};
 
-			let v = split_msg_into_parts(head, body, tail);
-			assert_eq!(v.len(), MSG_COUNT);
+			assert_eq!(parts.count(), MSG_COUNT);
 		}
 
 		#[test]
@@ -596,31 +603,64 @@ mod tests {
 			}
 
 			let mut body = String::new();
-			for _ in 0..MAX_MSG_LEN * MSG_COUNT {
+			for _ in 0..MAX_TEXT_MSG_LEN * MSG_COUNT {
 				body.push('b');
 			}
 
-			let tail = String::new();
+			let parts = MsgParts {
+				head: Some(&head),
+				body: Some(&body),
+				tail: None,
+			};
 
-			let v = split_msg_into_parts(head, body, tail);
-			assert_eq!(v.len(), MSG_COUNT + 1);
+			// MSG_COUNT bodies + 1 head
+			assert_eq!(parts.count(), MSG_COUNT + 1);
 		}
 
 		#[test]
 		fn with_tail_almost_fitting() {
-			let head = String::new();
-
 			let mut body = String::new();
 			// body is 1 char from max msg len
-			for _ in 0..MAX_MSG_LEN * MSG_COUNT - 1 {
+			for _ in 0..MAX_TEXT_MSG_LEN * MSG_COUNT - 1 {
 				body.push('b');
 			}
 
 			let tail = "tt".to_owned(); // and tail is 2 char
 
-			let v = split_msg_into_parts(head, body, tail);
-			assert_eq!(v.len(), MSG_COUNT + 1); // tail shouldn't be split and thus should be put into it's own msg
+			let parts = MsgParts {
+				head: None,
+				body: Some(&body),
+				tail: Some(&tail),
+			};
+
+			assert_eq!(parts.count(), MSG_COUNT + 1); // tail shouldn't be split and thus should be put into it's own msg
+		}
+
+		#[test]
+		fn with_all_parts_of_max_len() {
+			let mut head = String::new();
+			for _ in 0..MAX_TEXT_MSG_LEN {
+				head.push('h');
+			}
+
+			let mut body = String::new();
+			for _ in 0..MAX_TEXT_MSG_LEN * MSG_COUNT {
+				body.push('b');
+			}
+
+			let mut tail = String::new();
+			for _ in 0..MAX_TEXT_MSG_LEN {
+				tail.push('t');
+			}
+
+			let parts = MsgParts {
+				head: Some(&head),
+				body: Some(&body),
+				tail: Some(&tail),
+			};
+
+			// MSG_COUNT bodies + 1 head & 1 tail
+			assert_eq!(parts.count(), MSG_COUNT + 2);
 		}
 	}
 }
-*/
