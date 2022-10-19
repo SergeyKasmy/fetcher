@@ -445,20 +445,41 @@ struct MsgParts<'a> {
 }
 
 impl MsgParts<'_> {
-	/// returns head/body/tail as a formatted message at most `len` long.
+	/// Returns head/body/tail as a formatted message at most `len` characters long.
 	/// Acts similarly to a fused iterator and returns Some(msg) until every part of the message has been sent, afterwards always returns None
+	///
+	/// # Panics
+	/// if head or tail message parts have more chars than `len`
 	fn split_msg_at(&mut self, len: usize) -> Option<String> {
 		if self.head.is_none() && self.body.is_none() && self.tail.is_none() {
 			return None;
 		}
 
 		// make sure the entire head or tail can fit into the requested split
-		assert!(len >= self.head.map_or(0, |s| s.chars().count()));
-		assert!(len >= self.tail.map_or(0, |s| s.chars().count()));
+		// since they can't be split into parts
+		{
+			let head_len = self.head.map_or(0, |s| s.chars().count());
+			assert!(
+				len >= head_len,
+				"head has more characters: {}, than can be fit in a msg part of max len: {}",
+				head_len,
+				len
+			);
+		}
+		{
+			let tail_len = self.tail.map_or(0, |s| s.chars().count());
+			assert!(
+				len >= tail_len,
+				"tail has more characters: {}, than can be fit in a msg part of max len: {}",
+				tail_len,
+				len
+			);
+		}
 
 		let mut split_part = String::with_capacity(len);
 
 		// put the entire head into the split
+		// should always fit because of the assertions up above
 		if let Some(head) = self.head.take() {
 			split_part.push_str(head);
 		}
@@ -520,10 +541,16 @@ impl MsgParts<'_> {
 			}
 		}
 
-		let split_part_chars = split_part.chars().count();
-		tracing::trace!("Final part len: {}", split_part_chars);
 		// make sure we haven't crossed our character limit
-		assert!(split_part_chars <= len);
+		{
+			let split_part_chars = split_part.chars().count();
+			assert!(
+				split_part_chars <= len,
+				"Returned a part with char len of {} when it should never be longer than {}",
+				split_part_chars,
+				len
+			);
+		}
 
 		Some(split_part)
 	}
