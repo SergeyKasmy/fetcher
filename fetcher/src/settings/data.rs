@@ -9,11 +9,14 @@ pub mod google_oauth2;
 pub mod telegram;
 pub mod twitter;
 
-use super::PREFIX;
+use super::proj_dirs;
 
-use std::io;
-use std::io::Write;
-use std::path::PathBuf;
+use color_eyre::Result;
+
+use std::{
+	io::{self, Write},
+	path::PathBuf,
+};
 
 pub fn prompt_user_for(prompt: &str) -> io::Result<String> {
 	print!("{prompt}");
@@ -25,6 +28,6 @@ pub fn prompt_user_for(prompt: &str) -> io::Result<String> {
 	Ok(input.trim().to_owned())
 }
 
-pub fn default_data_path() -> io::Result<PathBuf> {
-	Ok(xdg::BaseDirectories::with_prefix(PREFIX)?.get_data_home())
+pub fn default_data_path() -> Result<PathBuf> {
+	Ok(proj_dirs()?.data_dir().to_path_buf())
 }

@@ -7,19 +7,20 @@
 pub mod tasks;
 pub mod templates;
 
-use super::PREFIX;
+use super::{proj_dirs, PREFIX};
 
-use std::{io, path::PathBuf};
+use color_eyre::Result;
+use std::path::PathBuf;
 
 const CONFIG_FILE_EXT: &str = "yml";
 
-// TODO: use directories instead of xdg
-pub fn default_cfg_dirs() -> io::Result<Vec<PathBuf>> {
-	let base_dirs = xdg::BaseDirectories::with_prefix(PREFIX)?;
+pub fn default_cfg_dirs() -> Result<Vec<PathBuf>> {
+	let mut dirs = vec![proj_dirs()?.config_dir().to_path_buf()];
 
-	let mut dirs = Vec::with_capacity(2);
-	dirs.push(base_dirs.get_config_home());
-	dirs.append(&mut base_dirs.get_config_dirs());
+	#[cfg(target_os = "linux")]
+	{
+		dirs.push(format!("/etc/xdg/{PREFIX}").into());
+	}
 
 	Ok(dirs)
 }

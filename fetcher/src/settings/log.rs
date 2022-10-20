@@ -4,26 +4,32 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::PREFIX;
+use super::proj_dirs;
 use fetcher_core::error::{transform::Error as TransformError, ErrorChainExt};
 
 use color_eyre::Result;
 use std::{
-	io,
 	path::PathBuf,
 	time::{SystemTime, UNIX_EPOCH},
 };
 use tokio::fs;
 
-/// Use `$XDG_STATE_HOME/fetcher/log` dir for logs if run as normal user or `/var/log/fetcher` if run as root
-pub fn default_log_path() -> io::Result<PathBuf> {
-	if nix::unistd::Uid::effective().is_root() {
-		Ok(PathBuf::from("/var/log/fetcher"))
-	} else {
-		Ok(xdg::BaseDirectories::with_prefix(PREFIX)?
-			.get_state_home()
-			.join("log"))
+/// Use `$XDG_STATE_HOME` or OS native cache dir for logs if run as normal user or `/var/log/fetcher` if run as root on linux
+pub fn default_log_path() -> Result<PathBuf> {
+	#[cfg(target_os = "linux")]
+	{
+		if nix::unistd::Uid::effective().is_root() {
+			return Ok(PathBuf::from("/var/log/fetcher"));
+		}
 	}
+
+	let proj = proj_dirs()?;
+
+	// use $XDG_STATE_HOME on linux and data dir on other platforms
+	Ok(proj
+		.state_dir()
+		.unwrap_or_else(|| proj.cache_dir())
+		.to_path_buf())
 }
 
 /// Save entry contents from a task to a <task name>/<current time>.txt file in `default_log_path()` dir

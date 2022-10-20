@@ -26,7 +26,7 @@ pub struct Task {
 	source: Source,
 	#[serde(rename = "process")]
 	actions: Option<Vec<Action>>,
-	// TODO: several sinks
+	// TODO: several sinks or integrate into actions
 	sink: Option<Sink>,
 
 	// these are meant to be used externally and are unused here

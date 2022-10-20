@@ -11,10 +11,11 @@ use fetcher_config::tasks::{
 };
 use fetcher_core::read_filter::{ExternalSave, Kind as ReadFilterKind, ReadFilter};
 
-use std::fs;
-use std::io;
-use std::io::Write;
-use std::path::Path;
+use std::{
+	fs,
+	io::{self, Write},
+	path::Path,
+};
 
 const READ_DATA_DIR: &str = "read";
 
@@ -67,7 +68,7 @@ pub fn get(
 
 // TODO: move to a new mod
 struct TruncatingFileWriter {
-	file: std::fs::File,
+	file: fs::File,
 }
 
 impl std::io::Write for TruncatingFileWriter {

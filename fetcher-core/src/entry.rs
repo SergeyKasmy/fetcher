@@ -17,7 +17,7 @@ use std::fmt::Debug;
 #[derive(Clone, Default)]
 pub struct Entry {
 	/// An optional id of that entry. A [`ReadFilter`](`crate::read_filter::ReadFilter`) can use it to differentiate already read entries from the unread ones
-	pub id: Option<String>, // TODO: add date id type
+	pub id: Option<String>,
 
 	/// Raw contents gotten from a [`Source`](`crate::source::Source`)
 	///
