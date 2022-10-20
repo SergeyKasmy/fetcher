@@ -4,13 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::path::PathBuf;
-
-pub type StaticContext = &'static Context;
-
 #[derive(Debug)]
-pub struct Context {
-	pub data_path: PathBuf,
-	pub conf_paths: Vec<PathBuf>,
-	pub log_path: PathBuf,
+pub enum RunMode {
+	Normal { once: bool, dry_run: bool },
+	VerifyOnly,
 }

@@ -32,7 +32,7 @@ pub fn get(
 
 			Ok(ReadFilter::new(
 				expected_rf_kind,
-				Box::new(save_file(&path)?),
+				Some(Box::new(save_file(&path)?)),
 			))
 		}
 		Err(e) => {
@@ -40,7 +40,7 @@ pub fn get(
 
 			Ok(ReadFilter::new(
 				expected_rf_kind,
-				Box::new(save_file(&path)?),
+				Some(Box::new(save_file(&path)?)),
 			))
 		}
 		Ok(save_file_rf_raw) => {

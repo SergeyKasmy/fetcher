@@ -31,11 +31,20 @@ const IMAP_PORT: u16 = 993;
 
 /// Email source. Fetches an email's subject and body fields using IMAP
 pub struct Email {
-	imap: String,
-	email: String,
-	auth: Auth,
-	filters: Filters,
-	view_mode: ViewMode,
+	/// IMAP server URL
+	pub imap: String,
+
+	/// Email address/IMAP login
+	pub email: String,
+
+	/// Authentication type
+	pub auth: Auth,
+
+	/// IMAP search filters
+	pub filters: Filters,
+
+	/// IMAP view mode, e.g. read only
+	pub view_mode: ViewMode,
 }
 
 macro_rules! authenticate {

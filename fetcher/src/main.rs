@@ -12,7 +12,9 @@
 pub mod args;
 pub mod settings;
 
-use self::settings::context::StaticContext as Context;
+use self::settings::{
+	context::Context as OwnedContext, context::StaticContext as Context, run_mode::RunMode,
+};
 use crate::args::{Args, Setting};
 use fetcher_config::tasks::{ParsedTask, ParsedTasks};
 use fetcher_core::error::{Error, ErrorChainExt};
@@ -86,22 +88,36 @@ async fn async_main() -> Result<()> {
 			Some(p) => vec![p],
 			None => settings::config::default_cfg_dirs()?,
 		};
+		let log_path = match args.log_path {
+			Some(p) => p,
+			None => settings::log::default_log_path()?,
+		};
 
-		Box::leak(Box::new(crate::settings::context::Context {
+		Box::leak(Box::new(OwnedContext {
 			data_path,
 			conf_paths,
+			log_path,
 		}))
 	};
 
 	match args.subcommand {
 		args::TopLvlSubcommand::Run(arg) => {
+			let mode = if arg.verify_only {
+				RunMode::VerifyOnly
+			} else {
+				RunMode::Normal {
+					once: arg.once,
+					dry_run: arg.dry_run,
+				}
+			};
+
 			run(
 				if arg.tasks.is_empty() {
 					None
 				} else {
 					Some(arg.tasks)
 				},
-				arg.once,
+				mode,
 				context,
 			)
 			.await?;
@@ -119,7 +135,7 @@ async fn async_main() -> Result<()> {
 
 /// Run once or loop?
 /// If specified, run only tasks in `run_by_name`
-async fn run(run_by_name: Option<Vec<String>>, once: bool, cx: Context) -> Result<()> {
+async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Result<()> {
 	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
@@ -200,12 +216,28 @@ async fn run(run_by_name: Option<Vec<String>>, once: bool, cx: Context) -> Resul
 		Ok::<(), Report>(())
 	});
 
-	run_tasks(tasks, shutdown_rx, once, cx).await?;
+	match mode {
+		RunMode::Normal { once, dry_run } => {
+			let mut tasks = tasks;
+
+			if dry_run {
+				tracing::debug!("Making all tasks dry");
+
+				make_tasks_dry(&mut tasks).await;
+			}
+
+			run_tasks(tasks, shutdown_rx, once, cx).await?;
+		}
+		RunMode::VerifyOnly => {
+			tracing::info!("Everything verified to be working properly, exiting...");
+		}
+	}
 
 	sig_handle.close(); // TODO: figure out wtf this is and why
 	sig_task
 		.await
 		.expect("Error shutting down of signal handler")?;
+
 	Ok(())
 }
 
@@ -221,6 +253,32 @@ async fn get_all_tasks(run_by_name: Option<Vec<String>>, cx: Context) -> Result<
 	})
 	.await
 	.expect("Thread crashed")
+}
+
+async fn make_tasks_dry(tasks: &mut ParsedTasks) {
+	use fetcher_core::{
+		sink::{Sink, Stdout},
+		source::{email, Source, WithCustomRF},
+	};
+
+	for task in tasks.values_mut() {
+		// don't save read filtered items to the fs
+		match &mut task.inner.source {
+			Source::WithSharedReadFilter { rf, kind: _ } => {
+				if let Some(rf) = rf {
+					rf.write().await.external_save = None;
+				}
+			}
+			Source::WithCustomReadFilter(custom_rf_source) => match custom_rf_source {
+				WithCustomRF::Email(e) => e.view_mode = email::ViewMode::ReadOnly,
+			},
+		}
+
+		// don't send anything anywhere, just print
+		if let Some(sink) = &mut task.inner.sink {
+			*sink = Sink::Stdout(Stdout);
+		}
+	}
 }
 
 async fn run_tasks(
@@ -279,7 +337,7 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context)
 				transform_err_count = 0;
 			}
 			Err(Error::Transform(transform_err)) => {
-				settings::state::log_transform_err(&transform_err, task_name).await?;
+				settings::log::log_transform_err(&transform_err, task_name).await?;
 
 				if transform_err_count == transform_err_max_count {
 					return Err(Error::Transform(transform_err).into());
