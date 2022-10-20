@@ -77,17 +77,16 @@ sinks:
 
 * telegram
 * stdout
-* null
 
 Since a lot of these fields are dependent on the particular source, parser, and sink types and since fetcher is in heavy development at the moment, there isn't any template or example config files but fetcher will notify you if there are missing fields and what values they can have, so it's not that difficult to make one by trial and error even without reading the source code.
 
 ### Login credentials
 
-To set up login credentials, run fetcher with `--save-secret-<name>` where name is either of these services:
+To set up login credentials, run fetcher in `save` mode, following by a service name which is either of these:
 
-* `google-oauth2`
+* `google-oauth`
 * `twitter`
 * `telegram`
 
 After finishing the prompt, you will be able to use any of these services automatically without additional authorization.
-There's also a way to use an app password for Gmail/IMAP (saved with `--save-secret-email-password`) but it's insecure and shouldn't be used for anything other than testing purposes
+There's also a way to use an app password for Gmail/IMAP (saved with `email-password`) but it's insecure and shouldn't be used for anything other than testing purposes
