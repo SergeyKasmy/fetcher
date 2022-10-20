@@ -12,4 +12,5 @@ pub type StaticContext = &'static Context;
 pub struct Context {
 	pub data_path: PathBuf,
 	pub conf_paths: Vec<PathBuf>,
+	pub log_path: PathBuf,
 }

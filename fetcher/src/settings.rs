@@ -8,8 +8,8 @@ pub mod config;
 pub mod context;
 pub mod data;
 pub mod external_data;
+pub mod log;
 pub mod read_filter;
 pub mod run_mode;
-pub mod state;
 
 const PREFIX: &str = "fetcher";

@@ -88,10 +88,15 @@ async fn async_main() -> Result<()> {
 			Some(p) => vec![p],
 			None => settings::config::default_cfg_dirs()?,
 		};
+		let log_path = match args.log_path {
+			Some(p) => p,
+			None => settings::log::default_log_path()?,
+		};
 
 		Box::leak(Box::new(OwnedContext {
 			data_path,
 			conf_paths,
+			log_path,
 		}))
 	};
 
@@ -270,8 +275,8 @@ async fn make_tasks_dry(tasks: &mut ParsedTasks) {
 		}
 
 		// don't send anything anywhere, just print
-		if task.inner.sink.is_some() {
-			task.inner.sink = Some(Sink::Stdout(Stdout));
+		if let Some(sink) = &mut task.inner.sink {
+			*sink = Sink::Stdout(Stdout);
 		}
 	}
 }
@@ -332,7 +337,7 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context)
 				transform_err_count = 0;
 			}
 			Err(Error::Transform(transform_err)) => {
-				settings::state::log_transform_err(&transform_err, task_name).await?;
+				settings::log::log_transform_err(&transform_err, task_name).await?;
 
 				if transform_err_count == transform_err_max_count {
 					return Err(Error::Transform(transform_err).into());

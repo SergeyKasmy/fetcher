@@ -20,6 +20,10 @@ pub struct Args {
 	/// data path
 	#[argh(option)]
 	pub data_path: Option<PathBuf>,
+
+	/// log path
+	#[argh(option)]
+	pub log_path: Option<PathBuf>,
 }
 
 #[derive(FromArgs, Debug)]
