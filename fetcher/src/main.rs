@@ -23,13 +23,8 @@ use color_eyre::{
 	eyre::{eyre, WrapErr},
 	Report, Result,
 };
-use futures::{future::try_join_all, StreamExt};
-use signal_hook::consts::TERM_SIGNALS;
-use signal_hook_tokio::Signals;
-use std::{
-	sync::{atomic::AtomicBool, Arc},
-	time::Duration,
-};
+use futures::future::try_join_all;
+use std::time::Duration;
 use tokio::{
 	select,
 	sync::watch::{self, Receiver},
@@ -185,35 +180,44 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 	}
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
+	let (force_close_tx, mut force_close_rx) = watch::channel(());
 
-	let sig = Signals::new(TERM_SIGNALS).expect("Error registering signals");
-	let sig_handle = sig.handle();
+	// signal handler
+	tokio::spawn(async move {
+		// graceful shutdown
+		tokio::signal::ctrl_c()
+			.await
+			.expect("failed to setup signal handler");
 
-	let sig_term_now = Arc::new(AtomicBool::new(false));
-	for s in TERM_SIGNALS {
-		use signal_hook::flag;
+		// shutdown signal recieved
+		shutdown_tx
+			.send(())
+			.expect("failed to broadcast shutdown signal to tasks");
 
-		flag::register_conditional_shutdown(
-			*s,
-			1, /* exit status */
-			Arc::clone(&sig_term_now),
-		)
-		.expect("Error registering signal handler"); // unwrap NOTE: crash if even signal handlers can't be set up
+		tracing::info!("Press Ctrl-C again to force close");
 
-		// unwrap NOTE: crash if even signal handlers can't be set up
-		flag::register(*s, Arc::clone(&sig_term_now)).expect("Error registering signal handler");
-	}
+		// force close
+		tokio::signal::ctrl_c()
+			.await
+			.expect("failed to setup signal handler");
 
-	let sig_task = tokio::spawn(async move {
-		let mut sig = sig.fuse();
-
-		while sig.next().await.is_some() {
-			shutdown_tx
-				.send(())
-				.expect("Error broadcasting signal to tasks");
-		}
+		force_close_tx
+			.send(())
+			.expect("failed to broadcast force shutdown signal");
 
 		Ok::<(), Report>(())
+	});
+
+	// force close signal receiver
+	tokio::spawn(async move {
+		force_close_rx
+			.changed()
+			.await
+			.expect("force close transmitter has been closed");
+
+		tracing::info!("Force closing...");
+
+		std::process::exit(1);
 	});
 
 	match mode {
@@ -232,11 +236,6 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 			tracing::info!("Everything verified to be working properly, exiting...");
 		}
 	}
-
-	sig_handle.close(); // TODO: figure out wtf this is and why
-	sig_task
-		.await
-		.expect("Error shutting down of signal handler")?;
 
 	Ok(())
 }

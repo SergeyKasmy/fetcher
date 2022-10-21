@@ -7,7 +7,9 @@
 pub mod tasks;
 pub mod templates;
 
-use super::{proj_dirs, PREFIX};
+use super::proj_dirs;
+#[allow(unused_imports)] // used only on linux
+use super::PREFIX;
 
 use color_eyre::Result;
 use std::path::PathBuf;
@@ -15,6 +17,7 @@ use std::path::PathBuf;
 const CONFIG_FILE_EXT: &str = "yml";
 
 pub fn default_cfg_dirs() -> Result<Vec<PathBuf>> {
+	#[allow(unused_mut)] // requred to be mutable only on linux
 	let mut dirs = vec![proj_dirs()?.config_dir().to_path_buf()];
 
 	#[cfg(target_os = "linux")]
