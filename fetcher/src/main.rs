@@ -323,58 +323,55 @@ async fn run_tasks(
 }
 
 async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context) -> Result<()> {
-	// exit with an error if there were too many consecutive transform errors
-	let transform_err_max_count: u32 = if once { 0 } else { 255 };
-	// number of consecutive(!!!) transform errors.
+	// exit with an error if there were too many consecutive errors
+	let err_max_count: u32 = if once { 0 } else { 15 }; // around 22 days max pause time
+
+	// number of consecutive(!!!) errors.
 	// we tolerate a pretty big amount for various reasons (being rate limited, server error, etc) but not infinite
-	let mut transform_err_count = 0;
+	let mut err_count = 0;
 
 	loop {
-		// return critical errors and just log non critical ones
 		match fetcher_core::run_task(&mut t.inner).await {
 			Ok(()) => {
-				transform_err_count = 0;
+				err_count = 0;
 			}
-			Err(Error::Transform(transform_err)) => {
-				settings::log::log_transform_err(&transform_err, task_name).await?;
+			Err(err) => {
+				// if let Some(network_err) = err.is_connection_error() {
+				// 	tracing::warn!("Network error: {}", network_err.display_chain());
+				// }
 
-				if transform_err_count == transform_err_max_count {
-					return Err(Error::Transform(transform_err).into());
+				if let Error::Transform(transform_err) = &err {
+					settings::log::log_transform_err(transform_err, task_name).await?;
+				}
+
+				if err_count == err_max_count {
+					return Err(err.into());
 				}
 
 				let err_msg = format!(
-					"Transform error ({} out of {} max allowed):\n{}",
-					transform_err_count + 1, // +1 cause we are counting from 0 but it'd be strange to show "Error (0 out of 255)" to users
-					transform_err_max_count + 1,
-					transform_err.display_chain()
+					"Error #{} out of {} max allowed:\n{}",
+					err_count + 1, // +1 cause we are counting from 0 but it'd be strange to show "Error (0 out of 255)" to users
+					err_max_count + 1,
+					err.display_chain()
 				);
 				tracing::error!("{}", err_msg);
 
+				// TODO: make this a context switch
 				// production error reporting
 				if !cfg!(debug_assertions) {
-					let mut err_msg = err_msg;
-					err_msg.insert_str(0, "Non-critical:\n");
-
 					if let Err(e) = report_error(task_name, &err_msg, cx).await {
 						tracing::error!("Unable to send error report to the admin: {e:?}",);
 					}
 				}
 
 				// sleep in exponention amount of minutes, begginning with 2^0 = 1 minute
-				let sleep_dur = 2u64.saturating_pow(transform_err_count);
+				let sleep_dur = 2u64.saturating_pow(err_count);
 				tracing::info!("Pausing task {task_name} for {sleep_dur}m");
 
 				sleep(Duration::from_secs(sleep_dur * 60 /* secs in a min*/)).await;
-				transform_err_count += 1;
+				err_count += 1;
 
 				continue;
-			}
-			Err(e) => {
-				if let Some(network_err) = e.is_connection_error() {
-					tracing::warn!("Network error: {}", network_err.display_chain());
-				} else {
-					return Err(e.into());
-				}
 			}
 		}
 
@@ -382,7 +379,10 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context)
 			break;
 		}
 
-		tracing::debug!("Sleeping for {time}m", time = t.refresh);
+		tracing::debug!(
+			"Putting task {task_name} to sleep for {time}m",
+			time = t.refresh
+		);
 		sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
 	}
 
