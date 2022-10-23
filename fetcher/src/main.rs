@@ -23,8 +23,8 @@ use color_eyre::{
 	eyre::{eyre, WrapErr},
 	Report, Result,
 };
-use futures::future::try_join_all;
-use std::time::Duration;
+use futures::future::join_all;
+use std::{fmt::Write, time::Duration};
 use tokio::{
 	select,
 	sync::watch::{self, Receiver},
@@ -230,7 +230,21 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 				make_tasks_dry(&mut tasks).await;
 			}
 
-			run_tasks(tasks, shutdown_rx, once, cx).await?;
+			run_tasks(tasks, shutdown_rx, once, cx)
+				.await
+				.map_err(|errs| {
+					eyre!(
+						"{} tasks have finished with an error: {}",
+						errs.len(),
+						errs.into_iter().enumerate().fold(
+							String::new(),
+							|mut s, (i, (name, err))| {
+								let _ = write!(s, "\n#{i} {name}: {err:?}"); // can't fail
+								s
+							}
+						)
+					)
+				})?;
 		}
 		RunMode::VerifyOnly => {
 			tracing::info!("Everything verified to be working properly, exiting...");
@@ -285,7 +299,7 @@ async fn run_tasks(
 	shutdown_rx: Receiver<()>,
 	once: bool,
 	context: Context,
-) -> Result<()> {
+) -> Result<(), Vec<(String, Report)>> {
 	let mut running_tasks = Vec::new();
 	for (name, mut t) in tasks {
 		let name2 = name.clone();
@@ -303,14 +317,21 @@ async fn run_tasks(
 				// production error reporting
 				if !cfg!(debug_assertions) {
 					if let Err(err) = &res {
-						if let Err(e) = report_error(&name, &format!("{:#}", err), context).await {
+						if let Err(e) = report_error(
+							&name,
+							&format!("Task {} stopping with error: {:#}", name, err),
+							context,
+						)
+						.await
+						{
 							tracing::error!("Unable to send error report to the admin: {e:?}",);
 						}
 					}
 				}
 				tracing::info!("Task {name} shut down...");
 
-				res
+				// include the name of the task that has failed in the error
+				res.map_err(|res| (name, res))
 			}
 			.instrument(tracing::info_span!("task", name = name2.as_str())),
 		);
@@ -318,8 +339,20 @@ async fn run_tasks(
 		running_tasks.push(flatten_task_result(task_handle));
 	}
 
-	try_join_all(running_tasks).await?;
-	Ok(())
+	let errors = join_all(running_tasks)
+		.await
+		.into_iter()
+		.filter_map(|r| match r {
+			Ok(()) => None,
+			Err(e) => Some(e),
+		})
+		.collect::<Vec<_>>();
+
+	if errors.is_empty() {
+		Ok(())
+	} else {
+		Err(errors)
+	}
 }
 
 async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context) -> Result<()> {
