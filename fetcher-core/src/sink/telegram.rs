@@ -22,6 +22,7 @@ use teloxide::{
 	},
 	ApiError, Bot, RequestError,
 };
+use tokio::time::sleep;
 use url::Url;
 
 const MAX_TEXT_MSG_LEN: usize = 4096;
@@ -264,7 +265,7 @@ impl Telegram {
 						"Exceeded rate limit while using Throttle Bot adapter, this shouldn't happen... Retrying in {}s",
 						retry_after.as_secs()
 					);
-					tokio::time::sleep(retry_after).await;
+					sleep(retry_after).await;
 				}
 				Err(e) => {
 					return Err(SinkError::Telegram {
@@ -346,19 +347,22 @@ impl Telegram {
 
 			match msg_cmd.send().await {
 				Ok(messages) => return Ok(messages),
-				Err(e @ RequestError::Api(ApiError::FailedToGetUrlContent)) => {
+				Err(e) if e.to_string().contains("Failed to get HTTP URL content") => {
 					if retry_counter > 5 {
-						tracing::error!(
-							"Telegram failed tp get URL content too many times, exiting..."
-						);
+						tracing::warn!("Telegram failed to get URL content too many times");
 
-						return Err(SinkError::Telegram {
-							source: e,
-							msg: Box::new(media),
-						});
+						if let Some(caption) = caption {
+							tracing::info!("Sending the message as pure text...");
+
+							self.send_text_with_reply_id(caption, reply_to_msg_id)
+								.await?;
+						} else {
+							tracing::warn!("There's no text to send, skipping this message...");
+						}
 					}
+
 					tracing::warn!("Telegram failed to get URL content. Retrying in 30 seconds");
-					tokio::time::sleep(Duration::from_secs(30)).await;
+					sleep(Duration::from_secs(30)).await;
 
 					retry_counter += 1;
 				}
@@ -366,7 +370,8 @@ impl Telegram {
 					// TODO: reupload the image manually if this happens
 					if let Some(caption) = caption {
 						tracing::warn!("Telegram disliked the media URL (\"Bad Request: wrong file identifier/HTTP URL specified\"), sending the message as pure text");
-						self.send_text(caption).await?;
+						self.send_text_with_reply_id(caption, reply_to_msg_id)
+							.await?;
 					} else {
 						tracing::warn!("Telegram disliked the media URL (\"Bad Request: wrong file identifier/HTTP URL specified\") but the caption was empty, skipping...");
 					}
@@ -376,7 +381,7 @@ impl Telegram {
 						"Exceeded rate limit while using Throttle Bot adapter, this shouldn't happen... Retrying in {}s",
 						retry_after.as_secs()
 					);
-					tokio::time::sleep(retry_after).await;
+					sleep(retry_after).await;
 				}
 				Err(e) => {
 					return Err(SinkError::Telegram {
