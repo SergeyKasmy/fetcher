@@ -369,31 +369,31 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context)
 				err_count = 0;
 			}
 			Err(err) => {
-				// if let Some(network_err) = err.is_connection_error() {
-				// 	tracing::warn!("Network error: {}", network_err.display_chain());
-				// }
-
-				if let Error::Transform(transform_err) = &err {
-					settings::log::log_transform_err(transform_err, task_name).await?;
-				}
-
 				if err_count == err_max_count {
 					return Err(err.into());
 				}
 
-				let err_msg = format!(
-					"Error #{} out of {} max allowed:\n{}",
-					err_count + 1, // +1 cause we are counting from 0 but it'd be strange to show "Error (0 out of 255)" to users
-					err_max_count + 1,
-					err.display_chain()
-				);
-				tracing::error!("{}", err_msg);
+				if let Some(network_err) = err.is_connection_error() {
+					tracing::warn!("Network error: {}", network_err.display_chain());
+				} else {
+					if let Error::Transform(transform_err) = &err {
+						settings::log::log_transform_err(transform_err, task_name).await?;
+					}
 
-				// TODO: make this a context switch
-				// production error reporting
-				if !cfg!(debug_assertions) {
-					if let Err(e) = report_error(task_name, &err_msg, cx).await {
-						tracing::error!("Unable to send error report to the admin: {e:?}",);
+					let err_msg = format!(
+						"Error #{} out of {} max allowed:\n{}",
+						err_count + 1, // +1 cause we are counting from 0 but it'd be strange to show "Error (0 out of 255)" to users
+						err_max_count + 1,
+						err.display_chain()
+					);
+					tracing::error!("{}", err_msg);
+
+					// TODO: make this a context switch
+					// production error reporting
+					if !cfg!(debug_assertions) {
+						if let Err(e) = report_error(task_name, &err_msg, cx).await {
+							tracing::error!("Unable to send error report to the admin: {e:?}",);
+						}
 					}
 				}
 
