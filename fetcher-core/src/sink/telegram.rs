@@ -136,7 +136,7 @@ impl Telegram {
 					let sent_msg = self
 						.send_media_with_reply_id(ch, None, previous_message)
 						.await?;
-					previous_message = Some(sent_msg[0].id);
+					previous_message = sent_msg.and_then(|v| v.first().map(|m| m.id));
 				}
 			} else {
 				let media_caption = text
@@ -146,7 +146,7 @@ impl Telegram {
 				let sent_msg = self
 					.send_media_with_reply_id(media, Some(&media_caption), previous_message)
 					.await?;
-				previous_message = Some(sent_msg[0].id);
+				previous_message = sent_msg.and_then(|v| v.first().map(|m| m.id));
 			}
 		}
 
@@ -208,7 +208,7 @@ impl Telegram {
 					let sent_msg = self
 						.send_media_with_reply_id(ch, None, previous_message)
 						.await?;
-					previous_message = Some(sent_msg[0].id);
+					previous_message = sent_msg.and_then(|v| v.first().map(|m| m.id));
 				}
 
 				if let Some(text) = text {
@@ -218,7 +218,6 @@ impl Telegram {
 			} else {
 				self.send_media(media, text.as_deref()).await?;
 			}
-		// self.send_media(media, text.as_deref()).await?;
 		} else {
 			match text {
 				Some(text) => {
@@ -277,22 +276,25 @@ impl Telegram {
 		}
 	}
 
+	/// Refer to [`send_media_with_reply_id()`]
 	async fn send_media(
 		&self,
 		media: &[Media],
 		caption: Option<&str>,
-	) -> Result<Vec<TelMessage>, SinkError> {
+	) -> Result<Option<Vec<TelMessage>>, SinkError> {
 		self.send_media_with_reply_id(media, caption, None).await
 	}
 
+	/// Returns None if Media couldn't be sent but it's Telegram's fault
 	/// # Panics
 	/// if media.len() is more than 10
+	#[allow(clippy::too_many_lines)]
 	async fn send_media_with_reply_id(
 		&self,
 		media: &[Media],
 		mut caption: Option<&str>,
 		reply_to_msg_id: Option<MessageId>,
-	) -> Result<Vec<TelMessage>, SinkError> {
+	) -> Result<Option<Vec<TelMessage>>, SinkError> {
 		assert!(
 			media.len() <= 10,
 			"Trying to send more media items: {}, than max supported 10",
@@ -307,10 +309,9 @@ impl Telegram {
 			.iter()
 			.map(|m| {
 				macro_rules! input_media {
+					// $type example: Photo
+					// $full_type example: InputMediaPhoto
 					($type:tt, $full_type:tt, $url:expr) => {{
-						// $type example: Photo
-						// $full_type example: InputMediaPhoto
-
 						let input_media = $full_type::new(InputFile::url($url.clone()))
 							.parse_mode(ParseMode::Html);
 
@@ -345,19 +346,29 @@ impl Telegram {
 				msg_cmd
 			};
 
+			// don't forget to return from a branch, dummy, otherwise you'll end up in an infinite loop
+			#[allow(clippy::redundant_else)] // improves control flow visualization
 			match msg_cmd.send().await {
-				Ok(messages) => return Ok(messages),
-				Err(e) if e.to_string().contains("Failed to get HTTP URL content") => {
+				Ok(messages) => return Ok(Some(messages)),
+				Err(e)
+					if e.to_string()
+						.to_lowercase()
+						.contains("failed to get http url content") =>
+				{
 					if retry_counter > 5 {
 						tracing::warn!("Telegram failed to get URL content too many times");
 
 						if let Some(caption) = caption {
 							tracing::info!("Sending the message as pure text...");
 
-							self.send_text_with_reply_id(caption, reply_to_msg_id)
+							let msg = self
+								.send_text_with_reply_id(caption, reply_to_msg_id)
 								.await?;
+
+							return Ok(Some(vec![msg]));
 						} else {
 							tracing::warn!("There's no text to send, skipping this message...");
+							return Ok(None);
 						}
 					}
 
@@ -369,11 +380,33 @@ impl Telegram {
 				Err(RequestError::Api(ApiError::WrongFileIdOrUrl)) => {
 					// TODO: reupload the image manually if this happens
 					if let Some(caption) = caption {
-						tracing::warn!("Telegram disliked the media URL (\"Bad Request: wrong file identifier/HTTP URL specified\"), sending the message as pure text");
-						self.send_text_with_reply_id(caption, reply_to_msg_id)
+						tracing::warn!("Telegram disliked the media URL (\"Wrong file identifier/HTTP URL specified\"), sending the message as pure text");
+						let msg = self
+							.send_text_with_reply_id(caption, reply_to_msg_id)
 							.await?;
+
+						return Ok(Some(vec![msg]));
 					} else {
-						tracing::warn!("Telegram disliked the media URL (\"Bad Request: wrong file identifier/HTTP URL specified\") but the caption was empty, skipping...");
+						tracing::warn!("Telegram disliked the media URL (\"Wrong file identifier/HTTP URL specified\") but the caption was empty, skipping...");
+						return Ok(None);
+					}
+				}
+				Err(e)
+					if e.to_string()
+						.to_lowercase()
+						.contains("wrong type of the web page content") =>
+				{
+					// TODO: reupload the image manually if this happens
+					if let Some(caption) = caption {
+						tracing::warn!("Telegram disliked the media URL (\"Wrong type of the web page content\"), sending the message as pure text");
+						let msg = self
+							.send_text_with_reply_id(caption, reply_to_msg_id)
+							.await?;
+
+						return Ok(Some(vec![msg]));
+					} else {
+						tracing::warn!("Telegram disliked the media URL (\"Wrong type of the web page content\") but the caption was empty, skipping...");
+						return Ok(None);
 					}
 				}
 				Err(RequestError::RetryAfter(retry_after)) => {
