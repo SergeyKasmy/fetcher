@@ -707,7 +707,7 @@ dependencies = [
  "roux",
  "serde",
  "serde_json",
- "soup",
+ "soup-kuchiki",
  "tap",
  "teloxide",
  "thiserror",
@@ -2336,9 +2336,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "soup"
+name = "soup-kuchiki"
 version = "0.5.0"
-source = "git+https://gitlab.com/luksan_swe/soup?branch=kuchiki_port#a8f935f1a7e42061d6d9be2491c3b72ea12bc3a2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce53ae2ef68ca4cc417275299530b538e0b6691a2de3fc320bbaa036a7d41d46"
 dependencies = [
  "html5ever",
  "kuchiki",

@@ -23,7 +23,7 @@ use crate::{
 
 use either::Either;
 use itertools::Itertools;
-use soup::{Handle as HtmlNode, NodeExt, QueryBuilderExt, Soup};
+use soup_kuchiki::{Handle as HtmlNode, NodeExt, QueryBuilderExt, Soup};
 use std::iter;
 use url::Url;
 
