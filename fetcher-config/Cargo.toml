@@ -9,10 +9,10 @@ edition = "2021"
 [dependencies]
 fetcher-core = { version = "0.11.1", path = "../fetcher-core" }
 
-chrono = "0.4.22"
-serde = { version = "1.0.145", features = ["derive"] }
-thiserror = "1.0.37"
-tokio = "1.21.2"
+chrono = "0.4.23"
+serde = { version = "1.0.152", features = ["derive"] }
+thiserror = "1.0.38"
+tokio = "1.25.0"
 tracing = "0.1.37"
 url = "2.3.1"
-serde_with = "2.0.1"
+serde_with = "2.2.0"

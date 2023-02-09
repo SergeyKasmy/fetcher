@@ -498,17 +498,13 @@ impl MsgParts<'_> {
 		let head_len = self.head.map_or(0, |s| s.chars().count());
 		assert!(
 			len >= head_len,
-			"head has more characters: {}, than can be fit in a msg part of max len: {}",
-			head_len,
-			len
+			"head has more characters: {head_len}, than can be fit in a msg part of max len: {len}"
 		);
 
 		let tail_len = self.tail.map_or(0, |s| s.chars().count());
 		assert!(
 			len >= tail_len,
-			"tail has more characters: {}, than can be fit in a msg part of max len: {}",
-			tail_len,
-			len
+			"tail has more characters: {tail_len}, than can be fit in a msg part of max len: {len}"
 		);
 
 		let mut split_part = String::with_capacity(len);
@@ -582,9 +578,7 @@ impl MsgParts<'_> {
 			let split_part_chars = split_part.chars().count();
 			assert!(
 				split_part_chars <= len,
-				"Returned a part with char len of {} when it should never be longer than {}",
-				split_part_chars,
-				len
+				"Returned a part with char len of {split_part_chars} when it should never be longer than {len}"
 			);
 		}
 

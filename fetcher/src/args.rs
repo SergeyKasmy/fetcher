@@ -34,7 +34,9 @@ pub enum TopLvlSubcommand {
 }
 
 // TODO: construct a temporary custom task right in the command line
+// TODO: maybe remake run modes from bool to enum
 /// run all tasks
+#[allow(clippy::struct_excessive_bools)]
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "run")]
 pub struct Run {

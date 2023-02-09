@@ -257,7 +257,7 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 			let mut tasks = tasks;
 
 			// just fetch and save read, don't send anything
-			for (_, task) in &mut tasks {
+			for task in tasks.values_mut() {
 				task.inner.sink = None;
 			}
 
@@ -347,7 +347,7 @@ async fn run_tasks(
 					if let Err(err) = &res {
 						if let Err(e) = report_error(
 							&name,
-							&format!("Task {} stopping with error: {:#}", name, err),
+							&format!("Task {name} stopping with error: {err:#}"),
 							context,
 						)
 						.await
@@ -459,12 +459,10 @@ async fn report_error(task_name: &str, err: &str, context: Context) -> Result<()
 		.parse::<i64>()
 		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID isn't a valid chat id")?;
 
-	let bot = match settings::data::telegram::get(context)? {
-		Some(b) => b,
-		None => {
-			return Err(eyre!("Telegram bot token not provided"));
-		}
+	let Some(bot) = settings::data::telegram::get(context)? else {
+		return Err(eyre!("Telegram bot token not provided"));
 	};
+
 	let msg = Message {
 		body: Some(err.to_owned()),
 		..Default::default()

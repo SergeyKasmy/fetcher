@@ -36,7 +36,7 @@ pub async fn prompt(cx: Context) -> eyre::Result<()> {
 
 	fs::write(
 		cx.data_path.join(FILE_NAME),
-		&serde_json::to_string(&Config::unparse(gauth))?,
+		serde_json::to_string(&Config::unparse(gauth))?,
 	)?;
 
 	Ok(())

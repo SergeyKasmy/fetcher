@@ -60,10 +60,7 @@ impl TransformField for Regex<Extract> {
 	type Error = RegexError;
 
 	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, RegexError> {
-		let field = match field {
-			Some(v) => v,
-			None => return Ok(TransformResult::Old(None)),
-		};
+		let Some(field) = field else { return Ok(TransformResult::Old(None)) };
 
 		let transformed = match self.extract(field) {
 			Some(s) => s,

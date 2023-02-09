@@ -45,10 +45,7 @@ impl Newer {
 	pub fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		if let Some(last_read_id) = &self.last_read_id {
 			if let Some(last_read_id_pos) = list.iter().position(|x| {
-				let id = match &x.id {
-					Some(id) => id,
-					None => return false,
-				};
+				let Some(id) = &x.id else { return false };
 
 				last_read_id == id
 			}) {

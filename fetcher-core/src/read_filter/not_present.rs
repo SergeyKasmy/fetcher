@@ -40,10 +40,7 @@ impl NotPresent {
 	pub fn remove_read_from(&self, list: &mut Vec<Entry>) {
 		list.retain(|elem| {
 			// retain elements with no id
-			let id = match &elem.id {
-				Some(id) => id,
-				None => return true,
-			};
+			let Some(id) = &elem.id else { return true };
 
 			!self
 				.read_list
