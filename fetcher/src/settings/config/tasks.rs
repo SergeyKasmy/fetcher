@@ -12,14 +12,14 @@ use crate::settings::{
 };
 use fetcher_config::tasks::{task::Task as ConfigTask, ParsedTask, ParsedTasks};
 
-use color_eyre::eyre::eyre;
-use color_eyre::Result;
+use color_eyre::{eyre::eyre, Result};
 use figment::{
 	providers::{Format, Yaml},
 	Figment,
 };
 use serde::Deserialize;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use walkdir::WalkDir;
 
 const TASKS_DIR_NAME: &str = "tasks";
 
@@ -33,7 +33,6 @@ struct TemplatesField {
 	templates: fetcher_config::tasks::task::TemplatesField,
 }
 
-// #[tracing::instrument(name = "settings:task", skip(settings))]
 #[tracing::instrument(skip(cx))]
 pub fn get_all(by_name: Option<&[&str]>, cx: Context) -> Result<ParsedTasks> {
 	cx.conf_paths
@@ -47,47 +46,53 @@ pub fn get_all_from<'a>(
 	by_name: Option<&'a [&'a str]>,
 	cx: Context,
 ) -> impl Iterator<Item = Result<(String, ParsedTask)>> + 'a {
-	let glob_str = format!(
-		"{cfg_dir}/{TASKS_DIR_NAME}/**/*.{CONFIG_FILE_EXT}",
-		cfg_dir = cfg_dir.to_str().expect("Path is illegal UTF-8") // FIXME
-	);
+	WalkDir::new(cfg_dir.join(TASKS_DIR_NAME))
+		.follow_links(true)
+		.into_iter()
+		.filter_map(move |cfg| {
+			let cfg = match cfg {
+				Ok(dir_entry) => {
+					// filter out files with no extension
+					let Some(ext) = dir_entry.path().extension() else {
+						return None;
+					};
 
-	let cfgs = glob::glob(&glob_str)
-		.expect("The glob pattern is hand-made and should never fail to be parsed");
+					// or if the extension isn't CONFIG_FILE_EXT
+					if ext != CONFIG_FILE_EXT {
+						return None;
+					}
 
-	cfgs.filter_map(move |cfg| {
-		let cfg = match cfg {
-			Ok(v) => v,
-			Err(e) => return Some(Err(e.into())),
-		};
+					dir_entry
+				}
+				Err(e) => {
+					tracing::warn!("File or directory is inaccessible: {e}");
+					return None;
+				}
+			};
 
-		let name = cfg
-			.strip_prefix(cfg_dir)
-			.expect("shouldn't fail since cfg_dir has just been prepended")
-			.strip_prefix(TASKS_DIR_NAME)
-			.expect("shouldn't fail since TASKS_DIR_NAME has just been prepended")
-			.with_extension("")
-			.to_string_lossy()
-			.into_owned();
+			let file_name = Path::new(cfg.file_name());
+			let task_name = file_name.with_extension("").to_string_lossy().into_owned();
 
-		if let Some(by_name) = by_name {
-			if !by_name.iter().any(|x| *x == name) {
-				return None;
+			// if asked to find only tasks with names `by_name`,
+			// check if the current task name is in the list and filter it out if not
+			if let Some(by_name) = by_name {
+				if !by_name.iter().any(|x| *x == task_name) {
+					return None;
+				}
 			}
-		}
 
-		let task = get(cfg, &name, cx).transpose()?;
-		let named_task = task.map(|t| (name, t));
+			let task = get(cfg.path(), &task_name, cx).transpose()?;
+			let named_task = task.map(|t| (task_name, t));
 
-		Some(named_task)
-	})
+			Some(named_task)
+		})
 }
 
 #[tracing::instrument(skip(cx))]
-pub fn get(path: PathBuf, name: &str, cx: Context) -> Result<Option<ParsedTask>> {
+pub fn get(path: &Path, name: &str, cx: Context) -> Result<Option<ParsedTask>> {
 	tracing::trace!("Parsing a task from file");
 
-	let task_file = Figment::new().merge(Yaml::file(&path));
+	let task_file = Figment::new().merge(Yaml::file(path));
 
 	let DisabledField { disabled } = task_file.extract()?;
 
@@ -111,7 +116,7 @@ pub fn get(path: PathBuf, name: &str, cx: Context) -> Result<Option<ParsedTask>>
 		}
 	}
 
-	let full_conf = full_conf.merge(Yaml::file(&path));
+	let full_conf = full_conf.merge(Yaml::file(path));
 	let task: ConfigTask = full_conf.extract()?;
 
 	Ok(Some(task.parse(name, &ExternalDataFromDataDir { cx })?))
