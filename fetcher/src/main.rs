@@ -98,7 +98,11 @@ async fn async_main() -> Result<()> {
 	match args.subcommand {
 		args::TopLvlSubcommand::Run(arg) => {
 			let mode = if arg.verify_only {
+				tracing::info!("Running in \"verify only\" mode");
 				RunMode::VerifyOnly
+			} else if arg.mark_old_as_read {
+				tracing::info!("Running in \"Mark old entries as read and leave\" move");
+				RunMode::MarkOldEntriesAsRead
 			} else {
 				RunMode::Normal {
 					once: arg.once,
@@ -248,6 +252,30 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 		}
 		RunMode::VerifyOnly => {
 			tracing::info!("Everything verified to be working properly, exiting...");
+		}
+		RunMode::MarkOldEntriesAsRead => {
+			let mut tasks = tasks;
+
+			// just fetch and save read, don't send anything
+			for (_, task) in &mut tasks {
+				task.inner.sink = None;
+			}
+
+			run_tasks(tasks, shutdown_rx, true /* always just run once */, cx)
+				.await
+				.map_err(|errs| {
+					eyre!(
+						"{} tasks have finished with an error: {}",
+						errs.len(),
+						errs.into_iter().enumerate().fold(
+							String::new(),
+							|mut s, (i, (name, err))| {
+								let _ = write!(s, "\n#{i} {name}: {err:?}"); // can't fail
+								s
+							}
+						)
+					)
+				})?;
 		}
 	}
 

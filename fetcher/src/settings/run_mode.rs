@@ -8,4 +8,5 @@
 pub enum RunMode {
 	Normal { once: bool, dry_run: bool },
 	VerifyOnly,
+	MarkOldEntriesAsRead,
 }

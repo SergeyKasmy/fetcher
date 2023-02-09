@@ -50,6 +50,10 @@ pub struct Run {
 	#[argh(switch)]
 	pub dry_run: bool,
 
+	/// mark all old entries from that source as read, implies --once
+	#[argh(switch)]
+	pub mark_old_as_read: bool,
+
 	/// run only these tasks
 	#[argh(positional)]
 	pub tasks: Vec<String>,
