@@ -5,6 +5,7 @@
  */
 
 use argh::FromArgs;
+use fetcher_config::tasks::ParsedTask;
 use std::{path::PathBuf, str::FromStr};
 
 /// fetcher
@@ -56,6 +57,10 @@ pub struct Run {
 	#[argh(switch)]
 	pub mark_old_as_read: bool,
 
+	/// run this task instead of those saved as config files
+	#[argh(option)]
+	pub manual: Option<JsonTask>,
+
 	/// run only these tasks
 	#[argh(positional)]
 	pub tasks: Vec<String>,
@@ -89,5 +94,59 @@ impl FromStr for Setting {
 			"twitter" => Self::Twitter,
 			s => return Err(format!("{s:?} is not a valid setting. Available settings: google_oauth, email_password, telegram, twitter")),
 		})
+	}
+}
+
+#[derive(Debug)]
+pub struct JsonTask(pub ParsedTask);
+
+impl FromStr for JsonTask {
+	type Err = serde_json::Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		use fetcher_config::tasks::external_data::ExternalData;
+		use fetcher_core::read_filter::ReadFilter;
+
+		struct EmptyExternalData;
+
+		impl ExternalData for EmptyExternalData {
+			fn twitter_token(
+				&self,
+			) -> fetcher_config::tasks::external_data::ExternalDataResult<Option<(String, String)>>
+			{
+				Ok(None)
+			}
+
+			fn google_oauth2(
+				&self,
+			) -> fetcher_config::tasks::external_data::ExternalDataResult<
+				Option<fetcher_core::auth::Google>,
+			> {
+				Ok(None)
+			}
+
+			fn email_password(
+				&self,
+			) -> fetcher_config::tasks::external_data::ExternalDataResult<Option<String>> {
+				Ok(None)
+			}
+
+			fn telegram_bot_token(
+				&self,
+			) -> fetcher_config::tasks::external_data::ExternalDataResult<Option<String>> {
+				Ok(None)
+			}
+
+			fn read_filter(
+				&self,
+				_name: &str,
+				_expected_rf: fetcher_core::read_filter::Kind,
+			) -> fetcher_config::tasks::external_data::ExternalDataResult<ReadFilter> {
+				unimplemented!()
+			}
+		}
+
+		let config_task: fetcher_config::tasks::Task = serde_json::from_str(s)?;
+		Ok(Self(config_task.parse("", &EmptyExternalData).unwrap()))
 	}
 }

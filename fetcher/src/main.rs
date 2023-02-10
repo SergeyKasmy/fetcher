@@ -97,7 +97,12 @@ async fn async_main() -> Result<()> {
 
 	match args.subcommand {
 		args::TopLvlSubcommand::Run(arg) => {
-			let mode = if arg.verify_only {
+			let mode = if let Some(args::JsonTask(task)) = arg.manual {
+				RunMode::Manual {
+					once: arg.once,
+					task,
+				}
+			} else if arg.verify_only {
 				tracing::info!("Running in \"verify only\" mode");
 				RunMode::VerifyOnly
 			} else if arg.mark_old_as_read {
@@ -149,40 +154,6 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 	};
 	tracing::info!("Running fetcher {}", version);
 
-	let run_by_name_is_some = run_by_name.is_some();
-	let tasks = get_all_tasks(run_by_name, cx)?;
-
-	if run_by_name_is_some {
-		if tasks.is_empty() {
-			tracing::info!("No enabled tasks found for the provided query");
-
-			let all_tasks = get_all_tasks(None, cx)?;
-			tracing::info!(
-				"All available enabled tasks: {:?}",
-				all_tasks.keys().collect::<Vec<_>>()
-			);
-
-			return Ok(());
-		}
-
-		tracing::info!(
-			"Found {} enabled tasks for the provided query: {:?}",
-			tasks.len(),
-			tasks.keys().collect::<Vec<_>>()
-		);
-	} else {
-		if tasks.is_empty() {
-			tracing::info!("No enabled tasks found");
-			return Ok(());
-		}
-
-		tracing::info!(
-			"Found {} enabled tasks: {:?}",
-			tasks.len(),
-			tasks.keys().collect::<Vec<_>>()
-		);
-	}
-
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
 	let (force_close_tx, mut force_close_rx) = watch::channel(());
 
@@ -226,7 +197,9 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 
 	match mode {
 		RunMode::Normal { once, dry_run } => {
-			let mut tasks = tasks;
+			let Some(mut tasks) = get_tasks(run_by_name, cx)? else {
+				return Ok(());
+			};
 
 			if dry_run {
 				tracing::debug!("Making all tasks dry");
@@ -254,7 +227,9 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 			tracing::info!("Everything verified to be working properly, exiting...");
 		}
 		RunMode::MarkOldEntriesAsRead => {
-			let mut tasks = tasks;
+			let Some(mut tasks) = get_tasks(run_by_name, cx)? else {
+				return Ok(());
+			};
 
 			// just fetch and save read, don't send anything
 			for task in tasks.values_mut() {
@@ -277,20 +252,74 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 					)
 				})?;
 		}
+		RunMode::Manual { once, task } => {
+			run_tasks(
+				[("Manual".to_owned(), task)].into_iter().collect(),
+				shutdown_rx,
+				once,
+				cx,
+			)
+			.await
+			.map_err(|mut err| {
+				assert_eq!(err.len(), 1);
+				let (_, err) = err.remove(0);
+				err
+			})?;
+		}
 	}
 
 	Ok(())
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn get_all_tasks(run_by_name: Option<Vec<String>>, cx: Context) -> Result<ParsedTasks> {
-	settings::config::tasks::get_all(
+fn get_tasks(run_by_name: Option<Vec<String>>, cx: Context) -> Result<Option<ParsedTasks>> {
+	let run_by_name_is_some = run_by_name.is_some();
+	let tasks = settings::config::tasks::get_all(
 		run_by_name
 			.as_ref()
 			.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
 			.as_deref(),
 		cx,
-	)
+	)?;
+
+	if run_by_name_is_some {
+		if tasks.is_empty() {
+			tracing::info!("No enabled tasks found for the provided query");
+
+			let all_tasks = settings::config::tasks::get_all(
+				run_by_name
+					.as_ref()
+					.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
+					.as_deref(),
+				cx,
+			)?;
+			tracing::info!(
+				"All available enabled tasks: {:?}",
+				all_tasks.keys().collect::<Vec<_>>()
+			);
+
+			return Ok(None);
+		}
+
+		tracing::info!(
+			"Found {} enabled tasks for the provided query: {:?}",
+			tasks.len(),
+			tasks.keys().collect::<Vec<_>>()
+		);
+	} else {
+		if tasks.is_empty() {
+			tracing::info!("No enabled tasks found");
+			return Ok(None);
+		}
+
+		tracing::info!(
+			"Found {} enabled tasks: {:?}",
+			tasks.len(),
+			tasks.keys().collect::<Vec<_>>()
+		);
+	}
+
+	Ok(Some(tasks))
 }
 
 async fn make_tasks_dry(tasks: &mut ParsedTasks) {
