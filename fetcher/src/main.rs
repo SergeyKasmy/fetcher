@@ -150,13 +150,13 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 	tracing::info!("Running fetcher {}", version);
 
 	let run_by_name_is_some = run_by_name.is_some();
-	let tasks = get_all_tasks(run_by_name, cx).await?;
+	let tasks = get_all_tasks(run_by_name, cx)?;
 
 	if run_by_name_is_some {
 		if tasks.is_empty() {
 			tracing::info!("No enabled tasks found for the provided query");
 
-			let all_tasks = get_all_tasks(None, cx).await?;
+			let all_tasks = get_all_tasks(None, cx)?;
 			tracing::info!(
 				"All available enabled tasks: {:?}",
 				all_tasks.keys().collect::<Vec<_>>()
@@ -282,18 +282,15 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 	Ok(())
 }
 
-async fn get_all_tasks(run_by_name: Option<Vec<String>>, cx: Context) -> Result<ParsedTasks> {
-	tokio::task::spawn_blocking(move || {
-		settings::config::tasks::get_all(
-			run_by_name
-				.as_ref()
-				.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
-				.as_deref(),
-			cx,
-		)
-	})
-	.await
-	.expect("Thread crashed")
+#[allow(clippy::needless_pass_by_value)]
+fn get_all_tasks(run_by_name: Option<Vec<String>>, cx: Context) -> Result<ParsedTasks> {
+	settings::config::tasks::get_all(
+		run_by_name
+			.as_ref()
+			.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
+			.as_deref(),
+		cx,
+	)
 }
 
 async fn make_tasks_dry(tasks: &mut ParsedTasks) {
@@ -405,7 +402,7 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context)
 					tracing::warn!("Network error: {}", network_err.display_chain());
 				} else {
 					if let Error::Transform(transform_err) = &err {
-						settings::log::log_transform_err(transform_err, task_name).await?;
+						settings::log::log_transform_err(transform_err, task_name)?;
 					}
 
 					let err_msg = format!(
