@@ -141,8 +141,8 @@ impl FromStr for JsonTask {
 				&self,
 				_name: &str,
 				_expected_rf: fetcher_core::read_filter::Kind,
-			) -> fetcher_config::tasks::external_data::ExternalDataResult<ReadFilter> {
-				unimplemented!()
+			) -> fetcher_config::tasks::external_data::ExternalDataResult<Option<ReadFilter>> {
+				Ok(None)
 			}
 		}
 

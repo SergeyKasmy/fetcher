@@ -40,16 +40,21 @@ impl Task {
 			.read_filter_kind
 			.map(read_filter::Kind::parse)
 			.try_map(|cfg_rf_kind| external.read_filter(name, cfg_rf_kind))?
-			.map(|rf| Arc::new(RwLock::new(rf)));
+			.map(|rf| rf.map(|rf| Arc::new(RwLock::new(rf))));
 
 		let actions = self.actions.try_map(|x| {
 			x.into_iter()
 				.filter_map(|act| match act {
 					Action::ReadFilter => {
 						if let Some(rf) = rf.clone() {
-							Some(Ok(fetcher_core::action::Action::Filter(
-								fetcher_core::action::filter::Kind::ReadFilter(rf),
-							)))
+							if let Some(rf) = rf {
+								Some(Ok(fetcher_core::action::Action::Filter(
+									fetcher_core::action::filter::Kind::ReadFilter(rf),
+								)))
+							} else {
+								tracing::warn!("Read filtering unavailable, skipping..");
+								None
+							}
 						} else {
 							tracing::warn!("Can't use read filter transformer when no read filter is set up for the task!");
 							None
@@ -62,7 +67,7 @@ impl Task {
 
 		let inner = fcore::task::Task {
 			tag: self.tag,
-			source: self.source.parse(rf, external)?,
+			source: self.source.parse(rf.flatten(), external)?,
 			actions,
 			sink: self.sink.try_map(|x| x.parse(external))?,
 		};

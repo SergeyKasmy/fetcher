@@ -26,7 +26,7 @@ pub trait ExternalData {
 		&self,
 		name: &str,
 		expected_rf: ReadFilterKind,
-	) -> ExternalDataResult<ReadFilter>;
+	) -> ExternalDataResult<Option<ReadFilter>>;
 }
 
 #[derive(Error, Debug)]

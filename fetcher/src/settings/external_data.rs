@@ -33,7 +33,7 @@ impl ExternalData for ExternalDataFromDataDir {
 		&self,
 		name: &str,
 		expected_rf: ReadFilterKind,
-	) -> Result<ReadFilter, ExternalDataError> {
-		read_filter::get(name, expected_rf, self.cx)
+	) -> Result<Option<ReadFilter>, ExternalDataError> {
+		read_filter::get(name, expected_rf, self.cx).map(Some)
 	}
 }
