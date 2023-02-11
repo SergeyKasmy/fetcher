@@ -5,6 +5,7 @@
  */
 
 use argh::FromArgs;
+use fetcher_config::tasks::ParsedTask;
 use std::{path::PathBuf, str::FromStr};
 
 /// fetcher
@@ -30,20 +31,17 @@ pub struct Args {
 #[argh(subcommand)]
 pub enum TopLvlSubcommand {
 	Run(Run),
+	RunManual(RunManual),
+	MarkOldAsRead(MarkOldAsRead),
+	Verify(Verify),
 	Save(Save),
 }
 
-// TODO: construct a temporary custom task right in the command line
-// TODO: maybe remake run modes from bool to enum
 /// run all tasks
 #[allow(clippy::struct_excessive_bools)]
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "run")]
 pub struct Run {
-	/// verify only, don't run
-	#[argh(switch)]
-	pub verify_only: bool,
-
 	/// run once (instead of looping forever)
 	#[argh(switch)]
 	pub once: bool,
@@ -52,14 +50,30 @@ pub struct Run {
 	#[argh(switch)]
 	pub dry_run: bool,
 
-	/// mark all old entries from that source as read, implies --once
-	#[argh(switch)]
-	pub mark_old_as_read: bool,
-
 	/// run only these tasks
 	#[argh(positional)]
 	pub tasks: Vec<String>,
 }
+
+/// Run a task from the command line formatted as JSON
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "run-manual")]
+pub struct RunManual {
+	// TODO: check for refresh presense instead of --once
+	/// run this task, formatted in JSON
+	#[argh(positional)]
+	pub task: JsonTask,
+}
+
+/// Load all tasks from the config files and mark all old entries as read
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "mark-old-as-read")]
+pub struct MarkOldAsRead {}
+
+/// Load all tasks from the config files and verify their format
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "verify")]
+pub struct Verify {}
 
 /// save a setting
 #[derive(FromArgs, Debug)]
@@ -89,5 +103,51 @@ impl FromStr for Setting {
 			"twitter" => Self::Twitter,
 			s => return Err(format!("{s:?} is not a valid setting. Available settings: google_oauth, email_password, telegram, twitter")),
 		})
+	}
+}
+
+/// Wrapper around Parsed Task foreign struct to implement `FromStr` from valid task JSON
+#[derive(Debug)]
+pub struct JsonTask(pub ParsedTask);
+
+impl FromStr for JsonTask {
+	type Err = serde_json::Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		use fetcher_config::tasks::external_data::{ExternalDataResult, ProvideExternalData};
+		use fetcher_core::read_filter::ReadFilter;
+
+		struct EmptyExternalData;
+
+		impl ProvideExternalData for EmptyExternalData {
+			fn twitter_token(&self) -> ExternalDataResult<(String, String)> {
+				ExternalDataResult::Unavailable
+			}
+
+			fn google_oauth2(&self) -> ExternalDataResult<fetcher_core::auth::Google> {
+				ExternalDataResult::Unavailable
+			}
+
+			fn email_password(&self) -> ExternalDataResult<String> {
+				ExternalDataResult::Unavailable
+			}
+
+			fn telegram_bot_token(&self) -> ExternalDataResult<String> {
+				ExternalDataResult::Unavailable
+			}
+
+			fn read_filter(
+				&self,
+				_name: &str,
+				_expected_rf: fetcher_core::read_filter::Kind,
+			) -> ExternalDataResult<ReadFilter> {
+				ExternalDataResult::Unavailable
+			}
+		}
+
+		let config_task: fetcher_config::tasks::Task = serde_json::from_str(s)?;
+		Ok(Self(
+			config_task.parse("Manual", &EmptyExternalData).unwrap(),
+		))
 	}
 }

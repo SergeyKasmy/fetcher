@@ -22,5 +22,5 @@ pub type ParsedTasks = HashMap<String, ParsedTask>;
 #[derive(Debug)]
 pub struct ParsedTask {
 	pub inner: CoreTask,
-	pub refresh: u64,
+	pub refresh: Option<u64>,
 }

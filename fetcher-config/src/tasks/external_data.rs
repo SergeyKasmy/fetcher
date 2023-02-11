@@ -14,14 +14,19 @@ use std::{
 	io,
 	path::Path,
 };
-
 use thiserror::Error;
 
-pub trait ExternalData {
-	fn twitter_token(&self) -> ExternalDataResult<Option<(String, String)>>;
-	fn google_oauth2(&self) -> ExternalDataResult<Option<fcore::auth::Google>>;
-	fn email_password(&self) -> ExternalDataResult<Option<String>>;
-	fn telegram_bot_token(&self) -> ExternalDataResult<Option<String>>;
+pub enum ExternalDataResult<T, E = ExternalDataError> {
+	Ok(T),
+	Unavailable,
+	Err(E),
+}
+
+pub trait ProvideExternalData {
+	fn twitter_token(&self) -> ExternalDataResult<(String, String)>;
+	fn google_oauth2(&self) -> ExternalDataResult<fcore::auth::Google>;
+	fn email_password(&self) -> ExternalDataResult<String>;
+	fn telegram_bot_token(&self) -> ExternalDataResult<String>;
 	fn read_filter(
 		&self,
 		name: &str,
@@ -44,7 +49,14 @@ pub enum ExternalDataError {
 	},
 }
 
-pub type ExternalDataResult<T, E = ExternalDataError> = Result<T, E>;
+impl<T, E> From<Result<T, E>> for ExternalDataResult<T, E> {
+	fn from(v: Result<T, E>) -> Self {
+		match v {
+			Ok(v) => ExternalDataResult::Ok(v),
+			Err(e) => ExternalDataResult::Err(e),
+		}
+	}
+}
 
 impl ExternalDataError {
 	pub fn new_io_with_path(io_err: io::Error, path: &Path) -> Self {

@@ -97,29 +97,28 @@ async fn async_main() -> Result<()> {
 
 	match args.subcommand {
 		args::TopLvlSubcommand::Run(arg) => {
-			let mode = if arg.verify_only {
-				tracing::info!("Running in \"verify only\" mode");
-				RunMode::VerifyOnly
-			} else if arg.mark_old_as_read {
-				tracing::info!("Running in \"Mark old entries as read and leave\" move");
-				RunMode::MarkOldEntriesAsRead
-			} else {
-				RunMode::Normal {
-					once: arg.once,
-					dry_run: arg.dry_run,
-				}
-			};
-
 			run(
 				if arg.tasks.is_empty() {
 					None
 				} else {
 					Some(arg.tasks)
 				},
-				mode,
+				RunMode::Normal {
+					once: arg.once,
+					dry_run: arg.dry_run,
+				},
 				context,
 			)
 			.await?;
+		}
+		args::TopLvlSubcommand::RunManual(arg) => {
+			run(None, RunMode::Manual { task: arg.task.0 }, context).await?;
+		}
+		args::TopLvlSubcommand::MarkOldAsRead(_) => {
+			run(None, RunMode::MarkOldEntriesAsRead, context).await?;
+		}
+		args::TopLvlSubcommand::Verify(_) => {
+			run(None, RunMode::VerifyOnly, context).await?;
 		}
 		args::TopLvlSubcommand::Save(save) => match save.setting {
 			Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt(context).await?,
@@ -148,40 +147,6 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 		)
 	};
 	tracing::info!("Running fetcher {}", version);
-
-	let run_by_name_is_some = run_by_name.is_some();
-	let tasks = get_all_tasks(run_by_name, cx)?;
-
-	if run_by_name_is_some {
-		if tasks.is_empty() {
-			tracing::info!("No enabled tasks found for the provided query");
-
-			let all_tasks = get_all_tasks(None, cx)?;
-			tracing::info!(
-				"All available enabled tasks: {:?}",
-				all_tasks.keys().collect::<Vec<_>>()
-			);
-
-			return Ok(());
-		}
-
-		tracing::info!(
-			"Found {} enabled tasks for the provided query: {:?}",
-			tasks.len(),
-			tasks.keys().collect::<Vec<_>>()
-		);
-	} else {
-		if tasks.is_empty() {
-			tracing::info!("No enabled tasks found");
-			return Ok(());
-		}
-
-		tracing::info!(
-			"Found {} enabled tasks: {:?}",
-			tasks.len(),
-			tasks.keys().collect::<Vec<_>>()
-		);
-	}
 
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
 	let (force_close_tx, mut force_close_rx) = watch::channel(());
@@ -226,7 +191,9 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 
 	match mode {
 		RunMode::Normal { once, dry_run } => {
-			let mut tasks = tasks;
+			let Some(mut tasks) = get_tasks(run_by_name, cx)? else {
+				return Ok(());
+			};
 
 			if dry_run {
 				tracing::debug!("Making all tasks dry");
@@ -234,48 +201,64 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 				make_tasks_dry(&mut tasks).await;
 			}
 
-			run_tasks(tasks, shutdown_rx, once, cx)
-				.await
-				.map_err(|errs| {
-					eyre!(
-						"{} tasks have finished with an error: {}",
-						errs.len(),
-						errs.into_iter().enumerate().fold(
-							String::new(),
-							|mut s, (i, (name, err))| {
-								let _ = write!(s, "\n#{i} {name}: {err:?}"); // can't fail
-								s
-							}
-						)
-					)
-				})?;
+			if once {
+				for task in tasks.values_mut() {
+					task.refresh = None;
+				}
+			}
+
+			run_tasks(tasks, shutdown_rx, cx).await.map_err(|errs| {
+				eyre!(
+					"{} tasks have finished with an error: {}",
+					errs.len(),
+					errs.into_iter()
+						.enumerate()
+						.fold(String::new(), |mut s, (i, (name, err))| {
+							let _ = write!(s, "\n#{i} {name}: {err:?}"); // can't fail
+							s
+						})
+				)
+			})?;
 		}
 		RunMode::VerifyOnly => {
 			tracing::info!("Everything verified to be working properly, exiting...");
 		}
 		RunMode::MarkOldEntriesAsRead => {
-			let mut tasks = tasks;
+			let Some(mut tasks) = get_tasks(run_by_name, cx)? else {
+				return Ok(());
+			};
 
 			// just fetch and save read, don't send anything
 			for task in tasks.values_mut() {
 				task.inner.sink = None;
+				task.refresh = None;
 			}
 
-			run_tasks(tasks, shutdown_rx, true /* always just run once */, cx)
-				.await
-				.map_err(|errs| {
-					eyre!(
-						"{} tasks have finished with an error: {}",
-						errs.len(),
-						errs.into_iter().enumerate().fold(
-							String::new(),
-							|mut s, (i, (name, err))| {
-								let _ = write!(s, "\n#{i} {name}: {err:?}"); // can't fail
-								s
-							}
-						)
-					)
-				})?;
+			run_tasks(tasks, shutdown_rx, cx).await.map_err(|errs| {
+				eyre!(
+					"{} tasks have finished with an error: {}",
+					errs.len(),
+					errs.into_iter()
+						.enumerate()
+						.fold(String::new(), |mut s, (i, (name, err))| {
+							let _ = write!(s, "\n#{i} {name}: {err:?}"); // can't fail
+							s
+						})
+				)
+			})?;
+		}
+		RunMode::Manual { task } => {
+			run_tasks(
+				[("Manual".to_owned(), task)].into_iter().collect(),
+				shutdown_rx,
+				cx,
+			)
+			.await
+			.map_err(|mut err| {
+				assert_eq!(err.len(), 1);
+				let (_, err) = err.remove(0);
+				err
+			})?;
 		}
 	}
 
@@ -283,14 +266,54 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn get_all_tasks(run_by_name: Option<Vec<String>>, cx: Context) -> Result<ParsedTasks> {
-	settings::config::tasks::get_all(
+fn get_tasks(run_by_name: Option<Vec<String>>, cx: Context) -> Result<Option<ParsedTasks>> {
+	let run_by_name_is_some = run_by_name.is_some();
+	let tasks = settings::config::tasks::get_all(
 		run_by_name
 			.as_ref()
 			.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
 			.as_deref(),
 		cx,
-	)
+	)?;
+
+	if run_by_name_is_some {
+		if tasks.is_empty() {
+			tracing::info!("No enabled tasks found for the provided query");
+
+			let all_tasks = settings::config::tasks::get_all(
+				run_by_name
+					.as_ref()
+					.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
+					.as_deref(),
+				cx,
+			)?;
+			tracing::info!(
+				"All available enabled tasks: {:?}",
+				all_tasks.keys().collect::<Vec<_>>()
+			);
+
+			return Ok(None);
+		}
+
+		tracing::info!(
+			"Found {} enabled tasks for the provided query: {:?}",
+			tasks.len(),
+			tasks.keys().collect::<Vec<_>>()
+		);
+	} else {
+		if tasks.is_empty() {
+			tracing::info!("No enabled tasks found");
+			return Ok(None);
+		}
+
+		tracing::info!(
+			"Found {} enabled tasks: {:?}",
+			tasks.len(),
+			tasks.keys().collect::<Vec<_>>()
+		);
+	}
+
+	Ok(Some(tasks))
 }
 
 async fn make_tasks_dry(tasks: &mut ParsedTasks) {
@@ -322,7 +345,6 @@ async fn make_tasks_dry(tasks: &mut ParsedTasks) {
 async fn run_tasks(
 	tasks: ParsedTasks,
 	shutdown_rx: Receiver<()>,
-	once: bool,
 	context: Context,
 ) -> Result<(), Vec<(String, Report)>> {
 	let mut running_tasks = Vec::new();
@@ -335,7 +357,7 @@ async fn run_tasks(
 				tracing::trace!("Task {} contents: {:#?}", name, t);
 
 				let res = select! {
-					r = task_loop(&mut t, &name, once, context) => r,
+					r = task_loop(&mut t, &name, context) => r,
 					_ = shutdown_rx.changed() => Ok(()),
 				};
 
@@ -380,9 +402,9 @@ async fn run_tasks(
 	}
 }
 
-async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context) -> Result<()> {
+async fn task_loop(t: &mut ParsedTask, task_name: &str, cx: Context) -> Result<()> {
 	// exit with an error if there were too many consecutive errors
-	let err_max_count: u32 = if once { 0 } else { 15 }; // around 22 days max pause time
+	const ERR_MAX_COUNT: u32 = 15; // around 22 days max pause time
 
 	// number of consecutive(!!!) errors.
 	// we tolerate a pretty big amount for various reasons (being rate limited, server error, etc) but not infinite
@@ -394,7 +416,7 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context)
 				err_count = 0;
 			}
 			Err(err) => {
-				if err_count == err_max_count {
+				if err_count == ERR_MAX_COUNT {
 					return Err(err.into());
 				}
 
@@ -408,7 +430,7 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context)
 					let err_msg = format!(
 						"Error #{} out of {} max allowed:\n{}",
 						err_count + 1, // +1 cause we are counting from 0 but it'd be strange to show "Error (0 out of 255)" to users
-						err_max_count + 1,
+						ERR_MAX_COUNT + 1,
 						err.display_chain()
 					);
 					tracing::error!("{}", err_msg);
@@ -433,15 +455,15 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context)
 			}
 		}
 
-		if once {
+		let Some(refresh_time) = t.refresh else {
 			break;
-		}
+		};
 
-		tracing::debug!(
-			"Putting task {task_name} to sleep for {time}m",
-			time = t.refresh
-		);
-		sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
+		tracing::debug!("Putting task {task_name} to sleep for {refresh_time}m",);
+		sleep(Duration::from_secs(
+			refresh_time * 60, /* secs in a min */
+		))
+		.await;
 	}
 
 	Ok(())
@@ -456,7 +478,7 @@ async fn report_error(task_name: &str, err: &str, context: Context) -> Result<()
 		.parse::<i64>()
 		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID isn't a valid chat id")?;
 
-	let Some(bot) = settings::data::telegram::get(context)? else {
+	let Ok(bot) = settings::data::telegram::get(context) else {
 		return Err(eyre!("Telegram bot token not provided"));
 	};
 

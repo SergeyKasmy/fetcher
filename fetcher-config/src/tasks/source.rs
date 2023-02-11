@@ -11,7 +11,7 @@ pub mod reddit;
 pub mod twitter;
 
 use self::{email::Email, file::File, http::Http, reddit::Reddit, twitter::Twitter};
-use crate::{tasks::external_data::ExternalData, Error};
+use crate::{tasks::external_data::ProvideExternalData, Error};
 use fetcher_core::{read_filter::ReadFilter as CReadFilter, source::Source as CSource};
 
 use serde::{Deserialize, Serialize};
@@ -36,7 +36,7 @@ impl Source {
 	pub fn parse(
 		self,
 		rf: Option<Arc<RwLock<CReadFilter>>>,
-		external: &dyn ExternalData,
+		external: &dyn ProvideExternalData,
 	) -> Result<CSource, Error> {
 		// make a CSource::WithSharedReadFilter out of a CWithSharedRFKind
 		macro_rules! WithSharedRF {
