@@ -28,7 +28,7 @@ pub struct Task {
 	#[serde(rename = "read_filter_type")]
 	read_filter_kind: Option<self::read_filter::Kind>,
 	tag: Option<String>,
-	refresh: u64,
+	refresh: Option<u64>,
 	source: Source,
 	#[serde(rename = "process")]
 	actions: Option<Vec<Action>>,

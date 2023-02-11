@@ -112,15 +112,7 @@ async fn async_main() -> Result<()> {
 			.await?;
 		}
 		args::TopLvlSubcommand::RunManual(arg) => {
-			run(
-				None,
-				RunMode::Manual {
-					once: true, /* TODO */
-					task: arg.task.0,
-				},
-				context,
-			)
-			.await?;
+			run(None, RunMode::Manual { task: arg.task.0 }, context).await?;
 		}
 		args::TopLvlSubcommand::MarkOldAsRead(_) => {
 			run(None, RunMode::MarkOldEntriesAsRead, context).await?;
@@ -209,21 +201,24 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 				make_tasks_dry(&mut tasks).await;
 			}
 
-			run_tasks(tasks, shutdown_rx, once, cx)
-				.await
-				.map_err(|errs| {
-					eyre!(
-						"{} tasks have finished with an error: {}",
-						errs.len(),
-						errs.into_iter().enumerate().fold(
-							String::new(),
-							|mut s, (i, (name, err))| {
-								let _ = write!(s, "\n#{i} {name}: {err:?}"); // can't fail
-								s
-							}
-						)
-					)
-				})?;
+			if once {
+				for task in tasks.values_mut() {
+					task.refresh = None;
+				}
+			}
+
+			run_tasks(tasks, shutdown_rx, cx).await.map_err(|errs| {
+				eyre!(
+					"{} tasks have finished with an error: {}",
+					errs.len(),
+					errs.into_iter()
+						.enumerate()
+						.fold(String::new(), |mut s, (i, (name, err))| {
+							let _ = write!(s, "\n#{i} {name}: {err:?}"); // can't fail
+							s
+						})
+				)
+			})?;
 		}
 		RunMode::VerifyOnly => {
 			tracing::info!("Everything verified to be working properly, exiting...");
@@ -236,29 +231,26 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 			// just fetch and save read, don't send anything
 			for task in tasks.values_mut() {
 				task.inner.sink = None;
+				task.refresh = None;
 			}
 
-			run_tasks(tasks, shutdown_rx, true /* always just run once */, cx)
-				.await
-				.map_err(|errs| {
-					eyre!(
-						"{} tasks have finished with an error: {}",
-						errs.len(),
-						errs.into_iter().enumerate().fold(
-							String::new(),
-							|mut s, (i, (name, err))| {
-								let _ = write!(s, "\n#{i} {name}: {err:?}"); // can't fail
-								s
-							}
-						)
-					)
-				})?;
+			run_tasks(tasks, shutdown_rx, cx).await.map_err(|errs| {
+				eyre!(
+					"{} tasks have finished with an error: {}",
+					errs.len(),
+					errs.into_iter()
+						.enumerate()
+						.fold(String::new(), |mut s, (i, (name, err))| {
+							let _ = write!(s, "\n#{i} {name}: {err:?}"); // can't fail
+							s
+						})
+				)
+			})?;
 		}
-		RunMode::Manual { once, task } => {
+		RunMode::Manual { task } => {
 			run_tasks(
 				[("Manual".to_owned(), task)].into_iter().collect(),
 				shutdown_rx,
-				once,
 				cx,
 			)
 			.await
@@ -353,7 +345,6 @@ async fn make_tasks_dry(tasks: &mut ParsedTasks) {
 async fn run_tasks(
 	tasks: ParsedTasks,
 	shutdown_rx: Receiver<()>,
-	once: bool,
 	context: Context,
 ) -> Result<(), Vec<(String, Report)>> {
 	let mut running_tasks = Vec::new();
@@ -366,7 +357,7 @@ async fn run_tasks(
 				tracing::trace!("Task {} contents: {:#?}", name, t);
 
 				let res = select! {
-					r = task_loop(&mut t, &name, once, context) => r,
+					r = task_loop(&mut t, &name, context) => r,
 					_ = shutdown_rx.changed() => Ok(()),
 				};
 
@@ -411,9 +402,9 @@ async fn run_tasks(
 	}
 }
 
-async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context) -> Result<()> {
+async fn task_loop(t: &mut ParsedTask, task_name: &str, cx: Context) -> Result<()> {
 	// exit with an error if there were too many consecutive errors
-	let err_max_count: u32 = if once { 0 } else { 15 }; // around 22 days max pause time
+	const ERR_MAX_COUNT: u32 = 15; // around 22 days max pause time
 
 	// number of consecutive(!!!) errors.
 	// we tolerate a pretty big amount for various reasons (being rate limited, server error, etc) but not infinite
@@ -425,7 +416,7 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context)
 				err_count = 0;
 			}
 			Err(err) => {
-				if err_count == err_max_count {
+				if err_count == ERR_MAX_COUNT {
 					return Err(err.into());
 				}
 
@@ -439,7 +430,7 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context)
 					let err_msg = format!(
 						"Error #{} out of {} max allowed:\n{}",
 						err_count + 1, // +1 cause we are counting from 0 but it'd be strange to show "Error (0 out of 255)" to users
-						err_max_count + 1,
+						ERR_MAX_COUNT + 1,
 						err.display_chain()
 					);
 					tracing::error!("{}", err_msg);
@@ -464,15 +455,15 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context)
 			}
 		}
 
-		if once {
+		let Some(refresh_time) = t.refresh else {
 			break;
-		}
+		};
 
-		tracing::debug!(
-			"Putting task {task_name} to sleep for {time}m",
-			time = t.refresh
-		);
-		sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
+		tracing::debug!("Putting task {task_name} to sleep for {refresh_time}m",);
+		sleep(Duration::from_secs(
+			refresh_time * 60, /* secs in a min */
+		))
+		.await;
 	}
 
 	Ok(())
