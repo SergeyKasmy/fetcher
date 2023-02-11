@@ -20,7 +20,7 @@ use teloxide::{
 		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, Message as TelMessage,
 		MessageId, ParseMode,
 	},
-	ApiError, Bot, RequestError,
+	Bot, RequestError,
 };
 use tokio::time::sleep;
 use url::Url;
@@ -377,7 +377,11 @@ impl Telegram {
 
 					retry_counter += 1;
 				}
-				Err(e) if e.to_string().to_lowercase().contains("wrong file identifier/http url specified") => {
+				Err(e)
+					if e.to_string()
+						.to_lowercase()
+						.contains("wrong file identifier/http url specified") =>
+				{
 					// TODO: reupload the image manually if this happens
 					if let Some(caption) = caption {
 						tracing::warn!("Telegram disliked the media URL (\"Wrong file identifier/HTTP URL specified\"), sending the message as pure text");

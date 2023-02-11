@@ -6,8 +6,7 @@
 
 use crate::settings::context::StaticContext as Context;
 use fetcher_config::tasks::{
-	external_data::{ExternalDataError, ExternalDataResult},
-	read_filter::ReadFilter as ReadFilterConf,
+	external_data::ExternalDataError, read_filter::ReadFilter as ReadFilterConf,
 };
 use fetcher_core::read_filter::{ExternalSave, Kind as ReadFilterKind, ReadFilter};
 
@@ -24,7 +23,7 @@ pub fn get(
 	name: &str,
 	expected_rf_kind: ReadFilterKind,
 	context: Context,
-) -> ExternalDataResult<ReadFilter> {
+) -> Result<ReadFilter, ExternalDataError> {
 	let path = context.data_path.join(READ_DATA_DIR).join(name);
 
 	match fs::read_to_string(&path) {

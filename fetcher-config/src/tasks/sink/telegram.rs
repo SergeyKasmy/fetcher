@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::tasks::external_data::ExternalData;
+use crate::tasks::external_data::{ExternalDataResult, ProvideExternalData};
 use crate::Error as ConfigError;
 use fetcher_core::sink::telegram::LinkLocation as CLinkLocation;
 use fetcher_core::sink::Telegram as CTelegram;
@@ -27,11 +27,15 @@ pub enum LinkLocation {
 }
 
 impl Telegram {
-	pub fn parse(self, external: &dyn ExternalData) -> Result<CTelegram, ConfigError> {
+	pub fn parse(self, external: &dyn ProvideExternalData) -> Result<CTelegram, ConfigError> {
+		let token = match external.telegram_bot_token() {
+			ExternalDataResult::Ok(v) => v,
+			ExternalDataResult::Unavailable => return Err(ConfigError::TelegramBotTokenMissing),
+			ExternalDataResult::Err(e) => return Err(e.into()),
+		};
+
 		Ok(CTelegram::new(
-			external
-				.telegram_bot_token()?
-				.ok_or(ConfigError::TelegramBotTokenMissing)?,
+			token,
 			self.chat_id,
 			self.link_location
 				.map_or(CLinkLocation::PreferTitle, LinkLocation::parse),

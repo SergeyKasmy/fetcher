@@ -485,7 +485,7 @@ async fn report_error(task_name: &str, err: &str, context: Context) -> Result<()
 		.parse::<i64>()
 		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID isn't a valid chat id")?;
 
-	let Some(bot) = settings::data::telegram::get(context)? else {
+	let Ok(bot) = settings::data::telegram::get(context) else {
 		return Err(eyre!("Telegram bot token not provided"));
 	};
 

@@ -104,45 +104,34 @@ impl FromStr for JsonTask {
 	type Err = serde_json::Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		use fetcher_config::tasks::external_data::ExternalData;
+		use fetcher_config::tasks::external_data::{ExternalDataResult, ProvideExternalData};
 		use fetcher_core::read_filter::ReadFilter;
 
 		struct EmptyExternalData;
 
-		impl ExternalData for EmptyExternalData {
-			fn twitter_token(
-				&self,
-			) -> fetcher_config::tasks::external_data::ExternalDataResult<Option<(String, String)>>
-			{
-				Ok(None)
+		impl ProvideExternalData for EmptyExternalData {
+			fn twitter_token(&self) -> ExternalDataResult<(String, String)> {
+				ExternalDataResult::Unavailable
 			}
 
-			fn google_oauth2(
-				&self,
-			) -> fetcher_config::tasks::external_data::ExternalDataResult<
-				Option<fetcher_core::auth::Google>,
-			> {
-				Ok(None)
+			fn google_oauth2(&self) -> ExternalDataResult<fetcher_core::auth::Google> {
+				ExternalDataResult::Unavailable
 			}
 
-			fn email_password(
-				&self,
-			) -> fetcher_config::tasks::external_data::ExternalDataResult<Option<String>> {
-				Ok(None)
+			fn email_password(&self) -> ExternalDataResult<String> {
+				ExternalDataResult::Unavailable
 			}
 
-			fn telegram_bot_token(
-				&self,
-			) -> fetcher_config::tasks::external_data::ExternalDataResult<Option<String>> {
-				Ok(None)
+			fn telegram_bot_token(&self) -> ExternalDataResult<String> {
+				ExternalDataResult::Unavailable
 			}
 
 			fn read_filter(
 				&self,
 				_name: &str,
 				_expected_rf: fetcher_core::read_filter::Kind,
-			) -> fetcher_config::tasks::external_data::ExternalDataResult<Option<ReadFilter>> {
-				Ok(None)
+			) -> ExternalDataResult<ReadFilter> {
+				ExternalDataResult::Unavailable
 			}
 		}
 

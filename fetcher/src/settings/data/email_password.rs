@@ -6,22 +6,23 @@
 
 use super::prompt_user_for;
 use crate::settings::context::StaticContext as Context;
-use fetcher_config::{settings::EmailPassword as Config, tasks::external_data::ExternalDataResult};
+use fetcher_config::{settings::EmailPassword as Config, tasks::external_data::ExternalDataError};
 
 use std::fs;
 
 const FILE_NAME: &str = "email_password.json";
 
-pub fn get(cx: Context) -> ExternalDataResult<Option<String>> {
+pub fn get(cx: Context) -> Result<String, ExternalDataError> {
 	let path = cx.data_path.join(FILE_NAME);
 
 	let raw = fs::read_to_string(&path).map_err(|e| (e, &path))?;
 	let conf: Config = serde_json::from_str(&raw).map_err(|e| (e, &path))?;
 
-	Ok(Some(conf.parse()))
+	Ok(conf.parse())
 }
 
-pub fn prompt(cx: Context) -> ExternalDataResult<()> {
+// FIXME
+pub fn prompt(cx: Context) -> Result<(), ExternalDataError> {
 	let pass = prompt_user_for("Email password")?;
 	let path = cx.data_path.join(FILE_NAME);
 

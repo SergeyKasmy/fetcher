@@ -4,7 +4,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::{action::Action, external_data::ExternalData, read_filter, sink::Sink, source::Source};
+use super::{
+	action::Action,
+	external_data::{ExternalDataResult, ProvideExternalData},
+	read_filter,
+	sink::Sink,
+	source::Source,
+};
 use crate::{tasks::ParsedTask, Error};
 use fetcher_core as fcore;
 use fetcher_core::utils::OptionExt;
@@ -35,26 +41,31 @@ pub struct Task {
 }
 
 impl Task {
-	pub fn parse(self, name: &str, external: &dyn ExternalData) -> Result<ParsedTask, Error> {
-		let rf = self
-			.read_filter_kind
-			.map(read_filter::Kind::parse)
-			.try_map(|cfg_rf_kind| external.read_filter(name, cfg_rf_kind))?
-			.map(|rf| rf.map(|rf| Arc::new(RwLock::new(rf))));
+	pub fn parse(
+		self,
+		name: &str,
+		external: &dyn ProvideExternalData,
+	) -> Result<ParsedTask, Error> {
+		let rf = match self.read_filter_kind.map(read_filter::Kind::parse) {
+			Some(expected_rf_type) => match external.read_filter(name, expected_rf_type) {
+				ExternalDataResult::Ok(rf) => Some(Arc::new(RwLock::new(rf))),
+				ExternalDataResult::Unavailable => {
+					tracing::warn!("Read filter is unavailable, skipping");
+					None
+				}
+				ExternalDataResult::Err(e) => return Err(e.into()),
+			},
+			None => None,
+		};
 
 		let actions = self.actions.try_map(|x| {
 			x.into_iter()
 				.filter_map(|act| match act {
 					Action::ReadFilter => {
 						if let Some(rf) = rf.clone() {
-							if let Some(rf) = rf {
-								Some(Ok(fetcher_core::action::Action::Filter(
-									fetcher_core::action::filter::Kind::ReadFilter(rf),
-								)))
-							} else {
-								tracing::warn!("Read filtering unavailable, skipping..");
-								None
-							}
+							Some(Ok(fetcher_core::action::Action::Filter(
+								fetcher_core::action::filter::Kind::ReadFilter(rf),
+							)))
 						} else {
 							tracing::warn!("Can't use read filter transformer when no read filter is set up for the task!");
 							None
@@ -67,7 +78,7 @@ impl Task {
 
 		let inner = fcore::task::Task {
 			tag: self.tag,
-			source: self.source.parse(rf.flatten(), external)?,
+			source: self.source.parse(rf, external)?,
 			actions,
 			sink: self.sink.try_map(|x| x.parse(external))?,
 		};
