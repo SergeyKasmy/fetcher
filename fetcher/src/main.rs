@@ -97,34 +97,36 @@ async fn async_main() -> Result<()> {
 
 	match args.subcommand {
 		args::TopLvlSubcommand::Run(arg) => {
-			let mode = if let Some(args::JsonTask(task)) = arg.manual {
-				RunMode::Manual {
-					once: arg.once,
-					task,
-				}
-			} else if arg.verify_only {
-				tracing::info!("Running in \"verify only\" mode");
-				RunMode::VerifyOnly
-			} else if arg.mark_old_as_read {
-				tracing::info!("Running in \"Mark old entries as read and leave\" move");
-				RunMode::MarkOldEntriesAsRead
-			} else {
-				RunMode::Normal {
-					once: arg.once,
-					dry_run: arg.dry_run,
-				}
-			};
-
 			run(
 				if arg.tasks.is_empty() {
 					None
 				} else {
 					Some(arg.tasks)
 				},
-				mode,
+				RunMode::Normal {
+					once: arg.once,
+					dry_run: arg.dry_run,
+				},
 				context,
 			)
 			.await?;
+		}
+		args::TopLvlSubcommand::RunManual(arg) => {
+			run(
+				None,
+				RunMode::Manual {
+					once: true, /* TODO */
+					task: arg.task.0,
+				},
+				context,
+			)
+			.await?;
+		}
+		args::TopLvlSubcommand::MarkOldAsRead(_) => {
+			run(None, RunMode::MarkOldEntriesAsRead, context).await?;
+		}
+		args::TopLvlSubcommand::Verify(_) => {
+			run(None, RunMode::VerifyOnly, context).await?;
 		}
 		args::TopLvlSubcommand::Save(save) => match save.setting {
 			Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt(context).await?,

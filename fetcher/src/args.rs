@@ -31,20 +31,17 @@ pub struct Args {
 #[argh(subcommand)]
 pub enum TopLvlSubcommand {
 	Run(Run),
+	RunManual(RunManual),
+	MarkOldAsRead(MarkOldAsRead),
+	Verify(Verify),
 	Save(Save),
 }
 
-// TODO: construct a temporary custom task right in the command line
-// TODO: maybe remake run modes from bool to enum
 /// run all tasks
 #[allow(clippy::struct_excessive_bools)]
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "run")]
 pub struct Run {
-	/// verify only, don't run
-	#[argh(switch)]
-	pub verify_only: bool,
-
 	/// run once (instead of looping forever)
 	#[argh(switch)]
 	pub once: bool,
@@ -53,18 +50,30 @@ pub struct Run {
 	#[argh(switch)]
 	pub dry_run: bool,
 
-	/// mark all old entries from that source as read, implies --once
-	#[argh(switch)]
-	pub mark_old_as_read: bool,
-
-	/// run this task instead of those saved as config files
-	#[argh(option)]
-	pub manual: Option<JsonTask>,
-
 	/// run only these tasks
 	#[argh(positional)]
 	pub tasks: Vec<String>,
 }
+
+/// Run a task from the command line formatted as JSON
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "run-manual")]
+pub struct RunManual {
+	// TODO: check for refresh presense instead of --once
+	/// run this task, formatted in JSON
+	#[argh(positional)]
+	pub task: JsonTask,
+}
+
+/// Load all tasks from the config files and mark all old entries as read
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "mark-old-as-read")]
+pub struct MarkOldAsRead {}
+
+/// Load all tasks from the config files and verify their format
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "verify")]
+pub struct Verify {}
 
 /// save a setting
 #[derive(FromArgs, Debug)]
@@ -97,6 +106,7 @@ impl FromStr for Setting {
 	}
 }
 
+/// Wrapper around Parsed Task foreign struct to implement `FromStr` from valid task JSON
 #[derive(Debug)]
 pub struct JsonTask(pub ParsedTask);
 
@@ -136,6 +146,8 @@ impl FromStr for JsonTask {
 		}
 
 		let config_task: fetcher_config::tasks::Task = serde_json::from_str(s)?;
-		Ok(Self(config_task.parse("", &EmptyExternalData).unwrap()))
+		Ok(Self(
+			config_task.parse("Manual", &EmptyExternalData).unwrap(),
+		))
 	}
 }
