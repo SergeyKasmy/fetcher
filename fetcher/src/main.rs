@@ -411,7 +411,7 @@ async fn task_loop(t: &mut ParsedTask, task_name: &str, cx: Context) -> Result<(
 	let mut err_count = 0;
 
 	loop {
-		match fetcher_core::run_task(&mut t.inner).await {
+		match t.inner.run().await {
 			Ok(()) => {
 				err_count = 0;
 			}
