@@ -5,7 +5,7 @@
  */
 
 use crate::settings::context::StaticContext as Context;
-use fetcher_config::tasks::{
+use fetcher_config::jobs::{
 	external_data::ExternalDataError, read_filter::ReadFilter as ReadFilterConf,
 };
 use fetcher_core::read_filter::{ExternalSave, Kind as ReadFilterKind, ReadFilter};
@@ -87,7 +87,7 @@ impl std::io::Write for TruncatingFileWriter {
 impl ExternalSave for TruncatingFileWriter {
 	fn save(&mut self, read_filter: &fetcher_core::read_filter::Inner) -> io::Result<()> {
 		if let Some(filter_conf) =
-			fetcher_config::tasks::read_filter::ReadFilter::unparse(read_filter)
+			fetcher_config::jobs::read_filter::ReadFilter::unparse(read_filter)
 		{
 			let s = serde_json::to_string(&filter_conf).unwrap();
 			return self.write_all(s.as_bytes());

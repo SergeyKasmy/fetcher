@@ -14,9 +14,9 @@ pub mod settings;
 
 use self::settings::{context::Context as OwnedContext, context::StaticContext as Context};
 use crate::args::{Args, Setting};
-use fetcher_config::tasks::ParsedTask;
 use fetcher_core::{
 	error::{Error, ErrorChainExt},
+	job::Job,
 	sink::{Sink, Stdout},
 	source::{email, Source, WithCustomRF},
 };
@@ -34,8 +34,8 @@ use tokio::{
 	time::sleep,
 };
 
-type Job = ParsedTask;
-type Jobs = HashMap<String, Job>;
+pub type JobName = String;
+pub type Jobs = HashMap<JobName, Job>;
 
 fn main() -> Result<()> {
 	set_up_logging()?;
@@ -114,7 +114,7 @@ async fn async_main() -> Result<()> {
 	match args.subcommand {
 		args::TopLvlSubcommand::Run(run_args) => run_command(run_args, cx).await,
 		args::TopLvlSubcommand::RunManual(args::RunManual { task }) => {
-			run_jobs(iter::once(("Manual".to_owned(), task.0)), cx).await?;
+			run_jobs(iter::once(("Manual".to_owned(), task.0))).await?;
 
 			Ok(())
 		}
@@ -126,11 +126,14 @@ async fn async_main() -> Result<()> {
 
 			// just fetch and save read, don't send anything
 			for job in jobs.values_mut() {
-				job.inner.sink = None;
-				job.refresh = None;
+				job.refetch_interval = None;
+
+				for task in &mut job.tasks {
+					task.sink = None;
+				}
 			}
 
-			run_jobs(jobs, cx).await?;
+			run_jobs(jobs).await?;
 
 			Ok(())
 		}
@@ -178,21 +181,23 @@ async fn run_command(
 		tracing::debug!("Making all jobs dry");
 
 		for job in jobs.values_mut() {
-			// don't save read filtered items to the fs
-			match &mut job.inner.source {
-				Source::WithSharedReadFilter { rf, kind: _ } => {
-					if let Some(rf) = rf {
-						rf.write().await.external_save = None;
+			for task in &mut job.tasks {
+				// don't save read filtered items to the fs
+				match &mut task.source {
+					Source::WithSharedReadFilter { rf, kind: _ } => {
+						if let Some(rf) = rf {
+							rf.write().await.external_save = None;
+						}
 					}
+					Source::WithCustomReadFilter(custom_rf_source) => match custom_rf_source {
+						WithCustomRF::Email(e) => e.view_mode = email::ViewMode::ReadOnly,
+					},
 				}
-				Source::WithCustomReadFilter(custom_rf_source) => match custom_rf_source {
-					WithCustomRF::Email(e) => e.view_mode = email::ViewMode::ReadOnly,
-				},
-			}
 
-			// don't send anything anywhere, just print
-			if let Some(sink) = &mut job.inner.sink {
-				*sink = Sink::Stdout(Stdout);
+				// don't send anything anywhere, just print
+				if let Some(sink) = &mut task.sink {
+					*sink = Sink::Stdout(Stdout);
+				}
 			}
 		}
 	}
@@ -201,11 +206,11 @@ async fn run_command(
 		tracing::debug!("Disabling every job's refetch interval");
 
 		for job in jobs.values_mut() {
-			job.refresh = None;
+			job.refetch_interval = None;
 		}
 	}
 
-	run_jobs(jobs, cx).await?;
+	run_jobs(jobs).await?;
 	Ok(())
 }
 
@@ -260,20 +265,26 @@ fn get_jobs(run_by_name: Option<Vec<String>>, cx: Context) -> Result<Option<Jobs
 	Ok(Some(tasks))
 }
 
-async fn run_jobs(jobs: impl IntoIterator<Item = (String, Job)>, cx: Context) -> Result<()> {
+async fn run_jobs(jobs: impl IntoIterator<Item = (JobName, Job)>) -> Result<()> {
 	let shutdown_rx = set_up_signal_handler();
 
 	let jobs = jobs
 		.into_iter()
-		.map(|(name, job)| {
-			let shutdown_rx = shutdown_rx.clone();
-			let async_task = async move {
-				run_job(job, name.clone(), shutdown_rx, cx)
-					.await
-					.map_err(|e| (name, e))
-			};
-			let async_task_handle = tokio::spawn(async_task);
+		.map(|(name, mut job)| {
+			let mut shutdown_rx = shutdown_rx.clone();
 
+			let async_task = async move {
+				select! {
+					res = job.run(22 /* FIXME */) => res,
+					_ = shutdown_rx.changed() => {
+						tracing::info!("Task {name} shut down...");
+						Ok(())
+					}
+				}
+				.map_err(|e| (name, Report::from(e)))
+			};
+
+			let async_task_handle = tokio::spawn(async_task);
 			flatten_task_result(async_task_handle)
 		})
 		.collect::<Vec<_>>();
@@ -296,9 +307,9 @@ async fn run_jobs(jobs: impl IntoIterator<Item = (String, Job)>, cx: Context) ->
 			errors
 				.into_iter()
 				.enumerate()
-				.fold(String::new(), |mut s, (i, (name, err))| {
-					let _ = write!(s, "\n#{i} {name}: {err:?}"); // can't fail
-					s
+				.fold(String::new(), |mut err_str, (i, (name, err))| {
+					let _ = write!(err_str, "\n#{i} {name}: {err:?}"); // can't fail
+					err_str
 				})
 		))
 	}
@@ -347,24 +358,6 @@ fn set_up_signal_handler() -> Receiver<()> {
 	});
 
 	shutdown_rx
-}
-
-#[tracing::instrument(skip(job, shutdown_rx, _cx))]
-async fn run_job(
-	mut job: Job,
-	job_name: String,
-	mut shutdown_rx: Receiver<()>,
-	_cx: Context,
-) -> Result<()> {
-	loop {
-		select! {
-			res = job.inner.run() => res?,
-			_ = shutdown_rx.changed() => {
-				tracing::info!("Task {job_name} shut down...");
-				return Ok(());
-			}
-		}
-	}
 }
 
 // version with broken error handling

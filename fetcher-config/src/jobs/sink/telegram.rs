@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::tasks::external_data::{ExternalDataResult, ProvideExternalData};
+use crate::jobs::external_data::{ExternalDataResult, ProvideExternalData};
 use crate::Error as ConfigError;
 use fetcher_core::sink::telegram::LinkLocation as CLinkLocation;
 use fetcher_core::sink::Telegram as CTelegram;

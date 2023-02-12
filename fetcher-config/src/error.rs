@@ -11,7 +11,7 @@ use fetcher_core::error::GoogleOAuth2Error;
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error(transparent)]
-	ExternalError(#[from] crate::tasks::external_data::ExternalDataError),
+	ExternalError(#[from] crate::jobs::external_data::ExternalDataError),
 
 	#[error("Twitter API key isn't set up")]
 	TwitterApiKeysMissing,

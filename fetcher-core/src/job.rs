@@ -16,6 +16,7 @@ use crate::{
 };
 
 /// A single job, containing a single or a couple [`tasks`](`Task`), possibly refetching every set amount of time
+#[derive(Debug)]
 pub struct Job {
 	/// The tasks to run
 	pub tasks: Vec<Task>,

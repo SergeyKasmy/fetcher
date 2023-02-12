@@ -11,12 +11,13 @@ use super::{
 	sink::Sink,
 	source::Source,
 };
-use crate::{tasks::ParsedTask, Error};
+use crate::Error;
 use fetcher_core as fcore;
+use fetcher_core::job::Job as CoreJob;
 use fetcher_core::utils::OptionExt;
 
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 use tokio::sync::RwLock;
 
 pub type DisabledField = Option<bool>;
@@ -24,7 +25,7 @@ pub type TemplatesField = Option<Vec<String>>;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct Task {
+pub struct Job {
 	#[serde(rename = "read_filter_type")]
 	read_filter_kind: Option<self::read_filter::Kind>,
 	tag: Option<String>,
@@ -40,12 +41,8 @@ pub struct Task {
 	templates: TemplatesField,
 }
 
-impl Task {
-	pub fn parse(
-		self,
-		name: &str,
-		external: &dyn ProvideExternalData,
-	) -> Result<ParsedTask, Error> {
+impl Job {
+	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CoreJob, Error> {
 		let rf = match self.read_filter_kind.map(read_filter::Kind::parse) {
 			Some(expected_rf_type) => match external.read_filter(name, expected_rf_type) {
 				ExternalDataResult::Ok(rf) => Some(Arc::new(RwLock::new(rf))),
@@ -83,9 +80,11 @@ impl Task {
 			sink: self.sink.try_map(|x| x.parse(external))?,
 		};
 
-		Ok(ParsedTask {
-			inner,
-			refresh: self.refresh,
+		Ok(CoreJob {
+			tasks: vec![inner],
+			refetch_interval: self
+				.refresh
+				.map(|i| Duration::from_secs(i * 60 /* secs in a min */)),
 		})
 	}
 }

@@ -7,7 +7,7 @@
 mod telegram;
 
 use self::telegram::Telegram;
-use crate::{tasks::external_data::ProvideExternalData, Error};
+use crate::{jobs::external_data::ProvideExternalData, Error};
 use fetcher_core::sink;
 
 use serde::{Deserialize, Serialize};

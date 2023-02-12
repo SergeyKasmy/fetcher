@@ -5,7 +5,7 @@
  */
 
 use argh::FromArgs;
-use fetcher_config::tasks::ParsedTask;
+use fetcher_core::job::Job;
 use std::{path::PathBuf, str::FromStr};
 
 /// fetcher
@@ -107,13 +107,13 @@ impl FromStr for Setting {
 
 /// Wrapper around Parsed Task foreign struct to implement `FromStr` from valid task JSON
 #[derive(Debug)]
-pub struct JsonJob(pub ParsedTask);
+pub struct JsonJob(pub Job);
 
 impl FromStr for JsonJob {
 	type Err = serde_json::Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		use fetcher_config::tasks::external_data::{ExternalDataResult, ProvideExternalData};
+		use fetcher_config::jobs::external_data::{ExternalDataResult, ProvideExternalData};
 		use fetcher_core::read_filter::ReadFilter;
 
 		struct EmptyExternalData;
@@ -144,9 +144,9 @@ impl FromStr for JsonJob {
 			}
 		}
 
-		let config_task: fetcher_config::tasks::Task = serde_json::from_str(s)?;
+		let config_job: fetcher_config::jobs::Job = serde_json::from_str(s)?;
 		Ok(Self(
-			config_task.parse("Manual", &EmptyExternalData).unwrap(),
+			config_job.parse("Manual", &EmptyExternalData).unwrap(),
 		))
 	}
 }

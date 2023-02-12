@@ -6,7 +6,7 @@
 
 use super::prompt_user_for;
 use crate::settings::context::StaticContext as Context;
-use fetcher_config::{settings::Telegram as Config, tasks::external_data::ExternalDataError};
+use fetcher_config::{jobs::external_data::ExternalDataError, settings::Telegram as Config};
 
 use std::fs;
 
