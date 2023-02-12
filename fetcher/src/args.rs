@@ -37,7 +37,7 @@ pub enum TopLvlSubcommand {
 	Save(Save),
 }
 
-/// run all tasks
+/// run all jobs
 #[allow(clippy::struct_excessive_bools)]
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "run")]
@@ -50,19 +50,18 @@ pub struct Run {
 	#[argh(switch)]
 	pub dry_run: bool,
 
-	/// run only these tasks
+	/// run only these jobs
 	#[argh(positional)]
-	pub tasks: Vec<String>,
+	pub job_names: Vec<String>,
 }
 
-/// Run a task from the command line formatted as JSON
+/// Run a job from the command line formatted as JSON
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "run-manual")]
 pub struct RunManual {
-	// TODO: check for refresh presense instead of --once
-	/// run this task, formatted in JSON
+	/// run this job, formatted in JSON
 	#[argh(positional)]
-	pub task: JsonTask,
+	pub task: JsonJob,
 }
 
 /// Load all tasks from the config files and mark all old entries as read
@@ -108,9 +107,9 @@ impl FromStr for Setting {
 
 /// Wrapper around Parsed Task foreign struct to implement `FromStr` from valid task JSON
 #[derive(Debug)]
-pub struct JsonTask(pub ParsedTask);
+pub struct JsonJob(pub ParsedTask);
 
-impl FromStr for JsonTask {
+impl FromStr for JsonJob {
 	type Err = serde_json::Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
