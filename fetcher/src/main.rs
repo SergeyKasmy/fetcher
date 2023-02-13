@@ -26,7 +26,12 @@ use color_eyre::{
 	Report, Result,
 };
 use futures::future::join_all;
-use std::{collections::HashMap, fmt::Write, iter, time::Duration};
+use std::{
+	collections::HashMap,
+	fmt::Write,
+	iter,
+	time::{Duration, Instant},
+};
 use tokio::{
 	select,
 	sync::watch::{self, Receiver},
@@ -113,8 +118,13 @@ async fn async_main() -> Result<()> {
 
 	match args.subcommand {
 		args::TopLvlSubcommand::Run(run_args) => run_command(run_args, cx).await,
-		args::TopLvlSubcommand::RunManual(args::RunManual { task }) => {
-			run_jobs(iter::once(("Manual".to_owned(), task.0))).await?;
+		args::TopLvlSubcommand::RunManual(args::RunManual { job }) => {
+			run_jobs(
+				iter::once(("Manual".to_owned(), job.0)),
+				ErrorHandling::Forward,
+				cx,
+			)
+			.await?;
 
 			Ok(())
 		}
@@ -133,7 +143,7 @@ async fn async_main() -> Result<()> {
 				}
 			}
 
-			run_jobs(jobs).await?;
+			run_jobs(jobs, ErrorHandling::LogAndIgnore, cx).await?;
 
 			Ok(())
 		}
@@ -210,14 +220,24 @@ async fn run_command(
 		}
 	}
 
-	run_jobs(jobs).await?;
+	run_jobs(
+		jobs,
+		ErrorHandling::Sleep {
+			max_retries: 15,
+			err_count: 0,
+			last_error: None,
+		},
+		cx,
+	)
+	.await?;
 	Ok(())
 }
 
 #[allow(clippy::needless_pass_by_value)]
 fn get_jobs(run_by_name: Option<Vec<String>>, cx: Context) -> Result<Option<Jobs>> {
 	let run_by_name_is_some = run_by_name.is_some();
-	let tasks = settings::config::tasks::get_all(
+	// FIXME ::tasks:: -> ::jobs::
+	let jobs = settings::config::tasks::get_all(
 		run_by_name
 			.as_ref()
 			.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
@@ -226,10 +246,10 @@ fn get_jobs(run_by_name: Option<Vec<String>>, cx: Context) -> Result<Option<Jobs
 	)?;
 
 	if run_by_name_is_some {
-		if tasks.is_empty() {
-			tracing::info!("No enabled tasks found for the provided query");
+		if jobs.is_empty() {
+			tracing::info!("No enabled jobs found for the provided query");
 
-			let all_tasks = settings::config::tasks::get_all(
+			let all_jobs = settings::config::tasks::get_all(
 				run_by_name
 					.as_ref()
 					.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
@@ -237,51 +257,72 @@ fn get_jobs(run_by_name: Option<Vec<String>>, cx: Context) -> Result<Option<Jobs
 				cx,
 			)?;
 			tracing::info!(
-				"All available enabled tasks: {:?}",
-				all_tasks.keys().collect::<Vec<_>>()
+				"All available enabled jobs: {:?}",
+				all_jobs.keys().collect::<Vec<_>>()
 			);
 
 			return Ok(None);
 		}
 
 		tracing::info!(
-			"Found {} enabled tasks for the provided query: {:?}",
-			tasks.len(),
-			tasks.keys().collect::<Vec<_>>()
+			"Found {} enabled jobs for the provided query: {:?}",
+			jobs.len(),
+			jobs.keys().collect::<Vec<_>>()
 		);
 	} else {
-		if tasks.is_empty() {
-			tracing::info!("No enabled tasks found");
+		if jobs.is_empty() {
+			tracing::info!("No enabled jobs found");
 			return Ok(None);
 		}
 
 		tracing::info!(
-			"Found {} enabled tasks: {:?}",
-			tasks.len(),
-			tasks.keys().collect::<Vec<_>>()
+			"Found {} enabled jobs: {:?}",
+			jobs.len(),
+			jobs.keys().collect::<Vec<_>>()
 		);
 	}
 
-	Ok(Some(tasks))
+	Ok(Some(jobs))
 }
 
-async fn run_jobs(jobs: impl IntoIterator<Item = (JobName, Job)>) -> Result<()> {
+#[derive(Clone, Debug)]
+enum ErrorHandling {
+	Forward,
+	LogAndIgnore,
+	Sleep {
+		max_retries: u32,
+
+		// "private" state, should be 0 and None
+		err_count: u32,
+		last_error: Option<Instant>,
+	},
+}
+
+async fn run_jobs(
+	jobs: impl IntoIterator<Item = (JobName, Job)>,
+	error_handling: ErrorHandling,
+	cx: Context,
+) -> Result<()> {
 	let shutdown_rx = set_up_signal_handler();
 
 	let jobs = jobs
 		.into_iter()
 		.map(|(name, mut job)| {
 			let mut shutdown_rx = shutdown_rx.clone();
+			let mut error_handling = error_handling.clone();
 
 			let async_task = async move {
-				select! {
-					res = job.run(22 /* FIXME */) => res,
-					_ = shutdown_rx.changed() => {
-						tracing::info!("Task {name} shut down...");
-						Ok(())
+				loop {
+					select! {
+						res = job.run() => {
+							handle_errors(&mut error_handling, res, &job, cx).await.map_err(|e| (name.clone(), e))?;
+						}
+						_ = shutdown_rx.changed() => {
+							tracing::info!("Job {name} shut down...");
+							return Ok(());
+						}
 					}
 				}
-				.map_err(|e| (name, Report::from(e)))
 			};
 
 			let async_task_handle = tokio::spawn(async_task);
@@ -289,29 +330,32 @@ async fn run_jobs(jobs: impl IntoIterator<Item = (JobName, Job)>) -> Result<()> 
 		})
 		.collect::<Vec<_>>();
 
-	let errors = join_all(jobs)
+	// rust-analyzer is confused without these manual type annotation
+	let errors: Vec<(JobName, Report)> = join_all(jobs)
 		.await
 		.into_iter()
 		.filter_map(|r| match r {
 			Ok(()) => None,
 			Err(e) => Some(e),
 		})
-		.collect::<Vec<_>>();
+		.collect();
 
-	if errors.is_empty() {
-		Ok(())
-	} else {
-		Err(eyre!(
-			"{} tasks have finished with an error: {}",
-			errors.len(),
-			errors
-				.into_iter()
-				.enumerate()
-				.fold(String::new(), |mut err_str, (i, (name, err))| {
-					let _ = write!(err_str, "\n#{i} {name}: {err:?}"); // can't fail
-					err_str
-				})
-		))
+	match errors.as_slice() {
+		[] => Ok(()),
+		[(name, error)] => Err(eyre!("Job \"{name}\" has finished with an error: {error}")),
+		errors => {
+			Err(eyre!(
+				"{} jobs have finished with an error: {}",
+				errors.len(),
+				errors
+					.iter()
+					.enumerate()
+					.fold(String::new(), |mut err_str, (i, (name, error))| {
+						let _ = write!(err_str, "\n#{} {name}: {error}", i + 1); // can't fail
+						err_str
+					})
+			))
+		}
 	}
 }
 
@@ -329,7 +373,7 @@ fn set_up_signal_handler() -> Receiver<()> {
 		// shutdown signal recieved
 		shutdown_tx
 			.send(())
-			.expect("failed to broadcast shutdown signal to tasks");
+			.expect("failed to broadcast shutdown signal to the jobs");
 
 		tracing::info!("Press Ctrl-C again to force close");
 
@@ -360,79 +404,115 @@ fn set_up_signal_handler() -> Receiver<()> {
 	shutdown_rx
 }
 
-// version with broken error handling
-/*
-// FIXME: run the job itself, not the task
-#[tracing::instrument(skip(job, shutdown_rx, cx))]
-async fn run_job(
-	mut job: Job,
-	job_name: String,
-	mut shutdown_rx: Receiver<()>,
+async fn handle_errors(
+	stradegy: &mut ErrorHandling,
+	results: Result<(), Vec<Error>>,
+	job: &Job,
 	cx: Context,
 ) -> Result<()> {
-	// exit with an error if there were too many consecutive errors
-	const ERR_MAX_COUNT: u32 = 15; // around 22 days max pause time
+	let Err(errors) = results else {
+		return Ok(());
+	};
 
-	// number of consecutive(!!!) errors.
-	// we tolerate a pretty big amount for various reasons (being rate limited, server error, etc) but not infinite
-	let mut err_count = 0;
+	match stradegy {
+		ErrorHandling::Forward => (),
+		ErrorHandling::LogAndIgnore => {
+			for error in &errors {
+				tracing::error!("{error:?}");
+			}
 
-	loop {
-		select! {
-			res = job.inner.run() => {
-				match res {
-					Ok(()) => err_count = 0,
-					Err(err) => {
-						if err_count == ERR_MAX_COUNT {
-							return Err(err.into());
-						}
-
-						if let Some(network_err) = err.is_connection_error() {
-							tracing::warn!("Network error: {}", network_err.display_chain());
-						} else {
-							if let Error::Transform(transform_err) = &err {
-								settings::log::log_transform_err(transform_err, &job_name)?;
-							}
-
-							let err_msg = format!(
-								"Error #{} out of {} max allowed:\n{}",
-								err_count + 1, // +1 cause we are counting from 0 but it'd be strange to show "Error (0 out of 255)" to users
-								ERR_MAX_COUNT + 1,
-								err.display_chain()
-							);
-							tracing::error!("{}", err_msg);
-
-							// TODO: make this a context switch
-							// production error reporting
-							if !cfg!(debug_assertions) {
-								if let Err(e) = report_error(&job_name, &err_msg, cx).await {
-									tracing::error!("Unable to send error report to the admin: {e:?}",);
-								}
-							}
-						}
-
-						// sleep in exponention amount of minutes, begginning with 2^0 = 1 minute
-						let sleep_dur = 2u64.saturating_pow(err_count);
-						tracing::info!("Pausing task {job_name} for {sleep_dur}m");
-
-						sleep(Duration::from_secs(sleep_dur * 60 /* secs in a min*/)).await;
-						err_count += 1;
-
-						continue;
+			return Ok(());
+		}
+		ErrorHandling::Sleep {
+			max_retries,
+			err_count,
+			last_error,
+		} => {
+			if let Some(last_error) = last_error {
+				if let Some(refetch_interval) = job.refetch_interval {
+					// if time since last error is 2 times longer than the refresh duration, than the error count can safely be reset
+					// since there hasn't been any errors for a little while
+					// TODO: maybe figure out a more optimal time interval than just 2 times longer than the refresh timer
+					if last_error.elapsed() > refetch_interval * 2 {
+						*err_count = 0;
 					}
 				}
 			}
-			_ = shutdown_rx.changed() => {
-				tracing::info!("Task {job_name} shut down...");
-				return Ok(());
+
+			for err in errors {
+				if err_count == max_retries {
+					return Err(eyre!(err.display_chain()));
+				}
+
+				if let Some(network_err) = err.is_connection_error() {
+					tracing::warn!("Network error: {}", network_err.display_chain());
+				} else {
+					if let Error::Transform(transform_err) = &err {
+						// settings::log::log_transform_err(transform_err, &job_name)?;
+						settings::log::log_transform_err(transform_err, "FIXME")?;
+					}
+
+					let err_msg = format!(
+						"Error #{} out of {} max allowed:\n{}",
+						*err_count + 1, // +1 cause we are counting from 0 but it'd be strange to show "Error (0 out of 255)" to users
+						*max_retries,
+						err.display_chain()
+					);
+					tracing::error!("{}", err_msg);
+
+					// TODO: make this a context switch
+					// production error reporting
+					if !cfg!(debug_assertions) {
+						// if let Err(e) = report_error(&job_name, &err_msg, cx).await {
+						if let Err(e) = report_error("FIXME", &err_msg, cx).await {
+							tracing::error!("Unable to send error report to the admin: {e:?}",);
+						}
+					}
+				}
+
+				// sleep in exponention amount of minutes, begginning with 2^0 = 1 minute
+				let sleep_dur = 2u64.saturating_pow(*err_count);
+				// tracing::info!("Pausing job {job_name} for {sleep_dur}m");
+				tracing::info!("Pausing job FIXME for {sleep_dur}m");
+
+				*err_count += 1;
+				sleep(Duration::from_secs(sleep_dur * 60 /* secs in a min */)).await;
+			}
+
+			return Ok(());
 		}
+	}
+
+	Err(fold_task_errors(&errors))
+}
+
+fn fold_task_errors(task_errors: &[Error]) -> Report {
+	match task_errors {
+		[] => unreachable!(),
+		[error] => {
+			// FIXME: use .into()
+			eyre!(error.display_chain())
+		}
+		errors => {
+			let combined_err_str =
+				errors
+					.iter()
+					.enumerate()
+					.fold(String::new(), |mut err_str, (i, err)| {
+						let _ = write!(err_str, "\n{}: {}", i + 1, err.display_chain());
+						err_str
+					});
+
+			eyre!(
+				"{} tasks have finished with an error: {combined_err_str}",
+				errors.len()
+			)
 		}
 	}
 }
-*/
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
-async fn report_error(task_name: &str, err: &str, context: Context) -> Result<()> {
+async fn report_error(job_name: &str, err: &str, context: Context) -> Result<()> {
 	use fetcher_core::sink::{telegram::LinkLocation, Message, Telegram};
 
 	let admin_chat_id = std::env::var("FETCHER_TELEGRAM_ADMIN_CHAT_ID")
@@ -449,7 +529,7 @@ async fn report_error(task_name: &str, err: &str, context: Context) -> Result<()
 		..Default::default()
 	};
 	Telegram::new(bot, admin_chat_id, LinkLocation::default())
-		.send(msg, Some(task_name))
+		.send(msg, Some(job_name))
 		.await
 		.map_err(fetcher_core::error::Error::Sink)?;
 

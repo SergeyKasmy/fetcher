@@ -61,7 +61,7 @@ pub struct Run {
 pub struct RunManual {
 	/// run this job, formatted in JSON
 	#[argh(positional)]
-	pub task: JsonJob,
+	pub job: JsonJob,
 }
 
 /// Load all tasks from the config files and mark all old entries as read
