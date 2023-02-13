@@ -302,21 +302,37 @@ async fn run_jobs(
 	let jobs = jobs
 		.into_iter()
 		.map(|(name, mut job)| {
-			let mut shutdown_rx = shutdown_rx.clone();
-			let mut error_handling = error_handling.clone();
+			let async_job = {
+				let name = name.clone();
+				let mut error_handling = error_handling.clone();
 
-			let async_task = async move {
-				loop {
-					select! {
-						res = job.run() => {
-							match handle_errors(&mut error_handling, res, (&name, &job), cx).await {
-								ControlFlow::Continue(()) => (),
-								ControlFlow::Break(res) => return res.map_err(|e| (name.clone(), e)),
-							}
+				async move {
+					loop {
+						let job_result = job.run().await;
+						match handle_errors(job_result, &mut error_handling, (&name, &job), cx)
+							.await
+						{
+							ControlFlow::Continue(()) => (),
+							ControlFlow::Break(res) => return res.map_err(|e| (name, e)),
 						}
-						_ = shutdown_rx.changed() => {
-							tracing::info!("Job {name} shut down...");
-							return Ok(());
+					}
+				}
+			};
+
+			// tokio task
+			let async_task = {
+				let mut shutdown_rx = shutdown_rx.clone();
+
+				async move {
+					loop {
+						select! {
+							res = async_job => {
+								return res;
+							}
+							_ = shutdown_rx.changed() => {
+								tracing::info!("Job {name} shut down...");
+								return Ok(());
+							}
 						}
 					}
 				}
@@ -402,8 +418,8 @@ fn set_up_signal_handler() -> Receiver<()> {
 }
 
 async fn handle_errors(
-	stradegy: &mut ErrorHandling,
 	results: Result<(), Vec<Error>>,
+	stradegy: &mut ErrorHandling,
 	(job_name, job): (&JobName, &Job),
 	cx: Context,
 ) -> ControlFlow<Result<()>> {
