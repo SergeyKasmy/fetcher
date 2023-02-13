@@ -8,6 +8,7 @@ use super::prompt_user_for;
 use crate::settings::context::StaticContext as Context;
 use fetcher_config::{jobs::external_data::ExternalDataError, settings::Telegram as Config};
 
+use color_eyre::{eyre::WrapErr, Result};
 use std::fs;
 
 const FILE_NAME: &str = "telegram.json";
@@ -20,16 +21,16 @@ pub fn get(cx: Context) -> Result<String, ExternalDataError> {
 	Ok(conf.parse())
 }
 
-// FIXME
-pub fn prompt(cx: Context) -> Result<(), ExternalDataError> {
+pub fn prompt(cx: Context) -> Result<()> {
 	let token = prompt_user_for("Telegram bot API token: ")?;
 	let path = cx.data_path.join(FILE_NAME);
 
 	fs::write(
 		&path,
-		serde_json::to_string(&Config::unparse(token)).map_err(|e| (e, &path))?,
+		serde_json::to_string(&Config::unparse(token))
+			.expect("Config should always serialize to JSON without issues"),
 	)
-	.map_err(|e| (e, &path))?;
+	.wrap_err_with(|| path.to_string_lossy().into_owned())?;
 
 	Ok(())
 }
