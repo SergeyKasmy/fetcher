@@ -46,7 +46,10 @@ impl Job {
 
 			match self.refetch_interval {
 				Some(refetch_interval) => {
-					tracing::debug!("Putting job to sleep for {}m", refetch_interval.as_secs());
+					tracing::debug!(
+						"Putting job to sleep for {}m",
+						refetch_interval.as_secs() / 60
+					);
 					sleep(refetch_interval).await;
 				}
 				None => return Ok(()),

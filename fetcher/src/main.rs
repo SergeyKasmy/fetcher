@@ -30,6 +30,7 @@ use std::{
 	collections::HashMap,
 	fmt::Write,
 	iter,
+	ops::ControlFlow,
 	time::{Duration, Instant},
 };
 use tokio::{
@@ -308,7 +309,10 @@ async fn run_jobs(
 				loop {
 					select! {
 						res = job.run() => {
-							handle_errors(&mut error_handling, res, (&name, &job), cx).await.map_err(|e| (name.clone(), e))?;
+							match handle_errors(&mut error_handling, res, (&name, &job), cx).await {
+								ControlFlow::Continue(()) => (),
+								ControlFlow::Break(res) => return res.map_err(|e| (name.clone(), e)),
+							}
 						}
 						_ = shutdown_rx.changed() => {
 							tracing::info!("Job {name} shut down...");
@@ -402,9 +406,9 @@ async fn handle_errors(
 	results: Result<(), Vec<Error>>,
 	(job_name, job): (&JobName, &Job),
 	cx: Context,
-) -> Result<()> {
+) -> ControlFlow<Result<()>> {
 	let Err(errors) = results else {
-		return Ok(());
+		return ControlFlow::Break(Ok(()));
 	};
 
 	match stradegy {
@@ -414,7 +418,7 @@ async fn handle_errors(
 				tracing::error!("{error:?}");
 			}
 
-			return Ok(());
+			return ControlFlow::Continue(());
 		}
 		ErrorHandling::Sleep {
 			max_retries,
@@ -434,14 +438,16 @@ async fn handle_errors(
 
 			for err in errors {
 				if err_count == max_retries {
-					return Err(eyre!(err.display_chain()));
+					return ControlFlow::Break(Err(eyre!(err.display_chain())));
 				}
 
 				if let Some(network_err) = err.is_connection_error() {
 					tracing::warn!("Network error: {}", network_err.display_chain());
 				} else {
 					if let Error::Transform(transform_err) = &err {
-						settings::log::log_transform_err(transform_err, job_name)?;
+						if let Err(e) = settings::log::log_transform_err(transform_err, job_name) {
+							tracing::error!("Error logging transform error: {e:?}");
+						}
 					}
 
 					let err_msg = format!(
@@ -470,11 +476,11 @@ async fn handle_errors(
 				sleep(Duration::from_secs(sleep_dur * 60 /* secs in a min */)).await;
 			}
 
-			return Ok(());
+			return ControlFlow::Continue(());
 		}
 	}
 
-	Err(fold_task_errors(&errors))
+	ControlFlow::Break(Err(fold_task_errors(&errors)))
 }
 
 fn fold_task_errors(task_errors: &[Error]) -> Report {
