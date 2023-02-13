@@ -12,7 +12,7 @@ use fetcher_core::{
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case")] // deny_unknown_fields not allowed since it's flattened in [`Query`]
 pub enum ElementKind {
 	Tag(String),
@@ -20,28 +20,28 @@ pub enum ElementKind {
 	Attr { name: String, value: String },
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum DataLocation {
 	Text,
 	Attr(String),
 }
 
-#[derive(Deserialize, Serialize, Debug)] // deny_unknown_fields not allowed since it uses flatten
+#[derive(Deserialize, Serialize, Clone, Debug)] // deny_unknown_fields not allowed since it uses flatten
 pub struct ElementQuery {
 	#[serde(flatten)]
 	pub kind: ElementKind,
 	pub ignore: Option<Vec<ElementKind>>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct HtmlQueryRegex {
 	re: String,
 	replace_with: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)] // deny_unknown_fields not allowed since it's flattened in [`ImageQuery`]
+#[derive(Deserialize, Serialize, Clone, Debug)] // deny_unknown_fields not allowed since it's flattened in [`ImageQuery`]
 pub struct ElementDataQuery {
 	pub optional: Option<bool>,
 	pub query: Vec<ElementQuery>,

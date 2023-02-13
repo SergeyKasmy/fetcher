@@ -5,20 +5,13 @@
  */
 
 use super::{
-	action::Action,
-	external_data::{ExternalDataResult, ProvideExternalData},
-	read_filter,
-	sink::Sink,
-	source::Source,
+	action::Action, external_data::ProvideExternalData, read_filter, sink::Sink, task::Task,
 };
 use crate::Error;
-use fetcher_core as fcore;
 use fetcher_core::job::Job as CoreJob;
-use fetcher_core::utils::OptionExt;
 
 use serde::{Deserialize, Serialize};
-use std::{sync::Arc, time::Duration};
-use tokio::sync::RwLock;
+use std::time::Duration;
 
 pub type DisabledField = Option<bool>;
 pub type TemplatesField = Option<Vec<String>>;
@@ -27,14 +20,15 @@ pub type TemplatesField = Option<Vec<String>>;
 #[serde(deny_unknown_fields)]
 pub struct Job {
 	#[serde(rename = "read_filter_type")]
-	read_filter_kind: Option<self::read_filter::Kind>,
-	tag: Option<String>,
+	read_filter_kind: Option<read_filter::Kind>,
+	// tag: Option<String>,
 	refresh: Option<u64>,
-	source: Source,
 	#[serde(rename = "process")]
 	actions: Option<Vec<Action>>,
 	// TODO: several sinks or integrate into actions
 	sink: Option<Sink>,
+
+	tasks: Vec<Task>,
 
 	// these are meant to be used externally and are unused here
 	disabled: DisabledField,
@@ -42,46 +36,29 @@ pub struct Job {
 }
 
 impl Job {
-	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CoreJob, Error> {
-		let rf = match self.read_filter_kind.map(read_filter::Kind::parse) {
-			Some(expected_rf_type) => match external.read_filter(name, expected_rf_type) {
-				ExternalDataResult::Ok(rf) => Some(Arc::new(RwLock::new(rf))),
-				ExternalDataResult::Unavailable => {
-					tracing::warn!("Read filter is unavailable, skipping");
-					None
-				}
-				ExternalDataResult::Err(e) => return Err(e.into()),
-			},
-			None => None,
-		};
+	pub fn parse(
+		mut self,
+		name: &str,
+		external: &dyn ProvideExternalData,
+	) -> Result<CoreJob, Error> {
+		for task in &mut self.tasks {
+			task.read_filter_kind = task.read_filter_kind.or(self.read_filter_kind);
 
-		let actions = self.actions.try_map(|x| {
-			x.into_iter()
-				.filter_map(|act| match act {
-					Action::ReadFilter => {
-						if let Some(rf) = rf.clone() {
-							Some(Ok(fetcher_core::action::Action::Filter(
-								fetcher_core::action::filter::Kind::ReadFilter(rf),
-							)))
-						} else {
-							tracing::warn!("Can't use read filter transformer when no read filter is set up for the task!");
-							None
-						}
-					}
-					other => Some(other.parse()),
-				})
-				.collect::<Result<_, _>>()
-		})?;
+			if task.actions.is_none() {
+				task.actions = self.actions.clone();
+			}
 
-		let inner = fcore::task::Task {
-			tag: self.tag,
-			source: self.source.parse(rf, external)?,
-			actions,
-			sink: self.sink.try_map(|x| x.parse(external))?,
-		};
+			if task.sink.is_none() {
+				task.sink = self.sink.clone();
+			}
+		}
 
 		Ok(CoreJob {
-			tasks: vec![inner],
+			tasks: self
+				.tasks
+				.into_iter()
+				.map(|x| x.parse(name, external))
+				.collect::<Result<Vec<_>, _>>()?,
 			refetch_interval: self
 				.refresh
 				.map(|i| Duration::from_secs(i * 60 /* secs in a min */)),

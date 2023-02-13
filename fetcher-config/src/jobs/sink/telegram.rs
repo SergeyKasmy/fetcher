@@ -11,7 +11,7 @@ use crate::Error as ConfigError;
 use fetcher_core::sink::telegram::LinkLocation as CLinkLocation;
 use fetcher_core::sink::Telegram as CTelegram;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Telegram {
 	chat_id: i64,
@@ -19,7 +19,7 @@ pub struct Telegram {
 }
 
 /// Refer to [`crate::sink::message::LinkLocation`]
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum LinkLocation {
 	PreferTitle,

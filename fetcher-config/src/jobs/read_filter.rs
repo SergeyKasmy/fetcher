@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use fetcher_core::read_filter as core_rf;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Kind {
 	NewerThanRead,

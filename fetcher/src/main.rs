@@ -188,7 +188,7 @@ async fn run_command(
 	};
 
 	if dry_run {
-		tracing::debug!("Making all jobs dry");
+		tracing::trace!("Making all jobs dry");
 
 		for job in jobs.values_mut() {
 			for task in &mut job.tasks {
@@ -213,7 +213,7 @@ async fn run_command(
 	}
 
 	if once {
-		tracing::debug!("Disabling every job's refetch interval");
+		tracing::trace!("Disabling every job's refetch interval");
 
 		for job in jobs.values_mut() {
 			job.refetch_interval = None;
@@ -248,13 +248,7 @@ fn get_jobs(run_by_name: Option<Vec<String>>, cx: Context) -> Result<Option<Jobs
 		if jobs.is_empty() {
 			tracing::info!("No enabled jobs found for the provided query");
 
-			let all_jobs = settings::config::jobs::get_all(
-				run_by_name
-					.as_ref()
-					.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
-					.as_deref(),
-				cx,
-			)?;
+			let all_jobs = settings::config::jobs::get_all(None, cx)?;
 			tracing::info!(
 				"All available enabled jobs: {:?}",
 				all_jobs.keys().collect::<Vec<_>>()

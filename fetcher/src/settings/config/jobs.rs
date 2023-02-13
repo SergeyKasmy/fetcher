@@ -23,7 +23,7 @@ use serde::Deserialize;
 use std::path::Path;
 use walkdir::WalkDir;
 
-const TASKS_DIR_NAME: &str = "tasks";
+const JOBS_DIR_NAME: &str = "jobs";
 
 #[derive(Deserialize, Debug)]
 struct DisabledField {
@@ -48,7 +48,10 @@ pub fn get_all_from<'a>(
 	by_name: Option<&'a [&'a str]>,
 	cx: Context,
 ) -> impl Iterator<Item = Result<(String, Job)>> + 'a {
-	WalkDir::new(cfg_dir.join(TASKS_DIR_NAME))
+	let jobs_dir = cfg_dir.join(JOBS_DIR_NAME);
+	tracing::trace!("Searching for job configs in {jobs_dir:?}");
+
+	WalkDir::new(&jobs_dir)
 		.follow_links(true)
 		.into_iter()
 		.filter_map(move |cfg| {
@@ -72,19 +75,24 @@ pub fn get_all_from<'a>(
 				}
 			};
 
-			let file_name = Path::new(cfg.file_name());
-			let task_name = file_name.with_extension("").to_string_lossy().into_owned();
+			let job_name = cfg
+				.path()
+				.strip_prefix(&jobs_dir)
+				.expect("prefix should always be present because we just appended it")
+				.with_extension("")
+				.to_string_lossy()
+				.into_owned();
 
 			// if asked to find only tasks with names `by_name`,
 			// check if the current task name is in the list and filter it out if not
 			if let Some(by_name) = by_name {
-				if !by_name.iter().any(|x| *x == task_name) {
+				if !by_name.iter().any(|x| *x == job_name) {
 					return None;
 				}
 			}
 
-			let task = get(cfg.path(), &task_name, cx).transpose()?;
-			let named_task = task.map(|t| (task_name, t));
+			let task = get(cfg.path(), &job_name, cx).transpose()?;
+			let named_task = task.map(|t| (job_name, t));
 
 			Some(named_task)
 		})

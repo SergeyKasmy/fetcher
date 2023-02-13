@@ -10,5 +10,6 @@ pub mod job;
 pub mod read_filter;
 pub mod sink;
 pub mod source;
+pub mod task;
 
 pub use self::job::Job;

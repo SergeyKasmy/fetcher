@@ -11,10 +11,11 @@ use fetcher_core::action::transform::{
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct Shorten {
 	len: usize,
+	// TODO: add
 	// field: Field,
 }
 
