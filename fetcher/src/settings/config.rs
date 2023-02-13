@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub mod tasks;
+pub mod jobs;
 pub mod templates;
 
 use super::proj_dirs;

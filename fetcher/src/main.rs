@@ -236,8 +236,7 @@ async fn run_command(
 #[allow(clippy::needless_pass_by_value)]
 fn get_jobs(run_by_name: Option<Vec<String>>, cx: Context) -> Result<Option<Jobs>> {
 	let run_by_name_is_some = run_by_name.is_some();
-	// FIXME ::tasks:: -> ::jobs::
-	let jobs = settings::config::tasks::get_all(
+	let jobs = settings::config::jobs::get_all(
 		run_by_name
 			.as_ref()
 			.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
@@ -249,7 +248,7 @@ fn get_jobs(run_by_name: Option<Vec<String>>, cx: Context) -> Result<Option<Jobs
 		if jobs.is_empty() {
 			tracing::info!("No enabled jobs found for the provided query");
 
-			let all_jobs = settings::config::tasks::get_all(
+			let all_jobs = settings::config::jobs::get_all(
 				run_by_name
 					.as_ref()
 					.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
@@ -315,7 +314,7 @@ async fn run_jobs(
 				loop {
 					select! {
 						res = job.run() => {
-							handle_errors(&mut error_handling, res, &job, cx).await.map_err(|e| (name.clone(), e))?;
+							handle_errors(&mut error_handling, res, (&name, &job), cx).await.map_err(|e| (name.clone(), e))?;
 						}
 						_ = shutdown_rx.changed() => {
 							tracing::info!("Job {name} shut down...");
@@ -407,7 +406,7 @@ fn set_up_signal_handler() -> Receiver<()> {
 async fn handle_errors(
 	stradegy: &mut ErrorHandling,
 	results: Result<(), Vec<Error>>,
-	job: &Job,
+	(job_name, job): (&JobName, &Job),
 	cx: Context,
 ) -> Result<()> {
 	let Err(errors) = results else {
@@ -448,8 +447,7 @@ async fn handle_errors(
 					tracing::warn!("Network error: {}", network_err.display_chain());
 				} else {
 					if let Error::Transform(transform_err) = &err {
-						// settings::log::log_transform_err(transform_err, &job_name)?;
-						settings::log::log_transform_err(transform_err, "FIXME")?;
+						settings::log::log_transform_err(transform_err, job_name)?;
 					}
 
 					let err_msg = format!(
@@ -463,8 +461,7 @@ async fn handle_errors(
 					// TODO: make this a context switch
 					// production error reporting
 					if !cfg!(debug_assertions) {
-						// if let Err(e) = report_error(&job_name, &err_msg, cx).await {
-						if let Err(e) = report_error("FIXME", &err_msg, cx).await {
+						if let Err(e) = report_error(job_name, &err_msg, cx).await {
 							tracing::error!("Unable to send error report to the admin: {e:?}",);
 						}
 					}
@@ -473,7 +470,7 @@ async fn handle_errors(
 				// sleep in exponention amount of minutes, begginning with 2^0 = 1 minute
 				let sleep_dur = 2u64.saturating_pow(*err_count);
 				// tracing::info!("Pausing job {job_name} for {sleep_dur}m");
-				tracing::info!("Pausing job FIXME for {sleep_dur}m");
+				tracing::info!("Pausing job {job_name} for {sleep_dur}m");
 
 				*err_count += 1;
 				sleep(Duration::from_secs(sleep_dur * 60 /* secs in a min */)).await;
@@ -490,7 +487,7 @@ fn fold_task_errors(task_errors: &[Error]) -> Report {
 	match task_errors {
 		[] => unreachable!(),
 		[error] => {
-			// FIXME: use .into()
+			// TODO: use .into()
 			eyre!(error.display_chain())
 		}
 		errors => {
