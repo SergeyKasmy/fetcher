@@ -67,12 +67,20 @@ pub struct RunManual {
 /// Load all tasks from the config files and mark all old entries as read
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "mark-old-as-read")]
-pub struct MarkOldAsRead {}
+pub struct MarkOldAsRead {
+	/// mark only these jobs as read
+	#[argh(positional)]
+	pub job_names: Vec<String>,
+}
 
 /// Load all tasks from the config files and verify their format
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "verify")]
-pub struct Verify {}
+pub struct Verify {
+	/// verify only these jobs
+	#[argh(positional)]
+	pub job_names: Vec<String>,
+}
 
 /// save a setting
 #[derive(FromArgs, Debug)]

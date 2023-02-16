@@ -129,9 +129,14 @@ async fn async_main() -> Result<()> {
 
 			Ok(())
 		}
-		args::TopLvlSubcommand::MarkOldAsRead(args::MarkOldAsRead {}) => {
-			// TODO: add verify by name
-			let Some(mut jobs) = get_jobs(None, cx)? else {
+		args::TopLvlSubcommand::MarkOldAsRead(args::MarkOldAsRead { job_names }) => {
+			let job_names = if job_names.is_empty() {
+				None
+			} else {
+				Some(job_names)
+			};
+
+			let Some(mut jobs) = get_jobs(job_names, cx)? else {
 				return Ok(());
 			};
 
@@ -145,12 +150,18 @@ async fn async_main() -> Result<()> {
 			}
 
 			run_jobs(jobs, ErrorHandling::LogAndIgnore, cx).await?;
+			tracing::info!("Marked jobs as read, exiting...");
 
 			Ok(())
 		}
-		args::TopLvlSubcommand::Verify(args::Verify {}) => {
-			// TODO: add verify by name
-			let _ = get_jobs(None, cx)?;
+		args::TopLvlSubcommand::Verify(args::Verify { job_names }) => {
+			let job_names = if job_names.is_empty() {
+				None
+			} else {
+				Some(job_names)
+			};
+
+			let _ = get_jobs(job_names, cx)?;
 			tracing::info!("Everything verified to be working properly, exiting...");
 
 			Ok(())
@@ -287,6 +298,8 @@ enum ErrorHandling {
 		max_retries: u32,
 
 		// "private" state, should be 0 and None
+		// there's no point in creating a private struct with a constructor just for these
+		// since they are for private use anyways and aren't used more than a couple of times
 		err_count: u32,
 		last_error: Option<Instant>,
 	},
