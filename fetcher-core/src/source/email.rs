@@ -47,6 +47,7 @@ pub struct Email {
 	pub view_mode: ViewMode,
 }
 
+// I'd make that a function but the imap crate didn't want to agree with me
 macro_rules! authenticate {
 	($login:expr, $auth:expr, $client:expr) => {{
 		let auth = $auth;

@@ -57,7 +57,17 @@ impl Task {
 		// entries should be sorted newest to oldest but we should send oldest first
 		for entry in entries.into_iter().rev() {
 			if let Some(sink) = self.sink.as_ref() {
-				sink.send(entry.msg, self.tag.as_deref()).await?;
+				// use raw_contents as msg.body if the message is empty
+				let mut msg = entry.msg;
+				if msg.title.is_none()
+					&& msg.body.is_none()
+					&& msg.link.is_none()
+					&& msg.media.is_none()
+				{
+					msg.body = entry.raw_contents.clone();
+				}
+
+				sink.send(msg, self.tag.as_deref()).await?;
 			}
 
 			if let Some(id) = &entry.id {
