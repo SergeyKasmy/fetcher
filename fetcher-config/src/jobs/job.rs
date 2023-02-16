@@ -17,15 +17,30 @@ pub type DisabledField = Option<bool>;
 pub type TemplatesField = Option<Vec<String>>;
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct Job {
+#[serde(untagged)]
+pub enum Job {
+	SingleTask(SingleTaskJob),
+	SeveralTasks(SeveralTasksJob),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct SingleTaskJob {
+	refresh: Option<u64>,
+	#[serde(flatten)]
+	task: Task,
+
+	// these are meant to be used externally and are unused here
+	disabled: DisabledField,
+	templates: TemplatesField,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct SeveralTasksJob {
 	#[serde(rename = "read_filter_type")]
 	read_filter_kind: Option<read_filter::Kind>,
-	// tag: Option<String>,
 	refresh: Option<u64>,
 	#[serde(rename = "process")]
 	actions: Option<Vec<Action>>,
-	// TODO: several sinks or integrate into actions
 	sink: Option<Sink>,
 
 	tasks: Vec<Task>,
@@ -36,6 +51,26 @@ pub struct Job {
 }
 
 impl Job {
+	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CoreJob, Error> {
+		match self {
+			Job::SingleTask(x) => x.parse(name, external),
+			Job::SeveralTasks(x) => x.parse(name, external),
+		}
+	}
+}
+
+impl SingleTaskJob {
+	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CoreJob, Error> {
+		Ok(CoreJob {
+			tasks: vec![self.task.parse(name, external)?],
+			refetch_interval: self
+				.refresh
+				.map(|i| Duration::from_secs(i * 60 /* secs in a min */)),
+		})
+	}
+}
+
+impl SeveralTasksJob {
 	pub fn parse(
 		mut self,
 		name: &str,

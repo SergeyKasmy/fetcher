@@ -29,6 +29,7 @@ pub struct Task {
 	pub(crate) source: Source,
 	#[serde(rename = "process")]
 	pub(crate) actions: Option<Vec<Action>>,
+	// TODO: several sinks or integrate into actions
 	pub(crate) sink: Option<Sink>,
 }
 

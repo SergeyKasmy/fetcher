@@ -33,6 +33,7 @@ use std::{
 	ops::ControlFlow,
 	time::{Duration, Instant},
 };
+use tap::Tap;
 use tokio::{
 	select,
 	sync::watch::{self, Receiver},
@@ -263,7 +264,10 @@ fn get_jobs(run_by_name: Option<Vec<String>>, cx: Context) -> Result<Option<Jobs
 			let all_jobs = settings::config::jobs::get_all(None, cx)?;
 			tracing::info!(
 				"All available enabled jobs: {:?}",
-				all_jobs.keys().collect::<Vec<_>>()
+				all_jobs
+					.keys()
+					.collect::<Vec<_>>()
+					.tap_mut(|x| x.sort_unstable())
 			);
 
 			return Ok(None);
@@ -272,7 +276,9 @@ fn get_jobs(run_by_name: Option<Vec<String>>, cx: Context) -> Result<Option<Jobs
 		tracing::info!(
 			"Found {} enabled jobs for the provided query: {:?}",
 			jobs.len(),
-			jobs.keys().collect::<Vec<_>>()
+			jobs.keys()
+				.collect::<Vec<_>>()
+				.tap_mut(|x| x.sort_unstable())
 		);
 	} else {
 		if jobs.is_empty() {
@@ -283,7 +289,9 @@ fn get_jobs(run_by_name: Option<Vec<String>>, cx: Context) -> Result<Option<Jobs
 		tracing::info!(
 			"Found {} enabled jobs: {:?}",
 			jobs.len(),
-			jobs.keys().collect::<Vec<_>>()
+			jobs.keys()
+				.collect::<Vec<_>>()
+				.tap_mut(|x| x.sort_unstable())
 		);
 	}
 

@@ -54,8 +54,8 @@ pub fn get_all_from<'a>(
 	WalkDir::new(&jobs_dir)
 		.follow_links(true)
 		.into_iter()
-		.filter_map(move |cfg| {
-			let cfg = match cfg {
+		.filter_map(move |dir_entry| {
+			let file = match dir_entry {
 				Ok(dir_entry) => {
 					// filter out files with no extension
 					let Some(ext) = dir_entry.path().extension() else {
@@ -75,7 +75,7 @@ pub fn get_all_from<'a>(
 				}
 			};
 
-			let job_name = cfg
+			let job_name = file
 				.path()
 				.strip_prefix(&jobs_dir)
 				.expect("prefix should always be present because we just appended it")
@@ -91,7 +91,9 @@ pub fn get_all_from<'a>(
 				}
 			}
 
-			let task = get(cfg.path(), &job_name, cx).transpose()?;
+			let task = get(file.path(), &job_name, cx)
+				.map_err(|e| e.wrap_err(format!("Invalid config at: {}", file.path().display())))
+				.transpose()?;
 			let named_task = task.map(|t| (job_name, t));
 
 			Some(named_task)
