@@ -24,7 +24,7 @@ pub struct Task {
 	/// An optional tag that may be put near a message body to differentiate this task from others that may be similar
 	pub tag: Option<String>,
 	/// The source where to fetch some data from
-	pub source: Source,
+	pub source: Option<Source>,
 	/// A list of optional transformators which to run the data received from the source through
 	pub actions: Option<Vec<Action>>,
 	/// The sink where to send the data to
@@ -40,7 +40,10 @@ impl Task {
 		tracing::trace!("Running task");
 
 		let entries = {
-			let raw = self.source.get().await?;
+			let raw = match &mut self.source {
+				Some(source) => source.get().await?,
+				None => vec![Entry::default()], // return just an empty entry if the task is not set
+			};
 
 			tracing::trace!("Got {} raw entries from the source(s)", raw.len());
 
@@ -72,12 +75,11 @@ impl Task {
 
 			if let Some(id) = &entry.id {
 				match &mut self.source {
-					Source::WithSharedReadFilter { rf, .. } => {
-						if let Some(rf) = rf {
-							rf.write().await.mark_as_read(id)?;
-						}
+					Some(Source::WithSharedReadFilter { rf: Some(rf), .. }) => {
+						rf.write().await.mark_as_read(id)?;
 					}
-					Source::WithCustomReadFilter(x) => x.mark_as_read(id).await?,
+					Some(Source::WithCustomReadFilter(x)) => x.mark_as_read(id).await?,
+					_ => (),
 				}
 			}
 		}

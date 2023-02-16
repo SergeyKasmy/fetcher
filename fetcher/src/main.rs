@@ -206,15 +206,17 @@ async fn run_command(
 		for job in jobs.values_mut() {
 			for task in &mut job.tasks {
 				// don't save read filtered items to the fs
-				match &mut task.source {
-					Source::WithSharedReadFilter { rf, kind: _ } => {
-						if let Some(rf) = rf {
-							rf.write().await.external_save = None;
+				if let Some(source) = &mut task.source {
+					match source {
+						Source::WithSharedReadFilter { rf, kind: _ } => {
+							if let Some(rf) = rf {
+								rf.write().await.external_save = None;
+							}
 						}
+						Source::WithCustomReadFilter(custom_rf_source) => match custom_rf_source {
+							WithCustomRF::Email(e) => e.view_mode = email::ViewMode::ReadOnly,
+						},
 					}
-					Source::WithCustomReadFilter(custom_rf_source) => match custom_rf_source {
-						WithCustomRF::Email(e) => e.view_mode = email::ViewMode::ReadOnly,
-					},
 				}
 
 				// don't send anything anywhere, just print

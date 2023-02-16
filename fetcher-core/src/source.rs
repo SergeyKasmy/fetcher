@@ -49,7 +49,7 @@ pub struct WithSharedRF(Vec<WithSharedRFKind>);
 /// All sources that support a shared [`ReadFilter`](`crate::read_filter::ReadFilter`)
 #[derive(Debug)]
 pub enum WithSharedRFKind {
-	/// Just create a single entry with its raw_contents set to this string
+	/// Create a single entry with its raw_contents field set to this string
 	String(String),
 	/// Refer to [`File`]
 	File(File),

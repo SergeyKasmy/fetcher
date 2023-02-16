@@ -26,7 +26,7 @@ pub struct Task {
 	#[serde(rename = "read_filter_type")]
 	pub(crate) read_filter_kind: Option<read_filter::Kind>,
 	pub(crate) tag: Option<String>,
-	pub(crate) source: Source,
+	pub(crate) source: Option<Source>,
 	#[serde(rename = "process")]
 	pub(crate) actions: Option<Vec<Action>>,
 	// TODO: several sinks or integrate into actions
@@ -67,7 +67,7 @@ impl Task {
 
 		Ok(CoreTask {
 			tag: self.tag,
-			source: self.source.parse(rf, external)?,
+			source: self.source.map(|x| x.parse(rf, external)).transpose()?,
 			actions,
 			sink: self.sink.try_map(|x| x.parse(external))?,
 		})
