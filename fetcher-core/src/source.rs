@@ -13,16 +13,13 @@ pub mod http;
 pub mod reddit;
 pub mod twitter;
 
-pub use self::email::Email;
-pub use self::file::File;
-pub use self::http::Http;
-pub use self::reddit::Reddit;
-pub use self::twitter::Twitter;
+pub use self::{email::Email, file::File, http::Http, reddit::Reddit, twitter::Twitter};
 
-use crate::entry::Entry;
-use crate::error::source::EmailError;
-use crate::error::source::Error as SourceError;
-use crate::read_filter::ReadFilter;
+use crate::{
+	entry::Entry,
+	error::source::{EmailError, Error as SourceError},
+	read_filter::ReadFilter,
+};
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -52,6 +49,8 @@ pub struct WithSharedRF(Vec<WithSharedRFKind>);
 /// All sources that support a shared [`ReadFilter`](`crate::read_filter::ReadFilter`)
 #[derive(Debug)]
 pub enum WithSharedRFKind {
+	/// Just create a single entry with its raw_contents set to this string
+	String(String),
 	/// Refer to [`File`]
 	File(File),
 	/// Refer to [`Http`]
@@ -122,6 +121,10 @@ impl WithSharedRF {
 
 		for s in &mut self.0 {
 			match s {
+				K::String(s) => entries.push(Entry {
+					raw_contents: Some(s.clone()),
+					..Default::default()
+				}),
 				K::Http(x) => entries.push(x.get().await?),
 				K::Twitter(x) => entries.extend(x.get().await?),
 				K::File(x) => entries.push(x.get().await?),

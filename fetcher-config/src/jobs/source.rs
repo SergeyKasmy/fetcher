@@ -8,9 +8,12 @@ pub mod email;
 pub mod file;
 pub mod http;
 pub mod reddit;
+pub mod string;
 pub mod twitter;
 
-use self::{email::Email, file::File, http::Http, reddit::Reddit, twitter::Twitter};
+use self::{
+	email::Email, file::File, http::Http, reddit::Reddit, string::StringSource, twitter::Twitter,
+};
 use crate::{jobs::external_data::ProvideExternalData, Error};
 use fetcher_core::{read_filter::ReadFilter as CReadFilter, source::Source as CSource};
 
@@ -23,6 +26,7 @@ use tokio::sync::RwLock;
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Source {
 	// with shared read filter
+	String(StringSource),
 	Http(Http),
 	Twitter(Twitter),
 	File(File),
@@ -38,7 +42,7 @@ impl Source {
 		rf: Option<Arc<RwLock<CReadFilter>>>,
 		external: &dyn ProvideExternalData,
 	) -> Result<CSource, Error> {
-		// make a CSource::WithSharedReadFilter out of a CWithSharedRFKind
+		// make a CSource::WithSharedReadFilter out of a CWithSharedRF
 		macro_rules! WithSharedRF {
 			($source:expr) => {
 				CSource::WithSharedReadFilter { rf, kind: $source }
@@ -46,6 +50,7 @@ impl Source {
 		}
 
 		Ok(match self {
+			Self::String(x) => WithSharedRF!(x.parse()),
 			Self::Http(x) => WithSharedRF!(x.parse()?),
 			Self::Twitter(x) => WithSharedRF!(x.parse(external)?),
 			Self::File(x) => WithSharedRF!(x.parse()),

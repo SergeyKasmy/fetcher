@@ -8,10 +8,11 @@
 //!
 //! This module contains [`File`] source
 
+use std::path::PathBuf;
+use tokio::fs;
+
 use crate::entry::Entry;
 use crate::error::source::Error as SourceError;
-
-use std::path::PathBuf;
 
 /// File source. Reads contents of a file and puts them into [`raw_contents`](`crate::entry::Entry::raw_contents`)
 #[derive(Debug)]
@@ -24,7 +25,7 @@ impl File {
 	/// Read data from a file from the file system, returning its contents in the [`Entry.raw_contents`] field
 	#[tracing::instrument(skip_all)]
 	pub async fn get(&self) -> Result<Entry, SourceError> {
-		let text = tokio::fs::read_to_string(&self.path)
+		let text = fs::read_to_string(&self.path)
 			.await
 			.map(|s| s.trim().to_owned())
 			.map_err(|e| SourceError::FileRead(e, self.path.clone()))?;
