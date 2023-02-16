@@ -33,10 +33,10 @@ pub fn default_log_path() -> Result<PathBuf> {
 }
 
 /// Save entry contents from a task to a <task name>/<current time>.txt file in `default_log_path()` dir
-pub fn log_transform_err(e: &TransformError, task_name: &str) -> Result<()> {
+pub fn log_transform_err(e: &TransformError, job_name: &str) -> Result<()> {
 	let root_dir = default_log_path()?;
 	let err_id = format!(
-		"errors/{task_name}/{}",
+		"errors/{job_name}/{}",
 		SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
 	);
 	let log_dir = root_dir.join(err_id);

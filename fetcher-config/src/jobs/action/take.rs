@@ -8,14 +8,14 @@ use fetcher_core::action::filter::take as core_take;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Take {
 	from: TakeFrom,
 	num: usize,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum TakeFrom {
 	Beginning,

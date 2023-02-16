@@ -12,7 +12,7 @@ use fetcher_core::{
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Json {
 	#[serde(rename = "item_query")]
@@ -34,7 +34,7 @@ pub struct Json {
 	pub imgq: Option<Vec<StringQuery>>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum Key {
 	String(String),
@@ -42,7 +42,7 @@ pub enum Key {
 }
 pub type Keys = Vec<Key>;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Query {
 	#[serde(rename = "query")]
@@ -50,7 +50,7 @@ pub struct Query {
 	pub optional: Option<bool>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct StringQuery {
 	#[serde(flatten)]
@@ -58,7 +58,7 @@ pub struct StringQuery {
 	pub regex: Option<JsonQueryRegex>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct JsonQueryRegex {
 	re: String,

@@ -6,21 +6,10 @@
 
 pub mod action;
 pub mod external_data;
+pub mod job;
 pub mod read_filter;
 pub mod sink;
 pub mod source;
 pub mod task;
 
-pub use self::task::Task;
-
-use fetcher_core::task::Task as CoreTask;
-
-use std::collections::HashMap;
-
-pub type ParsedTasks = HashMap<String, ParsedTask>;
-
-#[derive(Debug)]
-pub struct ParsedTask {
-	pub inner: CoreTask,
-	pub refresh: Option<u64>,
-}
+pub use self::job::Job;

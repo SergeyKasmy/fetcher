@@ -5,23 +5,25 @@
  */
 
 use super::Field;
-use fetcher_core::action::transform::field::trim::Trim as CTrim;
-use fetcher_core::action::transform::field::Kind as CFieldTransformKind;
-use fetcher_core::action::transform::Transform as CTransform;
+use fetcher_core::action::transform::{
+	field::{set::Set as CSet, Kind as CFieldTransformKind},
+	Transform as CTransform,
+};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(transparent)]
-pub struct Trim {
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct Set {
 	pub field: Field,
+	pub value: Option<String>,
 }
 
-impl Trim {
+impl Set {
 	pub fn parse(self) -> CTransform {
 		CTransform::Field {
 			field: self.field.parse(),
-			kind: CFieldTransformKind::Trim(CTrim),
+			kind: CFieldTransformKind::Set(CSet(self.value)),
 		}
 	}
 }

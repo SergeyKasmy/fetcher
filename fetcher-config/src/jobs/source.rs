@@ -11,7 +11,7 @@ pub mod reddit;
 pub mod twitter;
 
 use self::{email::Email, file::File, http::Http, reddit::Reddit, twitter::Twitter};
-use crate::{tasks::external_data::ProvideExternalData, Error};
+use crate::{jobs::external_data::ProvideExternalData, Error};
 use fetcher_core::{read_filter::ReadFilter as CReadFilter, source::Source as CSource};
 
 use serde::{Deserialize, Serialize};

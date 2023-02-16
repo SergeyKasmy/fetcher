@@ -62,7 +62,7 @@ pub enum ImapError {
 	TlsInitFailed(#[source] imap::Error),
 
 	#[error(transparent)]
-	GoogleAuth(Box<crate::Error>),
+	GoogleAuth(Box<crate::error::Error>),
 
 	#[error("Authentication error")]
 	Auth(#[source] imap::Error),

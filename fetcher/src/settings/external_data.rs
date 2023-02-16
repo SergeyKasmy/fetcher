@@ -5,7 +5,7 @@
  */
 
 use super::{context::StaticContext, data, read_filter};
-use fetcher_config::tasks::external_data::{ExternalDataResult, ProvideExternalData};
+use fetcher_config::jobs::external_data::{ExternalDataResult, ProvideExternalData};
 use fetcher_core::read_filter::{Kind as ReadFilterKind, ReadFilter};
 
 pub struct ExternalDataFromDataDir {

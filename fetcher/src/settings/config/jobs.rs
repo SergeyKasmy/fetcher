@@ -7,12 +7,14 @@
 // TODO: add trace logging, e.g. all config dirs, all config files, stuff like that
 
 use super::CONFIG_FILE_EXT;
-use crate::settings::{
-	self, context::StaticContext as Context, external_data::ExternalDataFromDataDir,
+use crate::{
+	settings::{self, context::StaticContext as Context, external_data::ExternalDataFromDataDir},
+	Jobs,
 };
-use fetcher_config::tasks::{task::Task as ConfigTask, ParsedTask, ParsedTasks};
+use fetcher_config::jobs::Job as ConfigJob;
 
 use color_eyre::{eyre::eyre, Result};
+use fetcher_core::job::Job;
 use figment::{
 	providers::{Format, Yaml},
 	Figment,
@@ -21,20 +23,20 @@ use serde::Deserialize;
 use std::path::Path;
 use walkdir::WalkDir;
 
-const TASKS_DIR_NAME: &str = "tasks";
+const JOBS_DIR_NAME: &str = "jobs";
 
 #[derive(Deserialize, Debug)]
 struct DisabledField {
-	disabled: fetcher_config::tasks::task::DisabledField,
+	disabled: fetcher_config::jobs::job::DisabledField,
 }
 
 #[derive(Deserialize, Debug)]
 struct TemplatesField {
-	templates: fetcher_config::tasks::task::TemplatesField,
+	templates: fetcher_config::jobs::job::TemplatesField,
 }
 
 #[tracing::instrument(skip(cx))]
-pub fn get_all(by_name: Option<&[&str]>, cx: Context) -> Result<ParsedTasks> {
+pub fn get_all(by_name: Option<&[&str]>, cx: Context) -> Result<Jobs> {
 	cx.conf_paths
 		.iter()
 		.flat_map(|dir| get_all_from(dir, by_name, cx))
@@ -45,12 +47,15 @@ pub fn get_all_from<'a>(
 	cfg_dir: &'a Path,
 	by_name: Option<&'a [&'a str]>,
 	cx: Context,
-) -> impl Iterator<Item = Result<(String, ParsedTask)>> + 'a {
-	WalkDir::new(cfg_dir.join(TASKS_DIR_NAME))
+) -> impl Iterator<Item = Result<(String, Job)>> + 'a {
+	let jobs_dir = cfg_dir.join(JOBS_DIR_NAME);
+	tracing::trace!("Searching for job configs in {jobs_dir:?}");
+
+	WalkDir::new(&jobs_dir)
 		.follow_links(true)
 		.into_iter()
-		.filter_map(move |cfg| {
-			let cfg = match cfg {
+		.filter_map(move |dir_entry| {
+			let file = match dir_entry {
 				Ok(dir_entry) => {
 					// filter out files with no extension
 					let Some(ext) = dir_entry.path().extension() else {
@@ -70,26 +75,33 @@ pub fn get_all_from<'a>(
 				}
 			};
 
-			let file_name = Path::new(cfg.file_name());
-			let task_name = file_name.with_extension("").to_string_lossy().into_owned();
+			let job_name = file
+				.path()
+				.strip_prefix(&jobs_dir)
+				.expect("prefix should always be present because we just appended it")
+				.with_extension("")
+				.to_string_lossy()
+				.into_owned();
 
 			// if asked to find only tasks with names `by_name`,
 			// check if the current task name is in the list and filter it out if not
 			if let Some(by_name) = by_name {
-				if !by_name.iter().any(|x| *x == task_name) {
+				if !by_name.iter().any(|x| *x == job_name) {
 					return None;
 				}
 			}
 
-			let task = get(cfg.path(), &task_name, cx).transpose()?;
-			let named_task = task.map(|t| (task_name, t));
+			let task = get(file.path(), &job_name, cx)
+				.map_err(|e| e.wrap_err(format!("Invalid config at: {}", file.path().display())))
+				.transpose()?;
+			let named_task = task.map(|t| (job_name, t));
 
 			Some(named_task)
 		})
 }
 
 #[tracing::instrument(skip(cx))]
-pub fn get(path: &Path, name: &str, cx: Context) -> Result<Option<ParsedTask>> {
+pub fn get(path: &Path, name: &str, cx: Context) -> Result<Option<Job>> {
 	tracing::trace!("Parsing a task from file");
 
 	let task_file = Figment::new().merge(Yaml::file(path));
@@ -117,7 +129,7 @@ pub fn get(path: &Path, name: &str, cx: Context) -> Result<Option<ParsedTask>> {
 	}
 
 	let full_conf = full_conf.merge(Yaml::file(path));
-	let task: ConfigTask = full_conf.extract()?;
+	let task: ConfigJob = full_conf.extract()?;
 
 	Ok(Some(task.parse(name, &ExternalDataFromDataDir { cx })?))
 }

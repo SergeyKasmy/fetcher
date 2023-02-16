@@ -4,6 +4,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
+
+use crate::Error;
+
 use super::{
 	action::Action,
 	external_data::{ExternalDataResult, ProvideExternalData},
@@ -11,41 +18,23 @@ use super::{
 	sink::Sink,
 	source::Source,
 };
-use crate::{tasks::ParsedTask, Error};
-use fetcher_core as fcore;
-use fetcher_core::utils::OptionExt;
-
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tokio::sync::RwLock;
-
-pub type DisabledField = Option<bool>;
-pub type TemplatesField = Option<Vec<String>>;
+use fetcher_core::{task::Task as CoreTask, utils::OptionExt};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Task {
 	#[serde(rename = "read_filter_type")]
-	read_filter_kind: Option<self::read_filter::Kind>,
-	tag: Option<String>,
-	refresh: Option<u64>,
-	source: Source,
+	pub(crate) read_filter_kind: Option<read_filter::Kind>,
+	pub(crate) tag: Option<String>,
+	pub(crate) source: Source,
 	#[serde(rename = "process")]
-	actions: Option<Vec<Action>>,
+	pub(crate) actions: Option<Vec<Action>>,
 	// TODO: several sinks or integrate into actions
-	sink: Option<Sink>,
-
-	// these are meant to be used externally and are unused here
-	disabled: DisabledField,
-	templates: TemplatesField,
+	pub(crate) sink: Option<Sink>,
 }
 
 impl Task {
-	pub fn parse(
-		self,
-		name: &str,
-		external: &dyn ProvideExternalData,
-	) -> Result<ParsedTask, Error> {
+	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CoreTask, Error> {
 		let rf = match self.read_filter_kind.map(read_filter::Kind::parse) {
 			Some(expected_rf_type) => match external.read_filter(name, expected_rf_type) {
 				ExternalDataResult::Ok(rf) => Some(Arc::new(RwLock::new(rf))),
@@ -76,16 +65,11 @@ impl Task {
 				.collect::<Result<_, _>>()
 		})?;
 
-		let inner = fcore::task::Task {
+		Ok(CoreTask {
 			tag: self.tag,
 			source: self.source.parse(rf, external)?,
 			actions,
 			sink: self.sink.try_map(|x| x.parse(external))?,
-		};
-
-		Ok(ParsedTask {
-			inner,
-			refresh: self.refresh,
 		})
 	}
 }

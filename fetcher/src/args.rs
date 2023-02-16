@@ -5,7 +5,7 @@
  */
 
 use argh::FromArgs;
-use fetcher_config::tasks::ParsedTask;
+use fetcher_core::job::Job;
 use std::{path::PathBuf, str::FromStr};
 
 /// fetcher
@@ -37,7 +37,7 @@ pub enum TopLvlSubcommand {
 	Save(Save),
 }
 
-/// run all tasks
+/// run all jobs
 #[allow(clippy::struct_excessive_bools)]
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "run")]
@@ -50,30 +50,37 @@ pub struct Run {
 	#[argh(switch)]
 	pub dry_run: bool,
 
-	/// run only these tasks
+	/// run only these jobs
 	#[argh(positional)]
-	pub tasks: Vec<String>,
+	pub job_names: Vec<String>,
 }
 
-/// Run a task from the command line formatted as JSON
+/// Run a job from the command line formatted as JSON
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "run-manual")]
 pub struct RunManual {
-	// TODO: check for refresh presense instead of --once
-	/// run this task, formatted in JSON
+	/// run this job, formatted in JSON
 	#[argh(positional)]
-	pub task: JsonTask,
+	pub job: JsonJob,
 }
 
 /// Load all tasks from the config files and mark all old entries as read
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "mark-old-as-read")]
-pub struct MarkOldAsRead {}
+pub struct MarkOldAsRead {
+	/// mark only these jobs as read
+	#[argh(positional)]
+	pub job_names: Vec<String>,
+}
 
 /// Load all tasks from the config files and verify their format
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "verify")]
-pub struct Verify {}
+pub struct Verify {
+	/// verify only these jobs
+	#[argh(positional)]
+	pub job_names: Vec<String>,
+}
 
 /// save a setting
 #[derive(FromArgs, Debug)]
@@ -108,13 +115,13 @@ impl FromStr for Setting {
 
 /// Wrapper around Parsed Task foreign struct to implement `FromStr` from valid task JSON
 #[derive(Debug)]
-pub struct JsonTask(pub ParsedTask);
+pub struct JsonJob(pub Job);
 
-impl FromStr for JsonTask {
+impl FromStr for JsonJob {
 	type Err = serde_json::Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		use fetcher_config::tasks::external_data::{ExternalDataResult, ProvideExternalData};
+		use fetcher_config::jobs::external_data::{ExternalDataResult, ProvideExternalData};
 		use fetcher_core::read_filter::ReadFilter;
 
 		struct EmptyExternalData;
@@ -145,9 +152,9 @@ impl FromStr for JsonTask {
 			}
 		}
 
-		let config_task: fetcher_config::tasks::Task = serde_json::from_str(s)?;
+		let config_job: fetcher_config::jobs::Job = serde_json::from_str(s)?;
 		Ok(Self(
-			config_task.parse("Manual", &EmptyExternalData).unwrap(),
+			config_job.parse("Manual", &EmptyExternalData).unwrap(),
 		))
 	}
 }

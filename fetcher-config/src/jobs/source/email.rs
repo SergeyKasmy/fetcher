@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use self::{auth::Auth, filters::Filters, view_mode::ViewMode};
 use crate::{
-	tasks::external_data::{ExternalDataResult, ProvideExternalData},
+	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 	Error as ConfigError,
 };
 use fetcher_core::source::{Email as CEmail, WithCustomRF as CWithCustomRF};

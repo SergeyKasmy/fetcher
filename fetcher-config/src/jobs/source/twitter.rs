@@ -5,7 +5,7 @@
  */
 
 use crate::{
-	tasks::external_data::{ExternalDataResult, ProvideExternalData},
+	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 	Error as ConfigError,
 };
 use fetcher_core::source::{

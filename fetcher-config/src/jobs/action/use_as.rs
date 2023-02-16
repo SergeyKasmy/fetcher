@@ -9,7 +9,7 @@ use fetcher_core::action::transform::Use as CUse;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Use {
 	pub field: Field,

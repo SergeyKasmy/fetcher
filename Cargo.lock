@@ -669,6 +669,7 @@ dependencies = [
  "once_cell",
  "serde",
  "serde_json",
+ "tap",
  "tokio",
  "tracing",
  "tracing-journald",
