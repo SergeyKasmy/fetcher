@@ -104,19 +104,11 @@ pub fn get_all_from<'a>(
 pub fn get(path: &Path, name: &str, cx: Context) -> Result<Option<Job>> {
 	tracing::trace!("Parsing a task from file");
 
-	let task_file = Figment::new().merge(Yaml::file(path));
-
-	let DisabledField { disabled } = task_file.extract()?;
-
-	if disabled.unwrap_or(false) {
-		tracing::trace!("Task is disabled, skipping...");
-		return Ok(None);
-	}
-
-	let TemplatesField { templates } = task_file.extract()?;
+	let TemplatesField { templates } = Figment::new().merge(Yaml::file(path)).extract()?;
 
 	let mut full_conf = Figment::new();
 
+	// prepend templates
 	if let Some(templates) = templates {
 		for tmpl_name in templates {
 			let tmpl = settings::config::templates::find(&tmpl_name, cx)?
@@ -128,7 +120,16 @@ pub fn get(path: &Path, name: &str, cx: Context) -> Result<Option<Job>> {
 		}
 	}
 
+	// append the config itself
 	let full_conf = full_conf.merge(Yaml::file(path));
+
+	// extract the disabled field and ignore the config if it's set to true
+	let DisabledField { disabled } = full_conf.extract()?;
+	if disabled.unwrap_or(false) {
+		tracing::trace!("Task is disabled, skipping...");
+		return Ok(None);
+	}
+
 	let task: ConfigJob = full_conf.extract()?;
 
 	Ok(Some(task.parse(name, &ExternalDataFromDataDir { cx })?))
