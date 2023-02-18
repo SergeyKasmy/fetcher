@@ -16,3 +16,4 @@ tokio = "1.25.0"
 tracing = "0.1.37"
 url = "2.3.1"
 serde_with = "2.2.0"
+duration-str = { version = "0.5.0", default-features = false }

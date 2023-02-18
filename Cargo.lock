@@ -95,6 +95,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64cb94155d965e3d37ffbbe7cc5b82c3dd79dd33bd48e536f73d2cfb8d85506f"
 
 [[package]]
+name = "arrayvec"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
+
+[[package]]
 name = "assert_matches"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -556,6 +562,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "duration-str"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f94be4825ff6a563f1bfbdb786ae10c687333c7524fade954e2271170e7f7e6d"
+dependencies = [
+ "nom",
+ "rust_decimal",
+ "thiserror",
+]
+
+[[package]]
 name = "egg-mode"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -683,6 +700,7 @@ name = "fetcher-config"
 version = "0.11.1"
 dependencies = [
  "chrono",
+ "duration-str",
  "fetcher-core",
  "serde",
  "serde_with",
@@ -1981,6 +1999,16 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "rust_decimal"
+version = "1.28.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e13cf35f7140155d02ba4ec3294373d513a3c7baa8364c162b030e33c61520a8"
+dependencies = [
+ "arrayvec",
+ "num-traits",
 ]
 
 [[package]]

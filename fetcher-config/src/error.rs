@@ -31,6 +31,9 @@ pub enum Error {
 	#[error("Wrong Google OAuth2 token")]
 	GoogleOAuth2WrongToken(#[from] GoogleOAuth2Error),
 
+	#[error("refresh is not a valid duration format")]
+	BadDurationFormat(#[from] duration_str::DError),
+
 	#[error("Error setting up HTTP client")]
 	FetcherCoreHttp(#[from] fetcher_core::error::source::HttpError),
 

@@ -8,10 +8,9 @@ use super::{
 	action::Action, external_data::ProvideExternalData, read_filter, sink::Sink, task::Task,
 };
 use crate::Error;
-use fetcher_core::job::Job as CoreJob;
+use fetcher_core::{job::Job as CoreJob, utils::OptionExt};
 
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 pub type DisabledField = Option<bool>;
 pub type TemplatesField = Option<Vec<String>>;
@@ -25,7 +24,7 @@ pub enum Job {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct SingleTaskJob {
-	refresh: Option<u64>,
+	refresh: Option<String>,
 	#[serde(flatten)]
 	task: Task,
 
@@ -38,7 +37,7 @@ pub struct SingleTaskJob {
 pub struct SeveralTasksJob {
 	#[serde(rename = "read_filter_type")]
 	read_filter_kind: Option<read_filter::Kind>,
-	refresh: Option<u64>,
+	refresh: Option<String>,
 	#[serde(rename = "process")]
 	actions: Option<Vec<Action>>,
 	sink: Option<Sink>,
@@ -63,9 +62,7 @@ impl SingleTaskJob {
 	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CoreJob, Error> {
 		Ok(CoreJob {
 			tasks: vec![self.task.parse(name, external)?],
-			refetch_interval: self
-				.refresh
-				.map(|i| Duration::from_secs(i * 60 /* secs in a min */)),
+			refetch_interval: self.refresh.try_map(duration_str::parse_std)?,
 		})
 	}
 }
@@ -94,9 +91,7 @@ impl SeveralTasksJob {
 				.into_iter()
 				.map(|x| x.parse(name, external))
 				.collect::<Result<Vec<_>, _>>()?,
-			refetch_interval: self
-				.refresh
-				.map(|i| Duration::from_secs(i * 60 /* secs in a min */)),
+			refetch_interval: self.refresh.try_map(duration_str::parse_std)?,
 		})
 	}
 }

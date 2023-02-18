@@ -5,7 +5,8 @@
  */
 
 use argh::FromArgs;
-use fetcher_core::job::Job;
+use color_eyre::{eyre::eyre, Report};
+use fetcher_core::{error::ErrorChainExt, job::Job};
 use std::{path::PathBuf, str::FromStr};
 
 /// fetcher
@@ -118,7 +119,7 @@ impl FromStr for Setting {
 pub struct JsonJob(pub Job);
 
 impl FromStr for JsonJob {
-	type Err = serde_json::Error;
+	type Err = Report;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		use fetcher_config::jobs::external_data::{ExternalDataResult, ProvideExternalData};
@@ -153,8 +154,9 @@ impl FromStr for JsonJob {
 		}
 
 		let config_job: fetcher_config::jobs::Job = serde_json::from_str(s)?;
-		Ok(Self(
-			config_job.parse("Manual", &EmptyExternalData).unwrap(),
-		))
+		let job = config_job
+			.parse("Manual", &EmptyExternalData)
+			.map_err(|e| eyre!(e.display_chain()))?;
+		Ok(Self(job))
 	}
 }
