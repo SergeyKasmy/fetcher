@@ -87,6 +87,7 @@ impl Error {
 					RedditError::Reddit(RouxError::Network(_)) => Some(self),
 					_ => None,
 				},
+				source::Error::Exec(_) => None,
 			},
 			Error::Transform(tr_err) => match &tr_err.kind {
 				transform::Kind::Http(transform::HttpError::Other(_)) => Some(self),

@@ -8,12 +8,15 @@
 // TODO: add google calendar source. Google OAuth2 is already implemented :)
 
 pub mod email;
+pub mod exec;
 pub mod file;
 pub mod http;
 pub mod reddit;
 pub mod twitter;
 
-pub use self::{email::Email, file::File, http::Http, reddit::Reddit, twitter::Twitter};
+pub use self::{
+	email::Email, exec::Exec, file::File, http::Http, reddit::Reddit, twitter::Twitter,
+};
 
 use crate::{
 	entry::Entry,
@@ -51,14 +54,16 @@ pub struct WithSharedRF(Vec<WithSharedRFKind>);
 pub enum WithSharedRFKind {
 	/// Create a single entry with its raw_contents field set to this string
 	String(String),
-	/// Refer to [`File`]
+	/// Refer to [`File`] docs
 	File(File),
-	/// Refer to [`Http`]
+	/// Refer to [`Http`] docs
 	Http(Http),
-	/// Refer to [`Twitter`]
+	/// Refer to [`Twitter`] docs
 	Twitter(Twitter),
-	/// Refer to [`Reddit`]
+	/// Refer to [`Reddit`] docs
 	Reddit(Reddit),
+	/// Refer to [`Exec`] docs
+	Exec(Exec),
 }
 
 /// All sources that don't support a built-in Read Filter and handle filtering logic themselves. They all must provide a way to mark an entry as read.
@@ -129,6 +134,7 @@ impl WithSharedRF {
 				K::Twitter(x) => entries.extend(x.get().await?),
 				K::File(x) => entries.push(x.get().await?),
 				K::Reddit(x) => entries.extend(x.get().await?),
+				K::Exec(x) => entries.push(x.get().await?),
 			};
 		}
 

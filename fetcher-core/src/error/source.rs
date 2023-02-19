@@ -6,7 +6,7 @@
 
 #![allow(missing_docs)]
 
-use std::path::PathBuf;
+use std::{io, path::PathBuf, string::FromUtf8Error};
 
 use super::InvalidUrlError;
 
@@ -32,6 +32,9 @@ pub enum Error {
 
 	#[error("Reddit error")]
 	Reddit(#[from] RedditError),
+
+	#[error("Exec error")]
+	Exec(#[from] ExecError),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -87,6 +90,15 @@ pub enum RedditError {
 
 	#[error("Reddit API returned an invalid URL to a post/post's contents, which really shouldn't happen...")]
 	InvalidUrl(#[from] InvalidUrlError),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ExecError {
+	#[error("Bad command")]
+	BadCommand(#[from] io::Error),
+
+	#[error("Command output is not valid UTF-8")]
+	BadUtf8(#[from] FromUtf8Error),
 }
 
 impl From<EmailError> for Error {
