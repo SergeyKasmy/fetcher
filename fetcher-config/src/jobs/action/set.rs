@@ -11,19 +11,24 @@ use fetcher_core::action::transform::{
 };
 
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, OneOrMany};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Set {
 	pub field: Field,
-	pub value: Option<String>,
+	pub value: Option<Values>,
 }
 
 impl Set {
 	pub fn parse(self) -> CTransform {
 		CTransform::Field {
 			field: self.field.parse(),
-			kind: CFieldTransformKind::Set(CSet(self.value)),
+			kind: CFieldTransformKind::Set(CSet(self.value.map(|x| x.0))),
 		}
 	}
 }
+
+#[serde_as]
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct Values(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<String>);

@@ -726,6 +726,7 @@ dependencies = [
  "itertools 0.10.5",
  "mailparse",
  "once_cell",
+ "rand 0.8.5",
  "regex",
  "reqwest",
  "roux",
