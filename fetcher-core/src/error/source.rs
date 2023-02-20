@@ -6,6 +6,8 @@
 
 #![allow(missing_docs)]
 
+pub use crate::error::exec_error::ExecError;
+
 use std::path::PathBuf;
 
 use super::InvalidUrlError;
@@ -32,6 +34,9 @@ pub enum Error {
 
 	#[error("Reddit error")]
 	Reddit(#[from] RedditError),
+
+	#[error("Exec error")]
+	Exec(#[from] ExecError),
 }
 
 #[derive(thiserror::Error, Debug)]

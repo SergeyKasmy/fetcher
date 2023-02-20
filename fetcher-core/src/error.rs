@@ -54,6 +54,26 @@ pub enum GoogleOAuth2Error {
 	Auth(String),
 }
 
+/// Re-exported in error::source and error::sink modules. Private in this one to avoid namespace pollution
+mod exec_error {
+	use std::{io, string::FromUtf8Error};
+
+	#[derive(thiserror::Error, Debug)]
+	pub enum ExecError {
+		#[error("Bad command")]
+		BadCommand(#[from] io::Error),
+
+		#[error("Command output is not valid UTF-8")]
+		BadUtf8(#[from] FromUtf8Error),
+
+		#[error("Can't start the process")]
+		CantStart(#[source] io::Error),
+
+		#[error("Can't pass data to the stdin of the process")]
+		CantWriteStdin(#[source] io::Error),
+	}
+}
+
 /// Extention trait for [`std::error::Error`] to print the entire chain of the error
 pub trait ErrorChainExt {
 	/// Return a string intented for logging or printing that formats an error's entire error source chain
@@ -87,18 +107,20 @@ impl Error {
 					RedditError::Reddit(RouxError::Network(_)) => Some(self),
 					_ => None,
 				},
+				source::Error::Exec(_) => None,
 			},
 			Error::Transform(tr_err) => match &tr_err.kind {
 				transform::Kind::Http(transform::HttpError::Other(_)) => Some(self),
 				_ => None,
 			},
 			Error::Sink(sink_err) => match sink_err {
-				sink::Error::StdoutWrite(_) => None,
 				sink::Error::Telegram {
 					source: teloxide::RequestError::Network(_),
 					..
 				} => Some(self),
 				sink::Error::Telegram { .. } => None,
+				sink::Error::Exec(_) => None,
+				sink::Error::Stdout(_) => None,
 			},
 			Error::GoogleOAuth2(google_oauth2_err) => match google_oauth2_err {
 				GoogleOAuth2Error::Post(_) => Some(self),

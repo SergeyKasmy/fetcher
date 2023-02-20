@@ -5,6 +5,7 @@
  */
 
 pub mod email;
+pub mod exec;
 pub mod file;
 pub mod http;
 pub mod reddit;
@@ -12,7 +13,8 @@ pub mod string;
 pub mod twitter;
 
 use self::{
-	email::Email, file::File, http::Http, reddit::Reddit, string::StringSource, twitter::Twitter,
+	email::Email, exec::Exec, file::File, http::Http, reddit::Reddit, string::StringSource,
+	twitter::Twitter,
 };
 use crate::{jobs::external_data::ProvideExternalData, Error};
 use fetcher_core::{read_filter::ReadFilter as CReadFilter, source::Source as CSource};
@@ -31,6 +33,7 @@ pub enum Source {
 	Twitter(Twitter),
 	File(File),
 	Reddit(Reddit),
+	Exec(Exec),
 
 	// with custom read filter
 	Email(Email),
@@ -55,6 +58,7 @@ impl Source {
 			Self::Twitter(x) => WithSharedRF!(x.parse(external)?),
 			Self::File(x) => WithSharedRF!(x.parse()),
 			Self::Reddit(x) => WithSharedRF!(x.parse()),
+			Self::Exec(x) => WithSharedRF!(x.parse()),
 			Self::Email(x) => CSource::WithCustomReadFilter(x.parse(external)?),
 		})
 	}
