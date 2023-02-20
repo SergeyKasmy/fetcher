@@ -12,34 +12,20 @@ pub mod message;
 pub mod stdout;
 pub mod telegram;
 
+pub use self::{
+	message::{Media, Message},
+	stdout::Stdout,
+	telegram::Telegram,
+};
 pub use crate::exec::Exec;
-pub use message::{Media, Message};
-pub use stdout::Stdout;
-pub use telegram::Telegram;
 
 use crate::error::sink::Error as SinkError;
+use async_trait::async_trait;
+use std::fmt::Debug;
 
-/// All available sinks
-#[derive(Debug)]
-pub enum Sink {
-	/// Refer to [`Telegram`] docs
-	Telegram(Telegram),
-	/// Refer to [`Exec`] docs
-	Exec(Exec),
-	/// Refer to [`Stdout`] docs
-	Stdout(Stdout),
-}
-
-impl Sink {
-	/// Send a message with an optional tag to the sink
-	///
-	/// # Errors
-	/// if there was an error sending the message
-	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError> {
-		match self {
-			Self::Telegram(t) => t.send(message, tag).await,
-			Self::Exec(x) => x.send(message).await.map_err(Into::into),
-			Self::Stdout(s) => s.send(message, tag).await,
-		}
-	}
+/// An async function that sends a message somewhere
+#[async_trait]
+pub trait Sink: Debug {
+	/// Send the message with an optional tag (usually represented as a hashtag)
+	async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError>;
 }

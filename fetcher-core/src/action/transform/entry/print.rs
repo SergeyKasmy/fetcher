@@ -6,7 +6,10 @@
 
 //! This module contains a debug print transform-like function [`print()`]
 
-use crate::{entry::Entry, sink::Stdout};
+use crate::{
+	entry::Entry,
+	sink::{Sink, Stdout},
+};
 
 use std::fmt::Write as _;
 

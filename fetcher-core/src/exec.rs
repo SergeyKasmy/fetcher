@@ -6,10 +6,14 @@
 
 //! This module contains [`Exec`] source and sink. It is re-exported in the [`crate::sink`] and [`crate::source`] modules
 
+use async_trait::async_trait;
 use std::process::Stdio;
 use tokio::{io::AsyncWriteExt, process::Command};
 
-use crate::{entry::Entry, error::source::ExecError, sink::Message};
+use crate::sink::Sink;
+use crate::{
+	entry::Entry, error::sink::Error as SinkError, error::source::ExecError, sink::Message,
+};
 
 /// Exec source. It can execute a shell command and source its stdout
 #[derive(Debug)]
@@ -38,13 +42,16 @@ impl Exec {
 			..Default::default()
 		})
 	}
+}
 
-	/// Passes message's body to the stdin of the process
+#[async_trait]
+impl Sink for Exec {
+	/// Passes message's body to the stdin of the process. The tag parameter is ignored
 	///
 	/// # Errors
 	/// * if the process couldn't be started
 	/// * if the data couldn't be passed to the stdin pipe of the process
-	pub async fn send(&self, message: Message) -> Result<(), ExecError> {
+	async fn send(&self, message: Message, _tag: Option<&str>) -> Result<(), SinkError> {
 		let Some(body) = message.body else {
 			return Ok(());
 		};

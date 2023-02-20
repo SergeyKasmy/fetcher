@@ -6,22 +6,26 @@
 
 //! This module contains the [`Stdout`] sink
 
-use crate::error::sink::Error as SinkError;
-use crate::sink::Message;
+use crate::{
+	error::sink::Error as SinkError,
+	sink::{Message, Sink},
+};
 
-use tokio::io::AsyncWriteExt;
+use async_trait::async_trait;
+use tokio::io::{self, AsyncWriteExt};
 
 /// Print message to stdout. Mostly used for debugging
 #[derive(Debug)]
 pub struct Stdout;
 
-impl Stdout {
+#[async_trait]
+impl Sink for Stdout {
 	/// Prints a message with an optional tag to stdout
 	///
 	/// # Errors
 	/// if there was an error writing to stdout
-	pub async fn send(&self, msg: Message, tag: Option<&str>) -> Result<(), SinkError> {
-		tokio::io::stdout().write_all(format!(
+	async fn send(&self, msg: Message, tag: Option<&str>) -> Result<(), SinkError> {
+		io::stdout().write_all(format!(
 			"------------------------------\nMessage:\nTitle: {title}\n\nBody:\n{body}\n\nLink: {link}\n\nMedia: {media:?}\n\nTag: {tag:?}\n------------------------------\n",
 			title = msg.title.as_deref().unwrap_or("None"),
 			body = msg.body.as_deref().unwrap_or("None"),
