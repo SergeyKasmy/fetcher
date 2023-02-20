@@ -8,21 +8,34 @@
 
 pub mod take;
 
+use async_trait::async_trait;
 pub use take::Take;
 
 use super::regex::{action::Find, Regex};
 use crate::{entry::Entry, read_filter::ReadFilter};
 
 use derive_more::From;
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 use tokio::sync::RwLock;
 
 /// Helper trait for all types that support filtering entries out of a list of [`Entry`]s
-pub trait Filter {
-	#[allow(missing_docs)]
-	fn filter(&self, entries: &mut Vec<Entry>);
+#[async_trait]
+pub trait Filter: Debug {
+	async fn filter(&self, entries: &mut Vec<Entry>);
 }
 
+// FIXME: implement on the ReadFilter type itself
+#[derive(Debug)]
+pub struct ReadFilterAction(pub Arc<RwLock<ReadFilter>>);
+
+#[async_trait]
+impl Filter for ReadFilterAction {
+	async fn filter(&self, entries: &mut Vec<Entry>) {
+		self.0.read().await.filter(entries);
+	}
+}
+
+/*
 /// A list of all available filters
 #[derive(From, Debug)]
 pub enum Kind {
@@ -47,3 +60,4 @@ impl Kind {
 		}
 	}
 }
+*/

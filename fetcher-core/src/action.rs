@@ -12,7 +12,7 @@ pub mod transform;
 // Regex is both a transform and a filter that's why it's here all alone :(
 pub mod regex;
 
-use self::transform::Transform;
+use self::{filter::Filter, transform::Transform};
 use crate::{entry::Entry, error::transform::Error as TransformError};
 
 /// An action that modifies a list of entries in some way
@@ -20,7 +20,7 @@ use crate::{entry::Entry, error::transform::Error as TransformError};
 #[allow(clippy::large_enum_variant)]
 pub enum Action {
 	/// Filter out entries
-	Filter(filter::Kind),
+	Filter(Box<dyn Filter>),
 	/// Transform some entries into one or more new entries
 	Transform(Transform),
 }
@@ -49,6 +49,7 @@ impl Action {
 	}
 }
 
+/*
 // can't make this generic because of conflicting impl with the Into<Transform> one :(
 impl From<filter::Kind> for Action {
 	fn from(filter: filter::Kind) -> Self {
@@ -61,3 +62,4 @@ impl<T: Into<Transform>> From<T> for Action {
 		Action::Transform(transform.into())
 	}
 }
+*/

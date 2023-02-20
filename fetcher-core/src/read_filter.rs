@@ -7,10 +7,10 @@
 //! This module contains the [`ReadFilter`] that is used for keeping track of what Entry has been or not been read,
 //! including all of its stragedies
 
-// pub mod mark_as_read;
 mod newer;
 mod not_present;
 
+use async_trait::async_trait;
 pub use newer::Newer;
 pub use not_present::NotPresent;
 
@@ -121,8 +121,9 @@ impl ReadFilter {
 	}
 }
 
+#[async_trait]
 impl Filter for ReadFilter {
-	fn filter(&self, entries: &mut Vec<Entry>) {
+	async fn filter(&self, entries: &mut Vec<Entry>) {
 		self.remove_read_from(entries);
 	}
 }

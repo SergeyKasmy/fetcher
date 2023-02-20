@@ -19,6 +19,7 @@ use crate::{
 	entry::Entry,
 	error::transform::RegexError,
 };
+use async_trait::async_trait;
 use ExtractionResult::{Extracted, Matched, NotMatched};
 
 use std::{borrow::Cow, convert::Infallible};
@@ -72,8 +73,9 @@ impl TransformField for Regex<Extract> {
 	}
 }
 
+#[async_trait]
 impl Filter for Regex<Find> {
-	fn filter(&self, entries: &mut Vec<Entry>) {
+	async fn filter(&self, entries: &mut Vec<Entry>) {
 		entries.retain(|ent| {
 			let s = match self.action.in_field {
 				Field::Title => ent.msg.title.as_deref().map(Cow::Borrowed),

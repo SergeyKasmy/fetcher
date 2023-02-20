@@ -13,7 +13,7 @@ use crate::{
 	entry::Entry,
 	error::{transform::Error as TransformError, Error},
 	sink::Sink,
-	source::{MarkAsRead, Source},
+	source::Source,
 };
 
 /// A core primitive of [`fetcher`](`crate`).
@@ -73,8 +73,8 @@ impl Task {
 				sink.send(msg, self.tag.as_deref()).await?;
 			}
 
-			if let Some(id) = &entry.id {
-				if let Some(source) = &mut self.source {
+			if let Some(source) = &mut self.source {
+				if let Some(id) = &entry.id {
 					source.mark_as_read(id).await?;
 				}
 			}
