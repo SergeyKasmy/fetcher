@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! Miscelenious utility extention traits for external types
+//! Miscellaneous utility extention traits for external types
 
 /// Alternative failable methods on [`Option`]
 #[allow(clippy::missing_errors_doc)]

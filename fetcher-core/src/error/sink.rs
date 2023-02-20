@@ -6,7 +6,9 @@
 
 #![allow(missing_docs)]
 
-use std::{fmt::Debug, io};
+pub use crate::error::exec_error::ExecError;
+
+use std::fmt::Debug;
 
 /// An error that happened while sending to a sink
 #[allow(missing_docs)] // error message is self-documenting
@@ -23,13 +25,4 @@ pub enum Error {
 
 	#[error("Error writing to stdout")]
 	Stdout(#[source] std::io::Error),
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum ExecError {
-	#[error("Can't start the process")]
-	CantStart(#[source] io::Error),
-
-	#[error("Can't pass data to the stdin of the process")]
-	CantWriteStdin(#[source] io::Error),
 }

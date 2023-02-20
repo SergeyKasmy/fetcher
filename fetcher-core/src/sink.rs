@@ -9,11 +9,10 @@
 
 pub mod message;
 
-pub mod exec;
 pub mod stdout;
 pub mod telegram;
 
-pub use self::exec::Exec;
+pub use crate::exec::Exec;
 pub use message::{Media, Message};
 pub use stdout::Stdout;
 pub use telegram::Telegram;

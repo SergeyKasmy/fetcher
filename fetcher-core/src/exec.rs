@@ -4,16 +4,14 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// TODO: maybe merge that with the exec source
-//! This module contains [`Exec`] sink
+//! This module contains [`Exec`] source and sink. It is re-exported in the [`crate::sink`] and [`crate::source`] modules
 
 use std::process::Stdio;
 use tokio::{io::AsyncWriteExt, process::Command};
 
-use super::Message;
-use crate::error::sink::ExecError;
+use crate::{entry::Entry, error::source::ExecError, sink::Message};
 
-/// Exec sink. It can execute a shell command and pass the message body as an argument
+/// Exec source. It can execute a shell command and source its stdout
 #[derive(Debug)]
 pub struct Exec {
 	/// The command to execute
@@ -21,6 +19,26 @@ pub struct Exec {
 }
 
 impl Exec {
+	/// Execute the command and returns its stdout in the [`Entry::raw_contents`] field
+	#[tracing::instrument(skip_all)]
+	pub async fn get(&self) -> Result<Entry, ExecError> {
+		// TODO: add support for windows cmd /C
+		tracing::debug!("Spawned a shell with command {:?}", self.cmd);
+		let out = Command::new("sh")
+			.args(["-c", &self.cmd])
+			.output()
+			.await?
+			.stdout;
+
+		let out = String::from_utf8(out)?;
+		tracing::debug!("Got {out:?} from the command");
+
+		Ok(Entry {
+			raw_contents: Some(out),
+			..Default::default()
+		})
+	}
+
 	/// Passes message's body to the stdin of the process
 	///
 	/// # Errors

@@ -54,6 +54,26 @@ pub enum GoogleOAuth2Error {
 	Auth(String),
 }
 
+/// Re-exported in error::source and error::sink modules. Private in this one to avoid namespace pollution
+mod exec_error {
+	use std::{io, string::FromUtf8Error};
+
+	#[derive(thiserror::Error, Debug)]
+	pub enum ExecError {
+		#[error("Bad command")]
+		BadCommand(#[from] io::Error),
+
+		#[error("Command output is not valid UTF-8")]
+		BadUtf8(#[from] FromUtf8Error),
+
+		#[error("Can't start the process")]
+		CantStart(#[source] io::Error),
+
+		#[error("Can't pass data to the stdin of the process")]
+		CantWriteStdin(#[source] io::Error),
+	}
+}
+
 /// Extention trait for [`std::error::Error`] to print the entire chain of the error
 pub trait ErrorChainExt {
 	/// Return a string intented for logging or printing that formats an error's entire error source chain
