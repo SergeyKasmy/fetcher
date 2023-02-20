@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`Stdout`] sink
+
 use crate::error::sink::Error as SinkError;
 use crate::sink::Message;
 
@@ -26,6 +28,6 @@ impl Stdout {
 			link = msg.link.map(|url| url.as_str().to_owned()).as_deref().unwrap_or("None"),
 			media = msg.media,
 			tag = tag.unwrap_or("None")
-		).as_bytes()).await.map_err(SinkError::StdoutWrite)
+		).as_bytes()).await.map_err(SinkError::Stdout)
 	}
 }

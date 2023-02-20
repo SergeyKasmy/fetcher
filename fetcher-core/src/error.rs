@@ -94,12 +94,13 @@ impl Error {
 				_ => None,
 			},
 			Error::Sink(sink_err) => match sink_err {
-				sink::Error::StdoutWrite(_) => None,
 				sink::Error::Telegram {
 					source: teloxide::RequestError::Network(_),
 					..
 				} => Some(self),
 				sink::Error::Telegram { .. } => None,
+				sink::Error::Exec(_) => None,
+				sink::Error::Stdout(_) => None,
 			},
 			Error::GoogleOAuth2(google_oauth2_err) => match google_oauth2_err {
 				GoogleOAuth2Error::Post(_) => Some(self),

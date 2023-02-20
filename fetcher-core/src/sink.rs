@@ -8,9 +8,12 @@
 //! as well as [`Message`](`message`) itself
 
 pub mod message;
-pub(crate) mod stdout;
+
+pub mod exec;
+pub mod stdout;
 pub mod telegram;
 
+pub use self::exec::Exec;
 pub use message::{Media, Message};
 pub use stdout::Stdout;
 pub use telegram::Telegram;
@@ -20,9 +23,11 @@ use crate::error::sink::Error as SinkError;
 /// All available sinks
 #[derive(Debug)]
 pub enum Sink {
-	/// Telegram sink
+	/// Refer to [`Telegram`] docs
 	Telegram(Telegram),
-	/// stdout sink
+	/// Refer to [`Exec`] docs
+	Exec(Exec),
+	/// Refer to [`Stdout`] docs
 	Stdout(Stdout),
 }
 
@@ -34,6 +39,7 @@ impl Sink {
 	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError> {
 		match self {
 			Self::Telegram(t) => t.send(message, tag).await,
+			Self::Exec(x) => x.send(message).await.map_err(Into::into),
 			Self::Stdout(s) => s.send(message, tag).await,
 		}
 	}

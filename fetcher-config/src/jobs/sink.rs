@@ -4,11 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+mod exec;
 mod telegram;
 
-use self::telegram::Telegram;
+use self::{exec::Exec, telegram::Telegram};
 use crate::{jobs::external_data::ProvideExternalData, Error};
-use fetcher_core::sink;
+use fetcher_core::sink::{Sink as CSink, Stdout as CStdout};
 
 use serde::{Deserialize, Serialize};
 
@@ -16,14 +17,16 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Sink {
 	Telegram(Telegram),
+	Exec(Exec),
 	Stdout,
 }
 
 impl Sink {
-	pub fn parse(self, external: &dyn ProvideExternalData) -> Result<sink::Sink, Error> {
+	pub fn parse(self, external: &dyn ProvideExternalData) -> Result<CSink, Error> {
 		Ok(match self {
-			Sink::Telegram(x) => sink::Sink::Telegram(x.parse(external)?),
-			Sink::Stdout => sink::Sink::Stdout(sink::Stdout {}),
+			Sink::Telegram(x) => CSink::Telegram(x.parse(external)?),
+			Sink::Exec(x) => CSink::Exec(x.parse()),
+			Sink::Stdout => CSink::Stdout(CStdout {}),
 		})
 	}
 }
