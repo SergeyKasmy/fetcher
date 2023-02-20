@@ -20,7 +20,10 @@ use self::auth::GoogleAuthExt;
 use crate::{
 	auth::Google as GoogleAuth,
 	entry::Entry,
-	error::source::{EmailError, Error as SourceError, ImapError},
+	error::{
+		source::{EmailError, Error as SourceError, ImapError},
+		Error,
+	},
 	sink::Message,
 };
 
@@ -28,7 +31,7 @@ use async_trait::async_trait;
 use mailparse::ParsedMail;
 use std::fmt::{Debug, Write as _};
 
-use super::Fetch;
+use super::{Fetch, MarkAsRead};
 
 const IMAP_PORT: u16 = 993;
 
@@ -127,6 +130,15 @@ impl Fetch for Email {
 	}
 }
 
+#[async_trait]
+impl MarkAsRead for Email {
+	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+		self.mark_as_read_impl(id)
+			.await
+			.map_err(|e| Error::from(SourceError::from(EmailError::from(e))))
+	}
+}
+
 impl Email {
 	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, EmailError> {
 		tracing::debug!("Fetching emails");
@@ -204,7 +216,7 @@ let uid =
 			.collect::<Result<Vec<Entry>, EmailError>>()
 	}
 
-	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<(), ImapError> {
+	async fn mark_as_read_impl(&mut self, id: &str) -> Result<(), ImapError> {
 		if let ViewMode::ReadOnly = self.view_mode {
 			return Ok(());
 		}

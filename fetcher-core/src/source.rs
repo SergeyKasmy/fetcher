@@ -18,7 +18,10 @@ pub use crate::exec::Exec;
 
 use crate::{
 	entry::Entry,
-	error::source::{EmailError, Error as SourceError},
+	error::{
+		source::{EmailError, Error as SourceError},
+		Error,
+	},
 	read_filter::ReadFilter,
 };
 
@@ -26,13 +29,44 @@ use async_trait::async_trait;
 use std::{fmt::Debug, sync::Arc};
 use tokio::sync::RwLock;
 
-pub trait Source: Fetch + Debug {}
+pub trait Source: Fetch + MarkAsRead + Debug {}
 
 #[async_trait]
-pub trait Fetch {
+pub trait Fetch: Debug {
 	// TODO: maybe, instead of returining a vec, add a &mut Vec output parameter
 	// and maybe also a trait method get_vec() that automatically creates a new vec, fetches into it, and returns it
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError>;
+}
+
+#[async_trait]
+pub trait MarkAsRead {
+	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error>;
+}
+
+impl<T> Source for T where T: Fetch + MarkAsRead + Debug {}
+
+#[derive(Debug)]
+struct SourceWithSharedRF {
+	source: Box<dyn Fetch + Send>,
+	rf: Option<Arc<RwLock<ReadFilter>>>,
+}
+
+#[async_trait]
+impl Fetch for SourceWithSharedRF {
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		self.source.fetch().await
+	}
+}
+
+#[async_trait]
+impl MarkAsRead for SourceWithSharedRF {
+	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+		if let Some(rf) = &mut self.rf {
+			rf.write().await.mark_as_read(id)?;
+		}
+
+		Ok(())
+	}
 }
 
 /*

@@ -13,7 +13,7 @@ use crate::{
 	entry::Entry,
 	error::{transform::Error as TransformError, Error},
 	sink::Sink,
-	source::Source,
+	source::{MarkAsRead, Source},
 };
 
 /// A core primitive of [`fetcher`](`crate`).
@@ -74,16 +74,9 @@ impl Task {
 			}
 
 			if let Some(id) = &entry.id {
-				// FIXME: mark as read
-				/*
-				match &mut self.source {
-					Some(Source::WithSharedReadFilter { rf: Some(rf), .. }) => {
-						rf.write().await.mark_as_read(id)?;
-					}
-					Some(Source::WithCustomReadFilter(x)) => x.mark_as_read(id).await?,
-					_ => (),
+				if let Some(source) = &mut self.source {
+					source.mark_as_read(id).await?;
 				}
-				*/
 			}
 		}
 
