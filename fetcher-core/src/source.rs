@@ -22,9 +22,20 @@ use crate::{
 	read_filter::ReadFilter,
 };
 
-use std::sync::Arc;
+use async_trait::async_trait;
+use std::{fmt::Debug, sync::Arc};
 use tokio::sync::RwLock;
 
+pub trait Source: Fetch + Debug {}
+
+#[async_trait]
+pub trait Fetch {
+	// TODO: maybe, instead of returining a vec, add a &mut Vec output parameter
+	// and maybe also a trait method get_vec() that automatically creates a new vec, fetches into it, and returns it
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError>;
+}
+
+/*
 /// A source that provides a way to get some data once
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
@@ -188,3 +199,4 @@ impl std::ops::Deref for WithSharedRF {
 		self.0.as_slice()
 	}
 }
+*/

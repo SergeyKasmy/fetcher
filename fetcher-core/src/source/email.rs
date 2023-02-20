@@ -17,15 +17,18 @@ pub use filters::Filters;
 pub use view_mode::ViewMode;
 
 use self::auth::GoogleAuthExt;
-use crate::auth::Google as GoogleAuth;
-use crate::entry::Entry;
-use crate::error::source::EmailError;
-use crate::error::source::ImapError;
-use crate::sink::Message;
+use crate::{
+	auth::Google as GoogleAuth,
+	entry::Entry,
+	error::source::{EmailError, Error as SourceError, ImapError},
+	sink::Message,
+};
 
+use async_trait::async_trait;
 use mailparse::ParsedMail;
-use std::fmt::Debug;
-use std::fmt::Write as _;
+use std::fmt::{Debug, Write as _};
+
+use super::Fetch;
 
 const IMAP_PORT: u16 = 993;
 
@@ -112,12 +115,20 @@ impl Email {
 			view_mode,
 		}
 	}
+}
 
+#[async_trait]
+impl Fetch for Email {
 	/// Even though it's marked async, the fetching itself is not async yet
 	/// It should be used with spawn_blocking probs
 	/// TODO: make it async lol
-	#[tracing::instrument(skip_all)]
-	pub async fn get(&mut self) -> Result<Vec<Entry>, EmailError> {
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		self.fetch_impl().await.map_err(Into::into)
+	}
+}
+
+impl Email {
+	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, EmailError> {
 		tracing::debug!("Fetching emails");
 		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT)
 			.rustls()
