@@ -13,11 +13,13 @@ use self::{
 	action::{Action, Extract, Find, Replace},
 	ExtractionResult::{Extracted, Matched, NotMatched},
 };
-use super::transform::field::TransformField;
 use crate::{
 	action::{
 		filter::Filter,
-		transform::{field::Field, result::TransformResult},
+		transform::{
+			field::{Field, TransformField},
+			result::TransformResult,
+		},
 	},
 	entry::Entry,
 	error::transform::{Kind as TransformErrorKind, RegexError},

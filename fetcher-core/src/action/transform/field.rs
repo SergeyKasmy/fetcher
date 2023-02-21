@@ -12,6 +12,11 @@ pub mod set;
 pub mod shorten;
 pub mod trim;
 
+// Hack to re-export the entire regex module here
+pub mod regex {
+	pub use crate::action::regex::*;
+}
+
 use async_trait::async_trait;
 use std::fmt::Debug;
 use url::Url;

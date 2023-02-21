@@ -8,13 +8,15 @@
 
 pub mod take;
 
-use async_trait::async_trait;
+// Hack to re-export the entire regex module here
+pub mod regex {
+	pub use crate::action::regex::*;
+}
 pub use take::Take;
 
-use super::regex::{action::Find, Regex};
 use crate::{entry::Entry, read_filter::ReadFilter};
 
-use derive_more::From;
+use async_trait::async_trait;
 use std::{fmt::Debug, sync::Arc};
 use tokio::sync::RwLock;
 
