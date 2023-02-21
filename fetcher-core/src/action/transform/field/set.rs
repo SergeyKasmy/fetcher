@@ -8,18 +8,20 @@
 
 use super::TransformField;
 use crate::action::transform::result::TransformResult as TrRes;
+use crate::error::transform::Kind as TransformErrorKind;
 
 use rand::seq::SliceRandom;
-use std::convert::Infallible;
 
 /// Set a field to a hardcoded value
 #[derive(Debug)]
 pub struct Set(pub Option<Vec<String>>);
 
 impl TransformField for Set {
-	type Error = Infallible;
-
-	fn transform_field(&self, _old_field: Option<&str>) -> Result<TrRes<String>, Self::Error> {
+	// Infalliable
+	fn transform_field(
+		&self,
+		_old_field: Option<&str>,
+	) -> Result<TrRes<String>, TransformErrorKind> {
 		Ok(TrRes::New(
 			self.0
 				.as_ref()

@@ -9,7 +9,10 @@
 
 pub mod action;
 
-use self::action::{Action, Extract, Find, Replace};
+use self::{
+	action::{Action, Extract, Find, Replace},
+	ExtractionResult::{Extracted, Matched, NotMatched},
+};
 use super::transform::field::TransformField;
 use crate::{
 	action::{
@@ -17,12 +20,11 @@ use crate::{
 		transform::{field::Field, result::TransformResult},
 	},
 	entry::Entry,
-	error::transform::RegexError,
+	error::transform::{Kind as TransformErrorKind, RegexError},
 };
-use async_trait::async_trait;
-use ExtractionResult::{Extracted, Matched, NotMatched};
 
-use std::{borrow::Cow, convert::Infallible};
+use async_trait::async_trait;
+use std::borrow::Cow;
 
 /// Regex with different action depending on [`action`]. All available regex actions include [`Extract`], [`Find`], [`Replace`]
 #[allow(missing_docs)]
@@ -58,9 +60,18 @@ impl Regex<Extract> {
 }
 
 impl TransformField for Regex<Extract> {
-	type Error = RegexError;
-
-	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, RegexError> {
+	fn transform_field(
+		&self,
+		field: Option<&str>,
+	) -> Result<TransformResult<String>, TransformErrorKind> {
+		self.transform_field_impl(field).map_err(Into::into)
+	}
+}
+impl Regex<Extract> {
+	fn transform_field_impl(
+		&self,
+		field: Option<&str>,
+	) -> Result<TransformResult<String>, RegexError> {
 		let Some(field) = field else { return Ok(TransformResult::Old(None)) };
 
 		let transformed = match self.extract(field) {
@@ -104,9 +115,11 @@ impl Regex<Replace> {
 }
 
 impl TransformField for Regex<Replace> {
-	type Error = Infallible;
-
-	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Self::Error> {
+	// Infallible
+	fn transform_field(
+		&self,
+		field: Option<&str>,
+	) -> Result<TransformResult<String>, TransformErrorKind> {
 		Ok(TransformResult::New(
 			field.map(|field| self.replace(field).into_owned()),
 		))

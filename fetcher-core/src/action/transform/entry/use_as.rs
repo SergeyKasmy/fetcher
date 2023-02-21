@@ -30,9 +30,9 @@ pub struct Use {
 }
 
 impl TransformEntry for Use {
-	type Error = TransformErrorKind;
+	type Err = TransformErrorKind;
 
-	fn transform_entry(&self, ent: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+	fn transform_entry(&self, ent: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		let val = match self.field {
 			Field::Title => ent.msg.title.clone(),
 			Field::Body => ent.msg.body.clone(),

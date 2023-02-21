@@ -45,9 +45,9 @@ pub struct Html {
 }
 
 impl TransformEntry for Html {
-	type Error = HtmlError;
+	type Err = HtmlError;
 
-	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		tracing::debug!("Parsing HTML");
 
 		let dom =

@@ -21,9 +21,9 @@ use url::Url;
 pub struct Feed;
 
 impl TransformEntry for Feed {
-	type Error = FeedError;
+	type Err = FeedError;
 
-	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		tracing::trace!("Parsing feed entries");
 
 		let feed = feed_rs::parser::parse(

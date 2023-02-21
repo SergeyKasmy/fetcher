@@ -22,7 +22,7 @@ pub enum Action {
 	/// Filter out entries
 	Filter(Box<dyn Filter>),
 	/// Transform some entries into one or more new entries
-	Transform(Transform),
+	Transform(Box<dyn Transform>),
 }
 
 impl Action {
@@ -40,7 +40,7 @@ impl Action {
 				let mut fully_transformed = Vec::new();
 
 				for entry in entries {
-					tr.transform(entry, &mut fully_transformed).await?;
+					fully_transformed.extend(tr.transform(&entry).await?);
 				}
 
 				Ok(fully_transformed)

@@ -73,10 +73,10 @@ pub struct Query {
 }
 
 impl TransformEntry for Json {
-	type Error = JsonError;
+	type Err = JsonError;
 
 	#[tracing::instrument(skip_all)]
-	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		let json: Value =
 			serde_json::from_str(entry.raw_contents.as_ref().ok_or(RawContentsNotSetError)?)?;
 

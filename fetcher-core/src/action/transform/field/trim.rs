@@ -8,17 +8,18 @@
 
 use super::TransformField;
 use crate::action::transform::result::TransformResult;
-
-use std::convert::Infallible;
+use crate::error::transform::Kind as TransformErrorKind;
 
 /// Trim whitespace from a field
 #[derive(Debug)]
 pub struct Trim;
 
 impl TransformField for Trim {
-	type Error = Infallible;
-
-	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Infallible> {
+	// Infallible
+	fn transform_field(
+		&self,
+		field: Option<&str>,
+	) -> Result<TransformResult<String>, TransformErrorKind> {
 		Ok(TransformResult::New(field.map(|s| s.trim().to_owned())))
 	}
 }
