@@ -4,7 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::entry::Entry;
+use async_trait::async_trait;
+
+use crate::{action::filter::Filter, entry::Entry, error::Error, source::MarkAsRead};
+
+use super::ReadFilter;
 
 /// Read Filter that stores the id of the last read entry
 #[derive(Debug)]
@@ -20,6 +24,7 @@ impl Newer {
 		Self { last_read_id: None }
 	}
 
+	/*
 	/// Marks the `id` as already read
 	pub fn mark_as_read(&mut self, id: &str) {
 		self.last_read_id = Some(id.to_owned());
@@ -53,11 +58,37 @@ impl Newer {
 			}
 		}
 	}
+	*/
 
 	/// Returns the last read entry id, if any
 	#[must_use]
 	pub fn last_read(&self) -> Option<&str> {
 		self.last_read_id.as_deref()
+	}
+}
+
+impl ReadFilter for Newer {}
+
+#[async_trait]
+impl MarkAsRead for Newer {
+	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+		self.last_read_id = Some(id.to_owned());
+		Ok(())
+	}
+}
+
+#[async_trait]
+impl Filter for Newer {
+	async fn filter(&self, entries: &mut Vec<Entry>) {
+		if let Some(last_read_id) = &self.last_read_id {
+			if let Some(last_read_id_pos) = entries.iter().position(|x| {
+				let Some(id) = &x.id else { return false };
+
+				last_read_id == id
+			}) {
+				entries.drain(last_read_id_pos..);
+			}
+		}
 	}
 }
 

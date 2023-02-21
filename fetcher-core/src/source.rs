@@ -18,16 +18,12 @@ pub use crate::exec::Exec;
 
 use crate::{
 	entry::Entry,
-	error::{
-		source::{EmailError, Error as SourceError},
-		Error,
-	},
+	error::{source::Error as SourceError, Error},
 	read_filter::ReadFilter,
 };
 
 use async_trait::async_trait;
-use std::{fmt::Debug, sync::Arc};
-use tokio::sync::RwLock;
+use std::fmt::Debug;
 
 pub trait Source: Fetch + MarkAsRead + Debug {}
 
@@ -48,7 +44,7 @@ impl<T> Source for T where T: Fetch + MarkAsRead + Debug {}
 #[derive(Debug)]
 struct SourceWithSharedRF {
 	source: Box<dyn Fetch + Send>,
-	rf: Option<Arc<RwLock<ReadFilter>>>,
+	rf: Option<Box<dyn ReadFilter>>,
 }
 
 #[async_trait]
@@ -63,7 +59,7 @@ impl Fetch for SourceWithSharedRF {
 impl MarkAsRead for SourceWithSharedRF {
 	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		if let Some(rf) = &mut self.rf {
-			rf.write().await.mark_as_read(id)?;
+			rf.mark_as_read(id).await?;
 		}
 
 		Ok(())

@@ -10,13 +10,19 @@
 mod newer;
 mod not_present;
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 pub use newer::Newer;
 pub use not_present::NotPresent;
+use tokio::sync::RwLock;
 
 use crate::action::filter::Filter;
 use crate::entry::Entry;
 use crate::error::Error;
+use crate::source::MarkAsRead;
+
+pub trait ReadFilter: MarkAsRead + Filter + Send + Sync {}
 
 /// This trait represent some kind of external save destination.
 /// A way to preserve the state of a read filter, i.e. what has and has not been read, across restarts.
@@ -25,9 +31,54 @@ pub trait ExternalSave {
 	///
 	/// # Errors
 	/// It may return an error if there has been issues saving, e.g. writing to disk
-	fn save(&mut self, read_filter: &Inner) -> std::io::Result<()>;
+	// TODO: trait for deserializing instead of impl ReadFilter
+	fn save(&mut self, read_filter: &impl ReadFilter) -> std::io::Result<()>;
 }
 
+impl ReadFilter for Arc<RwLock<dyn ReadFilter>> {}
+
+#[async_trait]
+impl MarkAsRead for Arc<RwLock<dyn ReadFilter>> {
+	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+		self.write().await.mark_as_read(id).await
+	}
+}
+
+#[async_trait]
+impl Filter for Arc<RwLock<dyn ReadFilter>> {
+	async fn filter(&self, entries: &mut Vec<Entry>) {
+		self.read().await.filter(entries).await;
+	}
+}
+
+/*
+#[derive(Debug)]
+pub struct ReadFilterWrapper(pub Arc<RwLock<dyn ReadFilter + Send + Sync>>);
+
+impl ReadFilter for ReadFilterWrapper {}
+
+#[async_trait]
+impl MarkAsRead for ReadFilterWrapper {
+	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+		self.0.write().await.mark_as_read(id).await
+	}
+}
+
+#[async_trait]
+impl Filter for ReadFilterWrapper {
+	async fn filter(&self, entries: &mut Vec<Entry>) {
+		self.0.read().await.filter(entries).await;
+	}
+}
+
+impl Clone for ReadFilterWrapper {
+	fn clone(&self) -> Self {
+		Self(self.0.clone())
+	}
+}
+*/
+
+/*
 /// A built-in read filter that uses any of the
 // TODO: add field `since` that marks the first time that read filter was used and ignores everything before
 pub struct ReadFilter {
@@ -54,6 +105,7 @@ pub enum Kind {
 	NewerThanLastRead,
 	NotPresentInReadList,
 }
+
 
 impl ReadFilter {
 	/// Creates a new Read Filter using [`kind`](`Kind`) filter stragedy and `external_save` external saving implementation
@@ -144,3 +196,4 @@ impl std::fmt::Display for Kind {
 		})
 	}
 }
+*/

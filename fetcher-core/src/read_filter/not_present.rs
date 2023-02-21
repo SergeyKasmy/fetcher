@@ -4,10 +4,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::entry::Entry;
+use crate::{action::filter::Filter, entry::Entry, error::Error, source::MarkAsRead};
 
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use std::collections::VecDeque;
+
+use super::ReadFilter;
 
 const MAX_LIST_LEN: usize = 500;
 
@@ -26,6 +29,7 @@ impl NotPresent {
 		}
 	}
 
+	/*
 	/// Marks the `id` as already read
 	pub fn mark_as_read(&mut self, id: &str) {
 		self.read_list
@@ -48,6 +52,7 @@ impl NotPresent {
 				.any(|(read_elem_id, _)| read_elem_id == id)
 		});
 	}
+	*/
 
 	/// Returns the id of the last read entry, if any
 	#[must_use]
@@ -70,6 +75,37 @@ impl NotPresent {
 	#[must_use]
 	pub fn is_empty(&self) -> bool {
 		self.read_list.is_empty()
+	}
+}
+
+impl ReadFilter for NotPresent {}
+
+#[async_trait]
+impl MarkAsRead for NotPresent {
+	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+		self.read_list
+			.push_back((id.to_owned(), chrono::Utc::now()));
+
+		while self.read_list.len() > MAX_LIST_LEN {
+			self.read_list.pop_front();
+		}
+
+		Ok(())
+	}
+}
+
+#[async_trait]
+impl Filter for NotPresent {
+	async fn filter(&self, entries: &mut Vec<Entry>) {
+		entries.retain(|elem| {
+			// retain elements with no id
+			let Some(id) = &elem.id else { return true };
+
+			!self
+				.read_list
+				.iter()
+				.any(|(read_elem_id, _)| read_elem_id == id)
+		});
 	}
 }
 

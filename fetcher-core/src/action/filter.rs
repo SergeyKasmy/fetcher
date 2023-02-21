@@ -14,27 +14,15 @@ pub mod regex {
 }
 pub use take::Take;
 
-use crate::{entry::Entry, read_filter::ReadFilter};
+use crate::entry::Entry;
 
 use async_trait::async_trait;
-use std::{fmt::Debug, sync::Arc};
-use tokio::sync::RwLock;
+use std::fmt::Debug;
 
 /// Helper trait for all types that support filtering entries out of a list of [`Entry`]s
 #[async_trait]
 pub trait Filter: Debug {
 	async fn filter(&self, entries: &mut Vec<Entry>);
-}
-
-// FIXME: implement on the ReadFilter type itself
-#[derive(Debug)]
-pub struct ReadFilterAction(pub Arc<RwLock<ReadFilter>>);
-
-#[async_trait]
-impl Filter for ReadFilterAction {
-	async fn filter(&self, entries: &mut Vec<Entry>) {
-		self.0.read().await.filter(entries);
-	}
 }
 
 /*
