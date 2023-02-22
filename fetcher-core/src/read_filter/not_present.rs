@@ -4,13 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use super::ReadFilter;
 use crate::{action::filter::Filter, entry::Entry, error::Error, source::MarkAsRead};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use std::{any::Any, collections::VecDeque};
-
-use super::ReadFilter;
 
 const MAX_LIST_LEN: usize = 500;
 
@@ -96,6 +95,10 @@ impl MarkAsRead for NotPresent {
 		}
 
 		Ok(())
+	}
+
+	async fn set_read_only(&mut self) {
+		// NOOP
 	}
 }
 

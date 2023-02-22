@@ -10,8 +10,10 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use fetcher_core::read_filter::{
-	ExternalSave as CExternalSave, Newer as CNewer, NotPresent as CNotPresent,
-	ReadFilter as CReadFilter,
+	external_save::{
+		ExternalSave as CExternalSave, ExternalSaveRFWrapper as CExternalSaveRFWrapper,
+	},
+	Newer as CNewer, NotPresent as CNotPresent, ReadFilter as CReadFilter,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -42,14 +44,18 @@ pub struct NotPresent {
 
 // FIXME: use the external save ffs
 impl ReadFilter {
-	pub fn parse(
-		self,
-		external_save: Box<dyn CExternalSave + Send + Sync>,
-	) -> Arc<RwLock<dyn CReadFilter>> {
-		match self {
-			ReadFilter::NewerThanRead(x) => Arc::new(RwLock::new(x.parse())),
-			ReadFilter::NotPresentInReadList(x) => Arc::new(RwLock::new(x.parse())),
-		}
+	pub fn parse(self, external_save: Box<dyn CExternalSave>) -> Arc<RwLock<dyn CReadFilter>> {
+		let rf: Box<dyn CReadFilter> = match self {
+			ReadFilter::NewerThanRead(x) => Box::new(x.parse()),
+			ReadFilter::NotPresentInReadList(x) => Box::new(x.parse()),
+		};
+
+		let rf_with_ext_save = CExternalSaveRFWrapper {
+			rf,
+			external_save: Some(external_save),
+		};
+
+		Arc::new(RwLock::new(rf_with_ext_save))
 	}
 
 	pub async fn unparse(read_filter: &dyn CReadFilter) -> Option<Self> {

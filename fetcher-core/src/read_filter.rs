@@ -7,37 +7,22 @@
 //! This module contains the [`ReadFilter`] that is used for keeping track of what Entry has been or not been read,
 //! including all of its stragedies
 
+pub mod external_save;
 mod newer;
 mod not_present;
 
-use std::any::Any;
-use std::sync::Arc;
-
-use async_trait::async_trait;
 pub use newer::Newer;
 pub use not_present::NotPresent;
+
+use async_trait::async_trait;
+use std::{any::Any, fmt::Debug, sync::Arc};
 use tokio::sync::RwLock;
 
-use crate::action::filter::Filter;
-use crate::entry::Entry;
-use crate::error::Error;
-use crate::source::MarkAsRead;
+use crate::{action::filter::Filter, entry::Entry, error::Error, source::MarkAsRead};
 
 #[async_trait]
 pub trait ReadFilter: MarkAsRead + Filter + Send + Sync {
 	async fn as_any(&self) -> Box<dyn Any>;
-}
-
-/// This trait represent some kind of external save destination.
-/// A way to preserve the state of a read filter, i.e. what has and has not been read, across restarts.
-#[async_trait]
-pub trait ExternalSave {
-	/// This function will be called every time something has been marked as read and should be saved externally
-	///
-	/// # Errors
-	/// It may return an error if there has been issues saving, e.g. writing to disk
-	// TODO: trait for deserializing instead of impl ReadFilter
-	async fn save(&mut self, read_filter: &dyn ReadFilter) -> std::io::Result<()>;
 }
 
 #[async_trait]
@@ -51,6 +36,10 @@ impl ReadFilter for Arc<RwLock<dyn ReadFilter>> {
 impl MarkAsRead for Arc<RwLock<dyn ReadFilter>> {
 	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		self.write().await.mark_as_read(id).await
+	}
+
+	async fn set_read_only(&mut self) {
+		self.write().await.set_read_only().await;
 	}
 }
 

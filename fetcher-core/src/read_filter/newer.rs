@@ -15,7 +15,7 @@ use super::ReadFilter;
 /// Read Filter that stores the id of the last read entry
 #[derive(Clone, Debug)]
 pub struct Newer {
-	/// the id of the last read entry. None means there haven't been any entries read and thus all entries run through [`remove_read_from()`](`Newer::remove_read_from()`) will be retained
+	/// the id of the last read entry. None means there haven't been any entries read and thus all entries run through [`filter()`](`Newer::filter()`) will be retained
 	pub last_read_id: Option<String>,
 }
 
@@ -71,6 +71,7 @@ impl Newer {
 
 #[async_trait]
 impl ReadFilter for Newer {
+	/// Doesn't preserve external saving functionality, just copies the data
 	async fn as_any(&self) -> Box<dyn Any> {
 		Box::new(self.clone())
 	}
@@ -80,7 +81,13 @@ impl ReadFilter for Newer {
 impl MarkAsRead for Newer {
 	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		self.last_read_id = Some(id.to_owned());
+		let self_clone = self.clone();
+
 		Ok(())
+	}
+
+	async fn set_read_only(&mut self) {
+		// NOOP
 	}
 }
 

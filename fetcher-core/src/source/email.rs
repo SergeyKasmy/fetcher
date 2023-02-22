@@ -137,6 +137,10 @@ impl MarkAsRead for Email {
 			.await
 			.map_err(|e| Error::from(SourceError::from(EmailError::from(e))))
 	}
+
+	async fn set_read_only(&mut self) {
+		self.view_mode = ViewMode::ReadOnly;
+	}
 }
 
 impl Source for Email {}

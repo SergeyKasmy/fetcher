@@ -9,7 +9,7 @@ use fetcher_config::jobs::{
 	external_data::ExternalDataError,
 	read_filter::{Kind as ReadFilterKind, ReadFilter as ReadFilterConf},
 };
-use fetcher_core::read_filter::{self as core_rf, ExternalSave, ReadFilter};
+use fetcher_core::read_filter::{self as core_rf, external_save::ExternalSave, ReadFilter};
 
 use async_trait::async_trait;
 use std::{
@@ -71,6 +71,7 @@ pub fn get(
 }
 
 // TODO: move to a new mod
+#[derive(Debug)]
 struct TruncatingFileWriter {
 	file: fs::File,
 }

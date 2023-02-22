@@ -37,6 +37,7 @@ pub trait Fetch: Debug + Send + Sync {
 #[async_trait]
 pub trait MarkAsRead: Send + Sync {
 	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error>;
+	async fn set_read_only(&mut self);
 }
 
 #[derive(Debug)]
@@ -67,6 +68,12 @@ impl MarkAsRead for SourceWithSharedRF {
 		}
 
 		Ok(())
+	}
+
+	async fn set_read_only(&mut self) {
+		if let Some(rf) = &mut self.rf {
+			rf.set_read_only().await;
+		}
 	}
 }
 

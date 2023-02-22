@@ -207,19 +207,7 @@ async fn run_command(
 			for task in &mut job.tasks {
 				// don't save read filtered items to the fs
 				if let Some(source) = &mut task.source {
-					todo!()
-					/*
-					match source {
-						Source::WithSharedReadFilter { rf, kind: _ } => {
-							if let Some(rf) = rf {
-								rf.write().await.external_save = None;
-							}
-						}
-						Source::WithCustomReadFilter(custom_rf_source) => match custom_rf_source {
-							WithCustomRF::Email(e) => e.view_mode = email::ViewMode::ReadOnly,
-						},
-					}
-					*/
+					source.set_read_only().await;
 				}
 
 				// don't send anything anywhere, just print
