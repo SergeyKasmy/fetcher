@@ -7,7 +7,10 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use fetcher_core::read_filter as core_rf;
+use fetcher_core::read_filter::{
+	ExternalSave as CExternalSave, Newer as CNewer, NotPresent as CNotPresent,
+	ReadFilter as CReadFilter,
+};
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
@@ -35,49 +38,44 @@ pub struct NotPresent {
 	read_list: Vec<(String, chrono::DateTime<Utc>)>,
 }
 
-impl Kind {
-	pub fn parse(self) -> core_rf::Kind {
-		match self {
-			Kind::NewerThanRead => core_rf::Kind::NewerThanLastRead,
-			Kind::NotPresentInReadList => core_rf::Kind::NotPresentInReadList,
-		}
-	}
-}
-
 impl ReadFilter {
 	pub fn parse(
 		self,
-		external_save: Box<dyn core_rf::ExternalSave + Send + Sync>,
-	) -> core_rf::ReadFilter {
-		let inner = match self {
-			ReadFilter::NewerThanRead(x) => core_rf::Inner::NewerThanLastRead(x.parse()),
-			ReadFilter::NotPresentInReadList(x) => core_rf::Inner::NotPresentInReadList(x.parse()),
+		external_save: Box<dyn CExternalSave + Send + Sync>,
+	) -> Box<dyn CReadFilter> {
+		let inner: Box<dyn CReadFilter> = match self {
+			ReadFilter::NewerThanRead(x) => Box::new(x.parse()),
+			ReadFilter::NotPresentInReadList(x) => Box::new(x.parse()),
 		};
 
+		/*
 		core_rf::ReadFilter {
 			inner,
 			external_save: Some(external_save),
 		}
+		*/
+		inner
 	}
 
-	pub fn unparse(read_filter: &core_rf::Inner) -> Option<Self> {
-		Some(match &read_filter {
-			core_rf::Inner::NewerThanLastRead(x) => ReadFilter::NewerThanRead(Newer::unparse(x)?),
-			core_rf::Inner::NotPresentInReadList(x) => {
-				ReadFilter::NotPresentInReadList(NotPresent::unparse(x)?)
-			}
-		})
+	pub fn unparse(read_filter: &impl CReadFilter) -> Option<Self> {
+		todo!()
+		// Some(match &read_filter {
+		// 	core_rf::Inner::NewerThanLastRead(x) => ReadFilter::NewerThanRead(Newer::unparse(x)?),
+		// 	core_rf::Inner::NotPresentInReadList(x) => {
+		// 		ReadFilter::NotPresentInReadList(NotPresent::unparse(x)?)
+		// 	}
+		// })
 	}
 }
 
 impl Newer {
-	pub fn parse(self) -> core_rf::Newer {
-		core_rf::Newer {
+	pub fn parse(self) -> CNewer {
+		CNewer {
 			last_read_id: Some(self.last_read_id),
 		}
 	}
 
-	pub fn unparse(read_filter: &core_rf::Newer) -> Option<Self> {
+	pub fn unparse(read_filter: &CNewer) -> Option<Self> {
 		read_filter.last_read_id.as_ref().map(|last_read_id| Self {
 			last_read_id: last_read_id.clone(),
 		})
@@ -85,11 +83,11 @@ impl Newer {
 }
 
 impl NotPresent {
-	pub fn parse(self) -> core_rf::NotPresent {
-		core_rf::NotPresent::from_iter(self.read_list)
+	pub fn parse(self) -> CNotPresent {
+		CNotPresent::from_iter(self.read_list)
 	}
 
-	pub fn unparse(read_filter: &core_rf::NotPresent) -> Option<Self> {
+	pub fn unparse(read_filter: &CNotPresent) -> Option<Self> {
 		if read_filter.is_empty() {
 			None
 		} else {

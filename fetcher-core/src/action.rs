@@ -48,17 +48,14 @@ impl Action {
 	}
 }
 
-/*
-// can't make this generic because of conflicting impl with the Into<Transform> one :(
-impl From<filter::Kind> for Action {
-	fn from(filter: filter::Kind) -> Self {
+impl From<Box<dyn Filter>> for Action {
+	fn from(filter: Box<dyn Filter>) -> Self {
 		Action::Filter(filter)
 	}
 }
 
-impl<T: Into<Transform>> From<T> for Action {
-	fn from(transform: T) -> Self {
-		Action::Transform(transform.into())
+impl From<Box<dyn Transform>> for Action {
+	fn from(transform: Box<dyn Transform>) -> Self {
+		Action::Transform(transform)
 	}
 }
-*/

@@ -10,9 +10,12 @@ use async_trait::async_trait;
 use std::process::Stdio;
 use tokio::{io::AsyncWriteExt, process::Command};
 
-use crate::sink::Sink;
 use crate::{
-	entry::Entry, error::sink::Error as SinkError, error::source::ExecError, sink::Message,
+	entry::Entry,
+	error::source::Error as SourceError,
+	error::{sink::Error as SinkError, source::ExecError},
+	sink::{Message, Sink},
+	source::Fetch,
 };
 
 /// Exec source. It can execute a shell command and source its stdout
@@ -22,6 +25,7 @@ pub struct Exec {
 	pub cmd: String,
 }
 
+/*
 impl Exec {
 	/// Execute the command and returns its stdout in the [`Entry::raw_contents`] field
 	#[tracing::instrument(skip_all)]
@@ -41,6 +45,31 @@ impl Exec {
 			raw_contents: Some(out),
 			..Default::default()
 		})
+	}
+}
+*/
+
+#[async_trait]
+impl Fetch for Exec {
+	// TODO: maybe, instead of returining a vec, add a &mut Vec output parameter
+	// and maybe also a trait method get_vec() that automatically creates a new vec, fetches into it, and returns it
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		// TODO: add support for windows cmd /C
+		tracing::debug!("Spawned a shell with command {:?}", self.cmd);
+		let out = Command::new("sh")
+			.args(["-c", &self.cmd])
+			.output()
+			.await
+			.map_err(ExecError::BadCommand)?
+			.stdout;
+
+		let out = String::from_utf8(out).map_err(ExecError::BadUtf8)?;
+		tracing::debug!("Got {out:?} from the command");
+
+		Ok(vec![Entry {
+			raw_contents: Some(out),
+			..Default::default()
+		}])
 	}
 }
 

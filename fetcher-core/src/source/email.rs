@@ -31,7 +31,7 @@ use async_trait::async_trait;
 use mailparse::ParsedMail;
 use std::fmt::{Debug, Write as _};
 
-use super::{Fetch, MarkAsRead};
+use super::{Fetch, MarkAsRead, Source};
 
 const IMAP_PORT: u16 = 993;
 
@@ -138,6 +138,8 @@ impl MarkAsRead for Email {
 			.map_err(|e| Error::from(SourceError::from(EmailError::from(e))))
 	}
 }
+
+impl Source for Email {}
 
 impl Email {
 	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, EmailError> {

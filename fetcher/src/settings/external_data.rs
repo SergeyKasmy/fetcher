@@ -4,9 +4,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use std::sync::Arc;
+
 use super::{context::StaticContext, data, read_filter};
-use fetcher_config::jobs::external_data::{ExternalDataResult, ProvideExternalData};
-use fetcher_core::read_filter::{Kind as ReadFilterKind, ReadFilter};
+use fetcher_config::jobs::{
+	external_data::{ExternalDataResult, ProvideExternalData},
+	read_filter::Kind as ReadFilterKind,
+};
+use fetcher_core::read_filter::ReadFilter;
+use tokio::sync::RwLock;
 
 pub struct ExternalDataFromDataDir {
 	pub cx: StaticContext,
@@ -33,7 +39,7 @@ impl ProvideExternalData for ExternalDataFromDataDir {
 		&self,
 		name: &str,
 		expected_rf: ReadFilterKind,
-	) -> ExternalDataResult<ReadFilter> {
+	) -> ExternalDataResult<Arc<RwLock<dyn ReadFilter>>> {
 		read_filter::get(name, expected_rf, self.cx).into()
 	}
 }

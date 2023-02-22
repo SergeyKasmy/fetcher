@@ -7,7 +7,8 @@
 use argh::FromArgs;
 use color_eyre::{eyre::eyre, Report};
 use fetcher_core::{error::ErrorChainExt, job::Job};
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr, sync::Arc};
+use tokio::sync::RwLock;
 
 /// fetcher
 #[derive(FromArgs, Debug)]
@@ -147,8 +148,8 @@ impl FromStr for JsonJob {
 			fn read_filter(
 				&self,
 				_name: &str,
-				_expected_rf: fetcher_core::read_filter::Kind,
-			) -> ExternalDataResult<ReadFilter> {
+				_expected_rf: fetcher_config::jobs::read_filter::Kind,
+			) -> ExternalDataResult<Arc<RwLock<dyn ReadFilter>>> {
 				ExternalDataResult::Unavailable
 			}
 		}

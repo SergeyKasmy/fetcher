@@ -32,7 +32,7 @@ pub trait ExternalSave {
 	/// # Errors
 	/// It may return an error if there has been issues saving, e.g. writing to disk
 	// TODO: trait for deserializing instead of impl ReadFilter
-	fn save(&mut self, read_filter: &impl ReadFilter) -> std::io::Result<()>;
+	fn save(&mut self, read_filter: &dyn ReadFilter) -> std::io::Result<()>;
 }
 
 impl ReadFilter for Arc<RwLock<dyn ReadFilter>> {}

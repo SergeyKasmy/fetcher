@@ -21,7 +21,7 @@ use std::fmt::Debug;
 
 /// Helper trait for all types that support filtering entries out of a list of [`Entry`]s
 #[async_trait]
-pub trait Filter: Debug {
+pub trait Filter: Debug + Send + Sync {
 	async fn filter(&self, entries: &mut Vec<Entry>);
 }
 

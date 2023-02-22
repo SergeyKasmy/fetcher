@@ -8,8 +8,14 @@
 //!
 //! This module contains the [`Http`] struct, that is a source as well as a transform
 
+// FIXME: implement transform for http
+
 use crate::{
-	action::transform::result::{TransformResult, TransformedEntry, TransformedMessage},
+	action::transform::{
+		entry::TransformEntry,
+		field::TransformField,
+		result::{TransformResult, TransformedEntry, TransformedMessage},
+	},
 	entry::Entry,
 	error::{
 		source::{Error as SourceError, HttpError},
@@ -82,41 +88,17 @@ impl Fetch for Http {
 	}
 }
 
-impl Http {
-	/// Get the URL from the `entry`, send a GET request to it, and put the result into the [`Entry::raw_contents`] field
-	///
-	/// # Errors
-	/// * if, depending on `from_field`, either [`Message::link`] or [`Entry::raw_contents`] is None
-	/// * if the string in the [`Entry::raw_contents`] field when using [`TransformFromField::RawContents`] is not a valid URL
-	/// * if there was an error sending the HTTP request
-	pub async fn transform(
-		entry: &Entry,
-		from_field: TransformFromField,
-	) -> Result<TransformedEntry, HttpTransformError> {
-		let link = match from_field {
-			TransformFromField::MessageLink => entry.msg.link.clone(),
-			TransformFromField::RawContents => entry.raw_contents.as_ref().try_map(|s| {
-				Url::try_from(s.as_str()).map_err(|e| InvalidUrlError(e, s.clone()))
-			})?,
-		};
-		let link = link.ok_or(HttpTransformError::MissingUrl(from_field))?;
+/*
+#[async_trait]
+impl TransformEntry for Http {
+	type Err = HttpError;
 
-		let Entry {
-			raw_contents,
-			msg: Message { link, .. },
-			..
-		} = Self::new(link, Request::Get)?.fetch_impl().await?;
-
-		Ok(TransformedEntry {
-			raw_contents: TransformResult::New(raw_contents),
-			msg: TransformedMessage {
-				link: TransformResult::New(link),
-				..Default::default()
-			},
-			..Default::default()
-		})
+	/// Transform the `entry` into one or several separate entries
+	async fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+		Http::
 	}
 }
+*/
 
 impl Http {
 	fn new(url: Url, request: Request) -> Result<Self, HttpError> {
@@ -135,7 +117,6 @@ impl Http {
 			client,
 		})
 	}
-
 	async fn fetch_impl(&self) -> Result<Entry, HttpError> {
 		tracing::debug!("Sending an HTTP request");
 
@@ -179,6 +160,42 @@ impl Http {
 			..Default::default()
 		})
 	}
+
+	/*
+	/// Get the URL from the `entry`, send a GET request to it, and put the result into the [`Entry::raw_contents`] field
+	///
+	/// # Errors
+	/// * if, depending on `from_field`, either [`Message::link`] or [`Entry::raw_contents`] is None
+	/// * if the string in the [`Entry::raw_contents`] field when using [`TransformFromField::RawContents`] is not a valid URL
+	/// * if there was an error sending the HTTP request
+	pub async fn transform_impl(
+		entry: &Entry,
+		from_field: TransformFromField,
+	) -> Result<TransformedEntry, HttpTransformError> {
+		let link = match from_field {
+			TransformFromField::MessageLink => entry.msg.link.clone(),
+			TransformFromField::RawContents => entry.raw_contents.as_ref().try_map(|s| {
+				Url::try_from(s.as_str()).map_err(|e| InvalidUrlError(e, s.clone()))
+			})?,
+		};
+		let link = link.ok_or(HttpTransformError::MissingUrl(from_field))?;
+
+		let Entry {
+			raw_contents,
+			msg: Message { link, .. },
+			..
+		} = Self::new(link, Request::Get)?.fetch_impl().await?;
+
+		Ok(TransformedEntry {
+			raw_contents: TransformResult::New(raw_contents),
+			msg: TransformedMessage {
+				link: TransformResult::New(link),
+				..Default::default()
+			},
+			..Default::default()
+		})
+	}
+	*/
 }
 
 impl Debug for Http {

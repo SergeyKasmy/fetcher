@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::source::{WithSharedRF as CWithSharedRF, WithSharedRFKind as CWithSharedRFKind};
+use fetcher_core::source::Fetch as CFetch;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
@@ -15,10 +15,7 @@ use serde_with::{serde_as, OneOrMany};
 pub struct StringSource(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<String>);
 
 impl StringSource {
-	pub fn parse(self) -> CWithSharedRF {
-		let string_sources = self.0.into_iter().map(CWithSharedRFKind::String).collect();
-
-		CWithSharedRF::new(string_sources)
-			.expect("should always be the same since we are deserializing only String here")
+	pub fn parse(self) -> Vec<Box<dyn CFetch>> {
+		self.0.into_iter().map(|s| Box::new(s) as Box<_>).collect()
 	}
 }

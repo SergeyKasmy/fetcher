@@ -21,6 +21,6 @@ use async_trait::async_trait;
 use std::fmt::Debug;
 
 #[async_trait]
-pub trait Transform: Debug {
+pub trait Transform: Debug + Send + Sync {
 	async fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, TransformError>;
 }

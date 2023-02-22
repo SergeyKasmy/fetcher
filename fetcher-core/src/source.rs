@@ -25,32 +25,36 @@ use crate::{
 use async_trait::async_trait;
 use std::fmt::Debug;
 
-pub trait Source: Fetch + MarkAsRead + Debug {}
+pub trait Source: Fetch + MarkAsRead + Debug + Send + Sync {}
 
 #[async_trait]
-pub trait Fetch: Debug {
+pub trait Fetch: Debug + Send + Sync {
 	// TODO: maybe, instead of returining a vec, add a &mut Vec output parameter
 	// and maybe also a trait method get_vec() that automatically creates a new vec, fetches into it, and returns it
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError>;
 }
 
 #[async_trait]
-pub trait MarkAsRead {
+pub trait MarkAsRead: Send + Sync {
 	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error>;
 }
 
-impl<T> Source for T where T: Fetch + MarkAsRead + Debug {}
-
 #[derive(Debug)]
-struct SourceWithSharedRF {
-	source: Box<dyn Fetch + Send>,
-	rf: Option<Box<dyn ReadFilter>>,
+pub struct SourceWithSharedRF {
+	pub source: Vec<Box<dyn Fetch>>,
+	pub rf: Option<Box<dyn ReadFilter>>,
 }
 
 #[async_trait]
 impl Fetch for SourceWithSharedRF {
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
-		self.source.fetch().await
+		let mut entries = Vec::new();
+
+		for source in &mut self.source {
+			entries.extend(source.fetch().await?);
+		}
+
+		Ok(entries)
 	}
 }
 
@@ -63,6 +67,18 @@ impl MarkAsRead for SourceWithSharedRF {
 		}
 
 		Ok(())
+	}
+}
+
+impl Source for SourceWithSharedRF {}
+
+#[async_trait]
+impl Fetch for String {
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		Ok(vec![Entry {
+			raw_contents: Some(self.clone()),
+			..Default::default()
+		}])
 	}
 }
 

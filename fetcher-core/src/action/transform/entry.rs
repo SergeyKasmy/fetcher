@@ -22,20 +22,22 @@ use crate::{
 
 use std::fmt::Debug;
 
+#[async_trait]
 pub trait TransformEntry: Debug {
 	type Err: Into<TransformErrorKind>;
 
 	/// Transform the `entry` into one or several separate entries
-	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err>;
+	async fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err>;
 }
 
 #[async_trait]
 impl<T> Transform for T
 where
-	T: TransformEntry + Sync,
+	T: TransformEntry + Send + Sync,
 {
 	async fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, TransformError> {
 		self.transform_entry(entry)
+			.await
 			.map(|v| v.into_iter().map(|e| e.into_entry(entry.clone())).collect())
 			.map_err(|kind| TransformError {
 				kind: kind.into(),

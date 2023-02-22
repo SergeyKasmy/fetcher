@@ -242,7 +242,7 @@ mod tests {
 			},
 		];
 
-		rf.remove_read_from(&mut entries);
+		rf.filter(&mut entries);
 
 		// remove msgs
 		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();

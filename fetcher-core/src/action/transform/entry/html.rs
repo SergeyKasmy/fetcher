@@ -21,6 +21,7 @@ use crate::{
 	utils::OptionExt,
 };
 
+use async_trait::async_trait;
 use either::Either;
 use itertools::Itertools;
 use soup_kuchiki::{Handle as HtmlNode, NodeExt, QueryBuilderExt, Soup};
@@ -44,10 +45,11 @@ pub struct Html {
 	pub imgq: Option<ElementDataQuery>,
 }
 
+#[async_trait]
 impl TransformEntry for Html {
 	type Err = HtmlError;
 
-	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		tracing::debug!("Parsing HTML");
 
 		let dom =

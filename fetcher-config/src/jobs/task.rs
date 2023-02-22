@@ -35,9 +35,9 @@ pub struct Task {
 
 impl Task {
 	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CoreTask, Error> {
-		let rf = match self.read_filter_kind.map(read_filter::Kind::parse) {
+		let rf = match self.read_filter_kind {
 			Some(expected_rf_type) => match external.read_filter(name, expected_rf_type) {
-				ExternalDataResult::Ok(rf) => Some(Arc::new(RwLock::new(rf))),
+				ExternalDataResult::Ok(rf) => Some(rf),
 				ExternalDataResult::Unavailable => {
 					tracing::warn!("Read filter is unavailable, skipping");
 					None
@@ -52,9 +52,7 @@ impl Task {
 				.filter_map(|act| match act {
 					Action::ReadFilter => {
 						if let Some(rf) = rf.clone() {
-							Some(Ok(fetcher_core::action::Action::Filter(
-								fetcher_core::action::filter::Kind::ReadFilter(rf),
-							)))
+							Some(Ok(fetcher_core::action::Action::Filter(Box::new(rf))))
 						} else {
 							tracing::warn!("Can't use read filter transformer when no read filter is set up for the task!");
 							None

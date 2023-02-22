@@ -22,11 +22,11 @@ pub enum Sink {
 }
 
 impl Sink {
-	pub fn parse(self, external: &dyn ProvideExternalData) -> Result<CSink, Error> {
+	pub fn parse(self, external: &dyn ProvideExternalData) -> Result<Box<dyn CSink>, Error> {
 		Ok(match self {
-			Sink::Telegram(x) => CSink::Telegram(x.parse(external)?),
-			Sink::Exec(x) => CSink::Exec(x.parse()),
-			Sink::Stdout => CSink::Stdout(CStdout {}),
+			Sink::Telegram(x) => Box::new(x.parse(external)?),
+			Sink::Exec(x) => Box::new(x.parse()),
+			Sink::Stdout => Box::new(CStdout {}),
 		})
 	}
 }

@@ -61,7 +61,7 @@ mod exec_error {
 	#[derive(thiserror::Error, Debug)]
 	pub enum ExecError {
 		#[error("Bad command")]
-		BadCommand(#[from] io::Error),
+		BadCommand(#[source] io::Error),
 
 		#[error("Command output is not valid UTF-8")]
 		BadUtf8(#[from] FromUtf8Error),

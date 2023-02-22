@@ -18,7 +18,7 @@ use fetcher_core::{
 	error::{Error, ErrorChainExt},
 	job::Job,
 	sink::{Sink, Stdout},
-	source::{email, Source, WithCustomRF},
+	source::{email, Source},
 };
 
 use color_eyre::{
@@ -207,6 +207,8 @@ async fn run_command(
 			for task in &mut job.tasks {
 				// don't save read filtered items to the fs
 				if let Some(source) = &mut task.source {
+					todo!()
+					/*
 					match source {
 						Source::WithSharedReadFilter { rf, kind: _ } => {
 							if let Some(rf) = rf {
@@ -217,11 +219,12 @@ async fn run_command(
 							WithCustomRF::Email(e) => e.view_mode = email::ViewMode::ReadOnly,
 						},
 					}
+					*/
 				}
 
 				// don't send anything anywhere, just print
 				if let Some(sink) = &mut task.sink {
-					*sink = Sink::Stdout(Stdout);
+					*sink = Box::new(Stdout);
 				}
 			}
 		}

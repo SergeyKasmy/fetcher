@@ -17,7 +17,10 @@ use self::{
 	twitter::Twitter,
 };
 use crate::{jobs::external_data::ProvideExternalData, Error};
-use fetcher_core::{read_filter::ReadFilter as CReadFilter, source::Source as CSource};
+use fetcher_core::{
+	read_filter::ReadFilter as CReadFilter,
+	source::{Source as CSource, SourceWithSharedRF as CSourceWithSharedRF},
+};
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -42,13 +45,16 @@ pub enum Source {
 impl Source {
 	pub fn parse(
 		self,
-		rf: Option<Arc<RwLock<CReadFilter>>>,
+		rf: Option<Arc<RwLock<dyn CReadFilter>>>,
 		external: &dyn ProvideExternalData,
-	) -> Result<CSource, Error> {
-		// make a CSource::WithSharedReadFilter out of a CWithSharedRF
+	) -> Result<Box<dyn CSource>, Error> {
+		// make a dyn CSourceWithSharedRF out of a dyn CFetch and the read filter parameter
 		macro_rules! WithSharedRF {
 			($source:expr) => {
-				CSource::WithSharedReadFilter { rf, kind: $source }
+				Box::new(CSourceWithSharedRF {
+					source: $source,
+					rf: rf.map(|x| Box::new(x) as Box<_>),
+				})
 			};
 		}
 
@@ -59,7 +65,7 @@ impl Source {
 			Self::File(x) => WithSharedRF!(x.parse()),
 			Self::Reddit(x) => WithSharedRF!(x.parse()),
 			Self::Exec(x) => WithSharedRF!(x.parse()),
-			Self::Email(x) => CSource::WithCustomReadFilter(x.parse(external)?),
+			Self::Email(x) => x.parse(external)?,
 		})
 	}
 }

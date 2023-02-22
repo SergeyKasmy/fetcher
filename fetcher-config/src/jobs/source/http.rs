@@ -6,7 +6,7 @@
 
 use fetcher_core::{
 	error::source::HttpError as CHttpError,
-	source::{Http as CHttp, WithSharedRF as CWithSharedRF, WithSharedRFKind as CWithSharedRFKind},
+	source::{Fetch as CFetch, Http as CHttp},
 };
 
 use serde::{Deserialize, Serialize};
@@ -34,15 +34,11 @@ pub enum TaggedRequest {
 }
 
 impl Http {
-	pub fn parse(self) -> Result<CWithSharedRF, CHttpError> {
-		let http_sources = self
-			.0
+	pub fn parse(self) -> Result<Vec<Box<dyn CFetch>>, CHttpError> {
+		self.0
 			.into_iter()
-			.map(|x| Ok(CWithSharedRFKind::Http(x.parse()?)))
-			.collect::<Result<_, CHttpError>>()?;
-
-		Ok(CWithSharedRF::new(http_sources)
-			.expect("should always be the same since we are deserializing only Http here"))
+			.map(|x| Ok(Box::new(x.parse()?) as Box<_>))
+			.collect::<Result<_, CHttpError>>()
 	}
 }
 

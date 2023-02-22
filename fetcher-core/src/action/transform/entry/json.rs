@@ -21,6 +21,7 @@ use crate::{
 	utils::OptionExt,
 };
 
+use async_trait::async_trait;
 use either::Either;
 use serde_json::Value;
 use std::{borrow::Cow, ops::ControlFlow};
@@ -72,11 +73,11 @@ pub struct Query {
 	pub optional: bool,
 }
 
+#[async_trait]
 impl TransformEntry for Json {
 	type Err = JsonError;
 
-	#[tracing::instrument(skip_all)]
-	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		let json: Value =
 			serde_json::from_str(entry.raw_contents.as_ref().ok_or(RawContentsNotSetError)?)?;
 

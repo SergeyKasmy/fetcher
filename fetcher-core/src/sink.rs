@@ -25,7 +25,8 @@ use std::fmt::Debug;
 
 /// An async function that sends a message somewhere
 #[async_trait]
-pub trait Sink: Debug {
+pub trait Sink: Debug + Send + Sync {
+	// pub trait Sink: Debug {
 	/// Send the message with an optional tag (usually represented as a hashtag)
 	async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError>;
 }

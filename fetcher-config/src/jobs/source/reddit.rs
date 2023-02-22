@@ -4,10 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::source::{
-	reddit::Sort as CSort, Reddit as CReddit, WithSharedRF as CWithSharedRF,
-	WithSharedRFKind as CWithSharedRFKind,
-};
+use fetcher_core::source::{reddit::Sort as CSort, Fetch as CFetch, Reddit as CReddit};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
@@ -46,15 +43,11 @@ pub enum TimePeriod {
 }
 
 impl Reddit {
-	pub fn parse(self) -> CWithSharedRF {
-		let reddit_sources = self
-			.0
+	pub fn parse(self) -> Vec<Box<dyn CFetch>> {
+		self.0
 			.into_iter()
-			.map(|x| CWithSharedRFKind::Reddit(x.parse()))
-			.collect();
-
-		CWithSharedRF::new(reddit_sources)
-			.expect("should always be the same since we are deserializing only Reddit here")
+			.map(|x| Box::new(x.parse()) as Box<_>)
+			.collect()
 	}
 }
 

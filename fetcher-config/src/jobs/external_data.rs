@@ -4,17 +4,17 @@
  * file, you can obtain one at https://mozilla.org/mpl/2.0/.
  */
 
-use fetcher_core::{
-	self as fcore,
-	read_filter::{Kind as ReadFilterKind, ReadFilter},
-};
+use super::read_filter::Kind as ReadFilterKind;
+use fetcher_core::{self as fcore, read_filter::ReadFilter};
 
 use std::{
 	fmt::{Debug, Display},
 	io,
 	path::Path,
+	sync::Arc,
 };
 use thiserror::Error;
+use tokio::sync::RwLock;
 
 pub enum ExternalDataResult<T, E = ExternalDataError> {
 	Ok(T),
@@ -31,7 +31,7 @@ pub trait ProvideExternalData {
 		&self,
 		name: &str,
 		expected_rf: ReadFilterKind,
-	) -> ExternalDataResult<ReadFilter>;
+	) -> ExternalDataResult<Arc<RwLock<dyn ReadFilter>>>;
 }
 
 #[derive(Error, Debug)]
@@ -41,7 +41,8 @@ pub enum ExternalDataError {
 		source: io::Error,
 		payload: Option<Box<dyn DisplayDebug + Send + Sync>>,
 	},
-	#[error("Incompatible read filter types: in config: \"{expected}\" and found: \"{found}\"{}", if let Some(p) = payload { format!(": {p}") } else { String::new() })]
+	// TODO: impl Display for ReadFilterKind
+	#[error("Incompatible read filter types: in config: \"{expected:?}\" and found: \"{found:?}\"{}", if let Some(p) = payload { format!(": {p}") } else { String::new() })]
 	ReadFilterIncompatibleTypes {
 		expected: ReadFilterKind,
 		found: ReadFilterKind,

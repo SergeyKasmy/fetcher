@@ -6,15 +6,18 @@
 
 use crate::settings::context::StaticContext as Context;
 use fetcher_config::jobs::{
-	external_data::ExternalDataError, read_filter::ReadFilter as ReadFilterConf,
+	external_data::ExternalDataError,
+	read_filter::{Kind as ReadFilterKind, ReadFilter as ReadFilterConf},
 };
-use fetcher_core::read_filter::{ExternalSave, Kind as ReadFilterKind, ReadFilter};
+use fetcher_core::read_filter::{ExternalSave, ReadFilter};
 
 use std::{
 	fs,
 	io::{self, Write},
 	path::Path,
+	sync::Arc,
 };
+use tokio::sync::RwLock;
 
 const READ_DATA_DIR: &str = "read";
 
@@ -23,9 +26,11 @@ pub fn get(
 	name: &str,
 	expected_rf_kind: ReadFilterKind,
 	context: Context,
-) -> Result<ReadFilter, ExternalDataError> {
+) -> Result<Arc<RwLock<dyn ReadFilter>>, ExternalDataError> {
 	let path = context.data_path.join(READ_DATA_DIR).join(name);
 
+	todo!()
+	/*
 	match fs::read_to_string(&path) {
 		Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
 			tracing::debug!("Read filter save file is empty");
@@ -63,6 +68,7 @@ pub fn get(
 			}
 		}
 	}
+	*/
 }
 
 // TODO: move to a new mod
@@ -85,7 +91,9 @@ impl std::io::Write for TruncatingFileWriter {
 }
 
 impl ExternalSave for TruncatingFileWriter {
-	fn save(&mut self, read_filter: &fetcher_core::read_filter::Inner) -> io::Result<()> {
+	fn save(&mut self, read_filter: &dyn ReadFilter) -> io::Result<()> {
+		todo!()
+		/*
 		if let Some(filter_conf) =
 			fetcher_config::jobs::read_filter::ReadFilter::unparse(read_filter)
 		{
@@ -94,6 +102,7 @@ impl ExternalSave for TruncatingFileWriter {
 		}
 
 		Ok(())
+		*/
 	}
 }
 

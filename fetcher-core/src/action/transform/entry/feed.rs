@@ -13,6 +13,7 @@ use crate::{
 	error::transform::{FeedError, RawContentsNotSetError},
 };
 
+use async_trait::async_trait;
 use tap::{TapFallible, TapOptional};
 use url::Url;
 
@@ -20,10 +21,11 @@ use url::Url;
 #[derive(Debug)]
 pub struct Feed;
 
+#[async_trait]
 impl TransformEntry for Feed {
 	type Err = FeedError;
 
-	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		tracing::trace!("Parsing feed entries");
 
 		let feed = feed_rs::parser::parse(

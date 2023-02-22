@@ -7,11 +7,13 @@
 use super::Field;
 use crate::Error;
 use fetcher_core::action::{
-	regex::{
-		action::{Extract, Find, Replace},
-		Regex as CRegex,
+	transform::field::{
+		regex::{
+			action::{Extract, Find, Replace},
+			Regex as CRegex,
+		},
+		TransformFieldWrapper as CTransformFieldWrapper,
 	},
-	transform::Transform as CTransform,
 	Action as CAction,
 };
 
@@ -45,34 +47,30 @@ impl Regex {
 		let re = &self.re;
 
 		Ok(match self.action {
-			Action::Find { in_field } => CAction::Filter(
-				CRegex::new(
-					re,
-					Find {
-						in_field: in_field.parse(),
-					},
-				)?
-				.into(),
-			),
+			Action::Find { in_field } => CAction::Filter(Box::new(CRegex::new(
+				re,
+				Find {
+					in_field: in_field.parse(),
+				},
+			)?)),
 			Action::Extract {
 				from_field: field,
 				passthrough_if_not_found,
-			} => CTransform::Field {
+			} => CAction::Transform(Box::new(CTransformFieldWrapper {
 				field: field.parse(),
-				kind: CRegex::new(
+				transformator: Box::new(CRegex::new(
 					re,
 					Extract {
 						passthrough_if_not_found,
 					},
-				)?
-				.into(),
+				)?),
+			})),
+			Action::Replace { in_field, with } => {
+				CAction::Transform(Box::new(CTransformFieldWrapper {
+					field: in_field.parse(),
+					transformator: Box::new(CRegex::new(re, Replace { with })?),
+				}))
 			}
-			.into(),
-			Action::Replace { in_field, with } => CTransform::Field {
-				field: in_field.parse(),
-				kind: CRegex::new(re, Replace { with })?.into(),
-			}
-			.into(),
 		})
 	}
 }

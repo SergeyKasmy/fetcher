@@ -39,15 +39,15 @@ pub trait TransformField: Debug {
 	// fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Self::Err>;
 	fn transform_field(
 		&self,
-		field: Option<&str>,
+		old_val: Option<&str>,
 	) -> Result<TransformResult<String>, TransformErrorKind>;
 }
 
 // TODO: make a new name
 #[derive(Debug)]
-struct TransformFieldWrapper {
-	field: Field,
-	transformator: Box<dyn TransformField + Sync>,
+pub struct TransformFieldWrapper {
+	pub field: Field,
+	pub transformator: Box<dyn TransformField + Send + Sync>,
 }
 
 #[async_trait]

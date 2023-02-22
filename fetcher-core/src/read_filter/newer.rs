@@ -181,7 +181,7 @@ mod tests {
 			},
 		];
 
-		rf.remove_read_from(&mut entries);
+		rf.filter(&mut entries);
 
 		// remove msgs
 		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
@@ -201,7 +201,7 @@ mod tests {
 			..Default::default()
 		}];
 
-		rf.remove_read_from(&mut entries);
+		rf.filter(&mut entries);
 
 		// remove msgs
 		let entries_ids = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
@@ -217,7 +217,7 @@ mod tests {
 			id: Some("1".to_owned()),
 			..Default::default()
 		}];
-		rf.remove_read_from(&mut entries);
+		rf.filter(&mut entries);
 
 		let entries_ids = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
 		assert_eq!(&entries_ids, &[]);

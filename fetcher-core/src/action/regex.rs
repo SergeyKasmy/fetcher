@@ -64,9 +64,9 @@ impl Regex<Extract> {
 impl TransformField for Regex<Extract> {
 	fn transform_field(
 		&self,
-		field: Option<&str>,
+		old_val: Option<&str>,
 	) -> Result<TransformResult<String>, TransformErrorKind> {
-		self.transform_field_impl(field).map_err(Into::into)
+		self.transform_field_impl(old_val).map_err(Into::into)
 	}
 }
 impl Regex<Extract> {
@@ -120,10 +120,10 @@ impl TransformField for Regex<Replace> {
 	// Infallible
 	fn transform_field(
 		&self,
-		field: Option<&str>,
+		old_val: Option<&str>,
 	) -> Result<TransformResult<String>, TransformErrorKind> {
 		Ok(TransformResult::New(
-			field.map(|field| self.replace(field).into_owned()),
+			old_val.map(|v| self.replace(v).into_owned()),
 		))
 	}
 }

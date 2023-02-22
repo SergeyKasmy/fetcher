@@ -7,8 +7,9 @@
 //! This module contains the [`Trim`] field transform
 
 use super::TransformField;
-use crate::action::transform::result::TransformResult;
-use crate::error::transform::Kind as TransformErrorKind;
+use crate::{
+	action::transform::result::TransformResult, error::transform::Kind as TransformErrorKind,
+};
 
 /// Trim whitespace from a field
 #[derive(Debug)]
@@ -18,8 +19,8 @@ impl TransformField for Trim {
 	// Infallible
 	fn transform_field(
 		&self,
-		field: Option<&str>,
+		old_val: Option<&str>,
 	) -> Result<TransformResult<String>, TransformErrorKind> {
-		Ok(TransformResult::New(field.map(|s| s.trim().to_owned())))
+		Ok(TransformResult::New(old_val.map(|s| s.trim().to_owned())))
 	}
 }

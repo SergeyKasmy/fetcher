@@ -20,8 +20,10 @@ use self::{
 use crate::Error;
 use fetcher_core::action::{
 	transform::{
-		entry::Kind as CTransformEntryKind, field::caps::Caps as CCaps, field::Field as CField,
-		field::Kind as CFieldTransformKind, Feed as CFeed, Transform as CTransform,
+		field::{
+			caps::Caps as CCaps, Field as CField, TransformFieldWrapper as CTransformFieldWrapper,
+		},
+		Feed as CFeed,
 	},
 	Action as CAction,
 };
@@ -67,17 +69,19 @@ impl Action {
 		Ok(match self {
 			Action::ReadFilter => unreachable!(),
 			Action::Take(x) => CAction::Filter(x.parse().into()),
-			Action::Http => CTransformEntryKind::Http.into(),
+			// Action::Http => CTransformEntryKind::Http.into(),
+			Action::Http => todo!(),
 			Action::Html(x) => x.parse()?.into(),
 			Action::Json(x) => x.parse()?.into(),
-			Action::Feed => CFeed.into(),
+			Action::Feed => CAction::Transform(Box::new(CFeed)),
 			Action::Use(x) => x.parse().into(),
-			Action::Print => CTransformEntryKind::Print.into(),
+			// Action::Print => CTransformEntryKind::Print.into(),
+			Action::Print => todo!(),
 			Action::Set(s) => s.parse().into(),
-			Action::Caps => CAction::Transform(CTransform::Field {
+			Action::Caps => CAction::Transform(Box::new(CTransformFieldWrapper {
 				field: CField::Title,
-				kind: CFieldTransformKind::Caps(CCaps),
-			}),
+				transformator: Box::new(CCaps),
+			})),
 			Action::Trim(x) => x.parse().into(),
 			Action::Shorten(x) => x.parse().into(),
 			Action::Regex(x) => x.parse()?,

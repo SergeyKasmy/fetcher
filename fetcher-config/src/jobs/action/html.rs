@@ -8,7 +8,10 @@ pub mod query;
 
 use self::query::{ElementDataQuery, ElementQuery};
 use crate::Error;
-use fetcher_core::{action::transform::Html as CoreHtml, utils::OptionExt};
+use fetcher_core::{
+	action::transform::entry::html::Html as CHtml, action::transform::Transform as CTransform,
+	utils::OptionExt,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -35,8 +38,8 @@ pub struct Html {
 }
 
 impl Html {
-	pub fn parse(self) -> Result<CoreHtml, Error> {
-		Ok(CoreHtml {
+	pub fn parse(self) -> Result<Box<dyn CTransform>, Error> {
+		Ok(Box::new(CHtml {
 			itemq: self
 				.itemq
 				.map(|v| v.into_iter().map(ElementQuery::parse).collect()),
@@ -49,6 +52,6 @@ impl Html {
 			idq: self.idq.try_map(ElementDataQuery::parse)?,
 			linkq: self.linkq.try_map(ElementDataQuery::parse)?,
 			imgq: self.imgq.try_map(ElementDataQuery::parse)?,
-		})
+		}))
 	}
 }

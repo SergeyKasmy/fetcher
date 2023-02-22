@@ -5,7 +5,10 @@
  */
 
 use fetcher_core::action::transform::{
-	field::{shorten::Shorten as CShorten, Field as CField, Kind as CFieldTransformKind},
+	field::{
+		shorten::Shorten as CShorten, Field as CField,
+		TransformFieldWrapper as CTransformFieldWrapper,
+	},
 	Transform as CTransform,
 };
 
@@ -20,11 +23,11 @@ pub struct Shorten {
 }
 
 impl Shorten {
-	pub fn parse(self) -> CTransform {
-		CTransform::Field {
+	pub fn parse(self) -> Box<dyn CTransform> {
+		Box::new(CTransformFieldWrapper {
 			// field: self.field.parse(),
 			field: CField::Body,
-			kind: CFieldTransformKind::Shorten(CShorten { len: self.len }),
-		}
+			transformator: Box::new(CShorten { len: self.len }),
+		})
 	}
 }
