@@ -676,6 +676,7 @@ name = "fetcher"
 version = "0.11.1"
 dependencies = [
  "argh",
+ "async-trait",
  "color-eyre",
  "directories",
  "fetcher-config",

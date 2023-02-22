@@ -8,14 +8,14 @@ use crate::{action::filter::Filter, entry::Entry, error::Error, source::MarkAsRe
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use std::collections::VecDeque;
+use std::{any::Any, collections::VecDeque};
 
 use super::ReadFilter;
 
 const MAX_LIST_LEN: usize = 500;
 
 /// Read Filter that stores a list of all entries read
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NotPresent {
 	read_list: VecDeque<(String, DateTime<Utc>)>,
 }
@@ -78,7 +78,12 @@ impl NotPresent {
 	}
 }
 
-impl ReadFilter for NotPresent {}
+#[async_trait]
+impl ReadFilter for NotPresent {
+	async fn as_any(&self) -> Box<dyn Any> {
+		Box::new(self.clone())
+	}
+}
 
 #[async_trait]
 impl MarkAsRead for NotPresent {

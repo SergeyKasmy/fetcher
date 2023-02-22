@@ -6,24 +6,26 @@
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use fetcher_core::read_filter::{
 	ExternalSave as CExternalSave, Newer as CNewer, NotPresent as CNotPresent,
 	ReadFilter as CReadFilter,
 };
 
-#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub enum Kind {
-	NewerThanRead,
-	NotPresentInReadList,
-}
-
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ReadFilter {
 	NewerThanRead(Newer),
 	NotPresentInReadList(NotPresent),
+}
+
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Debug)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub enum Kind {
+	NewerThanRead,
+	NotPresentInReadList,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -38,33 +40,40 @@ pub struct NotPresent {
 	read_list: Vec<(String, chrono::DateTime<Utc>)>,
 }
 
+// FIXME: use the external save ffs
 impl ReadFilter {
 	pub fn parse(
 		self,
 		external_save: Box<dyn CExternalSave + Send + Sync>,
-	) -> Box<dyn CReadFilter> {
-		let inner: Box<dyn CReadFilter> = match self {
-			ReadFilter::NewerThanRead(x) => Box::new(x.parse()),
-			ReadFilter::NotPresentInReadList(x) => Box::new(x.parse()),
-		};
-
-		/*
-		core_rf::ReadFilter {
-			inner,
-			external_save: Some(external_save),
+	) -> Arc<RwLock<dyn CReadFilter>> {
+		match self {
+			ReadFilter::NewerThanRead(x) => Arc::new(RwLock::new(x.parse())),
+			ReadFilter::NotPresentInReadList(x) => Arc::new(RwLock::new(x.parse())),
 		}
-		*/
-		inner
 	}
 
-	pub fn unparse(read_filter: &impl CReadFilter) -> Option<Self> {
-		todo!()
-		// Some(match &read_filter {
-		// 	core_rf::Inner::NewerThanLastRead(x) => ReadFilter::NewerThanRead(Newer::unparse(x)?),
-		// 	core_rf::Inner::NotPresentInReadList(x) => {
-		// 		ReadFilter::NotPresentInReadList(NotPresent::unparse(x)?)
-		// 	}
-		// })
+	pub async fn unparse(read_filter: &dyn CReadFilter) -> Option<Self> {
+		let any_rf = read_filter.as_any().await;
+
+		if let Some(c_newer) = any_rf.downcast_ref::<CNewer>() {
+			return Some(Self::NewerThanRead(Newer::unparse(c_newer)?));
+		}
+
+		if let Some(c_not_present) = any_rf.downcast_ref::<CNotPresent>() {
+			return Some(Self::NotPresentInReadList(NotPresent::unparse(
+				c_not_present,
+			)?));
+		}
+
+		// TODO: return error
+		None
+	}
+
+	pub fn to_kind(&self) -> Kind {
+		match self {
+			ReadFilter::NewerThanRead(_) => Kind::NewerThanRead,
+			ReadFilter::NotPresentInReadList(_) => Kind::NotPresentInReadList,
+		}
 	}
 }
 
@@ -95,5 +104,11 @@ impl NotPresent {
 				read_list: read_filter.iter().cloned().collect(),
 			})
 		}
+	}
+}
+
+impl PartialEq<Kind> for ReadFilter {
+	fn eq(&self, other: &Kind) -> bool {
+		self.to_kind() == *other
 	}
 }

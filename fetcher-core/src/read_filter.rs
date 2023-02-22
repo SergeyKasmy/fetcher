@@ -10,6 +10,7 @@
 mod newer;
 mod not_present;
 
+use std::any::Any;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -22,20 +23,29 @@ use crate::entry::Entry;
 use crate::error::Error;
 use crate::source::MarkAsRead;
 
-pub trait ReadFilter: MarkAsRead + Filter + Send + Sync {}
+#[async_trait]
+pub trait ReadFilter: MarkAsRead + Filter + Send + Sync {
+	async fn as_any(&self) -> Box<dyn Any>;
+}
 
 /// This trait represent some kind of external save destination.
 /// A way to preserve the state of a read filter, i.e. what has and has not been read, across restarts.
+#[async_trait]
 pub trait ExternalSave {
 	/// This function will be called every time something has been marked as read and should be saved externally
 	///
 	/// # Errors
 	/// It may return an error if there has been issues saving, e.g. writing to disk
 	// TODO: trait for deserializing instead of impl ReadFilter
-	fn save(&mut self, read_filter: &dyn ReadFilter) -> std::io::Result<()>;
+	async fn save(&mut self, read_filter: &dyn ReadFilter) -> std::io::Result<()>;
 }
 
-impl ReadFilter for Arc<RwLock<dyn ReadFilter>> {}
+#[async_trait]
+impl ReadFilter for Arc<RwLock<dyn ReadFilter>> {
+	async fn as_any(&self) -> Box<dyn Any> {
+		self.read().await.as_any().await
+	}
+}
 
 #[async_trait]
 impl MarkAsRead for Arc<RwLock<dyn ReadFilter>> {

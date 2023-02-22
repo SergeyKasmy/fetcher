@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use std::any::Any;
+
 use async_trait::async_trait;
 
 use crate::{action::filter::Filter, entry::Entry, error::Error, source::MarkAsRead};
@@ -11,7 +13,7 @@ use crate::{action::filter::Filter, entry::Entry, error::Error, source::MarkAsRe
 use super::ReadFilter;
 
 /// Read Filter that stores the id of the last read entry
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Newer {
 	/// the id of the last read entry. None means there haven't been any entries read and thus all entries run through [`remove_read_from()`](`Newer::remove_read_from()`) will be retained
 	pub last_read_id: Option<String>,
@@ -67,7 +69,12 @@ impl Newer {
 	}
 }
 
-impl ReadFilter for Newer {}
+#[async_trait]
+impl ReadFilter for Newer {
+	async fn as_any(&self) -> Box<dyn Any> {
+		Box::new(self.clone())
+	}
+}
 
 #[async_trait]
 impl MarkAsRead for Newer {
