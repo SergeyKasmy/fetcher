@@ -59,7 +59,6 @@ impl Fetch for SourceWithSharedRF {
 	}
 }
 
-// FIXME: implement on the read filter type itself
 #[async_trait]
 impl MarkAsRead for SourceWithSharedRF {
 	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {

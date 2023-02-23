@@ -7,15 +7,18 @@
 #![allow(missing_docs)]
 
 use crate::{
-	action::transform::entry::{
-		html::query::{
-			DataLocation as HtmlDataLocation, ElementQuery as HtmlElemQuery, ElementQuerySliceExt,
+	action::transform::{
+		entry::{
+			html::query::{
+				DataLocation as HtmlDataLocation, ElementQuery as HtmlElemQuery,
+				ElementQuerySliceExt,
+			},
+			json::Keys as JsonKeys,
 		},
-		json::Keys as JsonKeys,
+		field::Field,
 	},
 	entry::Entry,
 	error::InvalidUrlError,
-	source::http::TransformFromField,
 };
 
 use std::convert::Infallible;
@@ -51,11 +54,12 @@ pub enum Kind {
 
 #[derive(thiserror::Error, Debug)]
 pub enum HttpError {
-	#[error("Missing URL in the entry {0} field")]
-	MissingUrl(TransformFromField),
+	// TODO: impl Display for Field
+	#[error("Missing URL in the entry {0:?} field")]
+	MissingUrl(Field),
 
-	#[error("Invalid URL in the entry raw_contents field")]
-	InvalidUrl(#[from] InvalidUrlError),
+	#[error("Invalid URL in the entry {0:?} field")]
+	InvalidUrl(Field, #[source] InvalidUrlError),
 
 	#[error(transparent)]
 	Other(#[from] crate::error::source::HttpError),

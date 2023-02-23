@@ -20,10 +20,8 @@ use self::{
 use crate::Error;
 use fetcher_core::action::{
 	transform::{
-		field::{
-			caps::Caps as CCaps, Field as CField, TransformFieldWrapper as CTransformFieldWrapper,
-		},
-		Feed as CFeed,
+		field::{Field as CField, TransformFieldWrapper as CTransformFieldWrapper},
+		Caps as CCaps, DebugPrint as CDebugPrint, Feed as CFeed, Http as CHttp,
 	},
 	Action as CAction,
 };
@@ -38,18 +36,18 @@ pub enum Action {
 	Take(Take),
 
 	// entry transforms
-	Http,
-	Html(Html),
-	Json(Json),
+	DebugPrint,
 	Feed,
+	Html(Html),
+	Http,
+	Json(Json),
 	Use(Use),
-	Print,
 
 	// field transforms
-	Set(Set),
 	Caps,
-	Trim(Trim),
+	Set(Set),
 	Shorten(Shorten),
+	Trim(Trim),
 
 	// other
 	Regex(Regex),
@@ -67,23 +65,28 @@ pub enum Field {
 impl Action {
 	pub fn parse(self) -> Result<CAction, Error> {
 		Ok(match self {
+			// filters
 			Action::ReadFilter => unreachable!(),
-			Action::Take(x) => CAction::Filter(x.parse().into()),
-			// Action::Http => CTransformEntryKind::Http.into(),
-			Action::Http => todo!(),
-			Action::Html(x) => x.parse()?.into(),
-			Action::Json(x) => x.parse()?.into(),
+			Action::Take(x) => CAction::Filter(x.parse()),
+
+			// entry transforms
 			Action::Feed => CAction::Transform(Box::new(CFeed)),
+			Action::Html(x) => x.parse()?.into(),
+			Action::Http => CAction::Transform(Box::new(CHttp::new(CField::Link)?)),
+			Action::Json(x) => x.parse()?.into(),
 			Action::Use(x) => x.parse().into(),
-			// Action::Print => CTransformEntryKind::Print.into(),
-			Action::Print => todo!(),
-			Action::Set(s) => s.parse().into(),
+
+			// field transforms
 			Action::Caps => CAction::Transform(Box::new(CTransformFieldWrapper {
 				field: CField::Title,
 				transformator: Box::new(CCaps),
 			})),
-			Action::Trim(x) => x.parse().into(),
+			Action::DebugPrint => CAction::Transform(Box::new(CDebugPrint)),
+			Action::Set(s) => s.parse().into(),
 			Action::Shorten(x) => x.parse().into(),
+			Action::Trim(x) => x.parse().into(),
+
+			// other
 			Action::Regex(x) => x.parse()?,
 		})
 	}

@@ -42,7 +42,6 @@ pub struct NotPresent {
 	read_list: Vec<(String, chrono::DateTime<Utc>)>,
 }
 
-// FIXME: use the external save ffs
 impl ReadFilter {
 	pub fn parse(self, external_save: Box<dyn CExternalSave>) -> Arc<RwLock<dyn CReadFilter>> {
 		let rf: Box<dyn CReadFilter> = match self {

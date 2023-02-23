@@ -11,8 +11,8 @@ pub mod field;
 pub mod result;
 
 pub use self::{
-	entry::{feed::Feed, html::Html, json::Json, use_as::Use},
-	field::{caps::Caps, shorten::Shorten, trim::Trim},
+	entry::{feed::Feed, html::Html, http::Http, json::Json, print::DebugPrint, use_as::Use},
+	field::{caps::Caps, set::Set, shorten::Shorten, trim::Trim},
 };
 
 use crate::{entry::Entry, error::transform::Error as TransformError};

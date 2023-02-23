@@ -115,7 +115,7 @@ impl Transform for TransformFieldWrapper {
 }
 
 /// List of all available fields for transformations
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Field {
 	/// [`Message.title`] field
 	Title,
