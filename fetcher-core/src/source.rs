@@ -39,7 +39,7 @@ pub trait Fetch: Debug + Send + Sync {
 
 /// A trait that defines a way to mark an entry as read
 #[async_trait]
-pub trait MarkAsRead: Send + Sync {
+pub trait MarkAsRead: Debug + Send + Sync {
 	/// Mark the entry with `id` as read
 	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error>;
 
@@ -50,20 +50,28 @@ pub trait MarkAsRead: Send + Sync {
 /// A wrapper around a [`Fetch`] that uses an external way to filter read entries,
 /// as well as a (read filter)[`ReadFilter`]
 #[derive(Debug)]
-pub struct SourceWithSharedRF {
+pub struct SourceWithSharedRF<F, RF>
+where
+	F: Fetch,
+	RF: ReadFilter,
+{
 	/// The source to fetch data from
-	pub source: Vec<Box<dyn Fetch>>,
+	pub sources: Vec<F>,
 
 	/// The read filter that's used to mark entries as read
-	pub rf: Option<Box<dyn ReadFilter>>,
+	pub rf: Option<RF>,
 }
 
 #[async_trait]
-impl Fetch for SourceWithSharedRF {
+impl<F, RF> Fetch for SourceWithSharedRF<F, RF>
+where
+	F: Fetch,
+	RF: ReadFilter,
+{
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
 		let mut entries = Vec::new();
 
-		for source in &mut self.source {
+		for source in &mut self.sources {
 			entries.extend(source.fetch().await?);
 		}
 
@@ -72,7 +80,11 @@ impl Fetch for SourceWithSharedRF {
 }
 
 #[async_trait]
-impl MarkAsRead for SourceWithSharedRF {
+impl<F, RF> MarkAsRead for SourceWithSharedRF<F, RF>
+where
+	F: Fetch,
+	RF: ReadFilter,
+{
 	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		if let Some(rf) = &mut self.rf {
 			rf.mark_as_read(id).await?;
@@ -88,7 +100,12 @@ impl MarkAsRead for SourceWithSharedRF {
 	}
 }
 
-impl Source for SourceWithSharedRF {}
+impl<F, RF> Source for SourceWithSharedRF<F, RF>
+where
+	F: Fetch,
+	RF: ReadFilter,
+{
+}
 
 #[async_trait]
 impl Fetch for String {

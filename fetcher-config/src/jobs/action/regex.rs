@@ -58,17 +58,17 @@ impl Regex {
 				passthrough_if_not_found,
 			} => CAction::Transform(Box::new(CTransformFieldWrapper {
 				field: field.parse(),
-				transformator: Box::new(CRegex::new(
+				transformator: CRegex::new(
 					re,
 					Extract {
 						passthrough_if_not_found,
 					},
-				)?),
+				)?,
 			})),
 			Action::Replace { in_field, with } => {
 				CAction::Transform(Box::new(CTransformFieldWrapper {
 					field: in_field.parse(),
-					transformator: Box::new(CRegex::new(re, Replace { with })?),
+					transformator: CRegex::new(re, Replace { with })?,
 				}))
 			}
 		})

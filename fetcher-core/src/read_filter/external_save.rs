@@ -21,35 +21,43 @@ pub trait ExternalSave: Debug + Send + Sync {
 	///
 	/// # Errors
 	/// It may return an error if there has been issues saving, e.g. writing to disk
-	// TODO: trait for deserializing instead of impl ReadFilter
+	// TODO: trait for deserializing instead of dyn ReadFilter
 	async fn save(&mut self, read_filter: &dyn ReadFilter) -> std::io::Result<()>;
 }
 
 /// A wrapper that zips a [`ReadFilter`] and an [`ExternalSave`] together, implementing [`ExternalSave`] itself
 /// and calling [`ExternalSave::save`] every time [`MarkAsRead::mark_as_read`] is used
 #[derive(Debug)]
-pub struct ExternalSaveRFWrapper {
+pub struct ExternalSaveRFWrapper<RF, S> {
 	/// The [`ReadFilter`] that is being wrapped
-	pub rf: Box<dyn ReadFilter>,
+	pub rf: RF,
 	/// The [`ExternalSave`] that is being called on each call to [`MarkAsRead::mark_as_read`]
-	pub external_save: Option<Box<dyn ExternalSave>>,
+	pub external_save: Option<S>,
 }
 
 #[async_trait]
-impl ReadFilter for ExternalSaveRFWrapper {
+impl<RF, S> ReadFilter for ExternalSaveRFWrapper<RF, S>
+where
+	RF: ReadFilter,
+	S: ExternalSave,
+{
 	async fn as_any(&self) -> Box<dyn Any> {
 		self.rf.as_any().await
 	}
 }
 
 #[async_trait]
-impl MarkAsRead for ExternalSaveRFWrapper {
+impl<RF, S> MarkAsRead for ExternalSaveRFWrapper<RF, S>
+where
+	RF: ReadFilter,
+	S: ExternalSave,
+{
 	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		self.rf.mark_as_read(id).await?;
 
 		if let Some(ext_save) = &mut self.external_save {
 			ext_save
-				.save(&*self.rf)
+				.save(&self.rf)
 				.await
 				.map_err(Error::ReadFilterExternalWrite)?;
 		}
@@ -63,7 +71,11 @@ impl MarkAsRead for ExternalSaveRFWrapper {
 }
 
 #[async_trait]
-impl Filter for ExternalSaveRFWrapper {
+impl<RF, S> Filter for ExternalSaveRFWrapper<RF, S>
+where
+	RF: ReadFilter,
+	S: ExternalSave,
+{
 	async fn filter(&self, entries: &mut Vec<Entry>) {
 		self.rf.filter(entries).await;
 	}

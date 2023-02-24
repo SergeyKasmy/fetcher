@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::source::{Exec as CExec, Fetch as CFetch};
+use fetcher_core::source::Exec as CExec;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
@@ -18,10 +18,7 @@ pub struct Exec {
 }
 
 impl Exec {
-	pub fn parse(self) -> Vec<Box<dyn CFetch>> {
-		self.cmd
-			.into_iter()
-			.map(|cmd| Box::new(CExec { cmd }) as Box<_>)
-			.collect()
+	pub fn parse(self) -> Vec<CExec> {
+		self.cmd.into_iter().map(|cmd| CExec { cmd }).collect()
 	}
 }

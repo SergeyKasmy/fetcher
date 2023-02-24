@@ -45,16 +45,22 @@ pub trait TransformField: Debug + Send + Sync {
 /// A wrapper around a [`TransformField`] that takes a value out of a [`Field`], passes it to the transformator,
 /// and processes the result - updating, removing, or retaining the old value of the field as specified by the transformator
 #[derive(Debug)]
-pub struct TransformFieldWrapper {
+pub struct TransformFieldWrapper<T>
+where
+	T: TransformField,
+{
 	/// The field to transform/change
 	pub field: Field,
 
 	/// The transformator that's going to decide what the new value of the field should be
-	pub transformator: Box<dyn TransformField>,
+	pub transformator: T,
 }
 
 #[async_trait]
-impl Transform for TransformFieldWrapper {
+impl<T> Transform for TransformFieldWrapper<T>
+where
+	T: TransformField,
+{
 	async fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, TransformError> {
 		// TODO: remove this, take entry by ownership?
 		let mut entry = entry.clone();

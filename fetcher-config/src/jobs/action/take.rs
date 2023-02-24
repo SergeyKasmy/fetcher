@@ -4,10 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::action::filter::{
-	take::{Take as CTake, TakeFrom as CTakeFrom},
-	Filter as CFilter,
-};
+use fetcher_core::action::filter::take::{Take as CTake, TakeFrom as CTakeFrom};
 
 use serde::{Deserialize, Serialize};
 
@@ -26,11 +23,11 @@ pub enum TakeFrom {
 }
 
 impl Take {
-	pub fn parse(self) -> Box<dyn CFilter> {
-		Box::new(CTake {
+	pub fn parse(self) -> CTake {
+		CTake {
 			from: self.from.parse(),
 			num: self.num,
-		})
+		}
 	}
 }
 

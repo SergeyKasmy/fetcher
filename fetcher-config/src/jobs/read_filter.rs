@@ -43,18 +43,20 @@ pub struct NotPresent {
 }
 
 impl ReadFilter {
-	pub fn parse(self, external_save: Box<dyn CExternalSave>) -> Arc<RwLock<dyn CReadFilter>> {
-		let rf: Box<dyn CReadFilter> = match self {
-			ReadFilter::NewerThanRead(x) => Box::new(x.parse()),
-			ReadFilter::NotPresentInReadList(x) => Box::new(x.parse()),
-		};
-
-		let rf_with_ext_save = CExternalSaveRFWrapper {
-			rf,
-			external_save: Some(external_save),
-		};
-
-		Arc::new(RwLock::new(rf_with_ext_save))
+	pub fn parse<S>(self, external_save: S) -> Arc<RwLock<dyn CReadFilter>>
+	where
+		S: CExternalSave + 'static,
+	{
+		match self {
+			ReadFilter::NewerThanRead(rf) => Arc::new(RwLock::new(CExternalSaveRFWrapper {
+				rf: rf.parse(),
+				external_save: Some(external_save),
+			})),
+			ReadFilter::NotPresentInReadList(rf) => Arc::new(RwLock::new(CExternalSaveRFWrapper {
+				rf: rf.parse(),
+				external_save: Some(external_save),
+			})),
+		}
 	}
 
 	pub async fn unparse(read_filter: &dyn CReadFilter) -> Option<Self> {

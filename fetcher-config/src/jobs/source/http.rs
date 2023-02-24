@@ -4,10 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::{
-	error::source::HttpError as CHttpError,
-	source::{Fetch as CFetch, Http as CHttp},
-};
+use fetcher_core::{error::source::HttpError as CHttpError, source::Http as CHttp};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
@@ -34,10 +31,10 @@ pub enum TaggedRequest {
 }
 
 impl Http {
-	pub fn parse(self) -> Result<Vec<Box<dyn CFetch>>, CHttpError> {
+	pub fn parse(self) -> Result<Vec<CHttp>, CHttpError> {
 		self.0
 			.into_iter()
-			.map(|x| Ok(Box::new(x.parse()?) as Box<_>))
+			.map(Request::parse)
 			.collect::<Result<_, CHttpError>>()
 	}
 }

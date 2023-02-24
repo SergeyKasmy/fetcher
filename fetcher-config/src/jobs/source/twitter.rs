@@ -8,7 +8,7 @@ use crate::{
 	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 	Error as ConfigError,
 };
-use fetcher_core::source::{Fetch as CFetch, Twitter as CTwitter};
+use fetcher_core::source::Twitter as CTwitter;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
@@ -19,10 +19,7 @@ use serde_with::{serde_as, OneOrMany};
 pub struct Twitter(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<String>);
 
 impl Twitter {
-	pub fn parse(
-		self,
-		external: &dyn ProvideExternalData,
-	) -> Result<Vec<Box<dyn CFetch>>, ConfigError> {
+	pub fn parse(self, external: &dyn ProvideExternalData) -> Result<Vec<CTwitter>, ConfigError> {
 		let (api_key, api_secret) = match external.twitter_token() {
 			ExternalDataResult::Ok(v) => v,
 			ExternalDataResult::Unavailable => return Err(ConfigError::TwitterApiKeysMissing),
@@ -31,9 +28,7 @@ impl Twitter {
 
 		self.0
 			.into_iter()
-			.map(|handle| {
-				Ok(Box::new(CTwitter::new(handle, api_key.clone(), api_secret.clone())) as Box<_>)
-			})
+			.map(|handle| Ok(CTwitter::new(handle, api_key.clone(), api_secret.clone())))
 			.collect()
 	}
 }

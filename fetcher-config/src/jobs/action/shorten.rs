@@ -23,11 +23,11 @@ pub struct Shorten {
 }
 
 impl Shorten {
-	pub fn parse(self) -> Box<dyn CTransform> {
-		Box::new(CTransformFieldWrapper {
+	pub fn parse(self) -> impl CTransform {
+		CTransformFieldWrapper {
 			// field: self.field.parse(),
 			field: CField::Body,
-			transformator: Box::new(CShorten { len: self.len }),
-		})
+			transformator: CShorten { len: self.len },
+		}
 	}
 }

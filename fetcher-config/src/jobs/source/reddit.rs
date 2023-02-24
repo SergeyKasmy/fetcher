@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::source::{reddit::Sort as CSort, Fetch as CFetch, Reddit as CReddit};
+use fetcher_core::source::{reddit::Sort as CSort, Reddit as CReddit};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
@@ -43,11 +43,8 @@ pub enum TimePeriod {
 }
 
 impl Reddit {
-	pub fn parse(self) -> Vec<Box<dyn CFetch>> {
-		self.0
-			.into_iter()
-			.map(|x| Box::new(x.parse()) as Box<_>)
-			.collect()
+	pub fn parse(self) -> Vec<CReddit> {
+		self.0.into_iter().map(Inner::parse).collect()
 	}
 }
 

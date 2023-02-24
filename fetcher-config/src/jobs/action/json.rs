@@ -9,7 +9,6 @@ use fetcher_core::{
 	action::transform::{
 		entry::json::{self as c_json, Json as CJson},
 		field::regex as c_regex,
-		Transform as CTransform,
 	},
 	utils::OptionExt,
 };
@@ -70,8 +69,8 @@ pub struct JsonQueryRegex {
 }
 
 impl Json {
-	pub fn parse(self) -> Result<Box<dyn CTransform>, Error> {
-		Ok(Box::new(CJson {
+	pub fn parse(self) -> Result<CJson, Error> {
+		Ok(CJson {
 			itemq: self.itemq.map(Query::parse),
 			titleq: self.titleq.try_map(StringQuery::parse)?,
 
@@ -89,7 +88,7 @@ impl Json {
 					.map(StringQuery::parse)
 					.collect::<Result<_, _>>()
 			})?,
-		}))
+		})
 	}
 }
 

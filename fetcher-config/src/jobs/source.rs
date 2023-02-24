@@ -48,24 +48,27 @@ impl Source {
 		rf: Option<Arc<RwLock<dyn CReadFilter>>>,
 		external: &dyn ProvideExternalData,
 	) -> Result<Box<dyn CSource>, Error> {
-		// make a dyn CSourceWithSharedRF out of a dyn CFetch and the read filter parameter
+		// make a dyn CSourceWithSharedRF out of a CFetch and the read filter parameter
 		macro_rules! WithSharedRF {
-			($source:expr) => {
+			($sources:expr) => {
 				Box::new(CSourceWithSharedRF {
-					source: $source,
-					rf: rf.map(|x| Box::new(x) as Box<_>),
+					sources: $sources,
+					rf,
 				})
 			};
 		}
 
 		Ok(match self {
+			// with shared read filter
 			Self::String(x) => WithSharedRF!(x.parse()),
 			Self::Http(x) => WithSharedRF!(x.parse()?),
 			Self::Twitter(x) => WithSharedRF!(x.parse(external)?),
 			Self::File(x) => WithSharedRF!(x.parse()),
 			Self::Reddit(x) => WithSharedRF!(x.parse()),
 			Self::Exec(x) => WithSharedRF!(x.parse()),
-			Self::Email(x) => x.parse(external)?,
+
+			// with custom read filter
+			Self::Email(x) => Box::new(x.parse(external)?),
 		})
 	}
 }

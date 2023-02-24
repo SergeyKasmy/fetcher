@@ -19,10 +19,10 @@ pub struct Trim {
 }
 
 impl Trim {
-	pub fn parse(self) -> Box<dyn CTransform> {
-		Box::new(CTransformFieldWrapper {
+	pub fn parse(self) -> impl CTransform {
+		CTransformFieldWrapper {
 			field: self.field.parse(),
-			transformator: Box::new(CTrim),
-		})
+			transformator: CTrim,
+		}
 	}
 }

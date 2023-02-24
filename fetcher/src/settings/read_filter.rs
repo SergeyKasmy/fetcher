@@ -57,7 +57,7 @@ pub fn get(
 
 			// the old read filter saved on disk is of the same type as the one set in config
 			if conf == expected_rf_kind {
-				let rf = conf.parse(Box::new(save_file(&path)?));
+				let rf = conf.parse(save_file(&path)?);
 				Ok(rf)
 			} else {
 				Err(ExternalDataError::new_rf_incompat_with_path(

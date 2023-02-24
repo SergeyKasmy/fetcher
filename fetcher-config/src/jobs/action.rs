@@ -64,27 +64,39 @@ pub enum Field {
 
 impl Action {
 	pub fn parse(self) -> Result<CAction, Error> {
+		macro_rules! transform {
+			($tr:expr) => {
+				CAction::Transform(Box::new($tr))
+			};
+		}
+
+		macro_rules! filter {
+			($f:expr) => {
+				CAction::Filter(Box::new($f))
+			};
+		}
+
 		Ok(match self {
 			// filters
 			Action::ReadFilter => unreachable!(),
-			Action::Take(x) => CAction::Filter(x.parse()),
+			Action::Take(x) => filter!(x.parse()),
 
 			// entry transforms
-			Action::Feed => CAction::Transform(Box::new(CFeed)),
-			Action::Html(x) => x.parse()?.into(),
-			Action::Http => CAction::Transform(Box::new(CHttp::new(CField::Link)?)),
-			Action::Json(x) => x.parse()?.into(),
-			Action::Use(x) => x.parse().into(),
+			Action::Feed => transform!(CFeed),
+			Action::Html(x) => transform!(x.parse()?),
+			Action::Http => transform!(CHttp::new(CField::Link)?),
+			Action::Json(x) => transform!(x.parse()?),
+			Action::Use(x) => transform!(x.parse()),
 
 			// field transforms
-			Action::Caps => CAction::Transform(Box::new(CTransformFieldWrapper {
+			Action::Caps => transform!(CTransformFieldWrapper {
 				field: CField::Title,
-				transformator: Box::new(CCaps),
-			})),
-			Action::DebugPrint => CAction::Transform(Box::new(CDebugPrint)),
-			Action::Set(s) => s.parse().into(),
-			Action::Shorten(x) => x.parse().into(),
-			Action::Trim(x) => x.parse().into(),
+				transformator: CCaps,
+			}),
+			Action::DebugPrint => transform!(CDebugPrint),
+			Action::Set(s) => transform!(s.parse()),
+			Action::Shorten(x) => transform!(x.parse()),
+			Action::Trim(x) => transform!(x.parse()),
 
 			// other
 			Action::Regex(x) => x.parse()?,

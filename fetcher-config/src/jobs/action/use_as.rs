@@ -5,7 +5,7 @@
  */
 
 use super::Field;
-use fetcher_core::action::transform::{Transform as CTransform, Use as CUse};
+use fetcher_core::action::transform::Use as CUse;
 
 use serde::{Deserialize, Serialize};
 
@@ -17,10 +17,10 @@ pub struct Use {
 }
 
 impl Use {
-	pub fn parse(self) -> Box<dyn CTransform> {
-		Box::new(CUse {
+	pub fn parse(self) -> CUse {
+		CUse {
 			field: self.field.parse(),
 			as_field: self.as_field.parse(),
-		})
+		}
 	}
 }
