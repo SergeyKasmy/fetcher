@@ -52,6 +52,7 @@ impl<A: Action> Regex<A> {
 
 impl Regex<Extract> {
 	/// Extracts capture group "s" (?P<s>) from `text`
+	#[allow(rustdoc::invalid_html_tags)]
 	#[must_use]
 	pub fn extract<'a>(&self, text: &'a str) -> Option<&'a str> {
 		match find(&self.re, text) {

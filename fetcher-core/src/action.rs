@@ -10,7 +10,6 @@ pub mod filter;
 pub mod transform;
 
 // Regex is both a transform and a filter that's why it's here all alone :(
-#[doc(hidden)]
 pub mod regex;
 
 use self::{filter::Filter, transform::Transform};

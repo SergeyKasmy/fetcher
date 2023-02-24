@@ -225,16 +225,17 @@ async fn run_command(
 		}
 	}
 
-	run_jobs(
-		jobs,
+	let error_handling = if once {
+		ErrorHandling::Forward
+	} else {
 		ErrorHandling::Sleep {
 			max_retries: 15,
 			err_count: 0,
 			last_error: None,
-		},
-		cx,
-	)
-	.await?;
+		}
+	};
+
+	run_jobs(jobs, error_handling, cx).await?;
 	Ok(())
 }
 
@@ -498,7 +499,6 @@ async fn handle_errors(
 
 				// sleep in exponention amount of minutes, begginning with 2^0 = 1 minute
 				let sleep_dur = 2u64.saturating_pow(*err_count);
-				// tracing::info!("Pausing job {job_name} for {sleep_dur}m");
 				tracing::info!("Pausing job {job_name} for {sleep_dur}m");
 
 				*err_count += 1;
