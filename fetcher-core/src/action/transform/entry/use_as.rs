@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains the transform [`UseRawContents`]
+//! This module contains the transform [`Use`] that allows using the content of a [`Field`] as the new value of a different [`Field`]
 
 use super::TransformEntry;
 use crate::{

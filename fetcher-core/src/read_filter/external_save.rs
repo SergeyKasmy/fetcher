@@ -4,6 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`ExternalSave`] trait that implementors can use to add a way to save read filter data externally,
+//! as well as [`ExternalSaveRFWrapper`] that wraps a [`ReadFilter`] with an [`ExternalSave`] and implements [`ReadFilter`] itself
+
 use async_trait::async_trait;
 use std::{any::Any, fmt::Debug};
 
@@ -22,9 +25,13 @@ pub trait ExternalSave: Debug + Send + Sync {
 	async fn save(&mut self, read_filter: &dyn ReadFilter) -> std::io::Result<()>;
 }
 
+/// A wrapper that zips a [`ReadFilter`] and an [`ExternalSave`] together, implementing [`ExternalSave`] itself
+/// and calling [`ExternalSave::save`] every time [`MarkAsRead::mark_as_read`] is used
 #[derive(Debug)]
 pub struct ExternalSaveRFWrapper {
+	/// The [`ReadFilter`] that is being wrapped
 	pub rf: Box<dyn ReadFilter>,
+	/// The [`ExternalSave`] that is being called on each call to [`MarkAsRead::mark_as_read`]
 	pub external_save: Option<Box<dyn ExternalSave>>,
 }
 

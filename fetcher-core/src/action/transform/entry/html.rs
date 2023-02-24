@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains the [`Html`] parser as well as a way to query an HTML tag via [`QueryData`]
+//! This module contains the [`Html`] parser as well as a way to query an HTML tag via [`ElementQuery`]
 
 pub mod query;
 

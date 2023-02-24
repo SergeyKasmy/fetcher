@@ -12,10 +12,7 @@ pub mod set;
 pub mod shorten;
 pub mod trim;
 
-// Hack to re-export the entire regex module here
-pub mod regex {
-	pub use crate::action::regex::*;
-}
+pub use crate::action::regex;
 
 use async_trait::async_trait;
 use std::fmt::Debug;
@@ -32,11 +29,12 @@ use crate::{
 	utils::OptionExt,
 };
 
-pub trait TransformField: Debug {
-	// type Err: Into<TransformErrorKind>;
-
-	/// Transform the `field` into a new field or `None` specifying what happens if `None` is returned
-	// fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Self::Err>;
+/// Transform/change the value of a field of an [`Entry `]
+pub trait TransformField: Debug + Send + Sync {
+	/// Transform/change the `field` into a new one or `None` specifying what happens if `None` is returned
+	///
+	/// # Errors
+	/// Refer to implementator's docs. Most of them never error but some do
 	fn transform_field(
 		&self,
 		old_val: Option<&str>,
@@ -44,10 +42,15 @@ pub trait TransformField: Debug {
 }
 
 // TODO: make a new name
+/// A wrapper around a [`TransformField`] that takes a value out of a [`Field`], passes it to the transformator,
+/// and processes the result - updating, removing, or retaining the old value of the field as specified by the transformator
 #[derive(Debug)]
 pub struct TransformFieldWrapper {
+	/// The field to transform/change
 	pub field: Field,
-	pub transformator: Box<dyn TransformField + Send + Sync>,
+
+	/// The transformator that's going to decide what the new value of the field should be
+	pub transformator: Box<dyn TransformField>,
 }
 
 #[async_trait]

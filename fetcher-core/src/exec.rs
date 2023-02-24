@@ -24,31 +24,6 @@ pub struct Exec {
 	/// The command to execute
 	pub cmd: String,
 }
-
-/*
-impl Exec {
-	/// Execute the command and returns its stdout in the [`Entry::raw_contents`] field
-	#[tracing::instrument(skip_all)]
-	pub async fn get(&self) -> Result<Entry, ExecError> {
-		// TODO: add support for windows cmd /C
-		tracing::debug!("Spawned a shell with command {:?}", self.cmd);
-		let out = Command::new("sh")
-			.args(["-c", &self.cmd])
-			.output()
-			.await?
-			.stdout;
-
-		let out = String::from_utf8(out)?;
-		tracing::debug!("Got {out:?} from the command");
-
-		Ok(Entry {
-			raw_contents: Some(out),
-			..Default::default()
-		})
-	}
-}
-*/
-
 #[async_trait]
 impl Fetch for Exec {
 	// TODO: maybe, instead of returining a vec, add a &mut Vec output parameter

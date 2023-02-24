@@ -4,12 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::sync::Arc;
-
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
-
-use crate::Error;
 
 use super::{
 	action::Action,
@@ -18,6 +13,7 @@ use super::{
 	sink::Sink,
 	source::Source,
 };
+use crate::Error;
 use fetcher_core::{task::Task as CoreTask, utils::OptionExt};
 
 #[derive(Deserialize, Serialize, Debug)]

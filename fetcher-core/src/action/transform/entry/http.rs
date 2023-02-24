@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`Http`] transform that fetches a web page from a link located in a field of the passed [`Entry`]
+
 use async_trait::async_trait;
 use reqwest::Client;
 use url::Url;
@@ -20,13 +22,19 @@ use crate::{
 	utils::OptionExt,
 };
 
+/// A transform that fetches the page from URL in `from_field` and returns it in [`Entry::raw_contents`]
 #[derive(Debug)]
 pub struct Http {
+	/// The field to get the URL from
+	pub from_field: Field,
 	client: Client,
-	from_field: Field,
 }
 
 impl Http {
+	/// Create a new [`Http`] transform
+	///
+	/// # Errors
+	/// This method fails if TLS couldn't be initialized
 	pub fn new(from_field: Field) -> Result<Self, SourceHttpError> {
 		let client = source::http::CLIENT
 			.get_or_try_init(|| {
@@ -37,7 +45,7 @@ impl Http {
 			})?
 			.clone();
 
-		Ok(Self { client, from_field })
+		Ok(Self { from_field, client })
 	}
 }
 

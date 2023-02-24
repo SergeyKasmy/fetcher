@@ -26,12 +26,34 @@ impl Newer {
 		Self { last_read_id: None }
 	}
 
-	/*
-	/// Marks the `id` as already read
-	pub fn mark_as_read(&mut self, id: &str) {
+	/// Returns the last read entry id, if any
+	#[must_use]
+	pub fn last_read(&self) -> Option<&str> {
+		self.last_read_id.as_deref()
+	}
+}
+
+#[async_trait]
+impl ReadFilter for Newer {
+	async fn as_any(&self) -> Box<dyn Any> {
+		Box::new(self.clone())
+	}
+}
+
+#[async_trait]
+impl MarkAsRead for Newer {
+	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		self.last_read_id = Some(id.to_owned());
+		Ok(())
 	}
 
+	async fn set_read_only(&mut self) {
+		// NOOP
+	}
+}
+
+#[async_trait]
+impl Filter for Newer {
 	/// Removes all entries that are in the `list` after the last one read, including itself, in order
 	/// Note: Make sure the list is sorted newest to oldest
 	///
@@ -49,50 +71,6 @@ impl Newer {
 	/// * id 9
 	/// * id 8
 	/// * id 3
-	pub fn remove_read_from(&self, list: &mut Vec<Entry>) {
-		if let Some(last_read_id) = &self.last_read_id {
-			if let Some(last_read_id_pos) = list.iter().position(|x| {
-				let Some(id) = &x.id else { return false };
-
-				last_read_id == id
-			}) {
-				list.drain(last_read_id_pos..);
-			}
-		}
-	}
-	*/
-
-	/// Returns the last read entry id, if any
-	#[must_use]
-	pub fn last_read(&self) -> Option<&str> {
-		self.last_read_id.as_deref()
-	}
-}
-
-#[async_trait]
-impl ReadFilter for Newer {
-	/// Doesn't preserve external saving functionality, just copies the data
-	async fn as_any(&self) -> Box<dyn Any> {
-		Box::new(self.clone())
-	}
-}
-
-#[async_trait]
-impl MarkAsRead for Newer {
-	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
-		self.last_read_id = Some(id.to_owned());
-		let self_clone = self.clone();
-
-		Ok(())
-	}
-
-	async fn set_read_only(&mut self) {
-		// NOOP
-	}
-}
-
-#[async_trait]
-impl Filter for Newer {
 	async fn filter(&self, entries: &mut Vec<Entry>) {
 		if let Some(last_read_id) = &self.last_read_id {
 			if let Some(last_read_id_pos) = entries.iter().position(|x| {
@@ -117,40 +95,40 @@ mod tests {
 	#![allow(clippy::unwrap_used)]
 	use super::*;
 
-	#[test]
-	fn mark_as_read() {
+	#[tokio::test]
+	async fn mark_as_read() {
 		let mut rf = Newer::new();
 
-		rf.mark_as_read("13");
+		rf.mark_as_read("13").await.unwrap();
 		assert_eq!(rf.last_read_id.as_deref().unwrap(), "13");
 
-		rf.mark_as_read("1002");
+		rf.mark_as_read("1002").await.unwrap();
 		assert_eq!(rf.last_read_id.as_deref().unwrap(), "1002");
 	}
 
-	#[test]
-	fn last_read() {
+	#[tokio::test]
+	async fn last_read() {
 		let mut rf = Newer::new();
 		assert_eq!(None, rf.last_read());
 
-		rf.mark_as_read("0");
-		rf.mark_as_read("1");
-		rf.mark_as_read("2");
+		rf.mark_as_read("0").await.unwrap();
+		rf.mark_as_read("1").await.unwrap();
+		rf.mark_as_read("2").await.unwrap();
 		assert_eq!(Some("2"), rf.last_read());
 
-		rf.mark_as_read("4");
+		rf.mark_as_read("4").await.unwrap();
 		assert_eq!(Some("4"), rf.last_read());
 
-		rf.mark_as_read("100");
-		rf.mark_as_read("101");
-		rf.mark_as_read("200");
+		rf.mark_as_read("100").await.unwrap();
+		rf.mark_as_read("101").await.unwrap();
+		rf.mark_as_read("200").await.unwrap();
 		assert_eq!(Some("200"), rf.last_read());
 	}
 
-	#[test]
-	fn remove_read_long_list() {
+	#[tokio::test]
+	async fn remove_read_long_list() {
 		let mut rf = Newer::new();
-		rf.mark_as_read("3");
+		rf.mark_as_read("3").await.unwrap();
 
 		let mut entries = vec![
 			Entry {
@@ -195,7 +173,7 @@ mod tests {
 			},
 		];
 
-		rf.filter(&mut entries);
+		rf.filter(&mut entries).await;
 
 		// remove msgs
 		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
@@ -205,33 +183,33 @@ mod tests {
 		);
 	}
 
-	#[test]
-	fn remove_read_single_different() {
+	#[tokio::test]
+	async fn remove_read_single_different() {
 		let mut rf = Newer::new();
-		rf.mark_as_read("3");
+		rf.mark_as_read("3").await.unwrap();
 
 		let mut entries = vec![Entry {
 			id: Some("1".to_owned()),
 			..Default::default()
 		}];
 
-		rf.filter(&mut entries);
+		rf.filter(&mut entries).await;
 
 		// remove msgs
 		let entries_ids = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
 		assert_eq!(&entries_ids, &[Some("1")]);
 	}
 
-	#[test]
-	fn remove_read_single_same() {
+	#[tokio::test]
+	async fn remove_read_single_same() {
 		let mut rf = Newer::new();
-		rf.mark_as_read("1");
+		rf.mark_as_read("1").await.unwrap();
 
 		let mut entries = vec![Entry {
 			id: Some("1".to_owned()),
 			..Default::default()
 		}];
-		rf.filter(&mut entries);
+		rf.filter(&mut entries).await;
 
 		let entries_ids = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
 		assert_eq!(&entries_ids, &[]);

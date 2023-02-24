@@ -10,7 +10,8 @@ pub mod filter;
 pub mod transform;
 
 // Regex is both a transform and a filter that's why it's here all alone :(
-mod regex;
+#[doc(hidden)]
+pub mod regex;
 
 use self::{filter::Filter, transform::Transform};
 use crate::{entry::Entry, error::transform::Error as TransformError};

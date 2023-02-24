@@ -4,8 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains [`Query`] that contains everything needed to check if an HTML tag fits all the provided requirements
-//! and [`QueryData`] that has everything needed to traverse an entire HTML document in search for a tag,
+//! This module contains [`ElementQuery`] that contains everything needed to check if an HTML tag fits all the provided requirements
+//! and [`ElementDataQuery`] that has everything needed to traverse an entire HTML document in search for a tag,
 //! as well as a way to parse the data contained in it
 
 use std::fmt::Display;

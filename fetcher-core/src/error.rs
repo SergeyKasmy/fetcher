@@ -54,10 +54,12 @@ pub enum GoogleOAuth2Error {
 	Auth(String),
 }
 
-/// Re-exported in error::source and error::sink modules. Private in this one to avoid namespace pollution
+// Re-exported in error::source and error::sink modules. Private in this one to avoid namespace pollution
 mod exec_error {
 	use std::{io, string::FromUtf8Error};
 
+	/// Errors that happened while executing a process
+	#[allow(missing_docs)] // error message is self-documenting
 	#[derive(thiserror::Error, Debug)]
 	pub enum ExecError {
 		#[error("Bad command")]

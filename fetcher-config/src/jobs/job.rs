@@ -18,20 +18,15 @@ pub type TemplatesField = Option<Vec<String>>;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(untagged)]
 pub enum Job {
-	SingleTask(SingleTaskJob),
 	SeveralTasks(SeveralTasksJob),
+	SingleTask(SingleTaskJob),
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct SingleTaskJob {
-	refresh: Option<String>,
-	#[serde(flatten)]
-	task: Task,
-
-	// these are meant to be used externally and are unused here
-	disabled: DisabledField,
-	templates: TemplatesField,
-}
+// #[derive(Deserialize, Serialize, Debug)]
+// #[serde(transparent)]
+// pub struct Job {
+// 	inner: SeveralTasksJob,
+// }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct SeveralTasksJob {
@@ -49,21 +44,24 @@ pub struct SeveralTasksJob {
 	templates: TemplatesField,
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+pub struct SingleTaskJob {
+	refresh: Option<String>,
+	#[serde(flatten)]
+	task: Task,
+
+	// these are meant to be used externally and are unused here
+	disabled: DisabledField,
+	templates: TemplatesField,
+}
+
 impl Job {
 	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CoreJob, Error> {
 		match self {
 			Job::SingleTask(x) => x.parse(name, external),
 			Job::SeveralTasks(x) => x.parse(name, external),
 		}
-	}
-}
-
-impl SingleTaskJob {
-	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CoreJob, Error> {
-		Ok(CoreJob {
-			tasks: vec![self.task.parse(name, external)?],
-			refetch_interval: self.refresh.try_map(duration_str::parse_std)?,
-		})
+		// self.inner.parse(name, external)
 	}
 }
 
@@ -91,6 +89,15 @@ impl SeveralTasksJob {
 				.into_iter()
 				.map(|x| x.parse(name, external))
 				.collect::<Result<Vec<_>, _>>()?,
+			refetch_interval: self.refresh.try_map(duration_str::parse_std)?,
+		})
+	}
+}
+
+impl SingleTaskJob {
+	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CoreJob, Error> {
+		Ok(CoreJob {
+			tasks: vec![self.task.parse(name, external)?],
 			refetch_interval: self.refresh.try_map(duration_str::parse_std)?,
 		})
 	}

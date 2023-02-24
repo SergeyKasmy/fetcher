@@ -18,7 +18,6 @@ use fetcher_core::{
 	error::{Error, ErrorChainExt},
 	job::Job,
 	sink::{Sink, Stdout},
-	source::{email, Source},
 };
 
 use color_eyre::{

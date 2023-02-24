@@ -23,8 +23,11 @@ use crate::{
 
 use std::fmt::Debug;
 
+// TODO: combine with Transform trait?
+/// Transform an entry into one or more entries. This is the type transforms should implement as it includes easier error management
 #[async_trait]
 pub trait TransformEntry: Debug {
+	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
 	type Err: Into<TransformErrorKind>;
 
 	/// Transform the `entry` into one or several separate entries
@@ -39,6 +42,7 @@ where
 	async fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, TransformError> {
 		self.transform_entry(entry)
 			.await
+			// TODO: pass-through the entry if the returned vec is empty?
 			.map(|v| v.into_iter().map(|e| e.into_entry(entry.clone())).collect())
 			.map_err(|kind| TransformError {
 				kind: kind.into(),

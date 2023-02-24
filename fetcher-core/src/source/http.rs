@@ -17,7 +17,7 @@ use crate::{
 use async_trait::async_trait;
 use once_cell::sync::OnceCell;
 use reqwest::Client;
-use std::fmt::Debug;
+use std::{fmt::Debug, time::Duration};
 use url::Url;
 
 use super::Fetch;
@@ -73,7 +73,7 @@ impl Http {
 		let client = CLIENT
 			.get_or_try_init(|| {
 				reqwest::ClientBuilder::new()
-					.timeout(std::time::Duration::from_secs(30))
+					.timeout(Duration::from_secs(30))
 					.build()
 					.map_err(HttpError::TlsInitFailed)
 			})?

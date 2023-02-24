@@ -4,20 +4,19 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains a debug print transform-like function [`print()`]
+//! This module contains [`DebugPrint`] transform that just prints the contents of the entry and passes it through
 
 use async_trait::async_trait;
+use std::{convert::Infallible, fmt::Write};
 
+use super::TransformEntry;
 use crate::{
 	action::transform::result::TransformedEntry,
 	entry::Entry,
 	sink::{Sink, Stdout},
 };
 
-use std::{convert::Infallible, fmt::Write as _};
-
-use super::TransformEntry;
-
+/// A transform that print the contents of the [`Entry`] in a debug friendly way
 #[derive(Debug)]
 pub struct DebugPrint;
 
@@ -40,7 +39,7 @@ impl TransformEntry for DebugPrint {
 		};
 
 		Stdout
-			.send(msg, Some("print transform"))
+			.send(msg, Some("debug print"))
 			.await
 			.expect("stdout is unavailable");
 
