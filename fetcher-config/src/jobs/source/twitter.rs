@@ -19,7 +19,10 @@ use serde_with::{serde_as, OneOrMany};
 pub struct Twitter(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<String>);
 
 impl Twitter {
-	pub fn parse(self, external: &dyn ProvideExternalData) -> Result<Vec<CTwitter>, ConfigError> {
+	pub fn parse<D>(self, external: &D) -> Result<Vec<CTwitter>, ConfigError>
+	where
+		D: ProvideExternalData + ?Sized,
+	{
 		let (api_key, api_secret) = match external.twitter_token() {
 			ExternalDataResult::Ok(v) => v,
 			ExternalDataResult::Unavailable => return Err(ConfigError::TwitterApiKeysMissing),

@@ -35,7 +35,10 @@ pub struct Job {
 }
 
 impl Job {
-	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CJob, Error> {
+	pub fn parse<D>(self, name: &str, external: &D) -> Result<CJob, Error>
+	where
+		D: ProvideExternalData + ?Sized,
+	{
 		match self.tasks {
 			Some(mut tasks) if !tasks.is_empty() => {
 				// append values from the job if they are not present in the tasks

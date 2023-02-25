@@ -5,16 +5,14 @@
  */
 
 use super::read_filter::Kind as ReadFilterKind;
-use fetcher_core::{self as fcore, read_filter::ReadFilter};
+use fetcher_core::{self as fcore, read_filter::ReadFilter as CReadFilter};
 
 use std::{
 	fmt::{Debug, Display},
 	io,
 	path::Path,
-	sync::Arc,
 };
 use thiserror::Error;
-use tokio::sync::RwLock;
 
 pub enum ExternalDataResult<T, E = ExternalDataError> {
 	Ok(T),
@@ -23,6 +21,8 @@ pub enum ExternalDataResult<T, E = ExternalDataError> {
 }
 
 pub trait ProvideExternalData {
+	type ReadFilter: CReadFilter + 'static;
+
 	fn twitter_token(&self) -> ExternalDataResult<(String, String)>;
 	fn google_oauth2(&self) -> ExternalDataResult<fcore::auth::Google>;
 	fn email_password(&self) -> ExternalDataResult<String>;
@@ -31,7 +31,7 @@ pub trait ProvideExternalData {
 		&self,
 		name: &str,
 		expected_rf: ReadFilterKind,
-	) -> ExternalDataResult<Arc<RwLock<dyn ReadFilter>>>;
+	) -> ExternalDataResult<Self::ReadFilter>;
 }
 
 #[derive(Error, Debug)]

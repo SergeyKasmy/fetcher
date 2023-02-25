@@ -28,7 +28,10 @@ pub struct Email {
 }
 
 impl Email {
-	pub fn parse(self, external: &dyn ProvideExternalData) -> Result<CEmail, ConfigError> {
+	pub fn parse<D>(self, external: &D) -> Result<CEmail, ConfigError>
+	where
+		D: ProvideExternalData + ?Sized,
+	{
 		Ok(match self.auth {
 			Auth::GoogleOAuth2 => {
 				let oauth = match external.google_oauth2() {

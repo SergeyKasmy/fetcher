@@ -31,14 +31,20 @@ pub trait ReadFilter: MarkAsRead + Filter + Send + Sync {
 }
 
 #[async_trait]
-impl ReadFilter for Arc<RwLock<dyn ReadFilter>> {
+impl<RF> ReadFilter for Arc<RwLock<RF>>
+where
+	RF: ReadFilter,
+{
 	async fn as_any(&self) -> Box<dyn Any> {
 		self.read().await.as_any().await
 	}
 }
 
 #[async_trait]
-impl MarkAsRead for Arc<RwLock<dyn ReadFilter>> {
+impl<RF> MarkAsRead for Arc<RwLock<RF>>
+where
+	RF: ReadFilter,
+{
 	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
 		self.write().await.mark_as_read(id).await
 	}
@@ -49,8 +55,36 @@ impl MarkAsRead for Arc<RwLock<dyn ReadFilter>> {
 }
 
 #[async_trait]
-impl Filter for Arc<RwLock<dyn ReadFilter>> {
+impl<RF> Filter for Arc<RwLock<RF>>
+where
+	RF: ReadFilter,
+{
 	async fn filter(&self, entries: &mut Vec<Entry>) {
 		self.read().await.filter(entries).await;
+	}
+}
+
+#[async_trait]
+impl ReadFilter for Box<dyn ReadFilter> {
+	async fn as_any(&self) -> Box<dyn Any> {
+		(**self).as_any().await
+	}
+}
+
+#[async_trait]
+impl MarkAsRead for Box<dyn ReadFilter> {
+	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+		(**self).mark_as_read(id).await
+	}
+
+	async fn set_read_only(&mut self) {
+		(**self).set_read_only().await;
+	}
+}
+
+#[async_trait]
+impl Filter for Box<dyn ReadFilter> {
+	async fn filter(&self, entries: &mut Vec<Entry>) {
+		(**self).filter(entries).await;
 	}
 }

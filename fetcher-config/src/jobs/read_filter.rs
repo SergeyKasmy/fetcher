@@ -6,8 +6,6 @@
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tokio::sync::RwLock;
 
 use fetcher_core::read_filter::{
 	external_save::{
@@ -43,19 +41,19 @@ pub struct NotPresent {
 }
 
 impl ReadFilter {
-	pub fn parse<S>(self, external_save: S) -> Arc<RwLock<dyn CReadFilter>>
+	pub fn parse<S>(self, external_save: S) -> Box<dyn CReadFilter>
 	where
 		S: CExternalSave + 'static,
 	{
 		match self {
-			ReadFilter::NewerThanRead(rf) => Arc::new(RwLock::new(CExternalSaveRFWrapper {
+			ReadFilter::NewerThanRead(rf) => Box::new(CExternalSaveRFWrapper {
 				rf: rf.parse(),
 				external_save: Some(external_save),
-			})),
-			ReadFilter::NotPresentInReadList(rf) => Arc::new(RwLock::new(CExternalSaveRFWrapper {
+			}),
+			ReadFilter::NotPresentInReadList(rf) => Box::new(CExternalSaveRFWrapper {
 				rf: rf.parse(),
 				external_save: Some(external_save),
-			})),
+			}),
 		}
 	}
 

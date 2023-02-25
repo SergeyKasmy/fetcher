@@ -27,7 +27,10 @@ pub enum LinkLocation {
 }
 
 impl Telegram {
-	pub fn parse(self, external: &dyn ProvideExternalData) -> Result<CTelegram, ConfigError> {
+	pub fn parse<D>(self, external: &D) -> Result<CTelegram, ConfigError>
+	where
+		D: ProvideExternalData + ?Sized,
+	{
 		let token = match external.telegram_bot_token() {
 			ExternalDataResult::Ok(v) => v,
 			ExternalDataResult::Unavailable => return Err(ConfigError::TelegramBotTokenMissing),

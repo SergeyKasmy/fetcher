@@ -5,6 +5,8 @@
  */
 
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use super::{
 	action::Action,
@@ -14,7 +16,7 @@ use super::{
 	source::Source,
 };
 use crate::Error;
-use fetcher_core::{task::Task as CoreTask, utils::OptionExt};
+use fetcher_core::{action::Action as CAction, task::Task as CTask, utils::OptionExt};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -30,10 +32,13 @@ pub struct Task {
 }
 
 impl Task {
-	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CoreTask, Error> {
+	pub fn parse<D>(self, name: &str, external: &D) -> Result<CTask, Error>
+	where
+		D: ProvideExternalData + ?Sized,
+	{
 		let rf = match self.read_filter_kind {
 			Some(expected_rf_type) => match external.read_filter(name, expected_rf_type) {
-				ExternalDataResult::Ok(rf) => Some(rf),
+				ExternalDataResult::Ok(rf) => Some(Arc::new(RwLock::new(rf))),
 				ExternalDataResult::Unavailable => {
 					tracing::warn!("Read filter is unavailable, skipping");
 					None
@@ -45,10 +50,11 @@ impl Task {
 
 		let actions = self.actions.try_map(|x| {
 			x.into_iter()
+				// FIXME: remove this match
 				.filter_map(|act| match act {
 					Action::ReadFilter => {
 						if let Some(rf) = rf.clone() {
-							Some(Ok(fetcher_core::action::Action::Filter(Box::new(rf))))
+							Some(Ok(CAction::Filter(Box::new(rf))))
 						} else {
 							tracing::warn!("Can't use read filter transformer when no read filter is set up for the task!");
 							None
@@ -59,7 +65,7 @@ impl Task {
 				.collect::<Result<_, _>>()
 		})?;
 
-		Ok(CoreTask {
+		Ok(CTask {
 			tag: self.tag,
 			source: self.source.map(|x| x.parse(rf, external)).transpose()?,
 			actions,

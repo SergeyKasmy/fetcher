@@ -23,8 +23,6 @@ use fetcher_core::{
 };
 
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tokio::sync::RwLock;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -43,11 +41,11 @@ pub enum Source {
 }
 
 impl Source {
-	pub fn parse(
-		self,
-		rf: Option<Arc<RwLock<dyn CReadFilter>>>,
-		external: &dyn ProvideExternalData,
-	) -> Result<Box<dyn CSource>, Error> {
+	pub fn parse<RF, D>(self, rf: Option<RF>, external: &D) -> Result<Box<dyn CSource>, Error>
+	where
+		RF: CReadFilter + 'static,
+		D: ProvideExternalData + ?Sized,
+	{
 		// make a dyn CSourceWithSharedRF out of a CFetch and the read filter parameter
 		macro_rules! WithSharedRF {
 			($sources:expr) => {

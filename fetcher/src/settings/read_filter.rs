@@ -16,9 +16,7 @@ use std::{
 	fs,
 	io::{self, Write},
 	path::Path,
-	sync::Arc,
 };
-use tokio::sync::RwLock;
 
 const READ_DATA_DIR: &str = "read";
 
@@ -27,7 +25,7 @@ pub fn get(
 	name: &str,
 	expected_rf_kind: ReadFilterKind,
 	context: Context,
-) -> Result<Arc<RwLock<dyn ReadFilter>>, ExternalDataError> {
+) -> Result<Box<dyn ReadFilter>, ExternalDataError> {
 	let path = context.data_path.join(READ_DATA_DIR).join(name);
 
 	match fs::read_to_string(&path) {
@@ -35,20 +33,16 @@ pub fn get(
 			tracing::debug!("Read filter save file is empty");
 
 			Ok(match expected_rf_kind {
-				ReadFilterKind::NewerThanRead => Arc::new(RwLock::new(core_rf::Newer::new())),
-				ReadFilterKind::NotPresentInReadList => {
-					Arc::new(RwLock::new(core_rf::NotPresent::new()))
-				}
+				ReadFilterKind::NewerThanRead => Box::new(core_rf::Newer::new()),
+				ReadFilterKind::NotPresentInReadList => Box::new(core_rf::NotPresent::new()),
 			})
 		}
 		Err(e) => {
 			tracing::debug!("Read filter save file doesn't exist or is inaccessible: {e}");
 
 			Ok(match expected_rf_kind {
-				ReadFilterKind::NewerThanRead => Arc::new(RwLock::new(core_rf::Newer::new())),
-				ReadFilterKind::NotPresentInReadList => {
-					Arc::new(RwLock::new(core_rf::NotPresent::new()))
-				}
+				ReadFilterKind::NewerThanRead => Box::new(core_rf::Newer::new()),
+				ReadFilterKind::NotPresentInReadList => Box::new(core_rf::NotPresent::new()),
 			})
 		}
 		Ok(save_file_rf_raw) => {

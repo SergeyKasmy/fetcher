@@ -129,6 +129,9 @@ impl FromStr for JsonJob {
 		struct EmptyExternalData;
 
 		impl ProvideExternalData for EmptyExternalData {
+			// it's a lie but don't tell anybody...
+			type ReadFilter = Box<dyn ReadFilter>;
+
 			fn twitter_token(&self) -> ExternalDataResult<(String, String)> {
 				ExternalDataResult::Unavailable
 			}
@@ -149,7 +152,7 @@ impl FromStr for JsonJob {
 				&self,
 				_name: &str,
 				_expected_rf: fetcher_config::jobs::read_filter::Kind,
-			) -> ExternalDataResult<Arc<RwLock<dyn ReadFilter>>> {
+			) -> ExternalDataResult<Self::ReadFilter> {
 				ExternalDataResult::Unavailable
 			}
 		}
