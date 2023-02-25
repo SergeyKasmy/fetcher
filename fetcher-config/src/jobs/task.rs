@@ -16,7 +16,7 @@ use super::{
 	source::Source,
 };
 use crate::Error;
-use fetcher_core::{action::Action as CAction, task::Task as CTask, utils::OptionExt};
+use fetcher_core::{task::Task as CTask, utils::OptionExt};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -50,18 +50,7 @@ impl Task {
 
 		let actions = self.actions.try_map(|x| {
 			x.into_iter()
-				// FIXME: remove this match
-				.filter_map(|act| match act {
-					Action::ReadFilter => {
-						if let Some(rf) = rf.clone() {
-							Some(Ok(CAction::Filter(Box::new(rf))))
-						} else {
-							tracing::warn!("Can't use read filter transformer when no read filter is set up for the task!");
-							None
-						}
-					}
-					other => Some(other.parse()),
-				})
+				.filter_map(|act| act.parse(rf.clone()).transpose())
 				.collect::<Result<_, _>>()
 		})?;
 

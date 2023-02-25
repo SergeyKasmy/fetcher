@@ -18,12 +18,15 @@ use self::{
 	use_as::Use,
 };
 use crate::Error;
-use fetcher_core::action::{
-	transform::{
-		field::{Field as CField, TransformFieldWrapper as CTransformFieldWrapper},
-		Caps as CCaps, DebugPrint as CDebugPrint, Feed as CFeed, Http as CHttp,
+use fetcher_core::{
+	action::{
+		transform::{
+			field::{Field as CField, TransformFieldWrapper as CTransformFieldWrapper},
+			Caps as CCaps, DebugPrint as CDebugPrint, Feed as CFeed, Http as CHttp,
+		},
+		Action as CAction,
 	},
-	Action as CAction,
+	read_filter::ReadFilter as CReadFilter,
 };
 
 use serde::{Deserialize, Serialize};
@@ -63,7 +66,10 @@ pub enum Field {
 }
 
 impl Action {
-	pub fn parse(self) -> Result<CAction, Error> {
+	pub fn parse<RF>(self, rf: Option<RF>) -> Result<Option<CAction>, Error>
+	where
+		RF: CReadFilter + 'static,
+	{
 		macro_rules! transform {
 			($tr:expr) => {
 				CAction::Transform(Box::new($tr))
@@ -76,9 +82,15 @@ impl Action {
 			};
 		}
 
-		Ok(match self {
+		let act = match self {
 			// filters
-			Action::ReadFilter => unreachable!(),
+			Action::ReadFilter => match rf {
+				Some(rf) => CAction::Filter(Box::new(rf)),
+				None => {
+					tracing::warn!("Can't filter read entries when no read filter type is set up for the task!");
+					return Ok(None);
+				}
+			},
 			Action::Take(x) => filter!(x.parse()),
 
 			// entry transforms
@@ -100,7 +112,9 @@ impl Action {
 
 			// other
 			Action::Regex(x) => x.parse()?,
-		})
+		};
+
+		Ok(Some(act))
 	}
 }
 
