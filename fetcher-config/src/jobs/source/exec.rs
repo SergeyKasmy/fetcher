@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
 
 #[serde_as]
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct Exec {
 	#[serde_as(deserialize_as = "OneOrMany<_>")]

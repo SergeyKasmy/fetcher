@@ -5,10 +5,11 @@
  */
 
 use super::{
-	action::Action, external_data::ProvideExternalData, read_filter, sink::Sink, task::Task,
+	action::Action, external_data::ProvideExternalData, read_filter, sink::Sink, source::Source,
+	task::Task,
 };
 use crate::Error;
-use fetcher_core::{job::Job as CoreJob, utils::OptionExt};
+use fetcher_core::{job::Job as CJob, utils::OptionExt};
 
 use serde::{Deserialize, Serialize};
 
@@ -16,39 +17,17 @@ pub type DisabledField = Option<bool>;
 pub type TemplatesField = Option<Vec<String>>;
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(untagged)]
-pub enum Job {
-	SeveralTasks(SeveralTasksJob),
-	SingleTask(SingleTaskJob),
-}
-
-// #[derive(Deserialize, Serialize, Debug)]
-// #[serde(transparent)]
-// pub struct Job {
-// 	inner: SeveralTasksJob,
-// }
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct SeveralTasksJob {
+pub struct Job {
 	#[serde(rename = "read_filter_type")]
 	read_filter_kind: Option<read_filter::Kind>,
-	refresh: Option<String>,
+	tag: Option<String>,
+	source: Option<Source>,
 	#[serde(rename = "process")]
 	actions: Option<Vec<Action>>,
 	sink: Option<Sink>,
 
-	tasks: Vec<Task>,
-
-	// these are meant to be used externally and are unused here
-	disabled: DisabledField,
-	templates: TemplatesField,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct SingleTaskJob {
+	tasks: Option<Vec<Task>>,
 	refresh: Option<String>,
-	#[serde(flatten)]
-	task: Task,
 
 	// these are meant to be used externally and are unused here
 	disabled: DisabledField,
@@ -56,49 +35,54 @@ pub struct SingleTaskJob {
 }
 
 impl Job {
-	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CoreJob, Error> {
-		match self {
-			Job::SingleTask(x) => x.parse(name, external),
-			Job::SeveralTasks(x) => x.parse(name, external),
-		}
-		// self.inner.parse(name, external)
-	}
-}
+	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CJob, Error> {
+		match self.tasks {
+			Some(mut tasks) if !tasks.is_empty() => {
+				// append values from the job if they are not present in the tasks
+				for task in &mut tasks {
+					task.read_filter_kind = task.read_filter_kind.or(self.read_filter_kind);
 
-impl SeveralTasksJob {
-	pub fn parse(
-		mut self,
-		name: &str,
-		external: &dyn ProvideExternalData,
-	) -> Result<CoreJob, Error> {
-		for task in &mut self.tasks {
-			task.read_filter_kind = task.read_filter_kind.or(self.read_filter_kind);
+					if task.tag.is_none() {
+						task.tag = self.tag.clone();
+					}
 
-			if task.actions.is_none() {
-				task.actions = self.actions.clone();
+					if task.source.is_none() {
+						task.source = self.source.clone();
+					}
+
+					if task.actions.is_none() {
+						task.actions = self.actions.clone();
+					}
+
+					if task.sink.is_none() {
+						task.sink = self.sink.clone();
+					}
+				}
+
+				Ok(CJob {
+					tasks: tasks
+						.into_iter()
+						.map(|x| x.parse(name, external))
+						.collect::<Result<Vec<_>, _>>()?,
+					refetch_interval: self.refresh.try_map(duration_str::parse_std)?,
+				})
 			}
+			// tasks is not set
+			_ => {
+				// copy paste all values from the job to a dummy task, i.e. create a single task with all the values from the job
+				let task = Task {
+					read_filter_kind: self.read_filter_kind,
+					tag: self.tag,
+					source: self.source,
+					actions: self.actions,
+					sink: self.sink,
+				};
 
-			if task.sink.is_none() {
-				task.sink = self.sink.clone();
+				Ok(CJob {
+					tasks: vec![task.parse(name, external)?],
+					refetch_interval: self.refresh.try_map(duration_str::parse_std)?,
+				})
 			}
 		}
-
-		Ok(CoreJob {
-			tasks: self
-				.tasks
-				.into_iter()
-				.map(|x| x.parse(name, external))
-				.collect::<Result<Vec<_>, _>>()?,
-			refetch_interval: self.refresh.try_map(duration_str::parse_std)?,
-		})
-	}
-}
-
-impl SingleTaskJob {
-	pub fn parse(self, name: &str, external: &dyn ProvideExternalData) -> Result<CoreJob, Error> {
-		Ok(CoreJob {
-			tasks: vec![self.task.parse(name, external)?],
-			refetch_interval: self.refresh.try_map(duration_str::parse_std)?,
-		})
 	}
 }

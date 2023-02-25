@@ -11,19 +11,19 @@ use serde_with::{serde_as, OneOrMany};
 use url::Url;
 
 #[serde_as]
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct Http(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<Request>);
 
 // treat http: url the same as http: {get: url}
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum Request {
 	Untagged(Url),
 	Tagged(TaggedRequest),
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum TaggedRequest {
 	Get(Url),

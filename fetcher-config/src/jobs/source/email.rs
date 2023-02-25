@@ -17,7 +17,7 @@ use crate::{
 };
 use fetcher_core::source::Email as CEmail;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Email {
 	imap: Option<String>,

@@ -10,11 +10,11 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
 
 #[serde_as]
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct Reddit(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<Inner>);
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Inner {
 	subreddit: String,
@@ -22,7 +22,7 @@ pub struct Inner {
 	score_threshold: Option<u32>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 #[rustfmt::skip]	// to put new and latest side by side
 pub enum Sort {
@@ -32,7 +32,7 @@ pub enum Sort {
 	Top(TimePeriod),
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum TimePeriod {
 	Today,

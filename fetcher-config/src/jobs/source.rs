@@ -27,7 +27,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Source {
 	// with shared read filter
