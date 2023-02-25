@@ -4,19 +4,17 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub mod external_save;
+
+use self::external_save::TruncatingFileWriter;
 use crate::settings::context::StaticContext as Context;
 use fetcher_config::jobs::{
 	external_data::ExternalDataError,
 	read_filter::{Kind as ReadFilterKind, ReadFilter as ReadFilterConf},
 };
-use fetcher_core::read_filter::{self as core_rf, external_save::ExternalSave, ReadFilter};
+use fetcher_core::read_filter::{self as core_rf, ReadFilter};
 
-use async_trait::async_trait;
-use std::{
-	fs,
-	io::{self, Write},
-	path::Path,
-};
+use std::fs;
 
 const READ_DATA_DIR: &str = "read";
 
@@ -51,7 +49,7 @@ pub fn get(
 
 			// the old read filter saved on disk is of the same type as the one set in config
 			if conf == expected_rf_kind {
-				let rf = conf.parse(save_file(&path)?);
+				let rf = conf.parse(TruncatingFileWriter::new(path));
 				Ok(rf)
 			} else {
 				Err(ExternalDataError::new_rf_incompat_with_path(
@@ -62,52 +60,4 @@ pub fn get(
 			}
 		}
 	}
-}
-
-// TODO: move to a new mod
-#[derive(Debug)]
-struct TruncatingFileWriter {
-	file: fs::File,
-}
-
-// TODO: should this become async since ExternalSave is not async as well?
-impl std::io::Write for TruncatingFileWriter {
-	fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-		use std::io::Seek;
-
-		self.file.set_len(0)?;
-		self.file.rewind()?;
-		self.file.write(buf)
-	}
-
-	fn flush(&mut self) -> std::io::Result<()> {
-		self.file.flush()
-	}
-}
-
-#[async_trait]
-impl ExternalSave for TruncatingFileWriter {
-	async fn save(&mut self, read_filter: &dyn ReadFilter) -> io::Result<()> {
-		if let Some(rf_conf) =
-			fetcher_config::jobs::read_filter::ReadFilter::unparse(read_filter).await
-		{
-			let s = serde_json::to_string(&rf_conf).unwrap();
-			return self.write_all(s.as_bytes());
-		}
-
-		Ok(())
-	}
-}
-
-fn save_file(path: &Path) -> io::Result<TruncatingFileWriter> {
-	if let Some(parent) = path.parent() {
-		std::fs::create_dir_all(parent)?;
-	}
-
-	let file = std::fs::OpenOptions::new()
-		.create(true)
-		.write(true)
-		.open(path)?;
-
-	Ok(TruncatingFileWriter { file })
 }
