@@ -310,6 +310,7 @@ async fn run_jobs(
 	jobs: impl IntoIterator<Item = (JobName, Job)>,
 	error_handling: ErrorHandling,
 	cx: Context,
+	// TODO: return Result<(), Vec<(JobName, Report)>>
 ) -> Result<()> {
 	let shutdown_rx = set_up_signal_handler();
 

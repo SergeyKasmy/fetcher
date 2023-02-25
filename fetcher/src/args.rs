@@ -7,8 +7,7 @@
 use argh::FromArgs;
 use color_eyre::{eyre::eyre, Report};
 use fetcher_core::{error::ErrorChainExt, job::Job};
-use std::{path::PathBuf, str::FromStr, sync::Arc};
-use tokio::sync::RwLock;
+use std::{path::PathBuf, str::FromStr};
 
 /// fetcher
 #[derive(FromArgs, Debug)]
