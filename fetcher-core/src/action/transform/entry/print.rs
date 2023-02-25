@@ -4,29 +4,45 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains a debug print transform-like function [`print()`]
+//! This module contains [`DebugPrint`] transform that just prints the contents of the entry and passes it through
 
-use crate::{entry::Entry, sink::Stdout};
+use async_trait::async_trait;
+use std::{convert::Infallible, fmt::Write};
 
-use std::fmt::Write as _;
+use super::TransformEntry;
+use crate::{
+	action::transform::result::TransformedEntry,
+	entry::Entry,
+	sink::{Sink, Stdout},
+};
 
-/// Debug prints current entry contents
-pub async fn print(entry: &Entry) {
-	let mut msg = entry.msg.clone();
+/// A transform that print the contents of the [`Entry`] in a debug friendly way
+#[derive(Debug)]
+pub struct DebugPrint;
 
-	// append id and raw_contents entry fields to the body to help in debugging
-	msg.body = {
-		let mut body = msg.body.unwrap_or_else(|| "None".to_owned());
-		let _ = write!(
-			body,
-			"\n\nid: {:?}\n\nraw_contents: {:?}",
-			entry.id, entry.raw_contents
-		);
-		Some(body)
-	};
+#[async_trait]
+impl TransformEntry for DebugPrint {
+	type Err = Infallible;
 
-	Stdout
-		.send(msg, Some("print transform"))
-		.await
-		.expect("stdout is unavailable");
+	async fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+		let mut msg = entry.msg.clone();
+
+		// append id and raw_contents entry fields to the body to help in debugging
+		msg.body = {
+			let mut body = msg.body.unwrap_or_else(|| "None".to_owned());
+			let _ = write!(
+				body,
+				"\n\nid: {:?}\n\nraw_contents: {:?}",
+				entry.id, entry.raw_contents
+			);
+			Some(body)
+		};
+
+		Stdout
+			.send(msg, Some("debug print"))
+			.await
+			.expect("stdout is unavailable");
+
+		Ok(Vec::new())
+	}
 }

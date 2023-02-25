@@ -9,19 +9,24 @@
 
 pub mod action;
 
-use self::action::{Action, Extract, Find, Replace};
-use super::transform::field::TransformField;
+use self::{
+	action::{Action, Extract, Find, Replace},
+	ExtractionResult::{Extracted, Matched, NotMatched},
+};
 use crate::{
 	action::{
 		filter::Filter,
-		transform::{field::Field, result::TransformResult},
+		transform::{
+			field::{Field, TransformField},
+			result::TransformResult,
+		},
 	},
 	entry::Entry,
-	error::transform::RegexError,
+	error::transform::{Kind as TransformErrorKind, RegexError},
 };
-use ExtractionResult::{Extracted, Matched, NotMatched};
 
-use std::{borrow::Cow, convert::Infallible};
+use async_trait::async_trait;
+use std::borrow::Cow;
 
 /// Regex with different action depending on [`action`]. All available regex actions include [`Extract`], [`Find`], [`Replace`]
 #[allow(missing_docs)]
@@ -47,6 +52,7 @@ impl<A: Action> Regex<A> {
 
 impl Regex<Extract> {
 	/// Extracts capture group "s" (?P<s>) from `text`
+	#[allow(rustdoc::invalid_html_tags)]
 	#[must_use]
 	pub fn extract<'a>(&self, text: &'a str) -> Option<&'a str> {
 		match find(&self.re, text) {
@@ -57,9 +63,18 @@ impl Regex<Extract> {
 }
 
 impl TransformField for Regex<Extract> {
-	type Error = RegexError;
-
-	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, RegexError> {
+	fn transform_field(
+		&self,
+		old_val: Option<&str>,
+	) -> Result<TransformResult<String>, TransformErrorKind> {
+		self.transform_field_impl(old_val).map_err(Into::into)
+	}
+}
+impl Regex<Extract> {
+	fn transform_field_impl(
+		&self,
+		field: Option<&str>,
+	) -> Result<TransformResult<String>, RegexError> {
 		let Some(field) = field else { return Ok(TransformResult::Old(None)) };
 
 		let transformed = match self.extract(field) {
@@ -72,8 +87,9 @@ impl TransformField for Regex<Extract> {
 	}
 }
 
+#[async_trait]
 impl Filter for Regex<Find> {
-	fn filter(&self, entries: &mut Vec<Entry>) {
+	async fn filter(&self, entries: &mut Vec<Entry>) {
 		entries.retain(|ent| {
 			let s = match self.action.in_field {
 				Field::Title => ent.msg.title.as_deref().map(Cow::Borrowed),
@@ -102,11 +118,13 @@ impl Regex<Replace> {
 }
 
 impl TransformField for Regex<Replace> {
-	type Error = Infallible;
-
-	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Self::Error> {
+	// Infallible
+	fn transform_field(
+		&self,
+		old_val: Option<&str>,
+	) -> Result<TransformResult<String>, TransformErrorKind> {
 		Ok(TransformResult::New(
-			field.map(|field| self.replace(field).into_owned()),
+			old_val.map(|v| self.replace(v).into_owned()),
 		))
 	}
 }

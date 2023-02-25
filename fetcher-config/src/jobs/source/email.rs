@@ -15,9 +15,9 @@ use crate::{
 	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 	Error as ConfigError,
 };
-use fetcher_core::source::{Email as CEmail, WithCustomRF as CWithCustomRF};
+use fetcher_core::source::Email as CEmail;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Email {
 	imap: Option<String>,
@@ -28,8 +28,11 @@ pub struct Email {
 }
 
 impl Email {
-	pub fn parse(self, external: &dyn ProvideExternalData) -> Result<CWithCustomRF, ConfigError> {
-		let email_source = match self.auth {
+	pub fn parse<D>(self, external: &D) -> Result<CEmail, ConfigError>
+	where
+		D: ProvideExternalData + ?Sized,
+	{
+		Ok(match self.auth {
 			Auth::GoogleOAuth2 => {
 				let oauth = match external.google_oauth2() {
 					ExternalDataResult::Ok(v) => v,
@@ -63,8 +66,6 @@ impl Email {
 					self.view_mode.parse(),
 				)
 			}
-		};
-
-		Ok(CWithCustomRF::Email(email_source))
+		})
 	}
 }

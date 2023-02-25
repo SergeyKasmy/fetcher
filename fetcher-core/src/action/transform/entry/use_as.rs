@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains the transform [`UseRawContents`]
+//! This module contains the transform [`Use`] that allows using the content of a [`Field`] as the new value of a different [`Field`]
 
 use super::TransformEntry;
 use crate::{
@@ -18,6 +18,7 @@ use crate::{
 	utils::OptionExt,
 };
 
+use async_trait::async_trait;
 use url::Url;
 
 /// Use the value of a field as the value of a different field
@@ -29,10 +30,11 @@ pub struct Use {
 	pub as_field: Field,
 }
 
+#[async_trait]
 impl TransformEntry for Use {
-	type Error = TransformErrorKind;
+	type Err = TransformErrorKind;
 
-	fn transform_entry(&self, ent: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+	async fn transform_entry(&self, ent: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		let val = match self.field {
 			Field::Title => ent.msg.title.clone(),
 			Field::Body => ent.msg.body.clone(),

@@ -4,10 +4,8 @@
  * file, you can obtain one at https://mozilla.org/mpl/2.0/.
  */
 
-use fetcher_core::{
-	self as fcore,
-	read_filter::{Kind as ReadFilterKind, ReadFilter},
-};
+use super::read_filter::Kind as ReadFilterKind;
+use fetcher_core::{self as fcore, read_filter::ReadFilter as CReadFilter};
 
 use std::{
 	fmt::{Debug, Display},
@@ -23,6 +21,8 @@ pub enum ExternalDataResult<T, E = ExternalDataError> {
 }
 
 pub trait ProvideExternalData {
+	type ReadFilter: CReadFilter + 'static;
+
 	fn twitter_token(&self) -> ExternalDataResult<(String, String)>;
 	fn google_oauth2(&self) -> ExternalDataResult<fcore::auth::Google>;
 	fn email_password(&self) -> ExternalDataResult<String>;
@@ -31,7 +31,7 @@ pub trait ProvideExternalData {
 		&self,
 		name: &str,
 		expected_rf: ReadFilterKind,
-	) -> ExternalDataResult<ReadFilter>;
+	) -> ExternalDataResult<Self::ReadFilter>;
 }
 
 #[derive(Error, Debug)]
@@ -41,7 +41,8 @@ pub enum ExternalDataError {
 		source: io::Error,
 		payload: Option<Box<dyn DisplayDebug + Send + Sync>>,
 	},
-	#[error("Incompatible read filter types: in config: \"{expected}\" and found: \"{found}\"{}", if let Some(p) = payload { format!(": {p}") } else { String::new() })]
+	// TODO: impl Display for ReadFilterKind
+	#[error("Incompatible read filter types: in config: \"{expected:?}\" and found: \"{found:?}\"{}", if let Some(p) = payload { format!(": {p}") } else { String::new() })]
 	ReadFilterIncompatibleTypes {
 		expected: ReadFilterKind,
 		found: ReadFilterKind,

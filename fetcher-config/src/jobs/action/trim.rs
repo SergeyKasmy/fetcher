@@ -5,9 +5,10 @@
  */
 
 use super::Field;
-use fetcher_core::action::transform::field::trim::Trim as CTrim;
-use fetcher_core::action::transform::field::Kind as CFieldTransformKind;
-use fetcher_core::action::transform::Transform as CTransform;
+use fetcher_core::action::transform::{
+	field::{trim::Trim as CTrim, TransformFieldWrapper as CTransformFieldWrapper},
+	Transform as CTransform,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -18,10 +19,10 @@ pub struct Trim {
 }
 
 impl Trim {
-	pub fn parse(self) -> CTransform {
-		CTransform::Field {
+	pub fn parse(self) -> impl CTransform {
+		CTransformFieldWrapper {
 			field: self.field.parse(),
-			kind: CFieldTransformKind::Trim(CTrim),
+			transformator: CTrim,
 		}
 	}
 }

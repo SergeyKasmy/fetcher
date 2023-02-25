@@ -8,6 +8,7 @@
 
 use crate::action::transform::field::Field;
 
+#[allow(rustdoc::invalid_html_tags)]
 /// Extract some text via regex, contained in capture group "s" (?P<s>)
 #[derive(Debug)]
 pub struct Extract {

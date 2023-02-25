@@ -6,10 +6,17 @@
 
 //! This module contains [`Exec`] source and sink. It is re-exported in the [`crate::sink`] and [`crate::source`] modules
 
+use async_trait::async_trait;
 use std::process::Stdio;
 use tokio::{io::AsyncWriteExt, process::Command};
 
-use crate::{entry::Entry, error::source::ExecError, sink::Message};
+use crate::{
+	entry::Entry,
+	error::source::Error as SourceError,
+	error::{sink::Error as SinkError, source::ExecError},
+	sink::{Message, Sink},
+	source::Fetch,
+};
 
 /// Exec source. It can execute a shell command and source its stdout
 #[derive(Debug)]
@@ -17,34 +24,38 @@ pub struct Exec {
 	/// The command to execute
 	pub cmd: String,
 }
-
-impl Exec {
-	/// Execute the command and returns its stdout in the [`Entry::raw_contents`] field
-	#[tracing::instrument(skip_all)]
-	pub async fn get(&self) -> Result<Entry, ExecError> {
+#[async_trait]
+impl Fetch for Exec {
+	// TODO: maybe, instead of returining a vec, add a &mut Vec output parameter
+	// and maybe also a trait method get_vec() that automatically creates a new vec, fetches into it, and returns it
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
 		// TODO: add support for windows cmd /C
 		tracing::debug!("Spawned a shell with command {:?}", self.cmd);
 		let out = Command::new("sh")
 			.args(["-c", &self.cmd])
 			.output()
-			.await?
+			.await
+			.map_err(ExecError::BadCommand)?
 			.stdout;
 
-		let out = String::from_utf8(out)?;
+		let out = String::from_utf8(out).map_err(ExecError::BadUtf8)?;
 		tracing::debug!("Got {out:?} from the command");
 
-		Ok(Entry {
+		Ok(vec![Entry {
 			raw_contents: Some(out),
 			..Default::default()
-		})
+		}])
 	}
+}
 
-	/// Passes message's body to the stdin of the process
+#[async_trait]
+impl Sink for Exec {
+	/// Passes message's body to the stdin of the process. The tag parameter is ignored
 	///
 	/// # Errors
 	/// * if the process couldn't be started
 	/// * if the data couldn't be passed to the stdin pipe of the process
-	pub async fn send(&self, message: Message) -> Result<(), ExecError> {
+	async fn send(&self, message: Message, _tag: Option<&str>) -> Result<(), SinkError> {
 		let Some(body) = message.body else {
 			return Ok(());
 		};

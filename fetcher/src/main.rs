@@ -18,7 +18,6 @@ use fetcher_core::{
 	error::{Error, ErrorChainExt},
 	job::Job,
 	sink::{Sink, Stdout},
-	source::{email, Source, WithCustomRF},
 };
 
 use color_eyre::{
@@ -207,21 +206,12 @@ async fn run_command(
 			for task in &mut job.tasks {
 				// don't save read filtered items to the fs
 				if let Some(source) = &mut task.source {
-					match source {
-						Source::WithSharedReadFilter { rf, kind: _ } => {
-							if let Some(rf) = rf {
-								rf.write().await.external_save = None;
-							}
-						}
-						Source::WithCustomReadFilter(custom_rf_source) => match custom_rf_source {
-							WithCustomRF::Email(e) => e.view_mode = email::ViewMode::ReadOnly,
-						},
-					}
+					source.set_read_only().await;
 				}
 
 				// don't send anything anywhere, just print
 				if let Some(sink) = &mut task.sink {
-					*sink = Sink::Stdout(Stdout);
+					*sink = Box::new(Stdout);
 				}
 			}
 		}
@@ -235,16 +225,17 @@ async fn run_command(
 		}
 	}
 
-	run_jobs(
-		jobs,
+	let error_handling = if once {
+		ErrorHandling::Forward
+	} else {
 		ErrorHandling::Sleep {
 			max_retries: 15,
 			err_count: 0,
 			last_error: None,
-		},
-		cx,
-	)
-	.await?;
+		}
+	};
+
+	run_jobs(jobs, error_handling, cx).await?;
 	Ok(())
 }
 
@@ -319,6 +310,7 @@ async fn run_jobs(
 	jobs: impl IntoIterator<Item = (JobName, Job)>,
 	error_handling: ErrorHandling,
 	cx: Context,
+	// TODO: return Result<(), Vec<(JobName, Report)>>
 ) -> Result<()> {
 	let shutdown_rx = set_up_signal_handler();
 
@@ -508,7 +500,6 @@ async fn handle_errors(
 
 				// sleep in exponention amount of minutes, begginning with 2^0 = 1 minute
 				let sleep_dur = 2u64.saturating_pow(*err_count);
-				// tracing::info!("Pausing job {job_name} for {sleep_dur}m");
 				tracing::info!("Pausing job {job_name} for {sleep_dur}m");
 
 				*err_count += 1;

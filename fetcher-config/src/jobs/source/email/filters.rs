@@ -8,7 +8,7 @@ use fetcher_core::source::email::Filters as CFilters;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Filters {
 	sender: Option<String>,

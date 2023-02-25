@@ -6,13 +6,18 @@
 
 //! This module contains the [`Reddit`] subbreddit API source
 
+use super::Fetch;
 use crate::{
 	entry::Entry,
-	error::{source::RedditError, InvalidUrlError},
+	error::{
+		source::{Error as SourceError, RedditError},
+		InvalidUrlError,
+	},
 	sink::{Media, Message},
 	utils::OptionExt,
 };
 
+use async_trait::async_trait;
 use roux::{
 	util::{FeedOption, TimePeriod},
 	Subreddit,
@@ -60,12 +65,21 @@ impl Reddit {
 			subreddit: Subreddit::new(subreddit),
 		}
 	}
+}
 
+#[async_trait]
+impl Fetch for Reddit {
 	/// Fetches all posts from a subreddit
 	///
 	/// # Errors
 	/// This function may error if the network connection is down, or Reddit API returns a bad or garbage responce
-	pub async fn get(&self) -> Result<Vec<Entry>, RedditError> {
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		self.fetch_impl().await.map_err(Into::into)
+	}
+}
+
+impl Reddit {
+	async fn fetch_impl(&self) -> Result<Vec<Entry>, RedditError> {
 		let s = &self.subreddit;
 
 		macro_rules! top_in {

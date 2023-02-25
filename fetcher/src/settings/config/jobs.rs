@@ -12,9 +12,9 @@ use crate::{
 	Jobs,
 };
 use fetcher_config::jobs::Job as ConfigJob;
+use fetcher_core::job::Job;
 
 use color_eyre::{eyre::eyre, Result};
-use fetcher_core::job::Job;
 use figment::{
 	providers::{Format, Yaml},
 	Figment,
@@ -126,11 +126,11 @@ pub fn get(path: &Path, name: &str, cx: Context) -> Result<Option<Job>> {
 	// extract the disabled field and ignore the config if it's set to true
 	let DisabledField { disabled } = full_conf.extract()?;
 	if disabled.unwrap_or(false) {
-		tracing::trace!("Task is disabled, skipping...");
+		tracing::trace!("Job is disabled, skipping...");
 		return Ok(None);
 	}
 
-	let task: ConfigJob = full_conf.extract()?;
+	let job: ConfigJob = full_conf.extract()?;
 
-	Ok(Some(task.parse(name, &ExternalDataFromDataDir { cx })?))
+	Ok(Some(job.parse(name, &ExternalDataFromDataDir { cx })?))
 }

@@ -4,20 +4,17 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::source::{
-	reddit::Sort as CSort, Reddit as CReddit, WithSharedRF as CWithSharedRF,
-	WithSharedRFKind as CWithSharedRFKind,
-};
+use fetcher_core::source::{reddit::Sort as CSort, Reddit as CReddit};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
 
 #[serde_as]
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct Reddit(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<Inner>);
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Inner {
 	subreddit: String,
@@ -25,7 +22,7 @@ pub struct Inner {
 	score_threshold: Option<u32>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 #[rustfmt::skip]	// to put new and latest side by side
 pub enum Sort {
@@ -35,7 +32,7 @@ pub enum Sort {
 	Top(TimePeriod),
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum TimePeriod {
 	Today,
@@ -46,15 +43,8 @@ pub enum TimePeriod {
 }
 
 impl Reddit {
-	pub fn parse(self) -> CWithSharedRF {
-		let reddit_sources = self
-			.0
-			.into_iter()
-			.map(|x| CWithSharedRFKind::Reddit(x.parse()))
-			.collect();
-
-		CWithSharedRF::new(reddit_sources)
-			.expect("should always be the same since we are deserializing only Reddit here")
+	pub fn parse(self) -> Vec<CReddit> {
+		self.0.into_iter().map(Inner::parse).collect()
 	}
 }
 

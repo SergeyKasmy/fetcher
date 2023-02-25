@@ -6,10 +6,12 @@
 
 use crate::settings::context::StaticContext as Context;
 use fetcher_config::jobs::{
-	external_data::ExternalDataError, read_filter::ReadFilter as ReadFilterConf,
+	external_data::ExternalDataError,
+	read_filter::{Kind as ReadFilterKind, ReadFilter as ReadFilterConf},
 };
-use fetcher_core::read_filter::{ExternalSave, Kind as ReadFilterKind, ReadFilter};
+use fetcher_core::read_filter::{self as core_rf, external_save::ExternalSave, ReadFilter};
 
+use async_trait::async_trait;
 use std::{
 	fs,
 	io::{self, Write},
@@ -23,41 +25,38 @@ pub fn get(
 	name: &str,
 	expected_rf_kind: ReadFilterKind,
 	context: Context,
-) -> Result<ReadFilter, ExternalDataError> {
+) -> Result<Box<dyn ReadFilter>, ExternalDataError> {
 	let path = context.data_path.join(READ_DATA_DIR).join(name);
 
 	match fs::read_to_string(&path) {
 		Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
 			tracing::debug!("Read filter save file is empty");
 
-			Ok(ReadFilter::new(
-				expected_rf_kind,
-				Some(Box::new(save_file(&path)?)),
-			))
+			Ok(match expected_rf_kind {
+				ReadFilterKind::NewerThanRead => Box::new(core_rf::Newer::new()),
+				ReadFilterKind::NotPresentInReadList => Box::new(core_rf::NotPresent::new()),
+			})
 		}
 		Err(e) => {
 			tracing::debug!("Read filter save file doesn't exist or is inaccessible: {e}");
 
-			Ok(ReadFilter::new(
-				expected_rf_kind,
-				Some(Box::new(save_file(&path)?)),
-			))
+			Ok(match expected_rf_kind {
+				ReadFilterKind::NewerThanRead => Box::new(core_rf::Newer::new()),
+				ReadFilterKind::NotPresentInReadList => Box::new(core_rf::NotPresent::new()),
+			})
 		}
 		Ok(save_file_rf_raw) => {
-			let save_file_rf = {
-				let conf: ReadFilterConf =
-					serde_json::from_str(&save_file_rf_raw).map_err(|e| (e, &path))?;
-
-				conf.parse(Box::new(save_file(&path)?))
-			};
+			let conf: ReadFilterConf =
+				serde_json::from_str(&save_file_rf_raw).map_err(|e| (e, &path))?;
 
 			// the old read filter saved on disk is of the same type as the one set in config
-			if save_file_rf.to_kind() == expected_rf_kind {
-				Ok(save_file_rf)
+			if conf == expected_rf_kind {
+				let rf = conf.parse(save_file(&path)?);
+				Ok(rf)
 			} else {
 				Err(ExternalDataError::new_rf_incompat_with_path(
 					expected_rf_kind,
-					save_file_rf.to_kind(),
+					conf.to_kind(),
 					&path,
 				))
 			}
@@ -66,10 +65,12 @@ pub fn get(
 }
 
 // TODO: move to a new mod
+#[derive(Debug)]
 struct TruncatingFileWriter {
 	file: fs::File,
 }
 
+// TODO: should this become async since ExternalSave is not async as well?
 impl std::io::Write for TruncatingFileWriter {
 	fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
 		use std::io::Seek;
@@ -84,12 +85,13 @@ impl std::io::Write for TruncatingFileWriter {
 	}
 }
 
+#[async_trait]
 impl ExternalSave for TruncatingFileWriter {
-	fn save(&mut self, read_filter: &fetcher_core::read_filter::Inner) -> io::Result<()> {
-		if let Some(filter_conf) =
-			fetcher_config::jobs::read_filter::ReadFilter::unparse(read_filter)
+	async fn save(&mut self, read_filter: &dyn ReadFilter) -> io::Result<()> {
+		if let Some(rf_conf) =
+			fetcher_config::jobs::read_filter::ReadFilter::unparse(read_filter).await
 		{
-			let s = serde_json::to_string(&filter_conf).unwrap();
+			let s = serde_json::to_string(&rf_conf).unwrap();
 			return self.write_all(s.as_bytes());
 		}
 

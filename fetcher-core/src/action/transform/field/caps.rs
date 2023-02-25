@@ -8,17 +8,18 @@
 
 use super::TransformField;
 use crate::action::transform::result::TransformResult;
-
-use std::convert::Infallible;
+use crate::error::transform::Kind as TransformErrorKind;
 
 /// Make all text in a field UPPERCASE
 #[derive(Debug)]
 pub struct Caps;
 
 impl TransformField for Caps {
-	type Error = Infallible;
-
-	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Infallible> {
+	// Infallible
+	fn transform_field(
+		&self,
+		field: Option<&str>,
+	) -> Result<TransformResult<String>, TransformErrorKind> {
 		Ok(TransformResult::New(field.map(str::to_uppercase)))
 	}
 }

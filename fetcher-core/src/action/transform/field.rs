@@ -12,39 +12,119 @@ pub mod set;
 pub mod shorten;
 pub mod trim;
 
-use self::{caps::Caps, set::Set, shorten::Shorten, trim::Trim};
-use super::result::TransformResult;
+pub use crate::action::regex;
+
+use async_trait::async_trait;
+use std::fmt::Debug;
+use url::Url;
+
+use super::{result::TransformResult, Transform};
 use crate::{
-	action::regex::{action::Extract, action::Replace, Regex},
-	error::transform::Kind as TransformErrorKind,
+	entry::Entry,
+	error::{
+		transform::{Error as TransformError, Kind as TransformErrorKind},
+		InvalidUrlError,
+	},
+	sink::Message,
+	utils::OptionExt,
 };
 
-use derive_more::From;
-
-/// A helper trait for transforms that transform a single field of an entry
-pub trait TransformField {
-	/// Error return type. May be [`Infallible`](`std::convert::Infallible`)
-	type Error: Into<TransformErrorKind>;
-
-	/// Transform the `field` into a new field or `None` specifying what happens if `None` is returned
-	#[allow(clippy::missing_errors_doc)]
-	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Self::Error>;
+/// Transform/change the value of a field of an [`Entry `]
+pub trait TransformField: Debug + Send + Sync {
+	/// Transform/change the `field` into a new one or `None` specifying what happens if `None` is returned
+	///
+	/// # Errors
+	/// Refer to implementator's docs. Most of them never error but some do
+	fn transform_field(
+		&self,
+		old_val: Option<&str>,
+	) -> Result<TransformResult<String>, TransformErrorKind>;
 }
 
-/// Type that includes all available transforms that implement the [`TransformField`] trait
-#[allow(missing_docs)]
-#[derive(From, Debug)]
-pub enum Kind {
-	RegexExtract(Regex<Extract>),
-	RegexReplace(Regex<Replace>),
-	Set(Set),
-	Caps(Caps),
-	Trim(Trim),
-	Shorten(Shorten),
+// TODO: make a new name
+/// A wrapper around a [`TransformField`] that takes a value out of a [`Field`], passes it to the transformator,
+/// and processes the result - updating, removing, or retaining the old value of the field as specified by the transformator
+#[derive(Debug)]
+pub struct TransformFieldWrapper<T>
+where
+	T: TransformField,
+{
+	/// The field to transform/change
+	pub field: Field,
+
+	/// The transformator that's going to decide what the new value of the field should be
+	pub transformator: T,
+}
+
+#[async_trait]
+impl<T> Transform for TransformFieldWrapper<T>
+where
+	T: TransformField,
+{
+	async fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, TransformError> {
+		// TODO: remove this, take entry by ownership?
+		let mut entry = entry.clone();
+		// old value of the field
+		let old_val = match self.field {
+			Field::Title => entry.msg.title.take(),
+			Field::Body => entry.msg.body.take(),
+			Field::Link => entry.msg.link.take().map(|u| u.to_string()),
+			Field::RawContets => entry.raw_contents.take(),
+		};
+
+		let new_val = self
+			.transformator
+			.transform_field(old_val.as_deref())
+			.map_err(|kind| TransformError {
+				kind,
+				original_entry: entry.clone(),
+			})?;
+
+		// finalized value of the field. It's the new value that can get replaced with the old value if requested
+		let final_val = new_val.get(old_val);
+
+		let new_entry = match self.field {
+			Field::Title => Entry {
+				msg: Message {
+					title: final_val,
+					..entry.msg
+				},
+				..entry
+			},
+			Field::Body => Entry {
+				msg: Message {
+					body: final_val,
+					..entry.msg
+				},
+				..entry
+			},
+			Field::Link => {
+				let link = final_val.try_map(|s| {
+					Url::try_from(s.as_str()).map_err(|e| TransformError {
+						kind: TransformErrorKind::FieldLinkTransformInvalidUrl(InvalidUrlError(
+							e, s,
+						)),
+						original_entry: entry.clone(),
+					})
+				})?;
+
+				Entry {
+					msg: Message { link, ..entry.msg },
+					..entry
+				}
+			}
+			Field::RawContets => Entry {
+				raw_contents: final_val,
+				..entry
+			},
+		};
+
+		Ok(vec![new_entry])
+	}
 }
 
 /// List of all available fields for transformations
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Field {
 	/// [`Message.title`] field
 	Title,
@@ -54,23 +134,4 @@ pub enum Field {
 	Link,
 	/// [`Entry.raw_contents`] field
 	RawContets,
-}
-
-impl TransformField for Kind {
-	type Error = TransformErrorKind;
-
-	fn transform_field(
-		&self,
-		field: Option<&str>,
-	) -> Result<TransformResult<String>, TransformErrorKind> {
-		macro_rules! delegate {
-		    ($($k:tt),+) => {
-				match self {
-					$(Self::$k(x) => x.transform_field(field).map_err(Into::into),)+
-				}
-		    };
-		}
-
-		delegate!(RegexExtract, RegexReplace, Set, Caps, Trim, Shorten)
-	}
 }

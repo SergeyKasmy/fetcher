@@ -24,11 +24,11 @@ pub struct Task {
 	/// An optional tag that may be put near a message body to differentiate this task from others that may be similar
 	pub tag: Option<String>,
 	/// The source where to fetch some data from
-	pub source: Option<Source>,
+	pub source: Option<Box<dyn Source>>,
 	/// A list of optional transformators which to run the data received from the source through
 	pub actions: Option<Vec<Action>>,
 	/// The sink where to send the data to
-	pub sink: Option<Sink>,
+	pub sink: Option<Box<dyn Sink>>,
 }
 
 impl Task {
@@ -41,7 +41,7 @@ impl Task {
 
 		let entries = {
 			let raw = match &mut self.source {
-				Some(source) => source.get().await?,
+				Some(source) => source.fetch().await?,
 				None => vec![Entry::default()], // return just an empty entry if the task is not set
 			};
 
@@ -73,13 +73,9 @@ impl Task {
 				sink.send(msg, self.tag.as_deref()).await?;
 			}
 
-			if let Some(id) = &entry.id {
-				match &mut self.source {
-					Some(Source::WithSharedReadFilter { rf: Some(rf), .. }) => {
-						rf.write().await.mark_as_read(id)?;
-					}
-					Some(Source::WithCustomReadFilter(x)) => x.mark_as_read(id).await?,
-					_ => (),
+			if let Some(source) = &mut self.source {
+				if let Some(id) = &entry.id {
+					source.mark_as_read(id).await?;
 				}
 			}
 		}

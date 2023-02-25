@@ -8,39 +8,30 @@ use crate::{
 	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 	Error as ConfigError,
 };
-use fetcher_core::source::{
-	Twitter as CTwitter, WithSharedRF as CWithSharedRF, WithSharedRFKind as CWithSharedRFKind,
-};
+use fetcher_core::source::Twitter as CTwitter;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
 
 #[serde_as]
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct Twitter(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<String>);
 
 impl Twitter {
-	pub fn parse(self, external: &dyn ProvideExternalData) -> Result<CWithSharedRF, ConfigError> {
+	pub fn parse<D>(self, external: &D) -> Result<Vec<CTwitter>, ConfigError>
+	where
+		D: ProvideExternalData + ?Sized,
+	{
 		let (api_key, api_secret) = match external.twitter_token() {
 			ExternalDataResult::Ok(v) => v,
 			ExternalDataResult::Unavailable => return Err(ConfigError::TwitterApiKeysMissing),
 			ExternalDataResult::Err(e) => return Err(e.into()),
 		};
 
-		let twitter_sources = self
-			.0
+		self.0
 			.into_iter()
-			.map(|handle| {
-				Ok(CWithSharedRFKind::Twitter(CTwitter::new(
-					handle,
-					api_key.clone(),
-					api_secret.clone(),
-				)))
-			})
-			.collect::<Result<_, ConfigError>>()?;
-
-		Ok(CWithSharedRF::new(twitter_sources)
-			.expect("should always be the same since we are deserializing only Twitter here"))
+			.map(|handle| Ok(CTwitter::new(handle, api_key.clone(), api_secret.clone())))
+			.collect()
 	}
 }

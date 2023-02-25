@@ -10,7 +10,6 @@ pub mod data;
 pub mod external_data;
 pub mod log;
 pub mod read_filter;
-pub mod run_mode;
 
 use color_eyre::{eyre::eyre, Result};
 use directories::ProjectDirs;

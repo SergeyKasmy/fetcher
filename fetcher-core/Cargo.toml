@@ -9,7 +9,6 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1.64"
 chrono = "0.4.23"
-derive_more = "0.99.17"
 egg-mode = { version = "0.16.1", features = ["rustls"], default-features = false }
 either = "1.8.1"
 feed-rs = "1.2.0"

@@ -8,7 +8,7 @@ pub mod query;
 
 use self::query::{ElementDataQuery, ElementQuery};
 use crate::Error;
-use fetcher_core::{action::transform::Html as CoreHtml, utils::OptionExt};
+use fetcher_core::{action::transform::entry::html::Html as CHtml, utils::OptionExt};
 
 use serde::{Deserialize, Serialize};
 
@@ -35,8 +35,8 @@ pub struct Html {
 }
 
 impl Html {
-	pub fn parse(self) -> Result<CoreHtml, Error> {
-		Ok(CoreHtml {
+	pub fn parse(self) -> Result<CHtml, Error> {
+		Ok(CHtml {
 			itemq: self
 				.itemq
 				.map(|v| v.into_iter().map(ElementQuery::parse).collect()),

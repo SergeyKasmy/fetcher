@@ -8,9 +8,10 @@
 
 use crate::{
 	error::sink::Error as SinkError,
-	sink::{Media, Message},
+	sink::{Media, Message, Sink},
 };
 
+use async_trait::async_trait;
 use std::{fmt::Debug, time::Duration};
 use teloxide::{
 	adaptors::{throttle::Limits, Throttle},
@@ -54,71 +55,6 @@ impl Telegram {
 			chat_id: ChatId(chat_id),
 			link_location,
 		}
-	}
-
-	/// Sends a `message` with `tag`, if specified
-	#[tracing::instrument(skip_all)]
-	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError> {
-		let Message {
-			title,
-			body,
-			link,
-			media,
-		} = message;
-
-		tracing::debug!(
-			"Processing message: title: {title:?}, body len: {}, link: {}, media count: {}",
-			body.as_ref().map_or(0, String::len),
-			link.is_some(),
-			media.as_ref().map_or(0, Vec::len),
-		);
-
-		let body = body.map(|s| teloxide::utils::html::escape(&s));
-		let (head, tail) = format_head_tail(
-			title.map(|s| teloxide::utils::html::escape(&s)),
-			link,
-			tag,
-			self.link_location,
-		);
-
-		let text = MsgParts {
-			head: head.as_deref(),
-			body: body.as_deref(),
-			tail: tail.as_deref(),
-		};
-
-		// fugure out if additional newline charaters should be added
-		// and include them in calculations on whether the message will end up too long.
-		// add newline after head if head.is some and either body or tail is some
-		let should_insert_newline_after_head = head.is_some() && (body.is_some() || tail.is_some());
-		let should_insert_newline_after_body = body.is_some() && tail.is_some();
-
-		let max_char_limit = if media.is_some() {
-			MAX_MEDIA_MSG_LEN
-		} else {
-			MAX_TEXT_MSG_LEN
-		};
-
-		// if total single message char len would be bigger than max_char_limit (depending on whether the message contains media)
-		if head.as_ref().map_or(0, |s| s.chars().count())
-			+ body.as_ref().map_or(0, |s| s.chars().count())
-			+ tail.as_ref().map_or(0, |s| s.chars().count())
-			+ usize::from(should_insert_newline_after_head)
-			+ usize::from(should_insert_newline_after_body)
-			> max_char_limit
-		{
-			self.process_long_message(text, media.as_deref()).await?;
-		} else {
-			self.process_short_message(
-				text,
-				media.as_deref(),
-				should_insert_newline_after_head,
-				should_insert_newline_after_body,
-			)
-			.await?;
-		}
-
-		Ok(())
 	}
 
 	async fn process_long_message(
@@ -428,6 +364,77 @@ impl Telegram {
 				}
 			}
 		}
+	}
+}
+
+#[async_trait]
+impl Sink for Telegram {
+	/// Sends a message to a Telegram chat
+	///
+	/// # Errors
+	/// * if Telegram returned an error
+	/// * if there's no internet connection
+	async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError> {
+		let Message {
+			title,
+			body,
+			link,
+			media,
+		} = message;
+
+		tracing::debug!(
+			"Processing message: title: {title:?}, body len: {}, link: {}, media count: {}",
+			body.as_ref().map_or(0, String::len),
+			link.is_some(),
+			media.as_ref().map_or(0, Vec::len),
+		);
+
+		let body = body.map(|s| teloxide::utils::html::escape(&s));
+		let (head, tail) = format_head_tail(
+			title.map(|s| teloxide::utils::html::escape(&s)),
+			link,
+			tag,
+			self.link_location,
+		);
+
+		let text = MsgParts {
+			head: head.as_deref(),
+			body: body.as_deref(),
+			tail: tail.as_deref(),
+		};
+
+		// fugure out if additional newline charaters should be added
+		// and include them in calculations on whether the message will end up too long.
+		// add newline after head if head.is some and either body or tail is some
+		let should_insert_newline_after_head = head.is_some() && (body.is_some() || tail.is_some());
+		let should_insert_newline_after_body = body.is_some() && tail.is_some();
+
+		let max_char_limit = if media.is_some() {
+			MAX_MEDIA_MSG_LEN
+		} else {
+			MAX_TEXT_MSG_LEN
+		};
+
+		// if total single message char len would be bigger than max_char_limit (depending on whether the message contains media)
+		if head.as_ref().map_or(0, |s| s.chars().count())
+			+ body.as_ref().map_or(0, |s| s.chars().count())
+			+ tail.as_ref().map_or(0, |s| s.chars().count())
+			+ usize::from(should_insert_newline_after_head)
+			+ usize::from(should_insert_newline_after_body)
+			> max_char_limit
+		{
+			self.process_long_message(text, media.as_deref()).await?;
+		} else {
+			self.process_short_message(
+				text,
+				media.as_deref(),
+				should_insert_newline_after_head,
+				should_insert_newline_after_body,
+			)
+			.await?;
+		}
+
+		Ok(())
 	}
 }
 

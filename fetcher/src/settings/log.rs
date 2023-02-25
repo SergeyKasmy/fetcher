@@ -32,6 +32,7 @@ pub fn default_log_path() -> Result<PathBuf> {
 		.to_path_buf())
 }
 
+#[allow(rustdoc::invalid_html_tags)]
 /// Save entry contents from a task to a <task name>/<current time>.txt file in `default_log_path()` dir
 pub fn log_transform_err(e: &TransformError, job_name: &str) -> Result<()> {
 	let root_dir = default_log_path()?;

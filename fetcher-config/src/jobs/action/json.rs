@@ -6,7 +6,10 @@
 
 use crate::Error;
 use fetcher_core::{
-	action::{regex as c_regex, transform::entry::json as c_json},
+	action::transform::{
+		entry::json::{self as c_json, Json as CJson},
+		field::regex as c_regex,
+	},
 	utils::OptionExt,
 };
 
@@ -66,8 +69,8 @@ pub struct JsonQueryRegex {
 }
 
 impl Json {
-	pub fn parse(self) -> Result<c_json::Json, Error> {
-		Ok(c_json::Json {
+	pub fn parse(self) -> Result<CJson, Error> {
+		Ok(CJson {
 			itemq: self.itemq.map(Query::parse),
 			titleq: self.titleq.try_map(StringQuery::parse)?,
 

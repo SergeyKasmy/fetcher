@@ -20,8 +20,8 @@ use self::{
 use crate::Error;
 use fetcher_core::action::{
 	transform::{
-		entry::Kind as CTransformEntryKind, field::caps::Caps as CCaps, field::Field as CField,
-		field::Kind as CFieldTransformKind, Feed as CFeed, Transform as CTransform,
+		field::{Field as CField, TransformFieldWrapper as CTransformFieldWrapper},
+		Caps as CCaps, DebugPrint as CDebugPrint, Feed as CFeed, Http as CHttp,
 	},
 	Action as CAction,
 };
@@ -36,18 +36,18 @@ pub enum Action {
 	Take(Take),
 
 	// entry transforms
-	Http,
-	Html(Html),
-	Json(Json),
+	DebugPrint,
 	Feed,
+	Html(Html),
+	Http,
+	Json(Json),
 	Use(Use),
-	Print,
 
 	// field transforms
-	Set(Set),
 	Caps,
-	Trim(Trim),
+	Set(Set),
 	Shorten(Shorten),
+	Trim(Trim),
 
 	// other
 	Regex(Regex),
@@ -64,22 +64,41 @@ pub enum Field {
 
 impl Action {
 	pub fn parse(self) -> Result<CAction, Error> {
+		macro_rules! transform {
+			($tr:expr) => {
+				CAction::Transform(Box::new($tr))
+			};
+		}
+
+		macro_rules! filter {
+			($f:expr) => {
+				CAction::Filter(Box::new($f))
+			};
+		}
+
 		Ok(match self {
+			// filters
 			Action::ReadFilter => unreachable!(),
-			Action::Take(x) => CAction::Filter(x.parse().into()),
-			Action::Http => CTransformEntryKind::Http.into(),
-			Action::Html(x) => x.parse()?.into(),
-			Action::Json(x) => x.parse()?.into(),
-			Action::Feed => CFeed.into(),
-			Action::Use(x) => x.parse().into(),
-			Action::Print => CTransformEntryKind::Print.into(),
-			Action::Set(s) => s.parse().into(),
-			Action::Caps => CAction::Transform(CTransform::Field {
+			Action::Take(x) => filter!(x.parse()),
+
+			// entry transforms
+			Action::Feed => transform!(CFeed),
+			Action::Html(x) => transform!(x.parse()?),
+			Action::Http => transform!(CHttp::new(CField::Link)?),
+			Action::Json(x) => transform!(x.parse()?),
+			Action::Use(x) => transform!(x.parse()),
+
+			// field transforms
+			Action::Caps => transform!(CTransformFieldWrapper {
 				field: CField::Title,
-				kind: CFieldTransformKind::Caps(CCaps),
+				transformator: CCaps,
 			}),
-			Action::Trim(x) => x.parse().into(),
-			Action::Shorten(x) => x.parse().into(),
+			Action::DebugPrint => transform!(CDebugPrint),
+			Action::Set(s) => transform!(s.parse()),
+			Action::Shorten(x) => transform!(x.parse()),
+			Action::Trim(x) => transform!(x.parse()),
+
+			// other
 			Action::Regex(x) => x.parse()?,
 		})
 	}

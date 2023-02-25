@@ -5,14 +5,19 @@
  */
 
 use super::{context::StaticContext, data, read_filter};
-use fetcher_config::jobs::external_data::{ExternalDataResult, ProvideExternalData};
-use fetcher_core::read_filter::{Kind as ReadFilterKind, ReadFilter};
+use fetcher_config::jobs::{
+	external_data::{ExternalDataResult, ProvideExternalData},
+	read_filter::Kind as ReadFilterKind,
+};
+use fetcher_core::read_filter::ReadFilter;
 
 pub struct ExternalDataFromDataDir {
 	pub cx: StaticContext,
 }
 
 impl ProvideExternalData for ExternalDataFromDataDir {
+	type ReadFilter = Box<dyn ReadFilter>;
+
 	fn twitter_token(&self) -> ExternalDataResult<(String, String)> {
 		data::twitter::get(self.cx).into()
 	}
@@ -33,7 +38,7 @@ impl ProvideExternalData for ExternalDataFromDataDir {
 		&self,
 		name: &str,
 		expected_rf: ReadFilterKind,
-	) -> ExternalDataResult<ReadFilter> {
+	) -> ExternalDataResult<Self::ReadFilter> {
 		read_filter::get(name, expected_rf, self.cx).into()
 	}
 }

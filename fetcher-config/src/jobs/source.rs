@@ -17,14 +17,15 @@ use self::{
 	twitter::Twitter,
 };
 use crate::{jobs::external_data::ProvideExternalData, Error};
-use fetcher_core::{read_filter::ReadFilter as CReadFilter, source::Source as CSource};
+use fetcher_core::{
+	read_filter::ReadFilter as CReadFilter,
+	source::{Source as CSource, SourceWithSharedRF as CSourceWithSharedRF},
+};
 
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tokio::sync::RwLock;
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Source {
 	// with shared read filter
@@ -40,26 +41,32 @@ pub enum Source {
 }
 
 impl Source {
-	pub fn parse(
-		self,
-		rf: Option<Arc<RwLock<CReadFilter>>>,
-		external: &dyn ProvideExternalData,
-	) -> Result<CSource, Error> {
-		// make a CSource::WithSharedReadFilter out of a CWithSharedRF
+	pub fn parse<RF, D>(self, rf: Option<RF>, external: &D) -> Result<Box<dyn CSource>, Error>
+	where
+		RF: CReadFilter + 'static,
+		D: ProvideExternalData + ?Sized,
+	{
+		// make a dyn CSourceWithSharedRF out of a CFetch and the read filter parameter
 		macro_rules! WithSharedRF {
-			($source:expr) => {
-				CSource::WithSharedReadFilter { rf, kind: $source }
+			($sources:expr) => {
+				Box::new(CSourceWithSharedRF {
+					sources: $sources,
+					rf,
+				})
 			};
 		}
 
 		Ok(match self {
+			// with shared read filter
 			Self::String(x) => WithSharedRF!(x.parse()),
 			Self::Http(x) => WithSharedRF!(x.parse()?),
 			Self::Twitter(x) => WithSharedRF!(x.parse(external)?),
 			Self::File(x) => WithSharedRF!(x.parse()),
 			Self::Reddit(x) => WithSharedRF!(x.parse()),
 			Self::Exec(x) => WithSharedRF!(x.parse()),
-			Self::Email(x) => CSource::WithCustomReadFilter(x.parse(external)?),
+
+			// with custom read filter
+			Self::Email(x) => Box::new(x.parse(external)?),
 		})
 	}
 }

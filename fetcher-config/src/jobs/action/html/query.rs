@@ -6,7 +6,7 @@
 
 use crate::Error;
 use fetcher_core::{
-	action::{regex as c_regex, transform::entry::html::query as c_query},
+	action::{transform::entry::html::query as c_query, transform::field::regex as c_regex},
 	utils::OptionExt,
 };
 

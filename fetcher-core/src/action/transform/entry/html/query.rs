@@ -4,13 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains [`Query`] that contains everything needed to check if an HTML tag fits all the provided requirements
-//! and [`QueryData`] that has everything needed to traverse an entire HTML document in search for a tag,
-//! as well as a way to parse the data contained in it
-
-use std::fmt::Display;
+//! This module contains [`ElementQuery`], that checks if an HTML element fits all provided requirements,
+//! and [`ElementDataQuery`] that extracts some kind of data from the said element
 
 use crate::action::regex::{action::Replace, Regex};
+
+use std::fmt::Display;
 
 /// The type of item that should be queried
 #[derive(Clone, Debug)]

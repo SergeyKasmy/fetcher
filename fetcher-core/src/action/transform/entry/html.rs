@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains the [`Html`] parser as well as a way to query an HTML tag via [`QueryData`]
+//! This module contains the [`Html`] parser as well as a way to query an HTML tag via [`ElementQuery`]
 
 pub mod query;
 
@@ -21,6 +21,7 @@ use crate::{
 	utils::OptionExt,
 };
 
+use async_trait::async_trait;
 use either::Either;
 use itertools::Itertools;
 use soup_kuchiki::{Handle as HtmlNode, NodeExt, QueryBuilderExt, Soup};
@@ -44,10 +45,11 @@ pub struct Html {
 	pub imgq: Option<ElementDataQuery>,
 }
 
+#[async_trait]
 impl TransformEntry for Html {
-	type Error = HtmlError;
+	type Err = HtmlError;
 
-	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+	async fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		tracing::debug!("Parsing HTML");
 
 		let dom =

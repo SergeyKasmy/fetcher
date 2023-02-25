@@ -6,7 +6,7 @@
 
 use super::Field;
 use fetcher_core::action::transform::{
-	field::{set::Set as CSet, Kind as CFieldTransformKind},
+	field::set::Set as CSet, field::TransformFieldWrapper as CTransformFieldWrapper,
 	Transform as CTransform,
 };
 
@@ -21,10 +21,10 @@ pub struct Set {
 }
 
 impl Set {
-	pub fn parse(self) -> CTransform {
-		CTransform::Field {
+	pub fn parse(self) -> impl CTransform {
+		CTransformFieldWrapper {
 			field: self.field.parse(),
-			kind: CFieldTransformKind::Set(CSet(self.value.map(|x| x.0))),
+			transformator: CSet(self.value.map(|x| x.0)),
 		}
 	}
 }

@@ -17,15 +17,21 @@ pub use filters::Filters;
 pub use view_mode::ViewMode;
 
 use self::auth::GoogleAuthExt;
-use crate::auth::Google as GoogleAuth;
-use crate::entry::Entry;
-use crate::error::source::EmailError;
-use crate::error::source::ImapError;
-use crate::sink::Message;
+use crate::{
+	auth::Google as GoogleAuth,
+	entry::Entry,
+	error::{
+		source::{EmailError, Error as SourceError, ImapError},
+		Error,
+	},
+	sink::Message,
+};
 
+use async_trait::async_trait;
 use mailparse::ParsedMail;
-use std::fmt::Debug;
-use std::fmt::Write as _;
+use std::fmt::{Debug, Write as _};
+
+use super::{Fetch, MarkAsRead, Source};
 
 const IMAP_PORT: u16 = 993;
 
@@ -112,12 +118,35 @@ impl Email {
 			view_mode,
 		}
 	}
+}
 
+#[async_trait]
+impl Fetch for Email {
 	/// Even though it's marked async, the fetching itself is not async yet
 	/// It should be used with spawn_blocking probs
 	/// TODO: make it async lol
-	#[tracing::instrument(skip_all)]
-	pub async fn get(&mut self) -> Result<Vec<Entry>, EmailError> {
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		self.fetch_impl().await.map_err(Into::into)
+	}
+}
+
+#[async_trait]
+impl MarkAsRead for Email {
+	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+		self.mark_as_read_impl(id)
+			.await
+			.map_err(|e| Error::from(SourceError::from(EmailError::from(e))))
+	}
+
+	async fn set_read_only(&mut self) {
+		self.view_mode = ViewMode::ReadOnly;
+	}
+}
+
+impl Source for Email {}
+
+impl Email {
+	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, EmailError> {
 		tracing::debug!("Fetching emails");
 		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT)
 			.rustls()
@@ -193,7 +222,7 @@ let uid =
 			.collect::<Result<Vec<Entry>, EmailError>>()
 	}
 
-	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<(), ImapError> {
+	async fn mark_as_read_impl(&mut self, id: &str) -> Result<(), ImapError> {
 		if let ViewMode::ReadOnly = self.view_mode {
 			return Ok(());
 		}

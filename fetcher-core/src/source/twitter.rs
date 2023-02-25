@@ -9,12 +9,16 @@
 //! This module includes the [`Twitter`] struct that is a source that is able to parse a twitter feed via twitter API
 
 use crate::entry::Entry;
+use crate::error::source::Error as SourceError;
 use crate::error::source::TwitterError;
 use crate::sink::Media;
 use crate::sink::Message;
 
+use async_trait::async_trait;
 use egg_mode::entities::MediaType;
 use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
+
+use super::Fetch;
 
 /// A source that fetches from a Twitter feed using the Twitter API
 pub struct Twitter {
@@ -35,10 +39,18 @@ impl Twitter {
 			token: None,
 		}
 	}
+}
 
+#[async_trait]
+impl Fetch for Twitter {
 	/// Fetches all tweets from the feed
-	#[tracing::instrument(skip_all)]
-	pub async fn get(&mut self) -> Result<Vec<Entry>, TwitterError> {
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		self.fetch_impl().await.map_err(Into::into)
+	}
+}
+
+impl Twitter {
+	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, TwitterError> {
 		tracing::debug!("Getting tweets");
 
 		let token = match &self.token {
