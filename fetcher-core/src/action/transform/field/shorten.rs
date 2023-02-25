@@ -7,11 +7,9 @@
 //! This module contains the [`Shorten`] transform
 
 use super::TransformField;
-use crate::{
-	action::transform::result::TransformResult, error::transform::Kind as TransformErrorKind,
-};
+use crate::action::transform::result::TransformResult;
 
-use std::iter::repeat;
+use std::{convert::Infallible, iter::repeat};
 
 /// Shorten a field to [`len`](`Shorten::len`). Makes the field completely empty if [`len`](`Shorten::len`) is 0, or trims the field to [`len`](`Shorten::len`) and adds "..." to the end
 #[derive(Debug)]
@@ -21,11 +19,9 @@ pub struct Shorten {
 }
 
 impl TransformField for Shorten {
-	// Infallible
-	fn transform_field(
-		&self,
-		field: Option<&str>,
-	) -> Result<TransformResult<String>, TransformErrorKind> {
+	type Err = Infallible;
+
+	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
 		// len == 0 means we should unset the field. Same effect as Set with value: None here
 		let new_val = if self.len == 0 {
 			None

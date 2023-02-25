@@ -8,10 +8,10 @@
 // TODO: add google calendar source. Google OAuth2 is already implemented :)
 
 pub mod email;
-mod file;
+pub mod file;
 pub mod http;
 pub mod reddit;
-mod twitter;
+pub mod twitter;
 
 pub use self::{email::Email, file::File, http::Http, reddit::Reddit, twitter::Twitter};
 pub use crate::exec::Exec;

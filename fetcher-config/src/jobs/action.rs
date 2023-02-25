@@ -84,13 +84,14 @@ impl Action {
 
 		let act = match self {
 			// filters
-			Action::ReadFilter => match rf {
-				Some(rf) => CAction::Filter(Box::new(rf)),
-				None => {
+			Action::ReadFilter => {
+				if let Some(rf) = rf {
+					CAction::Filter(Box::new(rf))
+				} else {
 					tracing::warn!("Can't filter read entries when no read filter type is set up for the task!");
 					return Ok(None);
 				}
-			},
+			}
 			Action::Take(x) => filter!(x.parse()),
 
 			// entry transforms

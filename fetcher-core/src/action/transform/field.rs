@@ -31,14 +31,14 @@ use crate::{
 
 /// Transform/change the value of a field of an [`Entry `]
 pub trait TransformField: Debug + Send + Sync {
+	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
+	type Err: Into<TransformErrorKind>;
+
 	/// Transform/change the `field` into a new one or `None` specifying what happens if `None` is returned
 	///
 	/// # Errors
 	/// Refer to implementator's docs. Most of them never error but some do
-	fn transform_field(
-		&self,
-		old_val: Option<&str>,
-	) -> Result<TransformResult<String>, TransformErrorKind>;
+	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err>;
 }
 
 // TODO: make a new name
@@ -76,7 +76,7 @@ where
 			.transformator
 			.transform_field(old_val.as_deref())
 			.map_err(|kind| TransformError {
-				kind,
+				kind: kind.into(),
 				original_entry: entry.clone(),
 			})?;
 
