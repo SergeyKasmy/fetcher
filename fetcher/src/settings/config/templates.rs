@@ -32,7 +32,7 @@ pub fn find(name: &str, context: Context) -> Result<Option<Template>> {
 }
 
 pub fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>> {
-	tracing::trace!("Searching for template in {}", templates_path.display());
+	tracing::debug!("Searching for a template {name:?} in {templates_path:?}");
 	let path = templates_path.join(name).with_extension(CONFIG_FILE_EXT);
 	if !path.is_file() {
 		tracing::trace!("{path:?} is not a file");

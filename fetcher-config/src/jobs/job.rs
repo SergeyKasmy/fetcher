@@ -20,7 +20,7 @@ pub type TemplatesField = Option<Vec<String>>;
 pub struct Job {
 	#[serde(rename = "read_filter_type")]
 	read_filter_kind: Option<read_filter::Kind>,
-	tag: Option<String>,
+	name: Option<String>,
 	source: Option<Source>,
 	#[serde(rename = "process")]
 	actions: Option<Vec<Action>>,
@@ -45,8 +45,8 @@ impl Job {
 				for task in &mut tasks {
 					task.read_filter_kind = task.read_filter_kind.or(self.read_filter_kind);
 
-					if task.tag.is_none() {
-						task.tag = self.tag.clone();
+					if task.name.is_none() {
+						task.name = self.name.clone();
 					}
 
 					if task.source.is_none() {
@@ -75,7 +75,7 @@ impl Job {
 				// copy paste all values from the job to a dummy task, i.e. create a single task with all the values from the job
 				let task = Task {
 					read_filter_kind: self.read_filter_kind,
-					tag: self.tag,
+					name: self.name,
 					source: self.source,
 					actions: self.actions,
 					sink: self.sink,

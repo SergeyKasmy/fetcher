@@ -51,9 +51,9 @@ pub struct Run {
 	#[argh(switch)]
 	pub dry_run: bool,
 
-	/// run only these jobs
+	/// run only these jobs and tasks formatted as "job[:task]..."
 	#[argh(positional)]
-	pub job_names: Vec<String>,
+	pub run_filter: Vec<String>,
 }
 
 /// Run a job from the command line formatted as JSON
@@ -69,9 +69,9 @@ pub struct RunManual {
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "mark-old-as-read")]
 pub struct MarkOldAsRead {
-	/// mark only these jobs as read
+	/// mark only these jobs and tasks as read, formatted as "job[:task]..."
 	#[argh(positional)]
-	pub job_names: Vec<String>,
+	pub run_filter: Vec<String>,
 }
 
 /// Load all tasks from the config files and verify their format
@@ -80,7 +80,7 @@ pub struct MarkOldAsRead {
 pub struct Verify {
 	/// verify only these jobs
 	#[argh(positional)]
-	pub job_names: Vec<String>,
+	pub job_run_filter: Vec<String>,
 }
 
 /// save a setting

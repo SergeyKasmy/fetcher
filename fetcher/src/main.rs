@@ -12,7 +12,10 @@
 pub mod args;
 pub mod settings;
 
-use self::settings::{context::Context as OwnedContext, context::StaticContext as Context};
+use self::settings::{
+	config::jobs::filter::JobFilter, context::Context as OwnedContext,
+	context::StaticContext as Context,
+};
 use crate::args::{Args, Setting};
 use fetcher_core::{
 	error::{Error, ErrorChainExt},
@@ -40,8 +43,8 @@ use tokio::{
 	time::sleep,
 };
 
-pub type JobName = String;
-pub type Jobs = HashMap<JobName, Job>;
+type JobName = String;
+type Jobs = HashMap<JobName, Job>;
 
 fn main() -> Result<()> {
 	set_up_logging()?;
@@ -129,14 +132,18 @@ async fn async_main() -> Result<()> {
 
 			Ok(())
 		}
-		args::TopLvlSubcommand::MarkOldAsRead(args::MarkOldAsRead { job_names }) => {
-			let job_names = if job_names.is_empty() {
+		args::TopLvlSubcommand::MarkOldAsRead(args::MarkOldAsRead { run_filter }) => {
+			let run_filter = run_filter
+				.into_iter()
+				.map(|s| s.parse())
+				.collect::<Result<Vec<_>>>()?;
+			let run_filter = if run_filter.is_empty() {
 				None
 			} else {
-				Some(job_names)
+				Some(run_filter)
 			};
 
-			let Some(mut jobs) = get_jobs(job_names, cx)? else {
+			let Some(mut jobs) = get_jobs(run_filter, cx)? else {
 				return Ok(());
 			};
 
@@ -154,14 +161,24 @@ async fn async_main() -> Result<()> {
 
 			Ok(())
 		}
-		args::TopLvlSubcommand::Verify(args::Verify { job_names }) => {
-			let job_names = if job_names.is_empty() {
+		args::TopLvlSubcommand::Verify(args::Verify { job_run_filter }) => {
+			let job_run_filter = job_run_filter
+				.into_iter()
+				.map(|s| s.parse::<JobFilter>())
+				.map(|res| {
+					res.map(|mut filter| {
+						filter.task = None;
+						filter
+					})
+				})
+				.collect::<Result<Vec<_>>>()?;
+			let job_run_filter = if job_run_filter.is_empty() {
 				None
 			} else {
-				Some(job_names)
+				Some(job_run_filter)
 			};
 
-			let _ = get_jobs(job_names, cx)?;
+			let _ = get_jobs(job_run_filter, cx)?;
 			tracing::info!("Everything verified to be working properly, exiting...");
 
 			Ok(())
@@ -183,18 +200,19 @@ async fn run_command(
 	args::Run {
 		once,
 		dry_run,
-		job_names,
+		run_filter,
 	}: args::Run,
 	cx: Context,
 ) -> Result<()> {
 	let Some(mut jobs) = ({
-		let run_by_name = if job_names.is_empty() {
+		let run_filter = run_filter.into_iter().map(|s| s.parse()).collect::<Result<Vec<_>>>()?;
+		let run_filter = if run_filter.is_empty() {
 			None
 		} else {
-			Some(job_names)
+			Some(run_filter)
 		};
 
-		get_jobs(run_by_name, cx)?
+		get_jobs(run_filter, cx)?
 	}) else {
 		return Ok(());
 	};
@@ -240,15 +258,9 @@ async fn run_command(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn get_jobs(run_by_name: Option<Vec<String>>, cx: Context) -> Result<Option<Jobs>> {
-	let run_by_name_is_some = run_by_name.is_some();
-	let jobs = settings::config::jobs::get_all(
-		run_by_name
-			.as_ref()
-			.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
-			.as_deref(),
-		cx,
-	)?;
+fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jobs>> {
+	let run_by_name_is_some = run_filter.is_some();
+	let jobs = settings::config::jobs::get_all(run_filter.as_deref(), cx)?;
 
 	if run_by_name_is_some {
 		if jobs.is_empty() {

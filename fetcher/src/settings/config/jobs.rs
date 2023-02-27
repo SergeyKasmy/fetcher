@@ -6,6 +6,9 @@
 
 // TODO: add trace logging, e.g. all config dirs, all config files, stuff like that
 
+pub mod filter;
+
+use self::filter::JobFilter;
 use super::CONFIG_FILE_EXT;
 use crate::{
 	settings::{self, context::StaticContext as Context, external_data::ExternalDataFromDataDir},
@@ -36,20 +39,20 @@ struct TemplatesField {
 }
 
 #[tracing::instrument(skip(cx))]
-pub fn get_all(by_name: Option<&[&str]>, cx: Context) -> Result<Jobs> {
+pub fn get_all(filter: Option<&[JobFilter]>, cx: Context) -> Result<Jobs> {
 	cx.conf_paths
 		.iter()
-		.flat_map(|dir| get_all_from(dir, by_name, cx))
+		.flat_map(|dir| get_all_from(dir, filter, cx))
 		.collect()
 }
 
 pub fn get_all_from<'a>(
 	cfg_dir: &'a Path,
-	by_name: Option<&'a [&'a str]>,
+	filter: Option<&'a [JobFilter]>,
 	cx: Context,
 ) -> impl Iterator<Item = Result<(String, Job)>> + 'a {
 	let jobs_dir = cfg_dir.join(JOBS_DIR_NAME);
-	tracing::trace!("Searching for job configs in {jobs_dir:?}");
+	tracing::debug!("Searching for job configs in {jobs_dir:?}");
 
 	WalkDir::new(&jobs_dir)
 		.follow_links(true)
@@ -83,20 +86,47 @@ pub fn get_all_from<'a>(
 				.to_string_lossy()
 				.into_owned();
 
-			// if asked to find only tasks with names `by_name`,
-			// check if the current task name is in the list and filter it out if not
-			if let Some(by_name) = by_name {
-				if !by_name.iter().any(|x| *x == job_name) {
+			// filter out all jobs that don't match the job filter
+			if let Some(filter) = filter {
+				if !filter.iter().any(|filter| filter.job_matches(&job_name)) {
+					tracing::debug!("Filtering out job {job_name:?}");
 					return None;
 				}
 			}
 
-			let task = get(file.path(), &job_name, cx)
+			let job = get(file.path(), &job_name, cx)
 				.map_err(|e| e.wrap_err(format!("Invalid config at: {}", file.path().display())))
 				.transpose()?;
-			let named_task = task.map(|t| (job_name, t));
 
-			Some(named_task)
+			let named_job = job.map(|mut job| {
+				if let Some(filter) = filter {
+					job.tasks = job
+						.tasks
+						.into_iter()
+						.enumerate()
+						.filter_map(|(task_id, task)| {
+							if filter.iter().any(|filter| {
+								filter.task_matches_id(&job_name, task_id)
+									|| task.name.as_ref().map_or(false, |task_name| {
+										filter.task_matches_name(&job_name, task_name)
+									})
+							}) {
+								Some(task)
+							} else {
+								tracing::debug!(
+									"Filtering out task {job_name:?}:{task_id} (name: {:?})",
+									task.name.as_deref().unwrap_or_default()
+								);
+								None
+							}
+						})
+						.collect();
+				}
+
+				(job_name, job)
+			});
+
+			Some(named_job)
 		})
 }
 
@@ -114,7 +144,7 @@ pub fn get(path: &Path, name: &str, cx: Context) -> Result<Option<Job>> {
 			let tmpl = settings::config::templates::find(&tmpl_name, cx)?
 				.ok_or_else(|| eyre!("Template not found"))?;
 
-			tracing::trace!("Using template: {:?}", tmpl.path);
+			tracing::debug!("Using template: {:?}", tmpl.path);
 
 			full_conf = full_conf.merge(Yaml::string(&tmpl.contents));
 		}

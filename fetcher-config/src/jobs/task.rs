@@ -23,7 +23,7 @@ use fetcher_core::{task::Task as CTask, utils::OptionExt};
 pub struct Task {
 	#[serde(rename = "read_filter_type")]
 	pub(crate) read_filter_kind: Option<read_filter::Kind>,
-	pub(crate) tag: Option<String>,
+	pub(crate) name: Option<String>,
 	pub(crate) source: Option<Source>,
 	#[serde(rename = "process")]
 	pub(crate) actions: Option<Vec<Action>>,
@@ -55,7 +55,7 @@ impl Task {
 		})?;
 
 		Ok(CTask {
-			tag: self.tag,
+			name: self.name,
 			source: self.source.map(|x| x.parse(rf, external)).transpose()?,
 			actions,
 			sink: self.sink.try_map(|x| x.parse(external))?,

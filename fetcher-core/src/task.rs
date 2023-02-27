@@ -21,8 +21,8 @@ use crate::{
 /// It also contains any transformators
 #[derive(Debug)]
 pub struct Task {
-	/// An optional tag that may be put near a message body to differentiate this task from others that may be similar
-	pub tag: Option<String>,
+	/// An optional name/tag that may be put near a message body to differentiate this task from others that may be similar
+	pub name: Option<String>,
 	/// The source where to fetch some data from
 	pub source: Option<Box<dyn Source>>,
 	/// A list of optional transformators which to run the data received from the source through
@@ -70,7 +70,7 @@ impl Task {
 					msg.body = entry.raw_contents.clone();
 				}
 
-				sink.send(msg, self.tag.as_deref()).await?;
+				sink.send(msg, self.name.as_deref()).await?;
 			}
 
 			if let Some(source) = &mut self.source {
