@@ -25,7 +25,7 @@ use fetcher_core::{
 
 use color_eyre::{
 	eyre::{eyre, WrapErr},
-	Report, Result,
+	Report, Result, Section,
 };
 use futures::future::join_all;
 use std::{
@@ -322,7 +322,6 @@ async fn run_jobs(
 	jobs: impl IntoIterator<Item = (JobName, Job)>,
 	error_handling: ErrorHandling,
 	cx: Context,
-	// TODO: return Result<(), Vec<(JobName, Report)>>
 ) -> Result<()> {
 	let shutdown_rx = set_up_signal_handler();
 
@@ -371,7 +370,7 @@ async fn run_jobs(
 		.collect::<Vec<_>>();
 
 	// rust-analyzer is confused without these manual type annotation
-	let errors: Vec<(JobName, Report)> = join_all(jobs)
+	let mut errors: Vec<(JobName, Report)> = join_all(jobs)
 		.await
 		.into_iter()
 		.filter_map(|r| match r {
@@ -380,21 +379,20 @@ async fn run_jobs(
 		})
 		.collect();
 
-	match errors.as_slice() {
-		[] => Ok(()),
-		[(name, error)] => Err(eyre!("Job \"{name}\" has finished with an error: {error}")),
-		errors => {
-			Err(eyre!(
-				"{} jobs have finished with an error: {}",
-				errors.len(),
-				errors
-					.iter()
-					.enumerate()
-					.fold(String::new(), |mut err_str, (i, (name, error))| {
-						let _ = write!(err_str, "\n#{} {name}: {error}", i + 1); // can't fail
-						err_str
-					})
-			))
+	match errors.len() {
+		0 => Ok(()),
+		1 => {
+			let (name, error) = errors.pop().expect("len should be 1");
+
+			Err(error).wrap_err(format!("Job \"{name}\""))
+		}
+		i => {
+			let full_report = errors.into_iter().fold(
+				eyre!("{i} jobs have finished with an error"),
+				|acc, (name, err)| acc.report(err.wrap_err(format!("Job \"{name}\""))),
+			);
+
+			Err(full_report)
 		}
 	}
 }
@@ -431,14 +429,10 @@ fn set_up_signal_handler() -> Receiver<()> {
 
 	// force close signal receiver
 	tokio::spawn(async move {
-		force_close_rx
-			.changed()
-			.await
-			.expect("force close transmitter has been closed");
-
-		tracing::info!("Force closing...");
-
-		std::process::exit(1);
+		if let Ok(()) = force_close_rx.changed().await {
+			tracing::info!("Force closing...");
+			std::process::exit(1);
+		}
 	});
 
 	shutdown_rx
