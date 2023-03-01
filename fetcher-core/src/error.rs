@@ -11,7 +11,7 @@ use crate::{
 	sink::error::SinkError, source::error::SourceError,
 };
 
-use std::{error::Error as StdError, fmt::Write, io};
+use std::{error::Error as StdError, io};
 
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
@@ -37,12 +37,6 @@ pub enum Error {
 #[error("Invalid URL: {1}")]
 pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
 
-/// Extention trait for [`std::error::Error`] to print the entire chain of the error
-pub trait ErrorChainExt {
-	/// Return a string intented for logging or printing that formats an error's entire error source chain
-	fn display_chain(&self) -> String;
-}
-
 impl Error {
 	/// Check if the current error is somehow related to network connection and return it if it is
 	#[allow(clippy::match_same_arms)]
@@ -57,27 +51,6 @@ impl Error {
 			Error::GoogleOAuth2(google_oauth2_err) => google_oauth2_err.is_connection_err(),
 			_ => None,
 		}
-	}
-}
-
-impl<T: StdError> ErrorChainExt for T {
-	#[must_use]
-	fn display_chain(&self) -> String {
-		let mut current_err: &dyn StdError = self;
-		let mut counter = 0;
-		let mut output = format!("{current_err}");
-
-		while let Some(source) = StdError::source(current_err) {
-			current_err = source;
-			counter += 1;
-			if counter == 1 {
-				let _ = write!(output, "\n\nCaused by:");
-			}
-
-			let _ = write!(output, "\n\t{counter}: {current_err}");
-		}
-
-		output
 	}
 }
 
