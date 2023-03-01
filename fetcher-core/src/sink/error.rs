@@ -4,16 +4,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#![allow(missing_docs)]
+//! An error that happened while sending to a sink
 
-pub use crate::error::exec_error::ExecError;
+use crate::error::exec_error::ExecError;
 
 use std::fmt::Debug;
 
-/// An error that happened while sending to a sink
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum SinkError {
 	#[error("Can't send via Telegram. Message contents: {msg:?}")]
 	Telegram {
 		source: teloxide::RequestError,

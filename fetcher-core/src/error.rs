@@ -6,7 +6,6 @@
 
 //! This module contains all errors that [`fetcher`](`crate`) can emit
 
-pub mod sink;
 pub mod source;
 pub mod transform;
 
@@ -16,6 +15,7 @@ use self::{
 	source::{ImapError, RedditError, TwitterError},
 	transform::Error as TransformError,
 };
+use crate::sink::error::SinkError;
 
 use std::{error::Error as StdError, fmt::Write as _};
 
@@ -29,7 +29,7 @@ pub enum Error {
 	Transform(#[from] Box<TransformError>),
 
 	#[error("Can't send data")]
-	Sink(#[from] sink::Error),
+	Sink(#[from] SinkError),
 
 	#[error("Google authentication error")]
 	GoogleOAuth2(#[from] GoogleOAuth2Error),
@@ -55,7 +55,7 @@ pub enum GoogleOAuth2Error {
 }
 
 // Re-exported in error::source and error::sink modules. Private in this one to avoid namespace pollution
-mod exec_error {
+pub(crate) mod exec_error {
 	use std::{io, string::FromUtf8Error};
 
 	/// Errors that happened while executing a process
@@ -116,13 +116,13 @@ impl Error {
 				_ => None,
 			},
 			Error::Sink(sink_err) => match sink_err {
-				sink::Error::Telegram {
+				SinkError::Telegram {
 					source: teloxide::RequestError::Network(_),
 					..
 				} => Some(self),
-				sink::Error::Telegram { .. } => None,
-				sink::Error::Exec(_) => None,
-				sink::Error::Stdout(_) => None,
+				SinkError::Telegram { .. } => None,
+				SinkError::Exec(_) => None,
+				SinkError::Stdout(_) => None,
 			},
 			Error::GoogleOAuth2(google_oauth2_err) => match google_oauth2_err {
 				GoogleOAuth2Error::Post(_) => Some(self),

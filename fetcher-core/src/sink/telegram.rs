@@ -7,7 +7,7 @@
 //! This module contains the [`Telegram`] sink
 
 use crate::{
-	error::sink::Error as SinkError,
+	sink::error::SinkError,
 	sink::{Media, Message, Sink},
 };
 

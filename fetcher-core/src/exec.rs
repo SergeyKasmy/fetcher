@@ -13,8 +13,8 @@ use tokio::{io::AsyncWriteExt, process::Command};
 use crate::{
 	entry::Entry,
 	error::source::Error as SourceError,
-	error::{sink::Error as SinkError, source::ExecError},
-	sink::{Message, Sink},
+	error::source::ExecError,
+	sink::{error::SinkError, Message, Sink},
 	source::Fetch,
 };
 
