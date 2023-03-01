@@ -4,15 +4,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub mod timepoint;
+
+use self::timepoint::TimePoint;
 use super::{
 	action::Action, external_data::ProvideExternalData, read_filter, sink::Sink, source::Source,
 	task::Task,
 };
 use crate::Error;
-use fetcher_core::{
-	job::{timepoint::TimePoint as CTimePoint, Job as CJob},
-	utils::OptionExt,
-};
+use fetcher_core::{job::Job as CJob, utils::OptionExt};
 
 use serde::{Deserialize, Serialize};
 
@@ -30,7 +30,7 @@ pub struct Job {
 	sink: Option<Sink>,
 
 	tasks: Option<Vec<Task>>,
-	refresh: Option<String>,
+	refresh: Option<TimePoint>,
 
 	// these are meant to be used externally and are unused here
 	disabled: DisabledField,
@@ -70,11 +70,7 @@ impl Job {
 						.into_iter()
 						.map(|x| x.parse(name, external))
 						.collect::<Result<Vec<_>, _>>()?,
-					refresh_time: self.refresh.try_map(|s| {
-						let dur = CTimePoint::Duration(duration_str::parse_std(s)?);
-
-						Ok::<_, duration_str::DError>(dur)
-					})?,
+					refresh_time: self.refresh.try_map(TimePoint::parse)?,
 				})
 			}
 			// tasks is not set
@@ -90,11 +86,7 @@ impl Job {
 
 				Ok(CJob {
 					tasks: vec![task.parse(name, external)?],
-					refresh_time: self.refresh.try_map(|s| {
-						let dur = CTimePoint::Duration(duration_str::parse_std(s)?);
-
-						Ok::<_, duration_str::DError>(dur)
-					})?,
+					refresh_time: self.refresh.try_map(TimePoint::parse)?,
 				})
 			}
 		}
