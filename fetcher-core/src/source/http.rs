@@ -10,8 +10,8 @@
 
 use crate::{
 	entry::Entry,
-	error::source::{Error as SourceError, HttpError},
 	sink::Message,
+	source::error::{HttpError, SourceError},
 };
 
 use async_trait::async_trait;

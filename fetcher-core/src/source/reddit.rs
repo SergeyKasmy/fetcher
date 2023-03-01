@@ -9,11 +9,9 @@
 use super::Fetch;
 use crate::{
 	entry::Entry,
-	error::{
-		source::{Error as SourceError, RedditError},
-		InvalidUrlError,
-	},
+	error::InvalidUrlError,
 	sink::{Media, Message},
+	source::error::{RedditError, SourceError},
 	utils::OptionExt,
 };
 

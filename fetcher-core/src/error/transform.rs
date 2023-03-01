@@ -62,7 +62,7 @@ pub enum HttpError {
 	InvalidUrl(Field, #[source] InvalidUrlError),
 
 	#[error(transparent)]
-	Other(#[from] crate::error::source::HttpError),
+	Other(#[from] crate::source::error::HttpError),
 }
 
 #[derive(thiserror::Error, Debug)]

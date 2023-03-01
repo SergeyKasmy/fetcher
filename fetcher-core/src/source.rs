@@ -13,14 +13,13 @@ pub mod http;
 pub mod reddit;
 pub mod twitter;
 
+pub mod error;
+
 pub use self::{email::Email, file::File, http::Http, reddit::Reddit, twitter::Twitter};
 pub use crate::exec::Exec;
 
-use crate::{
-	entry::Entry,
-	error::{source::Error as SourceError, Error},
-	read_filter::ReadFilter,
-};
+use self::error::SourceError;
+use crate::{entry::Entry, error::Error, read_filter::ReadFilter};
 
 use async_trait::async_trait;
 use std::fmt::Debug;

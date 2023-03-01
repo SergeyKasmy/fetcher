@@ -4,16 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#![allow(missing_docs)]
-
-pub use crate::error::exec_error::ExecError;
+use crate::error::{exec_error::ExecError, InvalidUrlError};
 
 use std::path::PathBuf;
 
-use super::InvalidUrlError;
-
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum SourceError {
 	#[error("Can't create a source with an empty source list")]
 	EmptySourceList,
 
@@ -94,8 +90,8 @@ pub enum RedditError {
 	InvalidUrl(#[from] InvalidUrlError),
 }
 
-impl From<EmailError> for Error {
+impl From<EmailError> for SourceError {
 	fn from(e: EmailError) -> Self {
-		Error::Email(Box::new(e))
+		SourceError::Email(Box::new(e))
 	}
 }

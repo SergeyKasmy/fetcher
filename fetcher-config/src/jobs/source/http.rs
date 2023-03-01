@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::{error::source::HttpError as CHttpError, source::Http as CHttp};
+use fetcher_core::source::{error::HttpError as CHttpError, Http as CHttp};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};

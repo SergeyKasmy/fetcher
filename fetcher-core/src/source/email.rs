@@ -17,21 +17,18 @@ pub use filters::Filters;
 pub use view_mode::ViewMode;
 
 use self::auth::GoogleAuthExt;
+use super::{Fetch, MarkAsRead, Source};
 use crate::{
 	auth::Google as GoogleAuth,
 	entry::Entry,
-	error::{
-		source::{EmailError, Error as SourceError, ImapError},
-		Error,
-	},
+	error::Error,
 	sink::Message,
+	source::error::{EmailError, ImapError, SourceError},
 };
 
 use async_trait::async_trait;
 use mailparse::ParsedMail;
 use std::fmt::{Debug, Write as _};
-
-use super::{Fetch, MarkAsRead, Source};
 
 const IMAP_PORT: u16 = 993;
 

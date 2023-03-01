@@ -38,7 +38,7 @@ pub enum Error {
 	BadTimeFormat(#[from] chrono::ParseError),
 
 	#[error("Error setting up HTTP client")]
-	FetcherCoreHttp(#[from] fetcher_core::error::source::HttpError),
+	FetcherCoreHttp(#[from] fetcher_core::source::error::HttpError),
 
 	#[error("Error setting up HTML parser")]
 	FetcherCoreHtml(#[from] fetcher_core::error::transform::HtmlError),
@@ -47,5 +47,5 @@ pub enum Error {
 	FetcherCoreRegex(#[from] fetcher_core::error::transform::RegexError),
 
 	#[error("Error setting up a source")]
-	FetcherCoreSource(#[source] Box<fetcher_core::error::source::Error>),
+	FetcherCoreSource(#[source] Box<fetcher_core::source::error::SourceError>),
 }

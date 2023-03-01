@@ -12,10 +12,9 @@ use tokio::{io::AsyncWriteExt, process::Command};
 
 use crate::{
 	entry::Entry,
-	error::source::Error as SourceError,
-	error::source::ExecError,
+	error::exec_error::ExecError,
 	sink::{error::SinkError, Message, Sink},
-	source::Fetch,
+	source::{error::SourceError, Fetch},
 };
 
 /// Exec source. It can execute a shell command and source its stdout

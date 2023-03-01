@@ -6,16 +6,15 @@
 
 //! This module contains all errors that [`fetcher`](`crate`) can emit
 
-pub mod source;
 pub mod transform;
 
 use roux::util::RouxError;
 
-use self::{
-	source::{ImapError, RedditError, TwitterError},
-	transform::Error as TransformError,
+use self::transform::Error as TransformError;
+use crate::{
+	sink::error::SinkError,
+	source::error::{EmailError, ImapError, RedditError, SourceError, TwitterError},
 };
-use crate::sink::error::SinkError;
 
 use std::{error::Error as StdError, fmt::Write as _};
 
@@ -23,7 +22,7 @@ use std::{error::Error as StdError, fmt::Write as _};
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error("Can't fetch data")]
-	Source(#[from] source::Error),
+	Source(#[from] SourceError),
 
 	#[error("Can't transform data")]
 	Transform(#[from] Box<TransformError>),
@@ -91,25 +90,25 @@ impl Error {
 		#[allow(clippy::match_wildcard_for_single_variants)]
 		match self {
 			Error::Source(source_err) => match source_err {
-				source::Error::EmptySourceList => None,
-				source::Error::SourceListHasDifferentVariants => None,
-				source::Error::FileRead(_, _) => None,
-				source::Error::Http(_) => Some(self),
-				source::Error::Email(email_err) => match &**email_err {
-					source::EmailError::Imap(ImapError::TlsInitFailed(_)) => Some(self),
-					source::EmailError::Imap(_) => None,
+				SourceError::EmptySourceList => None,
+				SourceError::SourceListHasDifferentVariants => None,
+				SourceError::FileRead(_, _) => None,
+				SourceError::Http(_) => Some(self),
+				SourceError::Email(email_err) => match &**email_err {
+					EmailError::Imap(ImapError::TlsInitFailed(_)) => Some(self),
+					EmailError::Imap(_) => None,
 					_ => None,
 				},
-				source::Error::Twitter(twitter_err) => match twitter_err {
+				SourceError::Twitter(twitter_err) => match twitter_err {
 					TwitterError::Auth(egg_mode::error::Error::NetError(_)) => Some(self),
 					TwitterError::Other(egg_mode::error::Error::NetError(_)) => Some(self),
 					_ => None,
 				},
-				source::Error::Reddit(reddit_err) => match reddit_err {
+				SourceError::Reddit(reddit_err) => match reddit_err {
 					RedditError::Reddit(RouxError::Network(_)) => Some(self),
 					_ => None,
 				},
-				source::Error::Exec(_) => None,
+				SourceError::Exec(_) => None,
 			},
 			Error::Transform(tr_err) => match &tr_err.kind {
 				transform::Kind::Http(transform::HttpError::Other(_)) => Some(self),

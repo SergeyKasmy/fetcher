@@ -17,8 +17,8 @@ use crate::{
 		result::{TransformResult, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
-	error::{source::HttpError as SourceHttpError, transform::HttpError, InvalidUrlError},
-	source::{self, http::Request},
+	error::{transform::HttpError, InvalidUrlError},
+	source::{self, error::HttpError as SourceHttpError, http::Request},
 	utils::OptionExt,
 };
 
