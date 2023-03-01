@@ -4,12 +4,16 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains all errors that can happen in the (`parent`)[`super`] module
+
 pub use crate::exec::ExecError;
 
 use crate::error::InvalidUrlError;
 
-use std::path::PathBuf;
+use roux::util::RouxError;
+use std::{error::Error as StdError, path::PathBuf};
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum SourceError {
 	#[error("Can't create a source with an empty source list")]
@@ -37,6 +41,7 @@ pub enum SourceError {
 	Exec(#[from] ExecError),
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum HttpError {
 	#[error("Invalid JSON for the POST request")]
@@ -49,6 +54,7 @@ pub enum HttpError {
 	BadRequest(#[source] reqwest::Error, String),
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[allow(clippy::large_enum_variant)] // the entire enum is already boxed up above
 #[derive(thiserror::Error, Debug)]
 pub enum EmailError {
@@ -59,6 +65,7 @@ pub enum EmailError {
 	Parse(#[from] mailparse::MailParseError),
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum ImapError {
 	#[error("Failed to init TLS")]
@@ -74,6 +81,7 @@ pub enum ImapError {
 	Other(#[from] imap::Error),
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum TwitterError {
 	#[error("Authentication failed")]
@@ -83,6 +91,7 @@ pub enum TwitterError {
 	Other(#[from] egg_mode::error::Error),
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum RedditError {
 	#[error(transparent)]
@@ -95,5 +104,24 @@ pub enum RedditError {
 impl From<EmailError> for SourceError {
 	fn from(e: EmailError) -> Self {
 		SourceError::Email(Box::new(e))
+	}
+}
+
+impl SourceError {
+	pub(crate) fn is_connection_err(&self) -> Option<&(dyn StdError + Send + Sync)> {
+		#[allow(clippy::match_same_arms)]
+		match self {
+			Self::Http(_) => Some(self),
+			Self::Email(email_err) => match &**email_err {
+				EmailError::Imap(ImapError::TlsInitFailed(_)) => Some(self),
+				_ => None,
+			},
+			Self::Twitter(
+				TwitterError::Auth(egg_mode::error::Error::NetError(_))
+				| TwitterError::Other(egg_mode::error::Error::NetError(_)),
+			) => Some(self),
+			Self::Reddit(RedditError::Reddit(RouxError::Network(_))) => Some(self),
+			_ => None,
+		}
 	}
 }

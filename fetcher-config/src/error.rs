@@ -4,10 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::error::GoogleOAuth2Error;
-
-// pub type Result<T> = std::result::Result<T, Error>;
-
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error(transparent)]
@@ -29,7 +25,7 @@ pub enum Error {
 	TelegramBotTokenMissing,
 
 	#[error("Wrong Google OAuth2 token")]
-	GoogleOAuth2WrongToken(#[from] GoogleOAuth2Error),
+	GoogleOAuth2WrongToken(#[from] fetcher_core::auth::google::GoogleOAuth2Error),
 
 	#[error("refresh - every is not a valid duration format, e.g. 1m, 10h, 1d")]
 	BadDurationFormat(#[from] duration_str::DError),

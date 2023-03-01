@@ -4,6 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+// I can avoid the clippy::doc_markdown lint this way :P
+#![doc = "This module contains the Google authenticator that can access Google services via OAuth2"]
+
 use serde::Deserialize;
 use std::time::{Duration, Instant};
 
@@ -166,5 +169,16 @@ impl Google {
 			.as_ref()
 			.map(|x| x.token.as_str())
 			.expect("Token should have just been validated and thus be present and valid"))
+	}
+}
+
+impl GoogleOAuth2Error {
+	pub(crate) fn is_connection_err(&self) -> Option<&(dyn std::error::Error + Send + Sync)> {
+		// I know it will match any future variants automatically but I actually want it to do that anyways
+		#[allow(clippy::match_wildcard_for_single_variants)]
+		match self {
+			GoogleOAuth2Error::Post(_) => Some(self),
+			_ => None,
+		}
 	}
 }

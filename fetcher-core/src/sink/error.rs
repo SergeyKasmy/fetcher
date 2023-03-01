@@ -8,7 +8,7 @@
 
 pub use crate::exec::ExecError;
 
-use std::fmt::Debug;
+use std::{error::Error as StdError, fmt::Debug};
 
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
@@ -24,4 +24,16 @@ pub enum SinkError {
 
 	#[error("Error writing to stdout")]
 	Stdout(#[source] std::io::Error),
+}
+
+impl SinkError {
+	pub(crate) fn is_connection_err(&self) -> Option<&(dyn StdError + Send + Sync)> {
+		match self {
+			SinkError::Telegram {
+				source: teloxide::RequestError::Network(_),
+				..
+			} => Some(self),
+			_ => None,
+		}
+	}
 }

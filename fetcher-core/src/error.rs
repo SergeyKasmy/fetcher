@@ -7,14 +7,11 @@
 //! This module contains all errors that [`fetcher`](`crate`) can emit
 
 use crate::{
-	action::transform::error::{self as transform_err, TransformError, TransformErrorKind},
-	auth::google::GoogleOAuth2Error,
-	sink::error::SinkError,
-	source::error::{EmailError, ImapError, RedditError, SourceError, TwitterError},
+	action::transform::error::TransformError, auth::google::GoogleOAuth2Error,
+	sink::error::SinkError, source::error::SourceError,
 };
 
-use roux::util::RouxError;
-use std::{error::Error as StdError, fmt::Write as _, io};
+use std::{error::Error as StdError, fmt::Write, io};
 
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
@@ -54,45 +51,11 @@ impl Error {
 		// I know it will match any future variants automatically but I actually want it to do that anyways
 		#[allow(clippy::match_wildcard_for_single_variants)]
 		match self {
-			Error::Source(source_err) => match source_err {
-				SourceError::EmptySourceList => None,
-				SourceError::SourceListHasDifferentVariants => None,
-				SourceError::FileRead(_, _) => None,
-				SourceError::Http(_) => Some(self),
-				SourceError::Email(email_err) => match &**email_err {
-					EmailError::Imap(ImapError::TlsInitFailed(_)) => Some(self),
-					EmailError::Imap(_) => None,
-					_ => None,
-				},
-				SourceError::Twitter(twitter_err) => match twitter_err {
-					TwitterError::Auth(egg_mode::error::Error::NetError(_)) => Some(self),
-					TwitterError::Other(egg_mode::error::Error::NetError(_)) => Some(self),
-					_ => None,
-				},
-				SourceError::Reddit(reddit_err) => match reddit_err {
-					RedditError::Reddit(RouxError::Network(_)) => Some(self),
-					_ => None,
-				},
-				SourceError::Exec(_) => None,
-			},
-			Error::Transform(tr_err) => match &tr_err.kind {
-				TransformErrorKind::Http(transform_err::HttpError::Other(_)) => Some(self),
-				_ => None,
-			},
-			Error::Sink(sink_err) => match sink_err {
-				SinkError::Telegram {
-					source: teloxide::RequestError::Network(_),
-					..
-				} => Some(self),
-				SinkError::Telegram { .. } => None,
-				SinkError::Exec(_) => None,
-				SinkError::Stdout(_) => None,
-			},
-			Error::GoogleOAuth2(google_oauth2_err) => match google_oauth2_err {
-				GoogleOAuth2Error::Post(_) => Some(self),
-				GoogleOAuth2Error::Auth(_) => None,
-			},
-			Error::ReadFilterExternalWrite(_) => None,
+			Self::Source(source_err) => source_err.is_connection_err(),
+			Error::Transform(tr_err) => tr_err.is_connection_err(),
+			Error::Sink(sink_err) => sink_err.is_connection_err(),
+			Error::GoogleOAuth2(google_oauth2_err) => google_oauth2_err.is_connection_err(),
+			_ => None,
 		}
 	}
 }

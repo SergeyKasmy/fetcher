@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains all errors that can happen in the (`parent`)[`super`] module
+
 use crate::{
 	action::transform::{
 		entry::{
@@ -19,8 +21,9 @@ use crate::{
 	error::InvalidUrlError,
 };
 
-use std::convert::Infallible;
+use std::{convert::Infallible, error::Error as StdError};
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 #[error("Error transforming entry")]
 pub struct TransformError {
@@ -29,6 +32,7 @@ pub struct TransformError {
 	pub original_entry: Entry,
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum TransformErrorKind {
 	#[error("Message link is not a valid URL after transforming")]
@@ -50,6 +54,7 @@ pub enum TransformErrorKind {
 	Regex(#[from] RegexError),
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum HttpError {
 	// TODO: impl Display for Field
@@ -63,6 +68,7 @@ pub enum HttpError {
 	Other(#[from] crate::source::error::HttpError),
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum FeedError {
 	#[error(transparent)]
@@ -72,6 +78,7 @@ pub enum FeedError {
 	Other(#[from] feed_rs::parser::ParseFeedError),
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum HtmlError {
 	#[error(transparent)]
@@ -103,6 +110,7 @@ pub enum HtmlError {
 	RegexError(#[from] RegexError),
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum JsonError {
 	#[error(transparent)]
@@ -125,6 +133,7 @@ pub enum JsonError {
 	InvalidUrl(#[from] InvalidUrlError),
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum RegexError {
 	#[error("Invalid regex pattern")]
@@ -137,6 +146,7 @@ pub enum RegexError {
 	NoMatchFound(String),
 }
 
+#[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 #[error("There's nothing to transform from")]
 pub struct RawContentsNotSetError;
@@ -144,5 +154,14 @@ pub struct RawContentsNotSetError;
 impl From<Infallible> for TransformErrorKind {
 	fn from(inf: Infallible) -> Self {
 		match inf {}
+	}
+}
+
+impl TransformError {
+	pub(crate) fn is_connection_err(&self) -> Option<&(dyn StdError + Send + Sync)> {
+		match &self.kind {
+			TransformErrorKind::Http(HttpError::Other(_)) => Some(self),
+			_ => None,
+		}
 	}
 }
