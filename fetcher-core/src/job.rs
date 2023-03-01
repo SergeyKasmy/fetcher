@@ -6,10 +6,12 @@
 
 //! This module contains the [`Job`] struct and the entryway to the library
 
+pub mod timepoint;
+
 use futures::future::join_all;
-use std::time::Duration;
 use tokio::time::sleep;
 
+use self::timepoint::TimePoint;
 use crate::{error::Error, task::Task};
 
 /// A single job, containing a single or a couple [`tasks`](`Task`), possibly refetching every set amount of time
@@ -18,8 +20,8 @@ pub struct Job {
 	/// The tasks to run
 	pub tasks: Vec<Task>,
 
-	/// Refetch every interval or just run once
-	pub refetch_interval: Option<Duration>,
+	/// Refresh/refetch/redo the job every "this" point of the day
+	pub refresh_time: Option<TimePoint>,
 }
 
 impl Job {
@@ -44,13 +46,15 @@ impl Job {
 				return Err(errors);
 			}
 
-			match self.refetch_interval {
-				Some(refetch_interval) => {
+			match &self.refresh_time {
+				Some(refresh_time) => {
+					let remaining_time = refresh_time.remaining_from_now();
+
 					tracing::debug!(
 						"Putting job to sleep for {}m",
-						refetch_interval.as_secs() / 60
+						remaining_time.as_secs() / 60
 					);
-					sleep(refetch_interval).await;
+					sleep(remaining_time).await;
 				}
 				None => return Ok(()),
 			}

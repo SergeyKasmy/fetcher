@@ -4,6 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub mod timepoint;
+
+use self::timepoint::TimePoint;
 use super::{
 	action::Action, external_data::ProvideExternalData, read_filter, sink::Sink, source::Source,
 	task::Task,
@@ -27,7 +30,7 @@ pub struct Job {
 	sink: Option<Sink>,
 
 	tasks: Option<Vec<Task>>,
-	refresh: Option<String>,
+	refresh: Option<TimePoint>,
 
 	// these are meant to be used externally and are unused here
 	disabled: DisabledField,
@@ -67,7 +70,7 @@ impl Job {
 						.into_iter()
 						.map(|x| x.parse(name, external))
 						.collect::<Result<Vec<_>, _>>()?,
-					refetch_interval: self.refresh.try_map(duration_str::parse_std)?,
+					refresh_time: self.refresh.try_map(TimePoint::parse)?,
 				})
 			}
 			// tasks is not set
@@ -83,7 +86,7 @@ impl Job {
 
 				Ok(CJob {
 					tasks: vec![task.parse(name, external)?],
-					refetch_interval: self.refresh.try_map(duration_str::parse_std)?,
+					refresh_time: self.refresh.try_map(TimePoint::parse)?,
 				})
 			}
 		}
