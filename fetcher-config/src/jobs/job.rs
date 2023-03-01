@@ -9,7 +9,10 @@ use super::{
 	task::Task,
 };
 use crate::Error;
-use fetcher_core::{job::Job as CJob, utils::OptionExt};
+use fetcher_core::{
+	job::{timepoint::TimePoint as CTimePoint, Job as CJob},
+	utils::OptionExt,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -67,7 +70,11 @@ impl Job {
 						.into_iter()
 						.map(|x| x.parse(name, external))
 						.collect::<Result<Vec<_>, _>>()?,
-					refetch_interval: self.refresh.try_map(duration_str::parse_std)?,
+					refresh_time: self.refresh.try_map(|s| {
+						let dur = CTimePoint::Duration(duration_str::parse_std(s)?);
+
+						Ok::<_, duration_str::DError>(dur)
+					})?,
 				})
 			}
 			// tasks is not set
@@ -83,7 +90,11 @@ impl Job {
 
 				Ok(CJob {
 					tasks: vec![task.parse(name, external)?],
-					refetch_interval: self.refresh.try_map(duration_str::parse_std)?,
+					refresh_time: self.refresh.try_map(|s| {
+						let dur = CTimePoint::Duration(duration_str::parse_std(s)?);
+
+						Ok::<_, duration_str::DError>(dur)
+					})?,
 				})
 			}
 		}

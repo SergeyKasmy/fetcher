@@ -19,7 +19,7 @@ use self::settings::{
 use crate::args::{Args, Setting};
 use fetcher_core::{
 	error::{Error, ErrorChainExt},
-	job::Job,
+	job::{timepoint::TimePoint, Job},
 	sink::{Sink, Stdout},
 };
 
@@ -149,7 +149,7 @@ async fn async_main() -> Result<()> {
 
 			// just fetch and save read, don't send anything
 			for job in jobs.values_mut() {
-				job.refetch_interval = None;
+				job.refresh_time = None;
 
 				for task in &mut job.tasks {
 					task.sink = None;
@@ -239,7 +239,7 @@ async fn run_command(
 		tracing::trace!("Disabling every job's refetch interval");
 
 		for job in jobs.values_mut() {
-			job.refetch_interval = None;
+			job.refresh_time = None;
 		}
 	}
 
@@ -310,6 +310,7 @@ enum ErrorHandling {
 	Sleep {
 		max_retries: u32,
 
+		// FIXME: BUG. Still checks for an error since only err_count is reset and not last_error. Combile err_count and last_error in a single field Option<(u32, Instant)>
 		// "private" state, should be 0 and None
 		// there's no point in creating a private struct with a constructor just for these
 		// since they are for private use anyways and aren't used more than a couple of times
@@ -463,12 +464,27 @@ async fn handle_errors(
 			last_error,
 		} => {
 			if let Some(last_error) = last_error {
-				if let Some(refetch_interval) = job.refetch_interval {
+				if let Some(refresh_time) = &job.refresh_time {
 					// if time since last error is 2 times longer than the refresh duration, than the error count can safely be reset
 					// since there hasn't been any errors for a little while
 					// TODO: maybe figure out a more optimal time interval than just 2 times longer than the refresh timer
-					if last_error.elapsed() > refetch_interval * 2 {
-						*err_count = 0;
+
+					match refresh_time {
+						TimePoint::Duration(dur) => {
+							if last_error.elapsed() > (*dur * 2) {
+								*err_count = 0;
+							}
+						}
+						// once a day
+						TimePoint::Time(_) => {
+							const TWO_DAYS: Duration = Duration::from_secs(
+								2 /* days */ * 24 /* hours a day */ * 60 /* mins an hour */ * 60, /* secs a min */
+							);
+
+							if last_error.elapsed() > TWO_DAYS {
+								*err_count = 0;
+							}
+						}
 					}
 				}
 			}

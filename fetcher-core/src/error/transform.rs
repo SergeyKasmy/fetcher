@@ -103,9 +103,6 @@ pub enum HtmlError {
 
 	#[error(transparent)]
 	RegexError(#[from] RegexError),
-
-	#[error("Invalid time format")]
-	InvalidTimeFormat(#[from] chrono::ParseError),
 }
 
 #[derive(thiserror::Error, Debug)]
