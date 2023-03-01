@@ -9,9 +9,9 @@
 use std::collections::HashSet;
 
 use crate::{
-	action::Action,
+	action::{transform::error::TransformError, Action},
 	entry::Entry,
-	error::{transform::Error as TransformError, Error},
+	error::Error,
 	sink::Sink,
 	source::Source,
 };

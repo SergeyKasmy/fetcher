@@ -11,12 +11,12 @@ pub mod query;
 use self::query::{DataLocation, ElementDataQuery, ElementKind, ElementQuery};
 use super::TransformEntry;
 use crate::{
-	action::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
-	entry::Entry,
-	error::{
-		transform::{HtmlError, RawContentsNotSetError},
-		InvalidUrlError,
+	action::transform::{
+		error::{HtmlError, RawContentsNotSetError},
+		result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
 	},
+	entry::Entry,
+	error::InvalidUrlError,
 	sink::Media,
 	utils::OptionExt,
 };

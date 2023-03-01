@@ -13,11 +13,12 @@ use url::Url;
 use super::TransformEntry;
 use crate::{
 	action::transform::{
+		error::HttpError,
 		field::Field,
 		result::{TransformResult, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
-	error::{transform::HttpError, InvalidUrlError},
+	error::InvalidUrlError,
 	source::{self, error::HttpError as SourceHttpError, http::Request},
 	utils::OptionExt,
 };

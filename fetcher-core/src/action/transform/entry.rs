@@ -17,8 +17,8 @@ use async_trait::async_trait;
 
 use super::{result::TransformedEntry, Transform};
 use crate::{
+	action::transform::error::{TransformError, TransformErrorKind},
 	entry::Entry,
-	error::transform::{Error as TransformError, Kind as TransformErrorKind},
 };
 
 use std::fmt::Debug;

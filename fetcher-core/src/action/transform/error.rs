@@ -4,8 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#![allow(missing_docs)]
-
 use crate::{
 	action::transform::{
 		entry::{
@@ -25,14 +23,14 @@ use std::convert::Infallible;
 
 #[derive(thiserror::Error, Debug)]
 #[error("Error transforming entry")]
-pub struct Error {
+pub struct TransformError {
 	#[source]
-	pub kind: Kind,
+	pub kind: TransformErrorKind,
 	pub original_entry: Entry,
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum Kind {
+pub enum TransformErrorKind {
 	#[error("Message link is not a valid URL after transforming")]
 	FieldLinkTransformInvalidUrl(#[source] InvalidUrlError),
 
@@ -143,7 +141,7 @@ pub enum RegexError {
 #[error("There's nothing to transform from")]
 pub struct RawContentsNotSetError;
 
-impl From<Infallible> for Kind {
+impl From<Infallible> for TransformErrorKind {
 	fn from(inf: Infallible) -> Self {
 		match inf {}
 	}

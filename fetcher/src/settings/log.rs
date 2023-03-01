@@ -5,7 +5,7 @@
  */
 
 use super::proj_dirs;
-use fetcher_core::error::{transform::Error as TransformError, ErrorChainExt};
+use fetcher_core::{action::transform::error::TransformError, error::ErrorChainExt};
 
 use color_eyre::Result;
 use std::{

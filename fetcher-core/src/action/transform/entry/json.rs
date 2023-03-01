@@ -10,13 +10,13 @@ use super::TransformEntry;
 use crate::{
 	action::{
 		regex::{action::Replace, Regex},
-		transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+		transform::{
+			error::{JsonError, RawContentsNotSetError},
+			result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+		},
 	},
 	entry::Entry,
-	error::{
-		transform::{JsonError, RawContentsNotSetError},
-		InvalidUrlError,
-	},
+	error::InvalidUrlError,
 	sink::Media,
 	utils::OptionExt,
 };

@@ -6,16 +6,13 @@
 
 //! This module contains all errors that [`fetcher`](`crate`) can emit
 
-pub mod transform;
-
-use roux::util::RouxError;
-
-use self::transform::Error as TransformError;
 use crate::{
+	action::transform::error::{self as transform_err, TransformError, TransformErrorKind},
 	sink::error::SinkError,
 	source::error::{EmailError, ImapError, RedditError, SourceError, TwitterError},
 };
 
+use roux::util::RouxError;
 use std::{error::Error as StdError, fmt::Write as _};
 
 #[allow(missing_docs)] // error message is self-documenting
@@ -111,7 +108,7 @@ impl Error {
 				SourceError::Exec(_) => None,
 			},
 			Error::Transform(tr_err) => match &tr_err.kind {
-				transform::Kind::Http(transform::HttpError::Other(_)) => Some(self),
+				TransformErrorKind::Http(transform_err::HttpError::Other(_)) => Some(self),
 				_ => None,
 			},
 			Error::Sink(sink_err) => match sink_err {

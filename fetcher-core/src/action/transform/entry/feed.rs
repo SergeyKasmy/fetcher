@@ -8,9 +8,11 @@
 
 use super::TransformEntry;
 use crate::{
-	action::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+	action::transform::{
+		error::{FeedError, RawContentsNotSetError},
+		result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+	},
 	entry::Entry,
-	error::transform::{FeedError, RawContentsNotSetError},
 };
 
 use async_trait::async_trait;

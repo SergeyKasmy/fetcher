@@ -20,11 +20,9 @@ use url::Url;
 
 use super::{result::TransformResult, Transform};
 use crate::{
+	action::transform::error::{TransformError, TransformErrorKind},
 	entry::Entry,
-	error::{
-		transform::{Error as TransformError, Kind as TransformErrorKind},
-		InvalidUrlError,
-	},
+	error::InvalidUrlError,
 	sink::Message,
 	utils::OptionExt,
 };

@@ -9,11 +9,11 @@
 use super::TransformEntry;
 use crate::{
 	action::transform::{
+		error::TransformErrorKind,
 		field::Field,
 		result::{TransformResult as TrRes, TransformedEntry},
 	},
 	entry::Entry,
-	error::transform::Kind as TransformErrorKind,
 	error::InvalidUrlError,
 	utils::OptionExt,
 };

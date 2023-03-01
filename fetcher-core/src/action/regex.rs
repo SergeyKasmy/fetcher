@@ -14,6 +14,7 @@ use self::{
 	ExtractionResult::{Extracted, Matched, NotMatched},
 };
 use crate::{
+	action::transform::error::RegexError,
 	action::{
 		filter::Filter,
 		transform::{
@@ -22,7 +23,6 @@ use crate::{
 		},
 	},
 	entry::Entry,
-	error::transform::RegexError,
 };
 
 use async_trait::async_trait;
