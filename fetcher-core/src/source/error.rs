@@ -4,7 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::error::{exec_error::ExecError, InvalidUrlError};
+pub use crate::exec::ExecError;
+
+use crate::error::InvalidUrlError;
 
 use std::path::PathBuf;
 

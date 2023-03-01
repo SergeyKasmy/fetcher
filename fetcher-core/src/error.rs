@@ -8,12 +8,13 @@
 
 use crate::{
 	action::transform::error::{self as transform_err, TransformError, TransformErrorKind},
+	auth::google::GoogleOAuth2Error,
 	sink::error::SinkError,
 	source::error::{EmailError, ImapError, RedditError, SourceError, TwitterError},
 };
 
 use roux::util::RouxError;
-use std::{error::Error as StdError, fmt::Write as _};
+use std::{error::Error as StdError, fmt::Write as _, io};
 
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
@@ -31,46 +32,13 @@ pub enum Error {
 	GoogleOAuth2(#[from] GoogleOAuth2Error),
 
 	#[error("Error writing to the external read filter")]
-	ReadFilterExternalWrite(#[source] std::io::Error),
+	ReadFilterExternalWrite(#[source] io::Error),
 }
 
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 #[error("Invalid URL: {1}")]
 pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
-
-#[allow(missing_docs)] // error message is self-documenting
-#[derive(thiserror::Error, Debug)]
-pub enum GoogleOAuth2Error {
-	#[error("Error contacting Google servers for authentication")]
-	Post(#[source] reqwest::Error),
-
-	/// An error received from Google, whatever it is
-	#[error("{0}")]
-	Auth(String),
-}
-
-// Re-exported in error::source and error::sink modules. Private in this one to avoid namespace pollution
-pub(crate) mod exec_error {
-	use std::{io, string::FromUtf8Error};
-
-	/// Errors that happened while executing a process
-	#[allow(missing_docs)] // error message is self-documenting
-	#[derive(thiserror::Error, Debug)]
-	pub enum ExecError {
-		#[error("Bad command")]
-		BadCommand(#[source] io::Error),
-
-		#[error("Command output is not valid UTF-8")]
-		BadUtf8(#[from] FromUtf8Error),
-
-		#[error("Can't start the process")]
-		CantStart(#[source] io::Error),
-
-		#[error("Can't pass data to the stdin of the process")]
-		CantWriteStdin(#[source] io::Error),
-	}
-}
 
 /// Extention trait for [`std::error::Error`] to print the entire chain of the error
 pub trait ErrorChainExt {

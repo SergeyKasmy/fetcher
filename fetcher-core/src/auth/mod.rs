@@ -6,6 +6,6 @@
 
 //! This module contains all external manual authentication implementations. For now it's just [`Google OAuth2`](`Google`)
 
-mod google;
+pub mod google;
 
 pub use google::Google;

@@ -6,7 +6,7 @@
 
 //! An error that happened while sending to a sink
 
-use crate::error::exec_error::ExecError;
+pub use crate::exec::ExecError;
 
 use std::fmt::Debug;
 
