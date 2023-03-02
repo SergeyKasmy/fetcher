@@ -19,7 +19,7 @@ use crate::{
 	},
 	entry::Entry,
 	error::InvalidUrlError,
-	source::{self, error::HttpError as SourceHttpError, http::Request},
+	source::{self, http::HttpError as SourceHttpError, http::Request},
 	utils::OptionExt,
 };
 

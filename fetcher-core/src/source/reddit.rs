@@ -11,7 +11,7 @@ use crate::{
 	entry::Entry,
 	error::InvalidUrlError,
 	sink::{Media, Message},
-	source::error::{RedditError, SourceError},
+	source::error::SourceError,
 	utils::OptionExt,
 };
 
@@ -30,6 +30,16 @@ pub struct Reddit {
 	/// If score of a post is below this threshold, it gets skipped
 	pub score_threshold: Option<u32>,
 	subreddit: Subreddit,
+}
+
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum RedditError {
+	#[error(transparent)]
+	Reddit(#[from] roux::util::RouxError),
+
+	#[error("Reddit API returned an invalid URL to a post/post's contents, which really shouldn't happen...")]
+	InvalidUrl(#[from] InvalidUrlError),
 }
 
 /// Sorting algorithm

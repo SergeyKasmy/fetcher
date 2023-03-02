@@ -8,10 +8,7 @@
 //!
 //! This module includes the [`Twitter`] struct that is a source that is able to parse a twitter feed via twitter API
 
-use super::{
-	error::{SourceError, TwitterError},
-	Fetch,
-};
+use super::{error::SourceError, Fetch};
 use crate::{
 	entry::Entry,
 	sink::{Media, Message},
@@ -26,6 +23,16 @@ pub struct Twitter {
 	api_key: String,
 	api_secret: String,
 	token: Option<Token>,
+}
+
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum TwitterError {
+	#[error("Authentication failed")]
+	Auth(#[source] egg_mode::error::Error),
+
+	#[error(transparent)]
+	Other(#[from] egg_mode::error::Error),
 }
 
 impl Twitter {

@@ -65,7 +65,7 @@ pub enum HttpError {
 	InvalidUrl(Field, #[source] InvalidUrlError),
 
 	#[error(transparent)]
-	Other(#[from] crate::source::error::HttpError),
+	Other(#[from] crate::source::http::HttpError),
 }
 
 #[allow(missing_docs)] // error message is self-documenting

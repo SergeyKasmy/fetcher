@@ -8,7 +8,12 @@
 
 pub use crate::exec::ExecError;
 
-use crate::error::InvalidUrlError;
+use super::{
+	email::{EmailError, ImapError},
+	http::HttpError,
+	reddit::RedditError,
+	twitter::TwitterError,
+};
 
 use roux::util::RouxError;
 use std::{error::Error as StdError, path::PathBuf};
@@ -39,66 +44,6 @@ pub enum SourceError {
 
 	#[error("Exec error")]
 	Exec(#[from] ExecError),
-}
-
-#[allow(missing_docs)] // error message is self-documenting
-#[derive(thiserror::Error, Debug)]
-pub enum HttpError {
-	#[error("Invalid JSON for the POST request")]
-	BadJson(#[from] serde_json::Error),
-
-	#[error("Failed to init TLS")]
-	TlsInitFailed(#[source] reqwest::Error),
-
-	#[error("Can't send an HTTP request to {1:?}")]
-	BadRequest(#[source] reqwest::Error, String),
-}
-
-#[allow(missing_docs)] // error message is self-documenting
-#[allow(clippy::large_enum_variant)] // the entire enum is already boxed up above
-#[derive(thiserror::Error, Debug)]
-pub enum EmailError {
-	#[error("IMAP connection error")]
-	Imap(#[from] ImapError),
-
-	#[error("Error parsing email")]
-	Parse(#[from] mailparse::MailParseError),
-}
-
-#[allow(missing_docs)] // error message is self-documenting
-#[derive(thiserror::Error, Debug)]
-pub enum ImapError {
-	#[error("Failed to init TLS")]
-	TlsInitFailed(#[source] imap::Error),
-
-	#[error(transparent)]
-	GoogleAuth(Box<crate::error::Error>),
-
-	#[error("Authentication error")]
-	Auth(#[source] imap::Error),
-
-	#[error(transparent)]
-	Other(#[from] imap::Error),
-}
-
-#[allow(missing_docs)] // error message is self-documenting
-#[derive(thiserror::Error, Debug)]
-pub enum TwitterError {
-	#[error("Authentication failed")]
-	Auth(#[source] egg_mode::error::Error),
-
-	#[error(transparent)]
-	Other(#[from] egg_mode::error::Error),
-}
-
-#[allow(missing_docs)] // error message is self-documenting
-#[derive(thiserror::Error, Debug)]
-pub enum RedditError {
-	#[error(transparent)]
-	Reddit(#[from] roux::util::RouxError),
-
-	#[error("Reddit API returned an invalid URL to a post/post's contents, which really shouldn't happen...")]
-	InvalidUrl(#[from] InvalidUrlError),
 }
 
 impl From<EmailError> for SourceError {
