@@ -56,7 +56,7 @@ where
 	RF: ReadFilter,
 {
 	/// The source to fetch data from
-	pub sources: Vec<F>,
+	pub source: F,
 
 	/// The read filter that's used to mark entries as read
 	pub rf: Option<RF>,
@@ -69,13 +69,7 @@ where
 	RF: ReadFilter,
 {
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
-		let mut entries = Vec::new();
-
-		for source in &mut self.sources {
-			entries.extend(source.fetch().await?);
-		}
-
-		Ok(entries)
+		self.source.fetch().await
 	}
 }
 
@@ -114,5 +108,21 @@ impl Fetch for String {
 			raw_contents: Some(self.clone()),
 			..Default::default()
 		}])
+	}
+}
+
+#[async_trait]
+impl<T> Fetch for Vec<T>
+where
+	T: Fetch,
+{
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		let mut entries = Vec::new();
+
+		for fetch in self {
+			entries.extend(fetch.fetch().await?);
+		}
+
+		Ok(entries)
 	}
 }

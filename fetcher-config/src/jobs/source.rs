@@ -48,9 +48,9 @@ impl Source {
 	{
 		// make a dyn CSourceWithSharedRF out of a CFetch and the read filter parameter
 		macro_rules! WithSharedRF {
-			($sources:expr) => {
+			($source:expr) => {
 				Box::new(CSourceWithSharedRF {
-					sources: $sources,
+					source: $source,
 					rf,
 				})
 			};
