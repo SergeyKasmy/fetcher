@@ -8,9 +8,11 @@
 
 use super::TransformEntry;
 use crate::{
-	action::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+	action::transform::{
+		error::RawContentsNotSetError,
+		result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+	},
 	entry::Entry,
-	error::transform::{FeedError, RawContentsNotSetError},
 };
 
 use async_trait::async_trait;
@@ -20,6 +22,16 @@ use url::Url;
 /// RSS or Atom feed parser
 #[derive(Debug)]
 pub struct Feed;
+
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum FeedError {
+	#[error(transparent)]
+	RawContentsNotSet(#[from] RawContentsNotSetError),
+
+	#[error(transparent)]
+	Other(#[from] feed_rs::parser::ParseFeedError),
+}
 
 #[async_trait]
 impl TransformEntry for Feed {

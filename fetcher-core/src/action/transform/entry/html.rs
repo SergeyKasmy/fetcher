@@ -8,15 +8,20 @@
 
 pub mod query;
 
-use self::query::{DataLocation, ElementDataQuery, ElementKind, ElementQuery};
+use self::query::{
+	DataLocation, ElementDataQuery, ElementKind, ElementQuery, ElementQuerySliceExt,
+};
 use super::TransformEntry;
 use crate::{
-	action::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
-	entry::Entry,
-	error::{
-		transform::{HtmlError, RawContentsNotSetError},
-		InvalidUrlError,
+	action::{
+		regex::RegexError,
+		transform::{
+			error::RawContentsNotSetError,
+			result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+		},
 	},
+	entry::Entry,
+	error::InvalidUrlError,
 	sink::Media,
 	utils::OptionExt,
 };
@@ -33,16 +38,53 @@ use url::Url;
 pub struct Html {
 	/// Query to find an item/entry/article in a list on the page. None means to thread the entire page as a single item
 	pub itemq: Option<Vec<ElementQuery>>,
+
 	/// Query to find the title of an item
 	pub titleq: Option<ElementDataQuery>,
+
 	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
 	pub textq: Option<Vec<ElementDataQuery>>, // allow to find multiple paragraphs and join them together
+
 	/// Query to find the id of an item
 	pub idq: Option<ElementDataQuery>,
+
 	/// Query to find the link to an item
 	pub linkq: Option<ElementDataQuery>,
+
 	/// Query to find the image of that item
 	pub imgq: Option<ElementDataQuery>,
+}
+
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum HtmlError {
+	#[error(transparent)]
+	RawContentsNotSet(#[from] RawContentsNotSetError),
+
+	#[error("HTML element #{} not found. From query list: \n{}",
+			.num + 1,
+			.elem_list.display()
+			)]
+	ElementNotFound {
+		num: usize,
+		elem_list: Vec<ElementQuery>,
+	},
+
+	#[error("Data not found at {data:?} in element fount at {}",
+			.element.display())]
+	DataNotFoundInElement {
+		data: DataLocation,
+		element: Vec<ElementQuery>,
+	},
+
+	#[error("HTML element {0:?} is empty")]
+	ElementEmpty(Vec<ElementQuery>),
+
+	#[error(transparent)]
+	InvalidUrl(#[from] InvalidUrlError),
+
+	#[error(transparent)]
+	RegexError(#[from] RegexError),
 }
 
 #[async_trait]

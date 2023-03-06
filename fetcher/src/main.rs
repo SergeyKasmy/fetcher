@@ -10,15 +10,19 @@
 #![allow(clippy::module_name_repetitions)]
 
 pub mod args;
+pub mod error_chain;
 pub mod settings;
 
 use self::settings::{
 	config::jobs::filter::JobFilter, context::Context as OwnedContext,
 	context::StaticContext as Context,
 };
-use crate::args::{Args, Setting};
+use crate::{
+	args::{Args, Setting},
+	error_chain::ErrorChainExt,
+};
 use fetcher_core::{
-	error::{Error, ErrorChainExt},
+	error::Error,
 	job::{timepoint::TimePoint, Job},
 	sink::{Sink, Stdout},
 };

@@ -4,7 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::error::GoogleOAuth2Error;
+// I can avoid the clippy::doc_markdown lint this way :P
+#![doc = "This module contains the Google authenticator that can access Google services via OAuth2"]
 
 use serde::Deserialize;
 use std::time::{Duration, Instant};
@@ -35,6 +36,17 @@ pub struct Google {
 	/// OAuth2 refresh token
 	pub refresh_token: String,
 	access_token: Option<AccessToken>,
+}
+
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum GoogleOAuth2Error {
+	#[error("Error contacting Google servers for authentication")]
+	Post(#[source] reqwest::Error),
+
+	/// An error received from Google, whatever it is
+	#[error("{0}")]
+	Auth(String),
 }
 
 impl Google {
@@ -157,5 +169,16 @@ impl Google {
 			.as_ref()
 			.map(|x| x.token.as_str())
 			.expect("Token should have just been validated and thus be present and valid"))
+	}
+}
+
+impl GoogleOAuth2Error {
+	pub(crate) fn is_connection_err(&self) -> Option<&(dyn std::error::Error + Send + Sync)> {
+		// I know it will match any future variants automatically but I actually want it to do that anyways
+		#[allow(clippy::match_wildcard_for_single_variants)]
+		match self {
+			GoogleOAuth2Error::Post(_) => Some(self),
+			_ => None,
+		}
 	}
 }

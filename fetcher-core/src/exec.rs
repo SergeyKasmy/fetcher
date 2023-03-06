@@ -7,15 +7,13 @@
 //! This module contains [`Exec`] source and sink. It is re-exported in the [`crate::sink`] and [`crate::source`] modules
 
 use async_trait::async_trait;
-use std::process::Stdio;
+use std::{io, process::Stdio, string::FromUtf8Error};
 use tokio::{io::AsyncWriteExt, process::Command};
 
 use crate::{
 	entry::Entry,
-	error::source::Error as SourceError,
-	error::{sink::Error as SinkError, source::ExecError},
-	sink::{Message, Sink},
-	source::Fetch,
+	sink::{error::SinkError, Message, Sink},
+	source::{error::SourceError, Fetch},
 };
 
 /// Exec source. It can execute a shell command and source its stdout
@@ -24,6 +22,23 @@ pub struct Exec {
 	/// The command to execute
 	pub cmd: String,
 }
+/// Errors that happened while executing a process
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum ExecError {
+	#[error("Bad command")]
+	BadCommand(#[source] io::Error),
+
+	#[error("Command output is not valid UTF-8")]
+	BadUtf8(#[from] FromUtf8Error),
+
+	#[error("Can't start the process")]
+	CantStart(#[source] io::Error),
+
+	#[error("Can't pass data to the stdin of the process")]
+	CantWriteStdin(#[source] io::Error),
+}
+
 #[async_trait]
 impl Fetch for Exec {
 	// TODO: maybe, instead of returining a vec, add a &mut Vec output parameter

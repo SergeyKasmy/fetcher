@@ -17,8 +17,8 @@ use crate::{
 		result::{TransformResult, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
-	error::{source::HttpError as SourceHttpError, transform::HttpError, InvalidUrlError},
-	source::{self, http::Request},
+	error::InvalidUrlError,
+	source::{self, http::HttpError as SourceHttpError, http::Request},
 	utils::OptionExt,
 };
 
@@ -28,6 +28,20 @@ pub struct Http {
 	/// The field to get the URL from
 	pub from_field: Field,
 	client: Client,
+}
+
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum HttpError {
+	// TODO: impl Display for Field
+	#[error("Missing URL in the entry {0:?} field")]
+	MissingUrl(Field),
+
+	#[error("Invalid URL in the entry {0:?} field")]
+	InvalidUrl(Field, #[source] InvalidUrlError),
+
+	#[error(transparent)]
+	Other(#[from] crate::source::http::HttpError),
 }
 
 impl Http {

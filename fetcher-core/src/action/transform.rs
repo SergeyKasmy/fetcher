@@ -10,12 +10,15 @@ pub mod entry;
 pub mod field;
 pub mod result;
 
+pub mod error;
+
 pub use self::{
 	entry::{feed::Feed, html::Html, http::Http, json::Json, print::DebugPrint, use_as::Use},
 	field::{caps::Caps, set::Set, shorten::Shorten, trim::Trim},
 };
 
-use crate::{entry::Entry, error::transform::Error as TransformError};
+use self::error::TransformError;
+use crate::entry::Entry;
 
 use async_trait::async_trait;
 use std::fmt::Debug;

@@ -4,9 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use crate::error_chain::ErrorChainExt;
+use fetcher_core::job::Job;
+
 use argh::FromArgs;
 use color_eyre::{eyre::eyre, Report};
-use fetcher_core::{error::ErrorChainExt, job::Job};
 use std::{path::PathBuf, str::FromStr};
 
 /// fetcher

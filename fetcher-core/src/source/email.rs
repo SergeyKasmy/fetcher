@@ -17,21 +17,15 @@ pub use filters::Filters;
 pub use view_mode::ViewMode;
 
 use self::auth::GoogleAuthExt;
+use super::{Fetch, MarkAsRead, Source};
 use crate::{
-	auth::Google as GoogleAuth,
-	entry::Entry,
-	error::{
-		source::{EmailError, Error as SourceError, ImapError},
-		Error,
-	},
-	sink::Message,
+	auth::Google as GoogleAuth, entry::Entry, error::Error, sink::Message,
+	source::error::SourceError,
 };
 
 use async_trait::async_trait;
 use mailparse::ParsedMail;
 use std::fmt::{Debug, Write as _};
-
-use super::{Fetch, MarkAsRead, Source};
 
 const IMAP_PORT: u16 = 993;
 
@@ -51,6 +45,33 @@ pub struct Email {
 
 	/// IMAP view mode, e.g. read only
 	pub view_mode: ViewMode,
+}
+
+#[allow(missing_docs)] // error message is self-documenting
+#[allow(clippy::large_enum_variant)] // the entire enum is already boxed up above
+#[derive(thiserror::Error, Debug)]
+pub enum EmailError {
+	#[error("IMAP connection error")]
+	Imap(#[from] ImapError),
+
+	#[error("Error parsing email")]
+	Parse(#[from] mailparse::MailParseError),
+}
+
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum ImapError {
+	#[error("Failed to init TLS")]
+	TlsInitFailed(#[source] imap::Error),
+
+	#[error(transparent)]
+	GoogleAuth(Box<crate::error::Error>),
+
+	#[error("Authentication error")]
+	Auth(#[source] imap::Error),
+
+	#[error(transparent)]
+	Other(#[from] imap::Error),
 }
 
 // I'd make that a function but the imap crate didn't want to agree with me

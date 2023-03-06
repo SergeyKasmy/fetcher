@@ -6,6 +6,7 @@
 
 //! This module contains [`Source`]s that can fetch data and create new [`Entries`](`Entry`) out of it
 // TODO: add google calendar source. Google OAuth2 is already implemented :)
+// TODO: make a new fetch module
 
 pub mod email;
 pub mod file;
@@ -13,14 +14,13 @@ pub mod http;
 pub mod reddit;
 pub mod twitter;
 
+pub mod error;
+
 pub use self::{email::Email, file::File, http::Http, reddit::Reddit, twitter::Twitter};
 pub use crate::exec::Exec;
 
-use crate::{
-	entry::Entry,
-	error::{source::Error as SourceError, Error},
-	read_filter::ReadFilter,
-};
+use self::error::SourceError;
+use crate::{entry::Entry, error::Error, read_filter::ReadFilter};
 
 use async_trait::async_trait;
 use std::fmt::Debug;
@@ -37,6 +37,7 @@ pub trait Fetch: Debug + Send + Sync {
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError>;
 }
 
+// TODO: move that to read_filter
 /// A trait that defines a way to mark an entry as read
 #[async_trait]
 pub trait MarkAsRead: Debug + Send + Sync {

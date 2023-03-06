@@ -4,16 +4,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#![allow(missing_docs)]
+//! An error that happened while sending to a sink
 
-pub use crate::error::exec_error::ExecError;
+pub use crate::exec::ExecError;
 
-use std::fmt::Debug;
+use std::{error::Error as StdError, fmt::Debug};
 
-/// An error that happened while sending to a sink
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum SinkError {
 	#[error("Can't send via Telegram. Message contents: {msg:?}")]
 	Telegram {
 		source: teloxide::RequestError,
@@ -25,4 +24,16 @@ pub enum Error {
 
 	#[error("Error writing to stdout")]
 	Stdout(#[source] std::io::Error),
+}
+
+impl SinkError {
+	pub(crate) fn is_connection_err(&self) -> Option<&(dyn StdError + Send + Sync)> {
+		match self {
+			SinkError::Telegram {
+				source: teloxide::RequestError::Network(_),
+				..
+			} => Some(self),
+			_ => None,
+		}
+	}
 }

@@ -12,8 +12,8 @@ use async_trait::async_trait;
 use std::path::PathBuf;
 use tokio::fs;
 
-use super::Fetch;
-use crate::{entry::Entry, error::source::Error as SourceError};
+use super::{error::SourceError, Fetch};
+use crate::entry::Entry;
 
 /// File source. Reads contents of a file and puts them into [`raw_contents`](`crate::entry::Entry::raw_contents`)
 #[derive(Debug)]

@@ -8,17 +8,14 @@
 //!
 //! This module includes the [`Twitter`] struct that is a source that is able to parse a twitter feed via twitter API
 
-use crate::entry::Entry;
-use crate::error::source::Error as SourceError;
-use crate::error::source::TwitterError;
-use crate::sink::Media;
-use crate::sink::Message;
+use super::{error::SourceError, Fetch};
+use crate::{
+	entry::Entry,
+	sink::{Media, Message},
+};
 
 use async_trait::async_trait;
-use egg_mode::entities::MediaType;
-use egg_mode::{auth::bearer_token, tweet::user_timeline, KeyPair, Token};
-
-use super::Fetch;
+use egg_mode::{auth::bearer_token, entities::MediaType, tweet::user_timeline, KeyPair, Token};
 
 /// A source that fetches from a Twitter feed using the Twitter API
 pub struct Twitter {
@@ -26,6 +23,16 @@ pub struct Twitter {
 	api_key: String,
 	api_secret: String,
 	token: Option<Token>,
+}
+
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum TwitterError {
+	#[error("Authentication failed")]
+	Auth(#[source] egg_mode::error::Error),
+
+	#[error(transparent)]
+	Other(#[from] egg_mode::error::Error),
 }
 
 impl Twitter {

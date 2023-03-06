@@ -8,11 +8,7 @@
 //!
 //! This module contains the [`Http`] struct, that is a source as well as a transform
 
-use crate::{
-	entry::Entry,
-	error::source::{Error as SourceError, HttpError},
-	sink::Message,
-};
+use crate::{entry::Entry, sink::Message, source::error::SourceError};
 
 use async_trait::async_trait;
 use once_cell::sync::OnceCell;
@@ -33,6 +29,19 @@ pub struct Http {
 	pub url: Url,
 	request: Request,
 	client: reqwest::Client,
+}
+
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum HttpError {
+	#[error("Invalid JSON for the POST request")]
+	BadJson(#[from] serde_json::Error),
+
+	#[error("Failed to init TLS")]
+	TlsInitFailed(#[source] reqwest::Error),
+
+	#[error("Can't send an HTTP request to {1:?}")]
+	BadRequest(#[source] reqwest::Error, String),
 }
 
 #[derive(Debug)]

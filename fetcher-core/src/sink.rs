@@ -12,6 +12,8 @@ pub mod message;
 pub mod stdout;
 pub mod telegram;
 
+pub mod error;
+
 pub use self::{
 	message::{Media, Message},
 	stdout::Stdout,
@@ -19,7 +21,7 @@ pub use self::{
 };
 pub use crate::exec::Exec;
 
-use crate::error::sink::Error as SinkError;
+use crate::sink::error::SinkError;
 use async_trait::async_trait;
 use std::fmt::Debug;
 
