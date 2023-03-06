@@ -6,6 +6,7 @@
 
 //! This module contains [`Source`]s that can fetch data and create new [`Entries`](`Entry`) out of it
 // TODO: add google calendar source. Google OAuth2 is already implemented :)
+// TODO: make a new fetch module
 
 pub mod email;
 pub mod file;
@@ -36,6 +37,7 @@ pub trait Fetch: Debug + Send + Sync {
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError>;
 }
 
+// TODO: move that to read_filter
 /// A trait that defines a way to mark an entry as read
 #[async_trait]
 pub trait MarkAsRead: Debug + Send + Sync {

@@ -37,10 +37,10 @@ pub enum Error {
 	FetcherCoreHttp(#[from] fetcher_core::source::http::HttpError),
 
 	#[error("Error setting up HTML parser")]
-	FetcherCoreHtml(#[from] fetcher_core::action::transform::error::HtmlError),
+	FetcherCoreHtml(#[from] fetcher_core::action::transform::entry::html::HtmlError),
 
 	#[error("Error setting up Regex parser")]
-	FetcherCoreRegex(#[from] fetcher_core::action::transform::error::RegexError),
+	FetcherCoreRegex(#[from] fetcher_core::action::regex::RegexError),
 
 	#[error("Error setting up a source")]
 	FetcherCoreSource(#[source] Box<fetcher_core::source::error::SourceError>),

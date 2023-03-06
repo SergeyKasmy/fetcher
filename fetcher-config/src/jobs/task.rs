@@ -22,13 +22,13 @@ use fetcher_core::{task::Task as CTask, utils::OptionExt};
 #[serde(deny_unknown_fields)]
 pub struct Task {
 	#[serde(rename = "read_filter_type")]
-	pub(crate) read_filter_kind: Option<read_filter::Kind>,
-	pub(crate) name: Option<String>,
-	pub(crate) source: Option<Source>,
+	pub read_filter_kind: Option<read_filter::Kind>,
+	pub name: Option<String>,
+	pub source: Option<Source>,
 	#[serde(rename = "process")]
-	pub(crate) actions: Option<Vec<Action>>,
+	pub actions: Option<Vec<Action>>,
 	// TODO: several sinks or integrate into actions
-	pub(crate) sink: Option<Sink>,
+	pub sink: Option<Sink>,
 }
 
 impl Task {

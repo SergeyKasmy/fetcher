@@ -11,7 +11,7 @@ use crate::{
 	action::{
 		regex::{action::Replace, Regex},
 		transform::{
-			error::{JsonError, RawContentsNotSetError},
+			error::RawContentsNotSetError,
 			result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
 		},
 	},
@@ -71,6 +71,29 @@ pub struct Query {
 	pub keys: Keys,
 	/// whether this query is fine to be ignored if not found
 	pub optional: bool,
+}
+
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum JsonError {
+	#[error(transparent)]
+	RawContentsNotSet(#[from] RawContentsNotSetError),
+
+	#[error("Invalid JSON")]
+	Invalid(#[from] serde_json::error::Error),
+
+	#[error("JSON key #{num} not found. From query list: {key_list:?}")]
+	KeyNotFound { num: usize, key_list: Keys },
+
+	#[error("JSON key {key:?} wrong type: expected {expected_type}, found {found_type}")]
+	KeyWrongType {
+		key: Keys,
+		expected_type: &'static str,
+		found_type: String,
+	},
+
+	#[error(transparent)]
+	InvalidUrl(#[from] InvalidUrlError),
 }
 
 #[async_trait]

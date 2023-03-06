@@ -14,7 +14,6 @@ use self::{
 	ExtractionResult::{Extracted, Matched, NotMatched},
 };
 use crate::{
-	action::transform::error::RegexError,
 	action::{
 		filter::Filter,
 		transform::{
@@ -37,8 +36,21 @@ pub struct Regex<A> {
 	pub action: A,
 }
 
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum RegexError {
+	#[error("Invalid regex pattern")]
+	InvalidPattern(#[from] regex::Error),
+
+	#[error("Missing regex capture group named <s>, e.g. (?P<s>.*)")]
+	CaptureGroupMissing,
+
+	#[error("No match found in {0:?}")]
+	NoMatchFound(String),
+}
+
 impl<A: Action> Regex<A> {
-	/// Creates a new Regex with compiled regular expression `re` and [`action`](`Action`)
+	/// Creates a new Regex with compiled regular expression `re` and [`Action`]
 	///
 	/// # Errors
 	/// if the regular expression isn't valid
