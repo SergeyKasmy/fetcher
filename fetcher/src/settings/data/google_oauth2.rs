@@ -29,7 +29,7 @@ pub async fn prompt(cx: Context) -> eyre::Result<()> {
 	let client_secret = prompt_user_for("Google OAuth2 client secret: ")?;
 	let access_code = prompt_user_for(&format!("Open the link below and paste the access code:\nhttps://accounts.google.com/o/oauth2/auth?scope={SCOPE}&client_id={client_id}&response_type=code&redirect_uri=urn:ietf:wg:oauth:2.0:oob\nAccess code: "))?;
 	let refresh_token =
-		fcore::auth::Google::generate_refresh_token(&client_id, &client_secret, &access_code)
+		fcore::auth::google::generate_refresh_token(&client_id, &client_secret, &access_code)
 			.await?;
 
 	let gauth = fcore::auth::Google::new(client_id, client_secret, refresh_token);

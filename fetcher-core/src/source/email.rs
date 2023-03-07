@@ -19,8 +19,8 @@ pub use view_mode::ViewMode;
 use self::auth::GoogleAuthExt;
 use super::{Fetch, MarkAsRead, Source};
 use crate::{
-	auth::Google as GoogleAuth, entry::Entry, error::Error, sink::Message,
-	source::error::SourceError,
+	auth::google::GoogleOAuth2Error as GoogleAuthError, auth::Google as GoogleAuth, entry::Entry,
+	error::Error, sink::Message, source::error::SourceError,
 };
 
 use async_trait::async_trait;
@@ -65,7 +65,7 @@ pub enum ImapError {
 	TlsInitFailed(#[source] imap::Error),
 
 	#[error(transparent)]
-	GoogleAuth(Box<crate::error::Error>),
+	GoogleOAuth2(#[from] GoogleAuthError),
 
 	#[error("Authentication error")]
 	Auth(#[source] imap::Error),
@@ -80,18 +80,39 @@ macro_rules! authenticate {
 		let auth = $auth;
 
 		match auth {
-			Auth::GoogleAuth(auth) => {
+			Auth::GmailOAuth2(auth) => {
 				tracing::trace!("Logging in to IMAP with Google OAuth2");
 
-				$client
-					.authenticate(
-						"XOAUTH2",
-						&auth
-							.as_imap_oauth2($login)
+				let session = $client.authenticate(
+					"XOAUTH2",
+					&auth
+						.as_imap_oauth2($login)
+						.await
+						.map_err(ImapError::GoogleOAuth2)?,
+				);
+
+				match session {
+					Ok(session) => session,
+					// refresh access token and retry
+					Err((e, client)) => {
+						tracing::error!("Denied access to IMAP via OAuth2: {e}");
+						tracing::info!("Refreshing OAuth2 access token and trying again");
+
+						auth.get_new_access_token()
 							.await
-							.map_err(|e| ImapError::GoogleAuth(Box::new(e)))?,
-					)
-					.map_err(|(e, _)| ImapError::Auth(e))?
+							.map_err(ImapError::GoogleOAuth2)?;
+
+						client
+							.authenticate(
+								"XOAUTH2",
+								&auth
+									.as_imap_oauth2($login)
+									.await
+									.map_err(ImapError::GoogleOAuth2)?,
+							)
+							.map_err(|(e, _)| ImapError::Auth(e))?
+					}
+				}
 			}
 			Auth::Password(password) => {
 				tracing::warn!("Logging in to IMAP with a password, this is insecure");
@@ -107,7 +128,7 @@ macro_rules! authenticate {
 impl Email {
 	/// Creates an [`Email`] source for use with Gmail that uses [`Google OAuth2`](`crate::auth::Google`) to authenticate
 	#[must_use]
-	pub fn with_google_oauth2(
+	pub fn new_gmail(
 		email: String,
 		auth: GoogleAuth,
 		filters: Filters,
@@ -116,7 +137,7 @@ impl Email {
 		Self {
 			imap: "imap.gmail.com".to_owned(),
 			email,
-			auth: Auth::GoogleAuth(auth),
+			auth: Auth::GmailOAuth2(auth),
 			filters,
 			view_mode,
 		}
@@ -124,7 +145,7 @@ impl Email {
 
 	/// Creates an [`Email`] source that uses a password to authenticate via IMAP
 	#[must_use]
-	pub fn with_password(
+	pub fn new_generic(
 		imap: String,
 		email: String,
 		password: String,
@@ -314,7 +335,7 @@ impl Debug for Email {
 				"auth_type",
 				match self.auth {
 					Auth::Password(_) => &"password",
-					Auth::GoogleAuth(_) => &"google_auth",
+					Auth::GmailOAuth2(_) => &"gmail_oauth2",
 				},
 			)
 			.field("email", &self.email)

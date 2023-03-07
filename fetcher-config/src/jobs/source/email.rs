@@ -33,7 +33,11 @@ impl Email {
 		D: ProvideExternalData + ?Sized,
 	{
 		Ok(match self.auth {
-			Auth::GoogleOAuth2 => {
+			Auth::GmailOAuth2 => {
+				if self.imap.is_some() {
+					tracing::warn!("The imap address field is ignored in Gmail mode");
+				}
+
 				let oauth = match external.google_oauth2() {
 					ExternalDataResult::Ok(v) => v,
 					ExternalDataResult::Unavailable => {
@@ -42,7 +46,7 @@ impl Email {
 					ExternalDataResult::Err(e) => return Err(e.into()),
 				};
 
-				CEmail::with_google_oauth2(
+				CEmail::new_gmail(
 					self.email,
 					oauth,
 					self.filters.parse(),
@@ -58,7 +62,7 @@ impl Email {
 					ExternalDataResult::Err(e) => return Err(e.into()),
 				};
 
-				CEmail::with_password(
+				CEmail::new_generic(
 					self.imap.ok_or(ConfigError::EmailImapFieldMissing)?,
 					self.email,
 					passwd,
