@@ -106,7 +106,7 @@ impl Twitter {
 			.iter()
 			.map(|tweet| {
 				Entry {
-					id: Some(tweet.id.to_string()),
+					id: Some(tweet.id.to_string().into()),
 					msg: Message {
 						body: Some(tweet.text.clone()),
 						link: Some(

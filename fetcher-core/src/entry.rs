@@ -11,13 +11,17 @@
 
 use crate::sink::Message;
 
-use std::fmt::Debug;
+use std::{fmt::Debug, ops::Deref};
+
+/// An ID that can identify and entry to differentiate it from another one
+#[derive(PartialEq, Clone, Debug)]
+pub struct EntryId(pub String);
 
 /// A [`fetcher`](`crate`) primitive that contains a message and an id returned from a source that can be send to a sink
 #[derive(Clone, Default)]
 pub struct Entry {
 	/// An optional id of that entry. A [`ReadFilter`](`crate::read_filter::ReadFilter`) can use it to differentiate already read entries from the unread ones
-	pub id: Option<String>,
+	pub id: Option<EntryId>,
 
 	/// Raw contents gotten from a [`Source`](`crate::source::Source`)
 	///
@@ -26,6 +30,26 @@ pub struct Entry {
 
 	/// The message itself
 	pub msg: Message,
+}
+
+impl Deref for EntryId {
+	type Target = str;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
+}
+
+impl From<String> for EntryId {
+	fn from(value: String) -> Self {
+		Self(value)
+	}
+}
+
+impl From<&str> for EntryId {
+	fn from(value: &str) -> Self {
+		Self(value.to_owned())
+	}
 }
 
 impl Debug for Entry {

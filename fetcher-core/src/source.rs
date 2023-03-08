@@ -20,7 +20,11 @@ pub use self::{email::Email, file::File, http::Http, reddit::Reddit, twitter::Tw
 pub use crate::exec::Exec;
 
 use self::error::SourceError;
-use crate::{entry::Entry, error::Error, read_filter::ReadFilter};
+use crate::{
+	entry::{Entry, EntryId},
+	error::Error,
+	read_filter::ReadFilter,
+};
 
 use async_trait::async_trait;
 use std::fmt::Debug;
@@ -42,7 +46,7 @@ pub trait Fetch: Debug + Send + Sync {
 #[async_trait]
 pub trait MarkAsRead: Debug + Send + Sync {
 	/// Mark the entry with `id` as read
-	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error>;
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error>;
 
 	/// Set the current "mark as read"er to read only mode
 	async fn set_read_only(&mut self);
@@ -80,7 +84,7 @@ where
 	F: Fetch,
 	RF: ReadFilter,
 {
-	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
 		if let Some(rf) = &mut self.rf {
 			rf.mark_as_read(id).await?;
 		}

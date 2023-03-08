@@ -7,12 +7,19 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use fetcher_core::read_filter::{
-	external_save::{
-		ExternalSave as CExternalSave, ExternalSaveRFWrapper as CExternalSaveRFWrapper,
+use fetcher_core::{
+	entry::EntryId as CEntryId,
+	read_filter::{
+		external_save::{
+			ExternalSave as CExternalSave, ExternalSaveRFWrapper as CExternalSaveRFWrapper,
+		},
+		Newer as CNewer, NotPresent as CNotPresent, ReadFilter as CReadFilter,
 	},
-	Newer as CNewer, NotPresent as CNotPresent, ReadFilter as CReadFilter,
 };
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(transparent)]
+pub struct EntryId(pub String);
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
@@ -31,13 +38,23 @@ pub enum Kind {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Newer {
-	last_read_id: String,
+	last_read_id: EntryId,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct NotPresent {
-	read_list: Vec<(String, chrono::DateTime<Utc>)>,
+	read_list: Vec<(EntryId, chrono::DateTime<Utc>)>,
+}
+
+impl EntryId {
+	pub fn parse(self) -> CEntryId {
+		CEntryId(self.0)
+	}
+
+	pub fn unparse(other: CEntryId) -> Self {
+		Self(other.0)
+	}
 }
 
 impl ReadFilter {
@@ -103,20 +120,23 @@ impl Kind {
 impl Newer {
 	pub fn parse(self) -> CNewer {
 		CNewer {
-			last_read_id: Some(self.last_read_id),
+			last_read_id: Some(self.last_read_id.parse()),
 		}
 	}
 
 	pub fn unparse(read_filter: &CNewer) -> Option<Self> {
 		read_filter.last_read_id.as_ref().map(|last_read_id| Self {
-			last_read_id: last_read_id.clone(),
+			last_read_id: EntryId::unparse(last_read_id.clone()),
 		})
 	}
 }
 
 impl NotPresent {
 	pub fn parse(self) -> CNotPresent {
-		CNotPresent::from_iter(self.read_list)
+		self.read_list
+			.into_iter()
+			.map(|(id, time)| (id.parse(), time))
+			.collect()
 	}
 
 	pub fn unparse(read_filter: &CNotPresent) -> Option<Self> {
@@ -124,7 +144,11 @@ impl NotPresent {
 			None
 		} else {
 			Some(Self {
-				read_list: read_filter.iter().cloned().collect(),
+				read_list: read_filter
+					.iter()
+					.cloned()
+					.map(|(id, time)| (EntryId::unparse(id), time))
+					.collect(),
 			})
 		}
 	}

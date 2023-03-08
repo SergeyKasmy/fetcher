@@ -73,7 +73,7 @@ impl TransformEntry for Feed {
 					.ok();
 
 				TransformedEntry {
-					id: TrRes::Old(id),
+					id: TrRes::Old(id.map(Into::into)),
 					raw_contents: TrRes::Old(body.clone()),
 					msg: TransformedMessage {
 						title: TrRes::Old(title),

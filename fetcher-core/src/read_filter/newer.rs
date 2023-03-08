@@ -4,19 +4,22 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use async_trait::async_trait;
 use std::any::Any;
 
-use async_trait::async_trait;
-
-use crate::{action::filter::Filter, entry::Entry, error::Error, source::MarkAsRead};
-
 use super::ReadFilter;
+use crate::{
+	action::filter::Filter,
+	entry::{Entry, EntryId},
+	error::Error,
+	source::MarkAsRead,
+};
 
 /// Read Filter that stores the id of the last read entry
 #[derive(Clone, Debug)]
 pub struct Newer {
 	/// the id of the last read entry. None means there haven't been any entries read and thus all entries run through [`filter()`](`Newer::filter()`) will be retained
-	pub last_read_id: Option<String>,
+	pub last_read_id: Option<EntryId>,
 }
 
 impl Newer {
@@ -28,8 +31,8 @@ impl Newer {
 
 	/// Returns the last read entry id, if any
 	#[must_use]
-	pub fn last_read(&self) -> Option<&str> {
-		self.last_read_id.as_deref()
+	pub fn last_read(&self) -> Option<&EntryId> {
+		self.last_read_id.as_ref()
 	}
 }
 
@@ -42,8 +45,8 @@ impl ReadFilter for Newer {
 
 #[async_trait]
 impl MarkAsRead for Newer {
-	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
-		self.last_read_id = Some(id.to_owned());
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+		self.last_read_id = Some(id.clone());
 		Ok(())
 	}
 
@@ -99,10 +102,10 @@ mod tests {
 	async fn mark_as_read() {
 		let mut rf = Newer::new();
 
-		rf.mark_as_read("13").await.unwrap();
+		rf.mark_as_read(&"13".into()).await.unwrap();
 		assert_eq!(rf.last_read_id.as_deref().unwrap(), "13");
 
-		rf.mark_as_read("1002").await.unwrap();
+		rf.mark_as_read(&"1002".into()).await.unwrap();
 		assert_eq!(rf.last_read_id.as_deref().unwrap(), "1002");
 	}
 
@@ -111,24 +114,24 @@ mod tests {
 		let mut rf = Newer::new();
 		assert_eq!(None, rf.last_read());
 
-		rf.mark_as_read("0").await.unwrap();
-		rf.mark_as_read("1").await.unwrap();
-		rf.mark_as_read("2").await.unwrap();
-		assert_eq!(Some("2"), rf.last_read());
+		rf.mark_as_read(&"0".into()).await.unwrap();
+		rf.mark_as_read(&"1".into()).await.unwrap();
+		rf.mark_as_read(&"2".into()).await.unwrap();
+		assert_eq!(Some(&"2".into()), rf.last_read());
 
-		rf.mark_as_read("4").await.unwrap();
-		assert_eq!(Some("4"), rf.last_read());
+		rf.mark_as_read(&"4".into()).await.unwrap();
+		assert_eq!(Some(&"4".into()), rf.last_read());
 
-		rf.mark_as_read("100").await.unwrap();
-		rf.mark_as_read("101").await.unwrap();
-		rf.mark_as_read("200").await.unwrap();
-		assert_eq!(Some("200"), rf.last_read());
+		rf.mark_as_read(&"100".into()).await.unwrap();
+		rf.mark_as_read(&"101".into()).await.unwrap();
+		rf.mark_as_read(&"200".into()).await.unwrap();
+		assert_eq!(Some(&"200".into()), rf.last_read());
 	}
 
 	#[tokio::test]
 	async fn remove_read_long_list() {
 		let mut rf = Newer::new();
-		rf.mark_as_read("3").await.unwrap();
+		rf.mark_as_read(&"3".into()).await.unwrap();
 
 		let mut entries = vec![
 			Entry {
@@ -136,27 +139,11 @@ mod tests {
 				..Default::default()
 			},
 			Entry {
-				id: Some("5".to_owned()),
+				id: Some("5".into()),
 				..Default::default()
 			},
 			Entry {
-				id: Some("4".to_owned()),
-				..Default::default()
-			},
-			Entry {
-				id: None,
-				..Default::default()
-			},
-			Entry {
-				id: Some("0".to_owned()),
-				..Default::default()
-			},
-			Entry {
-				id: Some("1".to_owned()),
-				..Default::default()
-			},
-			Entry {
-				id: Some("3".to_owned()),
+				id: Some("4".into()),
 				..Default::default()
 			},
 			Entry {
@@ -164,11 +151,27 @@ mod tests {
 				..Default::default()
 			},
 			Entry {
-				id: Some("6".to_owned()),
+				id: Some("0".into()),
 				..Default::default()
 			},
 			Entry {
-				id: Some("8".to_owned()),
+				id: Some("1".into()),
+				..Default::default()
+			},
+			Entry {
+				id: Some("3".into()),
+				..Default::default()
+			},
+			Entry {
+				id: None,
+				..Default::default()
+			},
+			Entry {
+				id: Some("6".into()),
+				..Default::default()
+			},
+			Entry {
+				id: Some("8".into()),
 				..Default::default()
 			},
 		];
@@ -186,10 +189,10 @@ mod tests {
 	#[tokio::test]
 	async fn remove_read_single_different() {
 		let mut rf = Newer::new();
-		rf.mark_as_read("3").await.unwrap();
+		rf.mark_as_read(&"3".into()).await.unwrap();
 
 		let mut entries = vec![Entry {
-			id: Some("1".to_owned()),
+			id: Some("1".into()),
 			..Default::default()
 		}];
 
@@ -203,10 +206,10 @@ mod tests {
 	#[tokio::test]
 	async fn remove_read_single_same() {
 		let mut rf = Newer::new();
-		rf.mark_as_read("1").await.unwrap();
+		rf.mark_as_read(&"1".into()).await.unwrap();
 
 		let mut entries = vec![Entry {
-			id: Some("1".to_owned()),
+			id: Some("1".into()),
 			..Default::default()
 		}];
 		rf.filter(&mut entries).await;

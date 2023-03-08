@@ -11,7 +11,12 @@ use async_trait::async_trait;
 use std::{any::Any, fmt::Debug};
 
 use super::ReadFilter;
-use crate::{action::filter::Filter, entry::Entry, error::Error, source::MarkAsRead};
+use crate::{
+	action::filter::Filter,
+	entry::{Entry, EntryId},
+	error::Error,
+	source::MarkAsRead,
+};
 
 /// This trait represent some kind of external save destination.
 /// A way to preserve the state of a read filter, i.e. what has and has not been read, across restarts.
@@ -52,7 +57,7 @@ where
 	RF: ReadFilter,
 	S: ExternalSave,
 {
-	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
 		self.rf.mark_as_read(id).await?;
 
 		if let Some(ext_save) = &mut self.external_save {

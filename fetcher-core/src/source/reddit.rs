@@ -177,7 +177,7 @@ impl Reddit {
 				};
 
 				Some(Ok(Entry {
-					id: Some(post.id),
+					id: Some(post.id.into()),
 					raw_contents: None,
 					msg: Message {
 						title: Some(post.title),

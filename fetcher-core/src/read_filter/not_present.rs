@@ -5,7 +5,12 @@
  */
 
 use super::ReadFilter;
-use crate::{action::filter::Filter, entry::Entry, error::Error, source::MarkAsRead};
+use crate::{
+	action::filter::Filter,
+	entry::{Entry, EntryId},
+	error::Error,
+	source::MarkAsRead,
+};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -16,7 +21,7 @@ const MAX_LIST_LEN: usize = 500;
 /// Read Filter that stores a list of all entries read
 #[derive(Clone, Debug)]
 pub struct NotPresent {
-	read_list: VecDeque<(String, DateTime<Utc>)>,
+	read_list: VecDeque<(EntryId, DateTime<Utc>)>,
 }
 
 impl NotPresent {
@@ -30,18 +35,18 @@ impl NotPresent {
 
 	/// Returns the id of the last read entry, if any
 	#[must_use]
-	pub fn last_read(&self) -> Option<&str> {
-		self.read_list.back().map(|(s, _)| s.as_str())
+	pub fn last_read(&self) -> Option<&EntryId> {
+		self.read_list.back().map(|(s, _)| s)
 	}
 
 	/// Checks if the `id` is unread
 	#[must_use]
-	pub fn is_unread(&self, id: &str) -> bool {
+	pub fn is_unread(&self, id: &EntryId) -> bool {
 		!self.read_list.iter().any(|(ent_id, _)| ent_id == id)
 	}
 
 	/// Provides a read only view into the inner collection
-	pub fn iter(&self) -> impl Iterator<Item = &(String, DateTime<Utc>)> {
+	pub fn iter(&self) -> impl Iterator<Item = &(EntryId, DateTime<Utc>)> {
 		self.read_list.iter()
 	}
 
@@ -61,9 +66,8 @@ impl ReadFilter for NotPresent {
 
 #[async_trait]
 impl MarkAsRead for NotPresent {
-	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
-		self.read_list
-			.push_back((id.to_owned(), chrono::Utc::now()));
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+		self.read_list.push_back((id.clone(), chrono::Utc::now()));
 
 		while self.read_list.len() > MAX_LIST_LEN {
 			self.read_list.pop_front();
@@ -92,8 +96,8 @@ impl Filter for NotPresent {
 	}
 }
 
-impl FromIterator<(String, DateTime<Utc>)> for NotPresent {
-	fn from_iter<I: IntoIterator<Item = (String, DateTime<Utc>)>>(iter: I) -> Self {
+impl FromIterator<(EntryId, DateTime<Utc>)> for NotPresent {
+	fn from_iter<I: IntoIterator<Item = (EntryId, DateTime<Utc>)>>(iter: I) -> Self {
 		Self {
 			read_list: iter.into_iter().collect(),
 		}
@@ -115,22 +119,16 @@ mod tests {
 	async fn mark_as_read() {
 		let mut rf = NotPresent::new();
 
-		rf.mark_as_read("13").await.unwrap();
+		rf.mark_as_read(&"13".into()).await.unwrap();
 		assert_eq!(
-			&rf.read_list
-				.iter()
-				.map(|(s, _date)| s.as_str())
-				.collect::<Vec<_>>(),
-			&["13"]
+			&rf.read_list.iter().map(|(s, _date)| s).collect::<Vec<_>>(),
+			&[&"13".into()]
 		);
 
-		rf.mark_as_read("1002").await.unwrap();
+		rf.mark_as_read(&"1002".into()).await.unwrap();
 		assert_eq!(
-			&rf.read_list
-				.iter()
-				.map(|(s, _date)| s.as_str())
-				.collect::<Vec<_>>(),
-			&["13", "1002"]
+			&rf.read_list.iter().map(|(s, _date)| s).collect::<Vec<_>>(),
+			&[&"13".into(), &"1002".into()]
 		);
 	}
 
@@ -140,21 +138,15 @@ mod tests {
 		let mut v = Vec::with_capacity(MAX_LIST_LEN);
 
 		for i in 0..600 {
-			rf.mark_as_read(&i.to_string()).await.unwrap();
-			v.push(i.to_string());
+			let id = EntryId(i.to_string());
+			rf.mark_as_read(&id).await.unwrap();
+			v.push(id);
 		}
 
 		// keep only the last MAX_LIST_LEN elements
-		let trimmed_v = v[v.len() - MAX_LIST_LEN..]
-			.iter()
-			.map(String::as_str)
-			.collect::<Vec<_>>();
+		let trimmed_v = v[v.len() - MAX_LIST_LEN..].iter().collect::<Vec<_>>();
 
-		let rf_list = rf
-			.read_list
-			.iter()
-			.map(|(s, _date)| s.as_str())
-			.collect::<Vec<_>>();
+		let rf_list = rf.read_list.iter().map(|(s, _date)| s).collect::<Vec<_>>();
 
 		assert_eq!(trimmed_v, rf_list);
 	}
@@ -164,28 +156,28 @@ mod tests {
 		let mut rf = NotPresent::new();
 		assert_eq!(None, rf.last_read());
 
-		rf.mark_as_read("0").await.unwrap();
-		rf.mark_as_read("1").await.unwrap();
-		rf.mark_as_read("2").await.unwrap();
-		assert_eq!(Some("2"), rf.last_read());
+		rf.mark_as_read(&"0".into()).await.unwrap();
+		rf.mark_as_read(&"1".into()).await.unwrap();
+		rf.mark_as_read(&"2".into()).await.unwrap();
+		assert_eq!(Some(&"2".into()), rf.last_read());
 
-		rf.mark_as_read("4").await.unwrap();
-		assert_eq!(Some("4"), rf.last_read());
+		rf.mark_as_read(&"4".into()).await.unwrap();
+		assert_eq!(Some(&"4".into()), rf.last_read());
 
-		rf.mark_as_read("100").await.unwrap();
-		rf.mark_as_read("101").await.unwrap();
-		rf.mark_as_read("200").await.unwrap();
-		assert_eq!(Some("200"), rf.last_read());
+		rf.mark_as_read(&"100".into()).await.unwrap();
+		rf.mark_as_read(&"101".into()).await.unwrap();
+		rf.mark_as_read(&"200".into()).await.unwrap();
+		assert_eq!(Some(&"200".into()), rf.last_read());
 	}
 
 	#[tokio::test]
 	async fn remove_read() {
 		let mut rf = NotPresent::new();
-		rf.mark_as_read("0").await.unwrap();
-		rf.mark_as_read("1").await.unwrap();
-		rf.mark_as_read("2").await.unwrap();
-		rf.mark_as_read("5").await.unwrap();
-		rf.mark_as_read("7").await.unwrap();
+		rf.mark_as_read(&"0".into()).await.unwrap();
+		rf.mark_as_read(&"1".into()).await.unwrap();
+		rf.mark_as_read(&"2".into()).await.unwrap();
+		rf.mark_as_read(&"5".into()).await.unwrap();
+		rf.mark_as_read(&"7".into()).await.unwrap();
 
 		let mut entries = vec![
 			Entry {
@@ -193,23 +185,23 @@ mod tests {
 				..Default::default()
 			},
 			Entry {
-				id: Some("5".to_owned()),
+				id: Some("5".into()),
 				..Default::default()
 			},
 			Entry {
-				id: Some("4".to_owned()),
+				id: Some("4".into()),
 				..Default::default()
 			},
 			Entry {
-				id: Some("0".to_owned()),
+				id: Some("0".into()),
 				..Default::default()
 			},
 			Entry {
-				id: Some("1".to_owned()),
+				id: Some("1".into()),
 				..Default::default()
 			},
 			Entry {
-				id: Some("3".to_owned()),
+				id: Some("3".into()),
 				..Default::default()
 			},
 			Entry {
@@ -217,11 +209,11 @@ mod tests {
 				..Default::default()
 			},
 			Entry {
-				id: Some("6".to_owned()),
+				id: Some("6".into()),
 				..Default::default()
 			},
 			Entry {
-				id: Some("8".to_owned()),
+				id: Some("8".into()),
 				..Default::default()
 			},
 		];
