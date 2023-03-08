@@ -6,7 +6,11 @@
 
 //! This module contains the [`Telegram`] sink
 
-use crate::sink::{error::SinkError, Media, Message, MessageId, Sink};
+use crate::sink::{
+	error::SinkError,
+	message::{Media, Message, MessageId},
+	Sink,
+};
 
 use async_trait::async_trait;
 use std::{fmt::Debug, time::Duration};

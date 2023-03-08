@@ -22,7 +22,7 @@ use crate::{
 	},
 	entry::Entry,
 	error::InvalidUrlError,
-	sink::Media,
+	sink::message::Media,
 	utils::OptionExt,
 };
 

@@ -567,7 +567,7 @@ fn fold_task_errors(task_errors: &[Error]) -> Report {
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
 async fn report_error(job_name: &str, err: &str, context: Context) -> Result<()> {
-	use fetcher_core::sink::{telegram::LinkLocation, Message, Telegram};
+	use fetcher_core::sink::{message::Message, telegram::LinkLocation, Telegram};
 
 	let admin_chat_id = std::env::var("FETCHER_TELEGRAM_ADMIN_CHAT_ID")
 		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID")?

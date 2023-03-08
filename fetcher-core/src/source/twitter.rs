@@ -11,7 +11,7 @@
 use super::{error::SourceError, Fetch};
 use crate::{
 	entry::Entry,
-	sink::{Media, Message},
+	sink::message::{Media, Message},
 };
 
 use async_trait::async_trait;

@@ -12,7 +12,11 @@ use tokio::{io::AsyncWriteExt, process::Command};
 
 use crate::{
 	entry::Entry,
-	sink::{error::SinkError, Message, MessageId, Sink},
+	sink::{
+		error::SinkError,
+		message::{Message, MessageId},
+		Sink,
+	},
 	source::{error::SourceError, Fetch},
 };
 

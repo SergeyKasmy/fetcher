@@ -23,7 +23,7 @@ use crate::{
 	action::transform::error::{TransformError, TransformErrorKind},
 	entry::Entry,
 	error::InvalidUrlError,
-	sink::Message,
+	sink::message::Message,
 	utils::OptionExt,
 };
 

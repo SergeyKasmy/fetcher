@@ -14,19 +14,14 @@ pub mod telegram;
 
 pub mod error;
 
-pub use self::{
-	message::{Media, Message},
-	stdout::Stdout,
-	telegram::Telegram,
-};
+pub use self::{stdout::Stdout, telegram::Telegram};
 pub use crate::exec::Exec;
 
+use self::message::{Message, MessageId};
 use crate::sink::error::SinkError;
+
 use async_trait::async_trait;
 use std::fmt::Debug;
-
-/// An id of a sent message
-pub struct MessageId(pub i64);
 
 /// An async function that sends a message somewhere
 #[async_trait]
@@ -37,10 +32,4 @@ pub trait Sink: Debug + Send + Sync {
 		message: Message,
 		tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError>;
-}
-
-impl From<i64> for MessageId {
-	fn from(value: i64) -> Self {
-		Self(value)
-	}
 }

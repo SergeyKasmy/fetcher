@@ -23,7 +23,7 @@ use crate::{
 	auth::Google as GoogleAuth,
 	entry::{Entry, EntryId},
 	error::Error,
-	sink::Message,
+	sink::message::Message,
 	source::error::SourceError,
 };
 

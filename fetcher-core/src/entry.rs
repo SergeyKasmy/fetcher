@@ -7,9 +7,7 @@
 //! This module contains the basic building blog of [`fetcher`](`crate`) - [`Entry`]
 //! that is passed throughout the program and that all modules either create, modify, or consume
 
-// TODO: add message history via responce id -> message id hashmap
-
-use crate::sink::Message;
+use crate::sink::message::Message;
 
 use std::{fmt::Debug, ops::Deref};
 
