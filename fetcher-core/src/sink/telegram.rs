@@ -6,10 +6,7 @@
 
 //! This module contains the [`Telegram`] sink
 
-use crate::{
-	sink::error::SinkError,
-	sink::{Media, Message, Sink},
-};
+use crate::sink::{error::SinkError, Media, Message, MessageId, Sink};
 
 use async_trait::async_trait;
 use std::{fmt::Debug, time::Duration};
@@ -19,7 +16,7 @@ use teloxide::{
 	requests::{Request, Requester, RequesterExt},
 	types::{
 		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, Message as TelMessage,
-		MessageId, ParseMode,
+		MessageId as TelMessageId, ParseMode,
 	},
 	Bot, RequestError,
 };
@@ -56,13 +53,90 @@ impl Telegram {
 			link_location,
 		}
 	}
+}
 
+#[async_trait]
+impl Sink for Telegram {
+	/// Sends a message to a Telegram chat
+	///
+	/// # Errors
+	/// * if Telegram returned an error
+	/// * if there's no internet connection
+	async fn send(
+		&self,
+		message: Message,
+		tag: Option<&str>,
+	) -> Result<Option<MessageId>, SinkError> {
+		let Message {
+			title,
+			body,
+			link,
+			media,
+		} = message;
+
+		tracing::debug!(
+			"Processing message: title: {title:?}, body len: {}, link: {}, media count: {}",
+			body.as_ref().map_or(0, String::len),
+			link.is_some(),
+			media.as_ref().map_or(0, Vec::len),
+		);
+
+		let body = body.map(|s| teloxide::utils::html::escape(&s));
+		let (head, tail) = format_head_tail(
+			title.map(|s| teloxide::utils::html::escape(&s)),
+			link,
+			tag,
+			self.link_location,
+		);
+
+		let text = MsgParts {
+			head: head.as_deref(),
+			body: body.as_deref(),
+			tail: tail.as_deref(),
+		};
+
+		// fugure out if additional newline charaters should be added
+		// and include them in calculations on whether the message will end up too long.
+		// add newline after head if head.is some and either body or tail is some
+		let should_insert_newline_after_head = head.is_some() && (body.is_some() || tail.is_some());
+		let should_insert_newline_after_body = body.is_some() && tail.is_some();
+
+		let max_char_limit = if media.is_some() {
+			MAX_MEDIA_MSG_LEN
+		} else {
+			MAX_TEXT_MSG_LEN
+		};
+
+		// if total single message char len would be bigger than max_char_limit (depending on whether the message contains media)
+		let tel_msgid = if head.as_ref().map_or(0, |s| s.chars().count())
+			+ body.as_ref().map_or(0, |s| s.chars().count())
+			+ tail.as_ref().map_or(0, |s| s.chars().count())
+			+ usize::from(should_insert_newline_after_head)
+			+ usize::from(should_insert_newline_after_body)
+			> max_char_limit
+		{
+			self.process_long_message(text, media.as_deref()).await?
+		} else {
+			self.process_short_message(
+				text,
+				media.as_deref(),
+				should_insert_newline_after_head,
+				should_insert_newline_after_body,
+			)
+			.await?
+		};
+
+		Ok(tel_msgid.map(|tel_msgid| i64::from(tel_msgid.0).into()))
+	}
+}
+
+impl Telegram {
 	async fn process_long_message(
 		&self,
 		mut text: MsgParts<'_>,
 		media: Option<&[Media]>,
-	) -> Result<(), SinkError> {
-		let mut previous_message = None;
+	) -> Result<Option<TelMessageId>, SinkError> {
+		let mut last_message = None;
 
 		// if the message contains media, send it and MAX_MEDIA_MSG_LEN chars first
 		if let Some(media) = media {
@@ -70,9 +144,9 @@ impl Telegram {
 			if media.len() > 10 {
 				for ch in media.chunks(10) {
 					let sent_msg = self
-						.send_media_with_reply_id(ch, None, previous_message)
+						.send_media_with_reply_id(ch, None, last_message)
 						.await?;
-					previous_message = sent_msg.and_then(|v| v.first().map(|m| m.id));
+					last_message = sent_msg.and_then(|v| v.first().map(|m| m.id));
 				}
 			} else {
 				let media_caption = text
@@ -80,22 +154,20 @@ impl Telegram {
 						.expect("should always return a valid split at least once since msg char len is > max_char_limit");
 
 				let sent_msg = self
-					.send_media_with_reply_id(media, Some(&media_caption), previous_message)
+					.send_media_with_reply_id(media, Some(&media_caption), last_message)
 					.await?;
-				previous_message = sent_msg.and_then(|v| v.first().map(|m| m.id));
+				last_message = sent_msg.and_then(|v| v.first().map(|m| m.id));
 			}
 		}
 
 		// send all remaining text in splits of MAX_TEXT_MSG_LEN
 		// whether we sent a media message first is not important
 		while let Some(text) = text.split_msg_at(MAX_TEXT_MSG_LEN) {
-			let sent_msg = self
-				.send_text_with_reply_id(&text, previous_message)
-				.await?;
-			previous_message = Some(sent_msg.id);
+			let sent_msg = self.send_text_with_reply_id(&text, last_message).await?;
+			last_message = Some(sent_msg.id);
 		}
 
-		Ok(())
+		Ok(last_message)
 	}
 
 	async fn process_short_message(
@@ -107,7 +179,7 @@ impl Telegram {
 		// even though they do make this fn signature uglier
 		should_insert_newline_after_head: bool,
 		should_insert_newline_after_body: bool,
-	) -> Result<(), SinkError> {
+	) -> Result<Option<TelMessageId>, SinkError> {
 		macro_rules! newline_if {
 			($bool:expr) => {
 				if $bool {
@@ -135,37 +207,36 @@ impl Telegram {
 			Some(text)
 		};
 
-		if let Some(media) = media {
+		let msgid = if let Some(media) = media {
 			// send several media only messages (i.e. without caption) if all the media wouldn't fit into a single message, and then a separate text message containing the caption
 			if media.len() > 10 {
-				let mut previous_message = None;
+				let mut last_message = None;
 
 				for ch in media.chunks(10) {
 					let sent_msg = self
-						.send_media_with_reply_id(ch, None, previous_message)
+						.send_media_with_reply_id(ch, None, last_message)
 						.await?;
-					previous_message = sent_msg.and_then(|v| v.first().map(|m| m.id));
+					last_message = sent_msg.and_then(|v| v.first().map(|m| m.id));
 				}
 
 				if let Some(text) = text {
-					self.send_text_with_reply_id(&text, previous_message)
-						.await?;
+					let text_message = self.send_text_with_reply_id(&text, last_message).await?;
+					Some(text_message.id)
+				} else {
+					last_message
 				}
 			} else {
-				self.send_media(media, text.as_deref()).await?;
+				let media_message = self.send_media(media, text.as_deref()).await?;
+				media_message.map(|mut v| v.swap_remove(0).id)
 			}
+		} else if let Some(text) = text {
+			Some(self.send_text(&text).await?.id)
 		} else {
-			match text {
-				Some(text) => {
-					self.send_text(&text).await?;
-				}
-				None => {
-					tracing::warn!("Skipping sending completely empty Telegram text message");
-				}
-			}
-		}
+			tracing::warn!("Skipping sending completely empty Telegram text message");
+			None
+		};
 
-		Ok(())
+		Ok(msgid)
 	}
 
 	async fn send_text(&self, message: &str) -> Result<TelMessage, SinkError> {
@@ -175,7 +246,7 @@ impl Telegram {
 	async fn send_text_with_reply_id(
 		&self,
 		message: &str,
-		reply_to_msg_id: Option<MessageId>,
+		reply_to_msg_id: Option<TelMessageId>,
 	) -> Result<TelMessage, SinkError> {
 		tracing::trace!("About to send a text message with contents: {message:?}");
 		loop {
@@ -229,7 +300,7 @@ impl Telegram {
 		&self,
 		media: &[Media],
 		mut caption: Option<&str>,
-		reply_to_msg_id: Option<MessageId>,
+		reply_to_msg_id: Option<TelMessageId>,
 	) -> Result<Option<Vec<TelMessage>>, SinkError> {
 		assert!(
 			media.len() <= 10,
@@ -364,77 +435,6 @@ impl Telegram {
 				}
 			}
 		}
-	}
-}
-
-#[async_trait]
-impl Sink for Telegram {
-	/// Sends a message to a Telegram chat
-	///
-	/// # Errors
-	/// * if Telegram returned an error
-	/// * if there's no internet connection
-	async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError> {
-		let Message {
-			title,
-			body,
-			link,
-			media,
-		} = message;
-
-		tracing::debug!(
-			"Processing message: title: {title:?}, body len: {}, link: {}, media count: {}",
-			body.as_ref().map_or(0, String::len),
-			link.is_some(),
-			media.as_ref().map_or(0, Vec::len),
-		);
-
-		let body = body.map(|s| teloxide::utils::html::escape(&s));
-		let (head, tail) = format_head_tail(
-			title.map(|s| teloxide::utils::html::escape(&s)),
-			link,
-			tag,
-			self.link_location,
-		);
-
-		let text = MsgParts {
-			head: head.as_deref(),
-			body: body.as_deref(),
-			tail: tail.as_deref(),
-		};
-
-		// fugure out if additional newline charaters should be added
-		// and include them in calculations on whether the message will end up too long.
-		// add newline after head if head.is some and either body or tail is some
-		let should_insert_newline_after_head = head.is_some() && (body.is_some() || tail.is_some());
-		let should_insert_newline_after_body = body.is_some() && tail.is_some();
-
-		let max_char_limit = if media.is_some() {
-			MAX_MEDIA_MSG_LEN
-		} else {
-			MAX_TEXT_MSG_LEN
-		};
-
-		// if total single message char len would be bigger than max_char_limit (depending on whether the message contains media)
-		if head.as_ref().map_or(0, |s| s.chars().count())
-			+ body.as_ref().map_or(0, |s| s.chars().count())
-			+ tail.as_ref().map_or(0, |s| s.chars().count())
-			+ usize::from(should_insert_newline_after_head)
-			+ usize::from(should_insert_newline_after_body)
-			> max_char_limit
-		{
-			self.process_long_message(text, media.as_deref()).await?;
-		} else {
-			self.process_short_message(
-				text,
-				media.as_deref(),
-				should_insert_newline_after_head,
-				should_insert_newline_after_body,
-			)
-			.await?;
-		}
-
-		Ok(())
 	}
 }
 

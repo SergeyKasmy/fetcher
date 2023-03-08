@@ -11,6 +11,8 @@ use crate::sink::{error::SinkError, Message, Sink};
 use async_trait::async_trait;
 use tokio::io::{self, AsyncWriteExt};
 
+use super::MessageId;
+
 /// Print message to stdout. Mostly used for debugging
 #[derive(Debug)]
 pub struct Stdout;
@@ -21,7 +23,7 @@ impl Sink for Stdout {
 	///
 	/// # Errors
 	/// if there was an error writing to stdout
-	async fn send(&self, msg: Message, tag: Option<&str>) -> Result<(), SinkError> {
+	async fn send(&self, msg: Message, tag: Option<&str>) -> Result<Option<MessageId>, SinkError> {
 		io::stdout().write_all(format!(
 			"------------------------------\nMessage:\nTitle: {title}\n\nBody:\n{body}\n\nLink: {link}\n\nMedia: {media:?}\n\nTag: {tag:?}\n------------------------------\n",
 			title = msg.title.as_deref().unwrap_or("None"),
@@ -29,6 +31,8 @@ impl Sink for Stdout {
 			link = msg.link.map(|url| url.as_str().to_owned()).as_deref().unwrap_or("None"),
 			media = msg.media,
 			tag = tag.unwrap_or("None")
-		).as_bytes()).await.map_err(SinkError::Stdout)
+		).as_bytes()).await.map_err(SinkError::Stdout)?;
+
+		Ok(None)
 	}
 }
