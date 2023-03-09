@@ -12,7 +12,7 @@ use fetcher_config::jobs::{
 	external_data::ExternalDataError,
 	read_filter::{Kind as ReadFilterKind, ReadFilter as ReadFilterConf},
 };
-use fetcher_core::read_filter::{self as core_rf, ReadFilter};
+use fetcher_core::read_filter::ReadFilter;
 
 use std::fs;
 
@@ -29,35 +29,26 @@ pub fn get(
 	match fs::read_to_string(&path) {
 		Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
 			tracing::debug!("Read filter save file is empty");
-
-			Ok(match expected_rf_kind {
-				ReadFilterKind::NewerThanRead => Box::new(core_rf::Newer::new()),
-				ReadFilterKind::NotPresentInReadList => Box::new(core_rf::NotPresent::new()),
-			})
 		}
 		Err(e) => {
 			tracing::debug!("Read filter save file doesn't exist or is inaccessible: {e}");
-
-			Ok(match expected_rf_kind {
-				ReadFilterKind::NewerThanRead => Box::new(core_rf::Newer::new()),
-				ReadFilterKind::NotPresentInReadList => Box::new(core_rf::NotPresent::new()),
-			})
 		}
 		Ok(save_file_rf_raw) => {
 			let conf: ReadFilterConf =
 				serde_json::from_str(&save_file_rf_raw).map_err(|e| (e, &path))?;
 
 			// the old read filter saved on disk is of the same type as the one set in config
-			if conf == expected_rf_kind {
-				let rf = conf.parse(TruncatingFileWriter::new(path));
-				Ok(rf)
-			} else {
-				Err(ExternalDataError::new_rf_incompat_with_path(
+			if conf != expected_rf_kind {
+				return Err(ExternalDataError::new_rf_incompat_with_path(
 					expected_rf_kind,
 					conf.to_kind(),
 					&path,
-				))
+				));
 			}
+
+			return Ok(conf.parse(TruncatingFileWriter::new(path)));
 		}
 	}
+
+	Ok(expected_rf_kind.new_from_kind(TruncatingFileWriter::new(path)))
 }

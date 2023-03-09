@@ -70,7 +70,7 @@ impl ReadFilter {
 			)?));
 		}
 
-		// TODO: return error
+		// FIXME: return error
 		None
 	}
 
@@ -78,6 +78,24 @@ impl ReadFilter {
 		match self {
 			ReadFilter::NewerThanRead(_) => Kind::NewerThanRead,
 			ReadFilter::NotPresentInReadList(_) => Kind::NotPresentInReadList,
+		}
+	}
+}
+
+impl Kind {
+	pub fn new_from_kind<S>(self, external_save: S) -> Box<dyn CReadFilter>
+	where
+		S: CExternalSave + 'static,
+	{
+		match self {
+			Self::NewerThanRead => Box::new(CExternalSaveRFWrapper {
+				rf: CNewer::new(),
+				external_save: Some(external_save),
+			}),
+			Self::NotPresentInReadList => Box::new(CExternalSaveRFWrapper {
+				rf: CNotPresent::new(),
+				external_save: Some(external_save),
+			}),
 		}
 	}
 }
