@@ -14,14 +14,12 @@ pub mod telegram;
 
 pub mod error;
 
-pub use self::{
-	message::{Media, Message},
-	stdout::Stdout,
-	telegram::Telegram,
-};
+pub use self::{stdout::Stdout, telegram::Telegram};
 pub use crate::exec::Exec;
 
+use self::message::{Message, MessageId};
 use crate::sink::error::SinkError;
+
 use async_trait::async_trait;
 use std::fmt::Debug;
 
@@ -29,5 +27,10 @@ use std::fmt::Debug;
 #[async_trait]
 pub trait Sink: Debug + Send + Sync {
 	/// Send the message with an optional tag (usually represented as a hashtag)
-	async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError>;
+	async fn send(
+		&self,
+		message: Message,
+		reply_to: Option<&MessageId>,
+		tag: Option<&str>,
+	) -> Result<Option<MessageId>, SinkError>;
 }

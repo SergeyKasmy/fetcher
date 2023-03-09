@@ -7,8 +7,8 @@
 //! This module contains everything needed to contruct a new [`Entry`] (via [`TransformedEntry`]) and [`Message`] (via [`TransformedMessage`]) after parsing, optionally using previous [`Entry's`](`Entry`) data if requested
 
 use crate::{
-	entry::Entry,
-	sink::{Media, Message},
+	entry::{Entry, EntryId},
+	sink::message::{Media, Message},
 };
 
 use url::Url;
@@ -18,7 +18,8 @@ use url::Url;
 #[allow(missing_docs)]
 #[derive(Default, Debug)]
 pub struct TransformedEntry {
-	pub id: TransformResult<String>,
+	pub id: TransformResult<EntryId>,
+	pub reply_to: TransformResult<EntryId>,
 	pub raw_contents: TransformResult<String>,
 	pub msg: TransformedMessage,
 }
@@ -49,6 +50,7 @@ impl TransformedEntry {
 	pub fn into_entry(self, old_entry: Entry) -> Entry {
 		Entry {
 			id: self.id.get(old_entry.id),
+			reply_to: self.reply_to.get(old_entry.reply_to),
 			raw_contents: self.raw_contents.get(old_entry.raw_contents),
 			msg: self.msg.into_message(old_entry.msg),
 		}

@@ -10,7 +10,7 @@ use super::Fetch;
 use crate::{
 	entry::Entry,
 	error::InvalidUrlError,
-	sink::{Media, Message},
+	sink::message::{Media, Message},
 	source::error::SourceError,
 	utils::OptionExt,
 };
@@ -177,7 +177,7 @@ impl Reddit {
 				};
 
 				Some(Ok(Entry {
-					id: Some(post.id),
+					id: Some(post.id.into()),
 					raw_contents: None,
 					msg: Message {
 						title: Some(post.title),
@@ -185,6 +185,7 @@ impl Reddit {
 						link: Some(link),
 						media,
 					},
+					..Default::default()
 				}))
 			})
 			.collect::<Result<_, _>>()?;

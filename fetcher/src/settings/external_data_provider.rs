@@ -4,12 +4,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::{context::StaticContext, data, read_filter};
+use super::{context::StaticContext, data};
 use fetcher_config::jobs::{
 	external_data::{ExternalDataResult, ProvideExternalData},
 	read_filter::Kind as ReadFilterKind,
+	JobName, TaskId,
 };
-use fetcher_core::read_filter::ReadFilter;
+use fetcher_core::{auth, read_filter::ReadFilter, task::entry_to_msg_map::EntryToMsgMap};
 
 pub struct ExternalDataFromDataDir {
 	pub cx: StaticContext,
@@ -22,7 +23,7 @@ impl ProvideExternalData for ExternalDataFromDataDir {
 		data::twitter::get(self.cx).into()
 	}
 
-	fn google_oauth2(&self) -> ExternalDataResult<fetcher_core::auth::Google> {
+	fn google_oauth2(&self) -> ExternalDataResult<auth::Google> {
 		data::google_oauth2::get(self.cx).into()
 	}
 
@@ -36,9 +37,18 @@ impl ProvideExternalData for ExternalDataFromDataDir {
 
 	fn read_filter(
 		&self,
-		name: &str,
+		job: &JobName,
+		task: Option<&TaskId>,
 		expected_rf: ReadFilterKind,
 	) -> ExternalDataResult<Self::ReadFilter> {
-		read_filter::get(name, expected_rf, self.cx).into()
+		data::runtime_external_save::read_filter::get(job, task, expected_rf, self.cx).into()
+	}
+
+	fn entry_to_msg_map(
+		&self,
+		job: &JobName,
+		task: Option<&TaskId>,
+	) -> ExternalDataResult<EntryToMsgMap> {
+		data::runtime_external_save::entry_to_msg_map::get(job, task, self.cx).into()
 	}
 }

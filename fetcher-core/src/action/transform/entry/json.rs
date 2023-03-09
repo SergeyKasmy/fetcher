@@ -17,7 +17,7 @@ use crate::{
 	},
 	entry::Entry,
 	error::InvalidUrlError,
-	sink::Media,
+	sink::message::Media,
 	utils::OptionExt,
 };
 
@@ -157,7 +157,7 @@ impl Json {
 		})?;
 
 		Ok(TransformedEntry {
-			id: TrRes::Old(id),
+			id: TrRes::Old(id.map(Into::into)),
 			raw_contents: TrRes::Old(body.clone()),
 			msg: TransformedMessage {
 				title: TrRes::Old(title),
@@ -165,6 +165,7 @@ impl Json {
 				link: TrRes::Old(link),
 				media: TrRes::Old(img.map(|v| v.into_iter().map(Media::Photo).collect())),
 			},
+			..Default::default()
 		})
 	}
 }

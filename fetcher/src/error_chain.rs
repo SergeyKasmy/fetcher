@@ -24,10 +24,10 @@ impl<T: Error> ErrorChainExt for T {
 			current_err = source;
 			counter += 1;
 			if counter == 1 {
-				let _ = write!(output, "\n\nCaused by:");
+				_ = write!(output, "\n\nCaused by:");
 			}
 
-			let _ = write!(output, "\n\t{counter}: {current_err}");
+			_ = write!(output, "\n\t{counter}: {current_err}");
 		}
 
 		output

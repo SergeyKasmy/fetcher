@@ -5,7 +5,9 @@
  */
 
 //! This module contains the trait [`TransformField`] as well as all types that implement it
-//! And [`Field`] enum that can be used to refer to a [`Message`](`crate::sink::Message`)'s field
+//! And [`Field`] enum that can be used to refer to a [`Message`](Message)'s field
+//!
+//! [Message]: crate::sink::message::Message
 
 pub mod caps;
 pub mod set;
@@ -23,7 +25,7 @@ use crate::{
 	action::transform::error::{TransformError, TransformErrorKind},
 	entry::Entry,
 	error::InvalidUrlError,
-	sink::Message,
+	sink::message::Message,
 	utils::OptionExt,
 };
 
@@ -67,6 +69,8 @@ where
 			Field::Title => entry.msg.title.take(),
 			Field::Body => entry.msg.body.take(),
 			Field::Link => entry.msg.link.take().map(|u| u.to_string()),
+			Field::Id => entry.id.take().map(|id| id.0),
+			Field::ReplyTo => entry.reply_to.take().map(|id| id.0),
 			Field::RawContets => entry.raw_contents.take(),
 		};
 
@@ -111,6 +115,14 @@ where
 					..entry
 				}
 			}
+			Field::Id => Entry {
+				id: final_val.map(Into::into),
+				..entry
+			},
+			Field::ReplyTo => Entry {
+				reply_to: final_val.map(Into::into),
+				..entry
+			},
 			Field::RawContets => Entry {
 				raw_contents: final_val,
 				..entry
@@ -130,6 +142,10 @@ pub enum Field {
 	Body,
 	/// [`Message.link`] field
 	Link,
+	/// [`Entry.id`] field
+	Id,
+	/// [`Entry.reply_to`] field
+	ReplyTo,
 	/// [`Entry.raw_contents`] field
 	RawContets,
 }

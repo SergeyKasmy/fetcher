@@ -7,17 +7,26 @@
 //! This module contains the basic building blog of [`fetcher`](`crate`) - [`Entry`]
 //! that is passed throughout the program and that all modules either create, modify, or consume
 
-// TODO: add message history via responce id -> message id hashmap
+use crate::sink::message::Message;
 
-use crate::sink::Message;
+use std::{fmt::Debug, ops::Deref};
 
-use std::fmt::Debug;
+// TODO: make generic over String/i64/other types of id
+/// An ID that can identify and entry to differentiate it from another one
+#[derive(PartialEq, Eq, Clone, Hash, Debug)]
+pub struct EntryId(pub String);
 
 /// A [`fetcher`](`crate`) primitive that contains a message and an id returned from a source that can be send to a sink
 #[derive(Clone, Default)]
 pub struct Entry {
-	/// An optional id of that entry. A [`ReadFilter`](`crate::read_filter::ReadFilter`) can use it to differentiate already read entries from the unread ones
-	pub id: Option<String>,
+	/// ID of the entry
+	///
+	/// A [`ReadFilter`](`crate::read_filter::ReadFilter`) can use it to differentiate already read entries from the unread ones.
+	/// It is also used to map between entries and messages to support, e.g. replies
+	pub id: Option<EntryId>,
+
+	/// An entry this entry is replying to/quoting
+	pub reply_to: Option<EntryId>,
 
 	/// Raw contents gotten from a [`Source`](`crate::source::Source`)
 	///
@@ -28,10 +37,31 @@ pub struct Entry {
 	pub msg: Message,
 }
 
+impl Deref for EntryId {
+	type Target = str;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
+}
+
+impl From<String> for EntryId {
+	fn from(value: String) -> Self {
+		Self(value)
+	}
+}
+
+impl From<&str> for EntryId {
+	fn from(value: &str) -> Self {
+		Self(value.to_owned())
+	}
+}
+
 impl Debug for Entry {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Entry")
 			.field("id", &self.id)
+			.field("reply_to", &self.reply_to)
 			.field("raw_contents.is_some()", &self.raw_contents.is_some())
 			.field("msg", &self.msg)
 			.finish()

@@ -15,6 +15,7 @@ pub mod auth;
 pub mod entry;
 pub mod error;
 mod exec;
+pub mod external_save;
 pub mod job;
 pub mod read_filter;
 pub mod sink;

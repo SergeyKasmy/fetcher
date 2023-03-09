@@ -22,6 +22,10 @@ pub struct Message {
 	pub media: Option<Vec<Media>>,
 }
 
+/// An id of a sent message
+#[derive(Clone, Copy, Debug)]
+pub struct MessageId(pub i64);
+
 /// A link to some kind of external media
 #[derive(Clone)]
 pub enum Media {
@@ -29,6 +33,12 @@ pub enum Media {
 	Photo(Url),
 	/// A link to a video
 	Video(Url),
+}
+
+impl From<i64> for MessageId {
+	fn from(value: i64) -> Self {
+		Self(value)
+	}
 }
 
 impl Debug for Message {

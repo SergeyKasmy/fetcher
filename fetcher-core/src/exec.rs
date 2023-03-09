@@ -12,7 +12,11 @@ use tokio::{io::AsyncWriteExt, process::Command};
 
 use crate::{
 	entry::Entry,
-	sink::{error::SinkError, Message, Sink},
+	sink::{
+		error::SinkError,
+		message::{Message, MessageId},
+		Sink,
+	},
 	source::{error::SourceError, Fetch},
 };
 
@@ -70,9 +74,14 @@ impl Sink for Exec {
 	/// # Errors
 	/// * if the process couldn't be started
 	/// * if the data couldn't be passed to the stdin pipe of the process
-	async fn send(&self, message: Message, _tag: Option<&str>) -> Result<(), SinkError> {
+	async fn send(
+		&self,
+		message: Message,
+		_reply_to: Option<&MessageId>,
+		_tag: Option<&str>,
+	) -> Result<Option<MessageId>, SinkError> {
 		let Some(body) = message.body else {
-			return Ok(());
+			return Ok(None);
 		};
 
 		tracing::debug!("Spawned process {:?}", self.cmd);
@@ -96,6 +105,6 @@ impl Sink for Exec {
 		shell.wait().await.map_err(ExecError::CantStart)?;
 		tracing::trace!("Process successfully exited");
 
-		Ok(())
+		Ok(None)
 	}
 }

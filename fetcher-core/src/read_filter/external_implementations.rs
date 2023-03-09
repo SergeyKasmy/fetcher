@@ -11,8 +11,12 @@ use async_trait::async_trait;
 use std::{any::Any, sync::Arc};
 use tokio::sync::RwLock;
 
-use super::ReadFilter;
-use crate::{action::filter::Filter, entry::Entry, error::Error, source::MarkAsRead};
+use super::{MarkAsRead, ReadFilter};
+use crate::{
+	action::filter::Filter,
+	entry::{Entry, EntryId},
+	error::Error,
+};
 
 /// [`ReadFilter`] implementation for `Arc<tokio::RwLock<dyn Readfilter>>`
 pub mod tokio_rwlock {
@@ -34,7 +38,7 @@ pub mod tokio_rwlock {
 	where
 		RF: ReadFilter,
 	{
-		async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+		async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
 			self.write().await.mark_as_read(id).await
 		}
 
@@ -68,7 +72,7 @@ pub mod boks {
 
 	#[async_trait]
 	impl MarkAsRead for Box<dyn ReadFilter> {
-		async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+		async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
 			(**self).mark_as_read(id).await
 		}
 

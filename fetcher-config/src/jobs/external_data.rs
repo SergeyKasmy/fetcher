@@ -4,8 +4,10 @@
  * file, you can obtain one at https://mozilla.org/mpl/2.0/.
  */
 
-use super::read_filter::Kind as ReadFilterKind;
-use fetcher_core::{self as fcore, read_filter::ReadFilter as CReadFilter};
+use super::{read_filter::Kind as ReadFilterKind, JobName, TaskId};
+use fetcher_core::{
+	self as fcore, read_filter::ReadFilter as CReadFilter, task::entry_to_msg_map::EntryToMsgMap,
+};
 
 use std::{
 	fmt::{Debug, Display},
@@ -27,11 +29,19 @@ pub trait ProvideExternalData {
 	fn google_oauth2(&self) -> ExternalDataResult<fcore::auth::Google>;
 	fn email_password(&self) -> ExternalDataResult<String>;
 	fn telegram_bot_token(&self) -> ExternalDataResult<String>;
+
 	fn read_filter(
 		&self,
-		name: &str,
+		job: &JobName,
+		task: Option<&TaskId>,
 		expected_rf: ReadFilterKind,
 	) -> ExternalDataResult<Self::ReadFilter>;
+
+	fn entry_to_msg_map(
+		&self,
+		job: &JobName,
+		task: Option<&TaskId>,
+	) -> ExternalDataResult<EntryToMsgMap>;
 }
 
 #[derive(Error, Debug)]

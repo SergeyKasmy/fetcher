@@ -7,9 +7,8 @@
 pub mod config;
 pub mod context;
 pub mod data;
-pub mod external_data;
+pub mod external_data_provider;
 pub mod log;
-pub mod read_filter;
 
 use color_eyre::{eyre::eyre, Result};
 use directories::ProjectDirs;

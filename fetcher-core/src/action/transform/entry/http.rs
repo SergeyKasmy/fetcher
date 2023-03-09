@@ -80,6 +80,17 @@ impl TransformEntry for Http {
 				})
 			})?,
 			Field::Link => entry.msg.link.clone(),
+			// TODO: not sure how these two are useful...
+			Field::Id => entry.id.as_ref().try_map(|id| {
+				Url::try_from(id.0.as_str()).map_err(|e| {
+					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, id.0.clone()))
+				})
+			})?,
+			Field::ReplyTo => entry.reply_to.as_ref().try_map(|id| {
+				Url::try_from(id.0.as_str()).map_err(|e| {
+					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, id.0.clone()))
+				})
+			})?,
 			Field::RawContets => entry.raw_contents.as_deref().try_map(|s| {
 				Url::try_from(s).map_err(|e| {
 					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, s.to_owned()))

@@ -22,7 +22,7 @@ use crate::{
 	},
 	entry::Entry,
 	error::InvalidUrlError,
-	sink::Media,
+	sink::message::Media,
 	utils::OptionExt,
 };
 
@@ -159,7 +159,7 @@ impl Html {
 		let img = self.imgq.as_ref().try_and_then(|q| extract_imgs(html, q))?;
 
 		Ok(TransformedEntry {
-			id: TrRes::Old(id),
+			id: TrRes::Old(id.map(Into::into)),
 			raw_contents: TrRes::Old(body.clone()),
 			msg: TransformedMessage {
 				title: TrRes::Old(title),
@@ -167,6 +167,7 @@ impl Html {
 				link: TrRes::Old(link),
 				media: TrRes::Old(img),
 			},
+			..Default::default()
 		})
 	}
 }

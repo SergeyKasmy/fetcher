@@ -19,8 +19,12 @@ pub use view_mode::ViewMode;
 use self::auth::GoogleAuthExt;
 use super::{Fetch, MarkAsRead, Source};
 use crate::{
-	auth::google::GoogleOAuth2Error as GoogleAuthError, auth::Google as GoogleAuth, entry::Entry,
-	error::Error, sink::Message, source::error::SourceError,
+	auth::google::GoogleOAuth2Error as GoogleAuthError,
+	auth::Google as GoogleAuth,
+	entry::{Entry, EntryId},
+	error::Error,
+	sink::message::Message,
+	source::error::SourceError,
 };
 
 use async_trait::async_trait;
@@ -174,7 +178,7 @@ impl Fetch for Email {
 
 #[async_trait]
 impl MarkAsRead for Email {
-	async fn mark_as_read(&mut self, id: &str) -> Result<(), Error> {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
 		self.mark_as_read_impl(id)
 			.await
 			.map_err(|e| Error::from(SourceError::from(EmailError::from(e))))
@@ -202,18 +206,18 @@ impl Email {
 			let mut tmp = "UNSEEN ".to_string();
 
 			if let Some(sender) = &self.filters.sender {
-				let _ = write!(tmp, r#"FROM "{sender}" "#);
+				_ = write!(tmp, r#"FROM "{sender}" "#);
 			}
 
 			if let Some(subjects) = &self.filters.subjects {
 				for s in subjects {
-					let _ = write!(tmp, r#"SUBJECT "{s}" "#);
+					_ = write!(tmp, r#"SUBJECT "{s}" "#);
 				}
 			}
 
 			if let Some(ex_subjects) = &self.filters.exclude_subjects {
 				for exs in ex_subjects {
-					let _ = write!(tmp, r#"NOT SUBJECT "{exs}" "#);
+					_ = write!(tmp, r#"NOT SUBJECT "{exs}" "#);
 				}
 			}
 
@@ -317,7 +321,7 @@ fn parse(mail: &ParsedMail, id: String) -> Result<Entry, EmailError> {
 	};
 
 	Ok(Entry {
-		id: Some(id),
+		id: Some(id.into()),
 		msg: Message {
 			title: subject,
 			body: Some(body),

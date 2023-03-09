@@ -11,7 +11,7 @@
 use super::{error::SourceError, Fetch};
 use crate::{
 	entry::Entry,
-	sink::{Media, Message},
+	sink::message::{Media, Message},
 };
 
 use async_trait::async_trait;
@@ -106,7 +106,8 @@ impl Twitter {
 			.iter()
 			.map(|tweet| {
 				Entry {
-					id: Some(tweet.id.to_string()),
+					id: Some(tweet.id.to_string().into()),
+					reply_to: tweet.in_reply_to_status_id.map(|i| i.to_string().into()), 
 					msg: Message {
 						body: Some(tweet.text.clone()),
 						link: Some(

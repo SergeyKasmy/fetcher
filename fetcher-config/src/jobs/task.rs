@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub mod entry_to_msg_map;
+
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -14,6 +16,7 @@ use super::{
 	read_filter,
 	sink::Sink,
 	source::Source,
+	JobName, TaskId,
 };
 use crate::Error;
 use fetcher_core::{task::Task as CTask, utils::OptionExt};
@@ -32,19 +35,27 @@ pub struct Task {
 }
 
 impl Task {
-	pub fn parse<D>(self, name: &str, external: &D) -> Result<CTask, Error>
+	pub fn parse<D>(self, job: &JobName, id: Option<usize>, external: &D) -> Result<CTask, Error>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
+		let task_id = match (self.name.clone(), id) {
+			(Some(s), _) => Some(TaskId::Name(s)),
+			(None, Some(id)) => Some(TaskId::Id(id)),
+			(None, None) => None,
+		};
+
 		let rf = match self.read_filter_kind {
-			Some(expected_rf_type) => match external.read_filter(name, expected_rf_type) {
-				ExternalDataResult::Ok(rf) => Some(Arc::new(RwLock::new(rf))),
-				ExternalDataResult::Unavailable => {
-					tracing::warn!("Read filter is unavailable, skipping");
-					None
+			Some(expected_rf_type) => {
+				match external.read_filter(job, task_id.as_ref(), expected_rf_type) {
+					ExternalDataResult::Ok(rf) => Some(Arc::new(RwLock::new(rf))),
+					ExternalDataResult::Unavailable => {
+						tracing::warn!("Read filter is unavailable, skipping");
+						None
+					}
+					ExternalDataResult::Err(e) => return Err(e.into()),
 				}
-				ExternalDataResult::Err(e) => return Err(e.into()),
-			},
+			}
 			None => None,
 		};
 
@@ -54,11 +65,21 @@ impl Task {
 				.collect::<Result<_, _>>()
 		})?;
 
+		let entry_to_msg_map = match external.entry_to_msg_map(job, task_id.as_ref()) {
+			ExternalDataResult::Ok(v) => Some(v),
+			ExternalDataResult::Unavailable => {
+				tracing::warn!("Entry to message map is unavailable, skipping...");
+				None
+			}
+			ExternalDataResult::Err(e) => return Err(e.into()),
+		};
+
 		Ok(CTask {
 			name: self.name,
 			source: self.source.map(|x| x.parse(rf, external)).transpose()?,
 			actions,
 			sink: self.sink.try_map(|x| x.parse(external))?,
+			entry_to_msg_map,
 		})
 	}
 }

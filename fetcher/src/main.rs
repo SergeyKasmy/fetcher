@@ -21,6 +21,7 @@ use crate::{
 	args::{Args, Setting},
 	error_chain::ErrorChainExt,
 };
+use fetcher_config::jobs::JobName;
 use fetcher_core::{
 	error::Error,
 	job::{timepoint::TimePoint, Job},
@@ -46,8 +47,8 @@ use tokio::{
 	task::JoinHandle,
 	time::sleep,
 };
+use tracing::Instrument;
 
-type JobName = String;
 type Jobs = HashMap<JobName, Job>;
 
 fn main() -> Result<()> {
@@ -128,7 +129,7 @@ async fn async_main() -> Result<()> {
 		args::TopLvlSubcommand::Run(run_args) => run_command(run_args, cx).await,
 		args::TopLvlSubcommand::RunManual(args::RunManual { job }) => {
 			run_jobs(
-				iter::once(("Manual".to_owned(), job.0)),
+				iter::once(("Manual".to_owned().into(), job.0)),
 				ErrorHandling::Forward,
 				cx,
 			)
@@ -182,7 +183,7 @@ async fn async_main() -> Result<()> {
 				Some(job_run_filter)
 			};
 
-			let _ = get_jobs(job_run_filter, cx)?;
+			_ = get_jobs(job_run_filter, cx)?;
 			tracing::info!("Everything verified to be working properly, exiting...");
 
 			Ok(())
@@ -235,6 +236,11 @@ async fn run_command(
 				if let Some(sink) = &mut task.sink {
 					*sink = Box::new(Stdout);
 				}
+
+				// don't save entry to msg map to the fs
+				if let Some(entry_to_msg_map) = &mut task.entry_to_msg_map {
+					entry_to_msg_map.external_save = None;
+				}
 			}
 		}
 	}
@@ -276,7 +282,7 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 				all_jobs
 					.keys()
 					.collect::<Vec<_>>()
-					.tap_mut(|x| x.sort_unstable())
+					.tap_mut(|x| x.sort_unstable_by(|a, b| a.0.cmp(&b.0)))
 			);
 
 			return Ok(None);
@@ -287,7 +293,7 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 			jobs.len(),
 			jobs.keys()
 				.collect::<Vec<_>>()
-				.tap_mut(|x| x.sort_unstable())
+				.tap_mut(|x| x.sort_unstable_by(|a, b| a.0.cmp(&b.0)))
 		);
 	} else {
 		if jobs.is_empty() {
@@ -300,7 +306,7 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 			jobs.len(),
 			jobs.keys()
 				.collect::<Vec<_>>()
-				.tap_mut(|x| x.sort_unstable())
+				.tap_mut(|x| x.sort_unstable_by(|a, b| a.0.cmp(&b.0)))
 		);
 	}
 
@@ -340,7 +346,11 @@ async fn run_jobs(
 
 				async move {
 					loop {
-						let job_result = job.run().await;
+						let job_result = job
+							.run()
+							.instrument(tracing::info_span!("job", name = %name))
+							.await;
+
 						match handle_errors(job_result, &mut error_handling, (&name, &job), cx)
 							.await
 						{
@@ -553,7 +563,7 @@ fn fold_task_errors(task_errors: &[Error]) -> Report {
 					.iter()
 					.enumerate()
 					.fold(String::new(), |mut err_str, (i, err)| {
-						let _ = write!(err_str, "\n{}: {}", i + 1, err.display_chain());
+						_ = write!(err_str, "\n{}: {}", i + 1, err.display_chain());
 						err_str
 					});
 
@@ -567,7 +577,7 @@ fn fold_task_errors(task_errors: &[Error]) -> Report {
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
 async fn report_error(job_name: &str, err: &str, context: Context) -> Result<()> {
-	use fetcher_core::sink::{telegram::LinkLocation, Message, Telegram};
+	use fetcher_core::sink::{message::Message, telegram::LinkLocation, Telegram};
 
 	let admin_chat_id = std::env::var("FETCHER_TELEGRAM_ADMIN_CHAT_ID")
 		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID")?
@@ -583,7 +593,7 @@ async fn report_error(job_name: &str, err: &str, context: Context) -> Result<()>
 		..Default::default()
 	};
 	Telegram::new(bot, admin_chat_id, LinkLocation::default())
-		.send(msg, Some(job_name))
+		.send(msg, None, Some(job_name))
 		.await
 		.map_err(fetcher_core::error::Error::Sink)?;
 

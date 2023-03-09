@@ -30,7 +30,7 @@ impl TransformEntry for DebugPrint {
 		// append id and raw_contents entry fields to the body to help in debugging
 		msg.body = {
 			let mut body = msg.body.unwrap_or_else(|| "None".to_owned());
-			let _ = write!(
+			_ = write!(
 				body,
 				"\n\nid: {:?}\n\nraw_contents: {:?}",
 				entry.id, entry.raw_contents
@@ -39,7 +39,7 @@ impl TransformEntry for DebugPrint {
 		};
 
 		Stdout
-			.send(msg, Some("debug print"))
+			.send(msg, None, Some("debug print"))
 			.await
 			.expect("stdout is unavailable");
 

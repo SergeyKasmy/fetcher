@@ -8,7 +8,7 @@
 //!
 //! This module contains the [`Http`] struct, that is a source as well as a transform
 
-use crate::{entry::Entry, sink::Message, source::error::SourceError};
+use crate::{entry::Entry, sink::message::Message, source::error::SourceError};
 
 use async_trait::async_trait;
 use once_cell::sync::OnceCell;
