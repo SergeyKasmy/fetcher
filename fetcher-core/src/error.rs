@@ -28,8 +28,8 @@ pub enum Error {
 	#[error("Google authentication error")]
 	GoogleOAuth2(#[from] GoogleOAuth2Error),
 
-	#[error("Error writing to the external read filter")]
-	ReadFilterExternalWrite(#[source] io::Error),
+	#[error("Error writing to the external save location")]
+	ExternalSave(#[source] io::Error),
 }
 
 #[allow(missing_docs)] // error message is self-documenting

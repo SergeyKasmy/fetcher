@@ -4,7 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+// TODO: move super::read_filter to self::external_save
 pub mod email_password;
+pub mod entry_to_msg_map;
 pub mod google_oauth2;
 pub mod telegram;
 pub mod twitter;
@@ -12,7 +14,6 @@ pub mod twitter;
 use super::proj_dirs;
 
 use color_eyre::Result;
-
 use std::{
 	io::{self, Write},
 	path::PathBuf,

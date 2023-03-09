@@ -236,6 +236,11 @@ async fn run_command(
 				if let Some(sink) = &mut task.sink {
 					*sink = Box::new(Stdout);
 				}
+
+				// don't save entry to msg map to the fs
+				if let Some(entry_to_msg_map) = &mut task.entry_to_msg_map {
+					entry_to_msg_map.external_save = None;
+				}
 			}
 		}
 	}

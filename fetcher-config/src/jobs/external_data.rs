@@ -5,7 +5,9 @@
  */
 
 use super::read_filter::Kind as ReadFilterKind;
-use fetcher_core::{self as fcore, read_filter::ReadFilter as CReadFilter};
+use fetcher_core::{
+	self as fcore, read_filter::ReadFilter as CReadFilter, task::entry_to_msg_map::EntryToMsgMap,
+};
 
 use std::{
 	fmt::{Debug, Display},
@@ -27,11 +29,15 @@ pub trait ProvideExternalData {
 	fn google_oauth2(&self) -> ExternalDataResult<fcore::auth::Google>;
 	fn email_password(&self) -> ExternalDataResult<String>;
 	fn telegram_bot_token(&self) -> ExternalDataResult<String>;
+
+	// FIXME: add job and task name
 	fn read_filter(
 		&self,
 		name: &str,
 		expected_rf: ReadFilterKind,
 	) -> ExternalDataResult<Self::ReadFilter>;
+
+	fn entry_to_msg_map(&self, name: &str) -> ExternalDataResult<EntryToMsgMap>;
 }
 
 #[derive(Error, Debug)]

@@ -156,6 +156,13 @@ impl FromStr for JsonJob {
 			) -> ExternalDataResult<Self::ReadFilter> {
 				ExternalDataResult::Unavailable
 			}
+
+			fn entry_to_msg_map(
+				&self,
+				_name: &str,
+			) -> ExternalDataResult<fetcher_core::task::entry_to_msg_map::EntryToMsgMap> {
+				ExternalDataResult::Unavailable
+			}
 		}
 
 		let config_job: fetcher_config::jobs::Job = serde_json::from_str(s)?;

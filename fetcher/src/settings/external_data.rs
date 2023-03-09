@@ -9,7 +9,7 @@ use fetcher_config::jobs::{
 	external_data::{ExternalDataResult, ProvideExternalData},
 	read_filter::Kind as ReadFilterKind,
 };
-use fetcher_core::read_filter::ReadFilter;
+use fetcher_core::{auth, read_filter::ReadFilter, task::entry_to_msg_map::EntryToMsgMap};
 
 pub struct ExternalDataFromDataDir {
 	pub cx: StaticContext,
@@ -22,7 +22,7 @@ impl ProvideExternalData for ExternalDataFromDataDir {
 		data::twitter::get(self.cx).into()
 	}
 
-	fn google_oauth2(&self) -> ExternalDataResult<fetcher_core::auth::Google> {
+	fn google_oauth2(&self) -> ExternalDataResult<auth::Google> {
 		data::google_oauth2::get(self.cx).into()
 	}
 
@@ -40,5 +40,9 @@ impl ProvideExternalData for ExternalDataFromDataDir {
 		expected_rf: ReadFilterKind,
 	) -> ExternalDataResult<Self::ReadFilter> {
 		read_filter::get(name, expected_rf, self.cx).into()
+	}
+
+	fn entry_to_msg_map(&self, name: &str) -> ExternalDataResult<EntryToMsgMap> {
+		data::entry_to_msg_map::get(name, self.cx).into()
 	}
 }

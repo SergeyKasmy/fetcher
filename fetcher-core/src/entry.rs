@@ -61,6 +61,7 @@ impl Debug for Entry {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Entry")
 			.field("id", &self.id)
+			.field("reply_to", &self.reply_to)
 			.field("raw_contents.is_some()", &self.raw_contents.is_some())
 			.field("msg", &self.msg)
 			.finish()

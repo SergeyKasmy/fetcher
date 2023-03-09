@@ -9,11 +9,10 @@ use serde::{Deserialize, Serialize};
 
 use fetcher_core::{
 	entry::EntryId as CEntryId,
+	external_save::ExternalSave as CExternalSave,
 	read_filter::{
-		external_save::{
-			ExternalSave as CExternalSave, ExternalSaveRFWrapper as CExternalSaveRFWrapper,
-		},
-		Newer as CNewer, NotPresent as CNotPresent, ReadFilter as CReadFilter,
+		ExternalSaveRFWrapper as CExternalSaveRFWrapper, Newer as CNewer,
+		NotPresent as CNotPresent, ReadFilter as CReadFilter,
 	},
 };
 

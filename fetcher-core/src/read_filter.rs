@@ -8,12 +8,13 @@
 //! including all of its stragedies
 
 pub mod external_implementations;
-pub mod external_save;
+mod external_save_wrapper;
 mod newer;
 mod not_present;
 
-pub use newer::Newer;
-pub use not_present::NotPresent;
+pub use self::{
+	external_save_wrapper::ExternalSaveRFWrapper, newer::Newer, not_present::NotPresent,
+};
 
 use crate::{action::filter::Filter, entry::EntryId, error::Error};
 

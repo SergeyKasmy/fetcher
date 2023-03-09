@@ -26,6 +26,7 @@ pub fn get(
 ) -> Result<Box<dyn ReadFilter>, ExternalDataError> {
 	let path = context.data_path.join(READ_DATA_DIR).join(name);
 
+	// FIXME: doesn't create an external save file if the files don't exist already
 	match fs::read_to_string(&path) {
 		Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
 			tracing::debug!("Read filter save file is empty");

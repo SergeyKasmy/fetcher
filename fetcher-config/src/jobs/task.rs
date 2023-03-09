@@ -4,8 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub mod entry_to_msg_map;
+
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use super::{
@@ -54,13 +56,21 @@ impl Task {
 				.collect::<Result<_, _>>()
 		})?;
 
+		let entry_to_msg_map = match external.entry_to_msg_map(name) {
+			ExternalDataResult::Ok(v) => Some(v),
+			ExternalDataResult::Unavailable => {
+				tracing::warn!("Entry to message map is unavailable, skipping...");
+				None
+			}
+			ExternalDataResult::Err(e) => return Err(e.into()),
+		};
+
 		Ok(CTask {
 			name: self.name,
 			source: self.source.map(|x| x.parse(rf, external)).transpose()?,
 			actions,
 			sink: self.sink.try_map(|x| x.parse(external))?,
-			// FIXME
-			entry_to_msg_map: HashMap::new(),
+			entry_to_msg_map,
 		})
 	}
 }

@@ -6,6 +6,10 @@
 
 //! This module contains the [`Telegram`] sink
 
+// FIXME: will crash when a reply_to id is no longer valid with error
+// Unknown error: "Bad Request: replied message not found"
+// I should probably report that error to teloxide... Tomorrow... Yeah.....
+
 use crate::sink::{
 	error::SinkError,
 	message::{Media, Message, MessageId},
@@ -255,7 +259,7 @@ impl Telegram {
 	async fn send_text_with_reply_id(
 		&self,
 		message: &str,
-		reply_to_msg_id: Option<TelMessageId>,
+		reply_to_msg: Option<TelMessageId>,
 	) -> Result<TelMessage, SinkError> {
 		tracing::trace!("About to send a text message with contents: {message:?}");
 		loop {
@@ -267,7 +271,7 @@ impl Telegram {
 				.parse_mode(ParseMode::Html)
 				.disable_web_page_preview(true);
 
-			let send_msg_cmd = if let Some(id) = reply_to_msg_id {
+			let send_msg_cmd = if let Some(id) = reply_to_msg {
 				send_msg_cmd.reply_to_message_id(id)
 			} else {
 				send_msg_cmd
@@ -300,7 +304,7 @@ impl Telegram {
 		&self,
 		media: &[Media],
 		mut caption: Option<&str>,
-		reply_to_msg_id: Option<TelMessageId>,
+		reply_to_msg: Option<TelMessageId>,
 	) -> Result<Option<Vec<TelMessage>>, SinkError> {
 		assert!(
 			media.len() <= 10,
@@ -347,7 +351,7 @@ impl Telegram {
 
 			let msg_cmd = self.bot.send_media_group(self.chat_id, media.clone());
 
-			let msg_cmd = if let Some(id) = reply_to_msg_id {
+			let msg_cmd = if let Some(id) = reply_to_msg {
 				msg_cmd.reply_to_message_id(id)
 			} else {
 				msg_cmd
@@ -368,9 +372,7 @@ impl Telegram {
 						if let Some(caption) = caption {
 							tracing::info!("Sending the message as pure text...");
 
-							let msg = self
-								.send_text_with_reply_id(caption, reply_to_msg_id)
-								.await?;
+							let msg = self.send_text_with_reply_id(caption, reply_to_msg).await?;
 
 							return Ok(Some(vec![msg]));
 						} else {
@@ -392,9 +394,7 @@ impl Telegram {
 					// TODO: reupload the image manually if this happens
 					if let Some(caption) = caption {
 						tracing::warn!("Telegram disliked the media URL (\"Wrong file identifier/HTTP URL specified\"), sending the message as pure text");
-						let msg = self
-							.send_text_with_reply_id(caption, reply_to_msg_id)
-							.await?;
+						let msg = self.send_text_with_reply_id(caption, reply_to_msg).await?;
 
 						return Ok(Some(vec![msg]));
 					} else {
@@ -410,9 +410,7 @@ impl Telegram {
 					// TODO: reupload the image manually if this happens
 					if let Some(caption) = caption {
 						tracing::warn!("Telegram disliked the media URL (\"Wrong type of the web page content\"), sending the message as pure text");
-						let msg = self
-							.send_text_with_reply_id(caption, reply_to_msg_id)
-							.await?;
+						let msg = self.send_text_with_reply_id(caption, reply_to_msg).await?;
 
 						return Ok(Some(vec![msg]));
 					} else {

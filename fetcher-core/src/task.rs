@@ -6,13 +6,16 @@
 
 //! This module contains the basic block of [`fetcher`](`crate`) that is a [`Task`]
 
-use std::collections::{HashMap, HashSet};
+pub mod entry_to_msg_map;
 
+use std::collections::HashSet;
+
+use self::entry_to_msg_map::EntryToMsgMap;
 use crate::{
 	action::{transform::error::TransformError, Action},
-	entry::{Entry, EntryId},
+	entry::Entry,
 	error::Error,
-	sink::{message::MessageId, Sink},
+	sink::Sink,
 	source::Source,
 };
 
@@ -34,7 +37,7 @@ pub struct Task {
 	pub sink: Option<Box<dyn Sink>>,
 
 	/// Map of an entry to a message. Used when an entry is a reply to an older entry to be able to show that as a message, too
-	pub entry_to_msg_map: HashMap<EntryId, MessageId>,
+	pub entry_to_msg_map: Option<EntryToMsgMap>,
 }
 
 impl Task {
@@ -82,10 +85,8 @@ impl Task {
 					tracing::debug!("Sending {msg:?} to a sink with tag {tag:?}");
 					sink.send(
 						msg,
-						entry
-							.id
-							.as_ref()
-							.and_then(|id| self.entry_to_msg_map.get(id)),
+						dbg!(self.entry_to_msg_map.as_mut())
+							.and_then(|map| map.get_if_exists(entry.id.as_ref())),
 						self.name.as_deref(),
 					)
 					.await?
@@ -99,9 +100,9 @@ impl Task {
 					source.mark_as_read(&entry_id).await?;
 				}
 
-				if let Some(msgid) = msgid {
+				if let Some((msgid, map)) = msgid.zip(self.entry_to_msg_map.as_mut()) {
 					tracing::debug!("Associating entry {entry_id:?} with message {msgid:?}");
-					self.entry_to_msg_map.insert(entry_id, msgid);
+					map.insert(entry_id, msgid).await?;
 				}
 			}
 		}
