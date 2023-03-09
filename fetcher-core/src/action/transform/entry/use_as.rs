@@ -39,6 +39,7 @@ impl TransformEntry for Use {
 			Field::Title => ent.msg.title.clone(),
 			Field::Body => ent.msg.body.clone(),
 			Field::Link => ent.msg.link.as_ref().map(ToString::to_string),
+			Field::Id => ent.id.as_ref().map(|id| id.0.clone()),
 			Field::RawContets => ent.raw_contents.clone(),
 		};
 
@@ -53,7 +54,7 @@ impl TransformEntry for Use {
 					})
 				})?);
 			}
-
+			Field::Id => ent.id = TrRes::New(val.map(Into::into)),
 			Field::RawContets => ent.raw_contents = TrRes::New(val),
 		}
 

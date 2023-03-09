@@ -62,6 +62,7 @@ pub enum Field {
 	Title,
 	Body,
 	Link,
+	Id,
 	RawContents,
 }
 
@@ -125,6 +126,7 @@ impl Field {
 			Field::Title => CField::Title,
 			Field::Body => CField::Body,
 			Field::Link => CField::Link,
+			Field::Id => CField::Id,
 			Field::RawContents => CField::RawContets,
 		}
 	}
