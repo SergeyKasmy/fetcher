@@ -4,6 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub mod entry_to_msg_map;
+pub mod read_filter;
+
 use fetcher_core::{
 	entry::EntryId, external_save::ExternalSave, read_filter::ReadFilter, sink::message::MessageId,
 };

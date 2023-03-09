@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::{context::StaticContext, data, read_filter};
+use super::{context::StaticContext, data};
 use fetcher_config::jobs::{
 	external_data::{ExternalDataResult, ProvideExternalData},
 	read_filter::Kind as ReadFilterKind,
@@ -39,10 +39,10 @@ impl ProvideExternalData for ExternalDataFromDataDir {
 		name: &str,
 		expected_rf: ReadFilterKind,
 	) -> ExternalDataResult<Self::ReadFilter> {
-		read_filter::get(name, expected_rf, self.cx).into()
+		data::runtime_external_save::read_filter::get(name, expected_rf, self.cx).into()
 	}
 
 	fn entry_to_msg_map(&self, name: &str) -> ExternalDataResult<EntryToMsgMap> {
-		data::entry_to_msg_map::get(name, self.cx).into()
+		data::runtime_external_save::entry_to_msg_map::get(name, self.cx).into()
 	}
 }

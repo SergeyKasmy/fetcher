@@ -4,10 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// TODO: move super::read_filter to self::external_save
 pub mod email_password;
-pub mod entry_to_msg_map;
 pub mod google_oauth2;
+pub mod runtime_external_save;
 pub mod telegram;
 pub mod twitter;
 

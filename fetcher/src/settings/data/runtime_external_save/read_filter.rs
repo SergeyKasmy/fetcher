@@ -4,9 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub mod external_save;
-
-use self::external_save::TruncatingFileWriter;
+use super::TruncatingFileWriter;
 use crate::settings::context::StaticContext as Context;
 use fetcher_config::jobs::{
 	external_data::ExternalDataError,
@@ -26,7 +24,6 @@ pub fn get(
 ) -> Result<Box<dyn ReadFilter>, ExternalDataError> {
 	let path = context.data_path.join(READ_DATA_DIR).join(name);
 
-	// FIXME: doesn't create an external save file if the files don't exist already
 	match fs::read_to_string(&path) {
 		Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
 			tracing::debug!("Read filter save file is empty");

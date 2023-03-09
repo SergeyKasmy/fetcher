@@ -11,7 +11,9 @@ pub mod filter;
 use self::filter::JobFilter;
 use super::CONFIG_FILE_EXT;
 use crate::{
-	settings::{self, context::StaticContext as Context, external_data::ExternalDataFromDataDir},
+	settings::{
+		self, context::StaticContext as Context, external_data_provider::ExternalDataFromDataDir,
+	},
 	Jobs,
 };
 use fetcher_config::jobs::Job as ConfigJob;

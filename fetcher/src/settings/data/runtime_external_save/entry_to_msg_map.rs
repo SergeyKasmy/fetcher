@@ -6,7 +6,8 @@
 
 use std::fs;
 
-use crate::settings::{context::StaticContext, read_filter::external_save::TruncatingFileWriter};
+use super::TruncatingFileWriter;
+use crate::settings::context::StaticContext;
 use fetcher_config::jobs::{
 	external_data::ExternalDataError, task::entry_to_msg_map::EntryToMsgMap as EntryToMsgMapConf,
 };
