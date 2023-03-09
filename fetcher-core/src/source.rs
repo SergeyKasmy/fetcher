@@ -23,7 +23,7 @@ use self::error::SourceError;
 use crate::{
 	entry::{Entry, EntryId},
 	error::Error,
-	read_filter::ReadFilter,
+	read_filter::{MarkAsRead, ReadFilter},
 };
 
 use async_trait::async_trait;
@@ -39,17 +39,6 @@ pub trait Fetch: Debug + Send + Sync {
 	// and maybe also a trait method get_vec() that automatically creates a new vec, fetches into it, and returns it
 	/// Fetch all available entries from the source
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError>;
-}
-
-// TODO: move that to read_filter
-/// A trait that defines a way to mark an entry as read
-#[async_trait]
-pub trait MarkAsRead: Debug + Send + Sync {
-	/// Mark the entry with `id` as read
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error>;
-
-	/// Set the current "mark as read"er to read only mode
-	async fn set_read_only(&mut self);
 }
 
 /// A wrapper around a [`Fetch`] that uses an external way to filter read entries,

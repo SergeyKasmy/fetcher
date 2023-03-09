@@ -11,17 +11,15 @@ use async_trait::async_trait;
 use std::{any::Any, sync::Arc};
 use tokio::sync::RwLock;
 
-use super::ReadFilter;
+use super::{MarkAsRead, ReadFilter};
 use crate::{
 	action::filter::Filter,
 	entry::{Entry, EntryId},
 	error::Error,
-	source::MarkAsRead,
 };
 
 /// [`ReadFilter`] implementation for `Arc<tokio::RwLock<dyn Readfilter>>`
 pub mod tokio_rwlock {
-
 	#[allow(clippy::wildcard_imports)]
 	use super::*;
 

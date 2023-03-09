@@ -10,12 +10,11 @@
 use async_trait::async_trait;
 use std::{any::Any, fmt::Debug};
 
-use super::ReadFilter;
+use super::{MarkAsRead, ReadFilter};
 use crate::{
 	action::filter::Filter,
 	entry::{Entry, EntryId},
 	error::Error,
-	source::MarkAsRead,
 };
 
 /// This trait represent some kind of external save destination.

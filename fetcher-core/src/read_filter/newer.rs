@@ -7,12 +7,11 @@
 use async_trait::async_trait;
 use std::any::Any;
 
-use super::ReadFilter;
+use super::{MarkAsRead, ReadFilter};
 use crate::{
 	action::filter::Filter,
 	entry::{Entry, EntryId},
 	error::Error,
-	source::MarkAsRead,
 };
 
 /// Read Filter that stores the id of the last read entry

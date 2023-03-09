@@ -4,12 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::ReadFilter;
+use super::{MarkAsRead, ReadFilter};
 use crate::{
 	action::filter::Filter,
 	entry::{Entry, EntryId},
 	error::Error,
-	source::MarkAsRead,
 };
 
 use async_trait::async_trait;
