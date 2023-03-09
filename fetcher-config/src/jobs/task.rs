@@ -16,7 +16,7 @@ use super::{
 	read_filter,
 	sink::Sink,
 	source::Source,
-	JobName, TaskName,
+	JobName, Tag, TaskName,
 };
 use crate::Error;
 use fetcher_core::{task::Task as CTask, utils::OptionExt};
@@ -26,7 +26,7 @@ use fetcher_core::{task::Task as CTask, utils::OptionExt};
 pub struct Task {
 	#[serde(rename = "read_filter_type")]
 	pub read_filter_kind: Option<read_filter::Kind>,
-	pub tag: Option<String>,
+	pub tag: Option<Tag>,
 	pub source: Option<Source>,
 	#[serde(rename = "process")]
 	pub actions: Option<Vec<Action>>,
@@ -73,8 +73,17 @@ impl Task {
 			ExternalDataResult::Err(e) => return Err(e.into()),
 		};
 
+		let tag = self.tag.and_then(|tag| match (tag, task_name) {
+			(Tag::String(s), _) => Some(s),
+			(Tag::UseTaskName, Some(name)) => Some(name.0.clone()),
+			(Tag::UseTaskName, None) => {
+				tracing::error!("Can't use a task's name as its tag when it has no name");
+				None
+			}
+		});
+
 		Ok(CTask {
-			tag: self.tag,
+			tag,
 			source: self.source.map(|x| x.parse(rf, external)).transpose()?,
 			actions,
 			sink: self.sink.try_map(|x| x.parse(external))?,

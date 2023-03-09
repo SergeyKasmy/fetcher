@@ -18,6 +18,13 @@ use core::fmt;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, ops::Deref};
 
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum Tag {
+	String(String),
+	UseTaskName,
+}
+
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct JobName(pub String);
 
