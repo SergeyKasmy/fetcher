@@ -5,6 +5,7 @@
  */
 
 use crate::error_chain::ErrorChainExt;
+use fetcher_config::jobs::{JobName, TaskId};
 use fetcher_core::job::Job;
 
 use argh::FromArgs;
@@ -151,7 +152,8 @@ impl FromStr for JsonJob {
 
 			fn read_filter(
 				&self,
-				_name: &str,
+				_job: &JobName,
+				_task: Option<&TaskId>,
 				_expected_rf: fetcher_config::jobs::read_filter::Kind,
 			) -> ExternalDataResult<Self::ReadFilter> {
 				ExternalDataResult::Unavailable
@@ -159,7 +161,8 @@ impl FromStr for JsonJob {
 
 			fn entry_to_msg_map(
 				&self,
-				_name: &str,
+				_job: &JobName,
+				_task: Option<&TaskId>,
 			) -> ExternalDataResult<fetcher_core::task::entry_to_msg_map::EntryToMsgMap> {
 				ExternalDataResult::Unavailable
 			}
@@ -167,7 +170,7 @@ impl FromStr for JsonJob {
 
 		let config_job: fetcher_config::jobs::Job = serde_json::from_str(s)?;
 		let job = config_job
-			.parse("Manual", &EmptyExternalData)
+			.parse(&"Manual".to_owned().into(), &EmptyExternalData)
 			.map_err(|e| eyre!(e.display_chain()))?;
 		Ok(Self(job))
 	}

@@ -85,7 +85,8 @@ impl Task {
 					tracing::debug!("Sending {msg:?} to a sink with tag {tag:?}");
 					sink.send(
 						msg,
-						dbg!(self.entry_to_msg_map.as_mut())
+						self.entry_to_msg_map
+							.as_mut()
 							.and_then(|map| map.get_if_exists(entry.id.as_ref())),
 						self.name.as_deref(),
 					)

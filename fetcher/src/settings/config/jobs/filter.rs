@@ -5,6 +5,7 @@
  */
 
 use color_eyre::{eyre::eyre, Report};
+use fetcher_config::jobs::TaskId;
 use std::str::FromStr;
 
 #[derive(Debug)]
@@ -16,8 +17,7 @@ pub struct JobFilter {
 #[derive(Debug)]
 pub enum TaskFilter {
 	All,
-	Name(String),
-	Id(usize),
+	Id(TaskId),
 }
 
 impl JobFilter {
@@ -30,7 +30,7 @@ impl JobFilter {
 	pub fn task_matches_name(&self, job_name: &str, task_name: &str) -> bool {
 		self.job == job_name
 			&& self.task.as_ref().map_or(true, |task| {
-				if let TaskFilter::Name(task) = task {
+				if let TaskFilter::Id(TaskId::Name(task)) = task {
 					task == task_name
 				} else {
 					false
@@ -42,7 +42,7 @@ impl JobFilter {
 	pub fn task_matches_id(&self, job_name: &str, task_id: usize) -> bool {
 		self.job == job_name
 			&& self.task.as_ref().map_or(true, |task| {
-				if let TaskFilter::Id(i) = task {
+				if let TaskFilter::Id(TaskId::Id(i)) = task {
 					*i == task_id
 				} else {
 					false
@@ -72,12 +72,14 @@ impl FromStr for JobFilter {
 					.expect("should always exist since split count is 2, i.e. before and after")
 					.to_owned();
 
+				let task_id = match task.parse() {
+					Ok(i) => TaskId::Id(i),
+					Err(_) => TaskId::Name(task),
+				};
+
 				Ok(Self {
 					job,
-					task: Some(match task.parse() {
-						Ok(i) => TaskFilter::Id(i),
-						Err(_) => TaskFilter::Name(task),
-					}),
+					task: Some(TaskFilter::Id(task_id)),
 				})
 			}
 			_ => Err(eyre!(

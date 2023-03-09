@@ -4,7 +4,7 @@
  * file, you can obtain one at https://mozilla.org/mpl/2.0/.
  */
 
-use super::read_filter::Kind as ReadFilterKind;
+use super::{read_filter::Kind as ReadFilterKind, JobName, TaskId};
 use fetcher_core::{
 	self as fcore, read_filter::ReadFilter as CReadFilter, task::entry_to_msg_map::EntryToMsgMap,
 };
@@ -30,14 +30,18 @@ pub trait ProvideExternalData {
 	fn email_password(&self) -> ExternalDataResult<String>;
 	fn telegram_bot_token(&self) -> ExternalDataResult<String>;
 
-	// FIXME: add job and task name
 	fn read_filter(
 		&self,
-		name: &str,
+		job: &JobName,
+		task: Option<&TaskId>,
 		expected_rf: ReadFilterKind,
 	) -> ExternalDataResult<Self::ReadFilter>;
 
-	fn entry_to_msg_map(&self, name: &str) -> ExternalDataResult<EntryToMsgMap>;
+	fn entry_to_msg_map(
+		&self,
+		job: &JobName,
+		task: Option<&TaskId>,
+	) -> ExternalDataResult<EntryToMsgMap>;
 }
 
 #[derive(Error, Debug)]

@@ -16,7 +16,7 @@ use crate::{
 	},
 	Jobs,
 };
-use fetcher_config::jobs::Job as ConfigJob;
+use fetcher_config::jobs::{Job as ConfigJob, JobName};
 use fetcher_core::job::Job;
 
 use color_eyre::{eyre::eyre, Result};
@@ -52,7 +52,7 @@ pub fn get_all_from<'a>(
 	cfg_dir: &'a Path,
 	filter: Option<&'a [JobFilter]>,
 	cx: Context,
-) -> impl Iterator<Item = Result<(String, Job)>> + 'a {
+) -> impl Iterator<Item = Result<(JobName, Job)>> + 'a {
 	let jobs_dir = cfg_dir.join(JOBS_DIR_NAME);
 	tracing::debug!("Searching for job configs in {jobs_dir:?}");
 
@@ -80,13 +80,14 @@ pub fn get_all_from<'a>(
 				}
 			};
 
-			let job_name = file
+			let job_name: JobName = file
 				.path()
 				.strip_prefix(&jobs_dir)
 				.expect("prefix should always be present because we just appended it")
 				.with_extension("")
 				.to_string_lossy()
-				.into_owned();
+				.into_owned()
+				.into();
 
 			// filter out all jobs that don't match the job filter
 			if let Some(filter) = filter {
@@ -133,7 +134,7 @@ pub fn get_all_from<'a>(
 }
 
 #[tracing::instrument(skip(cx))]
-pub fn get(path: &Path, name: &str, cx: Context) -> Result<Option<Job>> {
+pub fn get(path: &Path, name: &JobName, cx: Context) -> Result<Option<Job>> {
 	tracing::trace!("Parsing a task from file");
 
 	let TemplatesField { templates } = Figment::new().merge(Yaml::file(path)).extract()?;

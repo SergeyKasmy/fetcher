@@ -8,6 +8,7 @@ use super::{context::StaticContext, data};
 use fetcher_config::jobs::{
 	external_data::{ExternalDataResult, ProvideExternalData},
 	read_filter::Kind as ReadFilterKind,
+	JobName, TaskId,
 };
 use fetcher_core::{auth, read_filter::ReadFilter, task::entry_to_msg_map::EntryToMsgMap};
 
@@ -36,13 +37,18 @@ impl ProvideExternalData for ExternalDataFromDataDir {
 
 	fn read_filter(
 		&self,
-		name: &str,
+		job: &JobName,
+		task: Option<&TaskId>,
 		expected_rf: ReadFilterKind,
 	) -> ExternalDataResult<Self::ReadFilter> {
-		data::runtime_external_save::read_filter::get(name, expected_rf, self.cx).into()
+		data::runtime_external_save::read_filter::get(job, task, expected_rf, self.cx).into()
 	}
 
-	fn entry_to_msg_map(&self, name: &str) -> ExternalDataResult<EntryToMsgMap> {
-		data::runtime_external_save::entry_to_msg_map::get(name, self.cx).into()
+	fn entry_to_msg_map(
+		&self,
+		job: &JobName,
+		task: Option<&TaskId>,
+	) -> ExternalDataResult<EntryToMsgMap> {
+		data::runtime_external_save::entry_to_msg_map::get(job, task, self.cx).into()
 	}
 }

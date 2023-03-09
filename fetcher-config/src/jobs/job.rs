@@ -9,7 +9,7 @@ pub mod timepoint;
 use self::timepoint::TimePoint;
 use super::{
 	action::Action, external_data::ProvideExternalData, read_filter, sink::Sink, source::Source,
-	task::Task,
+	task::Task, JobName,
 };
 use crate::Error;
 use fetcher_core::{job::Job as CJob, utils::OptionExt};
@@ -38,7 +38,7 @@ pub struct Job {
 }
 
 impl Job {
-	pub fn parse<D>(self, name: &str, external: &D) -> Result<CJob, Error>
+	pub fn parse<D>(self, job: &JobName, external: &D) -> Result<CJob, Error>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
@@ -68,7 +68,8 @@ impl Job {
 				Ok(CJob {
 					tasks: tasks
 						.into_iter()
-						.map(|x| x.parse(name, external))
+						.enumerate()
+						.map(|(id, x)| x.parse(job, Some(id), external))
 						.collect::<Result<Vec<_>, _>>()?,
 					refresh_time: self.refresh.try_map(TimePoint::parse)?,
 				})
@@ -85,7 +86,7 @@ impl Job {
 				};
 
 				Ok(CJob {
-					tasks: vec![task.parse(name, external)?],
+					tasks: vec![task.parse(job, None, external)?],
 					refresh_time: self.refresh.try_map(TimePoint::parse)?,
 				})
 			}

@@ -21,6 +21,7 @@ use crate::{
 	args::{Args, Setting},
 	error_chain::ErrorChainExt,
 };
+use fetcher_config::jobs::JobName;
 use fetcher_core::{
 	error::Error,
 	job::{timepoint::TimePoint, Job},
@@ -48,7 +49,6 @@ use tokio::{
 };
 use tracing::Instrument;
 
-type JobName = String;
 type Jobs = HashMap<JobName, Job>;
 
 fn main() -> Result<()> {
@@ -129,7 +129,7 @@ async fn async_main() -> Result<()> {
 		args::TopLvlSubcommand::Run(run_args) => run_command(run_args, cx).await,
 		args::TopLvlSubcommand::RunManual(args::RunManual { job }) => {
 			run_jobs(
-				iter::once(("Manual".to_owned(), job.0)),
+				iter::once(("Manual".to_owned().into(), job.0)),
 				ErrorHandling::Forward,
 				cx,
 			)
@@ -282,7 +282,7 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 				all_jobs
 					.keys()
 					.collect::<Vec<_>>()
-					.tap_mut(|x| x.sort_unstable())
+					.tap_mut(|x| x.sort_unstable_by(|a, b| a.0.cmp(&b.0)))
 			);
 
 			return Ok(None);
@@ -293,7 +293,7 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 			jobs.len(),
 			jobs.keys()
 				.collect::<Vec<_>>()
-				.tap_mut(|x| x.sort_unstable())
+				.tap_mut(|x| x.sort_unstable_by(|a, b| a.0.cmp(&b.0)))
 		);
 	} else {
 		if jobs.is_empty() {
@@ -306,7 +306,7 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 			jobs.len(),
 			jobs.keys()
 				.collect::<Vec<_>>()
-				.tap_mut(|x| x.sort_unstable())
+				.tap_mut(|x| x.sort_unstable_by(|a, b| a.0.cmp(&b.0)))
 		);
 	}
 
@@ -348,7 +348,7 @@ async fn run_jobs(
 					loop {
 						let job_result = job
 							.run()
-							.instrument(tracing::info_span!("job", name = name))
+							.instrument(tracing::info_span!("job", name = %name))
 							.await;
 
 						match handle_errors(job_result, &mut error_handling, (&name, &job), cx)
