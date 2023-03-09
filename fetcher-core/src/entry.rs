@@ -12,8 +12,8 @@ use crate::sink::message::Message;
 use std::{fmt::Debug, ops::Deref};
 
 // TODO: make generic over String/i64/other types of id
-/// ID that can identify and entry to differentiate it from another one
-#[derive(PartialEq, Clone, Debug)]
+/// An ID that can identify and entry to differentiate it from another one
+#[derive(PartialEq, Eq, Clone, Hash, Debug)]
 pub struct EntryId(pub String);
 
 /// A [`fetcher`](`crate`) primitive that contains a message and an id returned from a source that can be send to a sink

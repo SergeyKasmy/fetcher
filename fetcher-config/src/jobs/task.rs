@@ -5,7 +5,7 @@
  */
 
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 
 use super::{
@@ -59,6 +59,8 @@ impl Task {
 			source: self.source.map(|x| x.parse(rf, external)).transpose()?,
 			actions,
 			sink: self.sink.try_map(|x| x.parse(external))?,
+			// FIXME
+			entry_to_msg_map: HashMap::new(),
 		})
 	}
 }

@@ -23,6 +23,7 @@ pub struct Message {
 }
 
 /// An id of a sent message
+#[derive(Clone, Copy, Debug)]
 pub struct MessageId(pub i64);
 
 /// A link to some kind of external media

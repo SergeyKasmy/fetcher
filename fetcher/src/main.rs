@@ -46,6 +46,7 @@ use tokio::{
 	task::JoinHandle,
 	time::sleep,
 };
+use tracing::Instrument;
 
 type JobName = String;
 type Jobs = HashMap<JobName, Job>;
@@ -340,7 +341,11 @@ async fn run_jobs(
 
 				async move {
 					loop {
-						let job_result = job.run().await;
+						let job_result = job
+							.run()
+							.instrument(tracing::info_span!("job", name = name))
+							.await;
+
 						match handle_errors(job_result, &mut error_handling, (&name, &job), cx)
 							.await
 						{
