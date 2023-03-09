@@ -183,7 +183,7 @@ async fn async_main() -> Result<()> {
 				Some(job_run_filter)
 			};
 
-			let _ = get_jobs(job_run_filter, cx)?;
+			_ = get_jobs(job_run_filter, cx)?;
 			tracing::info!("Everything verified to be working properly, exiting...");
 
 			Ok(())
@@ -563,7 +563,7 @@ fn fold_task_errors(task_errors: &[Error]) -> Report {
 					.iter()
 					.enumerate()
 					.fold(String::new(), |mut err_str, (i, err)| {
-						let _ = write!(err_str, "\n{}: {}", i + 1, err.display_chain());
+						_ = write!(err_str, "\n{}: {}", i + 1, err.display_chain());
 						err_str
 					});
 

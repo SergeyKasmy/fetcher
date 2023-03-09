@@ -37,24 +37,20 @@ pub fn get(
 		Ok(map_raw) if map_raw.trim().is_empty() => {
 			tracing::debug!("Entry to message map save file is empty");
 
-			Ok(EntryToMsgMap::new(Box::new(TruncatingFileWriter::new(
-				path,
-			))))
+			Ok(EntryToMsgMap::new(TruncatingFileWriter::new(path)))
 		}
 		Err(e) => {
 			tracing::debug!("Read filter save file doesn't exist or is inaccessible: {e}");
 
-			Ok(EntryToMsgMap::new(Box::new(TruncatingFileWriter::new(
-				path,
-			))))
+			Ok(EntryToMsgMap::new(TruncatingFileWriter::new(path)))
 		}
 		Ok(map_raw) => {
 			let conf: EntryToMsgMapConf = serde_json::from_str(&map_raw).map_err(|e| (e, &path))?;
 
-			Ok(EntryToMsgMap {
-				map: conf.parse(),
-				external_save: Some(Box::new(TruncatingFileWriter::new(path))),
-			})
+			Ok(EntryToMsgMap::new_with_map(
+				conf.parse(),
+				TruncatingFileWriter::new(path),
+			))
 		}
 	}
 }

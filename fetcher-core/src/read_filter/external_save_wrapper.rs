@@ -18,7 +18,7 @@ use crate::{
 };
 
 /// A wrapper that zips a [`ReadFilter`] and an [`ExternalSave`] together, implementing [`ExternalSave`] itself
-/// and calling [`ExternalSave::save`] every time [`MarkAsRead::mark_as_read`] is used
+/// and calling [`ExternalSave::save_read_filter`] every time [`MarkAsRead::mark_as_read`] is used
 #[derive(Debug)]
 pub struct ExternalSaveRFWrapper<RF, S> {
 	/// The [`ReadFilter`] that is being wrapped

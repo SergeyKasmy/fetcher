@@ -5,7 +5,9 @@
  */
 
 //! This module contains the trait [`TransformField`] as well as all types that implement it
-//! And [`Field`] enum that can be used to refer to a [`Message`](`crate::sink::Message`)'s field
+//! And [`Field`] enum that can be used to refer to a [`Message`](Message)'s field
+//!
+//! [Message]: crate::sink::message::Message
 
 pub mod caps;
 pub mod set;

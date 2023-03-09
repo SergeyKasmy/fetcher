@@ -206,18 +206,18 @@ impl Email {
 			let mut tmp = "UNSEEN ".to_string();
 
 			if let Some(sender) = &self.filters.sender {
-				let _ = write!(tmp, r#"FROM "{sender}" "#);
+				_ = write!(tmp, r#"FROM "{sender}" "#);
 			}
 
 			if let Some(subjects) = &self.filters.subjects {
 				for s in subjects {
-					let _ = write!(tmp, r#"SUBJECT "{s}" "#);
+					_ = write!(tmp, r#"SUBJECT "{s}" "#);
 				}
 			}
 
 			if let Some(ex_subjects) = &self.filters.exclude_subjects {
 				for exs in ex_subjects {
-					let _ = write!(tmp, r#"NOT SUBJECT "{exs}" "#);
+					_ = write!(tmp, r#"NOT SUBJECT "{exs}" "#);
 				}
 			}
 
