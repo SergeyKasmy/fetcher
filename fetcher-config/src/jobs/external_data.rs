@@ -4,7 +4,7 @@
  * file, you can obtain one at https://mozilla.org/mpl/2.0/.
  */
 
-use super::{read_filter::Kind as ReadFilterKind, JobName, TaskId};
+use super::{read_filter::Kind as ReadFilterKind, JobName, TaskName};
 use fetcher_core::{
 	self as fcore, read_filter::ReadFilter as CReadFilter, task::entry_to_msg_map::EntryToMsgMap,
 };
@@ -33,14 +33,14 @@ pub trait ProvideExternalData {
 	fn read_filter(
 		&self,
 		job: &JobName,
-		task: Option<&TaskId>,
+		task: Option<&TaskName>,
 		expected_rf: ReadFilterKind,
 	) -> ExternalDataResult<Self::ReadFilter>;
 
 	fn entry_to_msg_map(
 		&self,
 		job: &JobName,
-		task: Option<&TaskId>,
+		task: Option<&TaskName>,
 	) -> ExternalDataResult<EntryToMsgMap>;
 }
 

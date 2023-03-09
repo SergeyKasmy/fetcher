@@ -24,8 +24,8 @@ use crate::{
 /// It also contains any transformators
 #[derive(Debug)]
 pub struct Task {
-	/// An optional name/tag that may be put near a message body to differentiate this task from others that may be similar
-	pub name: Option<String>,
+	/// An optional tag that may be put near a message body to differentiate this task from others that may be similar
+	pub tag: Option<String>,
 
 	/// The source where to fetch some data from
 	pub source: Option<Box<dyn Source>>,
@@ -45,7 +45,7 @@ impl Task {
 	///
 	/// # Errors
 	/// If there was an error fetching the data, sending the data, or saving what data was successfully sent to an external location
-	#[tracing::instrument(fields(name = self.name), skip(self))]
+	#[tracing::instrument(skip(self))]
 	pub async fn run(&mut self) -> Result<(), Error> {
 		tracing::trace!("Running task");
 
@@ -80,7 +80,7 @@ impl Task {
 						msg.body = entry.raw_contents.clone();
 					}
 
-					let tag = self.name.as_deref();
+					let tag = self.tag.as_deref();
 
 					tracing::debug!("Sending {msg:?} to a sink with tag {tag:?}");
 					sink.send(
@@ -88,7 +88,7 @@ impl Task {
 						self.entry_to_msg_map
 							.as_mut()
 							.and_then(|map| map.get_if_exists(entry.id.as_ref())),
-						self.name.as_deref(),
+						tag,
 					)
 					.await?
 				}

@@ -9,7 +9,7 @@ use crate::settings::context::StaticContext as Context;
 use fetcher_config::jobs::{
 	external_data::ExternalDataError,
 	read_filter::{Kind as ReadFilterKind, ReadFilter as ReadFilterConf},
-	JobName, TaskId,
+	JobName, TaskName,
 };
 use fetcher_core::read_filter::ReadFilter;
 
@@ -20,17 +20,15 @@ const READ_DATA_DIR: &str = "read";
 #[tracing::instrument]
 pub fn get(
 	job: &JobName,
-	task: Option<&TaskId>,
+	task: Option<&TaskName>,
 	expected_rf_kind: ReadFilterKind,
 	context: Context,
 ) -> Result<Box<dyn ReadFilter>, ExternalDataError> {
 	let path = {
-		let mut path = context.data_path.join(READ_DATA_DIR).join(&job.0);
+		let mut path = context.data_path.join(READ_DATA_DIR).join(&**job);
 
-		match task {
-			Some(TaskId::Name(s)) => path.push(s),
-			Some(TaskId::Id(i)) => path.push(i.to_string()),
-			None => (),
+		if let Some(task) = task {
+			path.push(&**task);
 		}
 
 		path

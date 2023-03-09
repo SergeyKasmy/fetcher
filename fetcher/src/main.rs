@@ -292,8 +292,9 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 			"Found {} enabled jobs for the provided query: {:?}",
 			jobs.len(),
 			jobs.keys()
+				.map(|name| &**name)
 				.collect::<Vec<_>>()
-				.tap_mut(|x| x.sort_unstable_by(|a, b| a.0.cmp(&b.0)))
+				.tap_mut(|x| x.sort_unstable())
 		);
 	} else {
 		if jobs.is_empty() {
@@ -305,8 +306,9 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 			"Found {} enabled jobs: {:?}",
 			jobs.len(),
 			jobs.keys()
+				.map(|name| &**name)
 				.collect::<Vec<_>>()
-				.tap_mut(|x| x.sort_unstable_by(|a, b| a.0.cmp(&b.0)))
+				.tap_mut(|x| x.sort_unstable())
 		);
 	}
 

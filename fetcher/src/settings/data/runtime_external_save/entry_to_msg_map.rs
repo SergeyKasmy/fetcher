@@ -10,7 +10,7 @@ use super::TruncatingFileWriter;
 use crate::settings::context::StaticContext;
 use fetcher_config::jobs::{
 	external_data::ExternalDataError, task::entry_to_msg_map::EntryToMsgMap as EntryToMsgMapConf,
-	JobName, TaskId,
+	JobName, TaskName,
 };
 use fetcher_core::task::entry_to_msg_map::EntryToMsgMap;
 
@@ -18,16 +18,14 @@ const ENTRY_TO_MSG_MAP_DATA_DIR: &str = "entry_to_msg_map";
 
 pub fn get(
 	job: &JobName,
-	task: Option<&TaskId>,
+	task: Option<&TaskName>,
 	cx: StaticContext,
 ) -> Result<EntryToMsgMap, ExternalDataError> {
 	let path = {
-		let mut path = cx.data_path.join(ENTRY_TO_MSG_MAP_DATA_DIR).join(&job.0);
+		let mut path = cx.data_path.join(ENTRY_TO_MSG_MAP_DATA_DIR).join(&**job);
 
-		match task {
-			Some(TaskId::Name(s)) => path.push(s),
-			Some(TaskId::Id(i)) => path.push(i.to_string()),
-			None => (),
+		if let Some(task) = task {
+			path.push(&**task);
 		}
 
 		path

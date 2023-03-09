@@ -5,7 +5,7 @@
  */
 
 use crate::error_chain::ErrorChainExt;
-use fetcher_config::jobs::{JobName, TaskId};
+use fetcher_config::jobs::{JobName, TaskName};
 use fetcher_core::job::Job;
 
 use argh::FromArgs;
@@ -117,7 +117,7 @@ impl FromStr for Setting {
 	}
 }
 
-/// Wrapper around Parsed Task foreign struct to implement `FromStr` from valid task JSON
+/// Wrapper around Job foreign struct to implement `FromStr` from valid job JSON
 #[derive(Debug)]
 pub struct JsonJob(pub Job);
 
@@ -153,7 +153,7 @@ impl FromStr for JsonJob {
 			fn read_filter(
 				&self,
 				_job: &JobName,
-				_task: Option<&TaskId>,
+				_task: Option<&TaskName>,
 				_expected_rf: fetcher_config::jobs::read_filter::Kind,
 			) -> ExternalDataResult<Self::ReadFilter> {
 				ExternalDataResult::Unavailable
@@ -162,7 +162,7 @@ impl FromStr for JsonJob {
 			fn entry_to_msg_map(
 				&self,
 				_job: &JobName,
-				_task: Option<&TaskId>,
+				_task: Option<&TaskName>,
 			) -> ExternalDataResult<fetcher_core::task::entry_to_msg_map::EntryToMsgMap> {
 				ExternalDataResult::Unavailable
 			}
@@ -172,6 +172,7 @@ impl FromStr for JsonJob {
 		let job = config_job
 			.parse(&"Manual".to_owned().into(), &EmptyExternalData)
 			.map_err(|e| eyre!(e.display_chain()))?;
-		Ok(Self(job))
+
+		Ok(Self(job.0))
 	}
 }

@@ -16,7 +16,7 @@ use crate::{
 	},
 	Jobs,
 };
-use fetcher_config::jobs::{Job as ConfigJob, JobName};
+use fetcher_config::jobs::{Job as ConfigJob, JobName, TaskName, TaskNameMap};
 use fetcher_core::job::Job;
 
 use color_eyre::{eyre::eyre, Result};
@@ -25,7 +25,7 @@ use figment::{
 	Figment,
 };
 use serde::Deserialize;
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 use walkdir::WalkDir;
 
 const JOBS_DIR_NAME: &str = "jobs";
@@ -101,29 +101,32 @@ pub fn get_all_from<'a>(
 				.map_err(|e| e.wrap_err(format!("Invalid config at: {}", file.path().display())))
 				.transpose()?;
 
-			let named_job = job.map(|mut job| {
+			let named_job = job.map(|(mut job, task_name_map)| {
 				if let Some(filter) = filter {
-					job.tasks = job
-						.tasks
-						.into_iter()
-						.enumerate()
-						.filter_map(|(task_id, task)| {
-							if filter.iter().any(|filter| {
-								filter.task_matches_id(&job_name, task_id)
-									|| task.name.as_ref().map_or(false, |task_name| {
-										filter.task_matches_name(&job_name, task_name)
-									})
-							}) {
-								Some(task)
-							} else {
-								tracing::debug!(
-									"Filtering out task {job_name:?}:{task_id} (name: {:?})",
-									task.name.as_deref().unwrap_or_default()
-								);
-								None
-							}
-						})
-						.collect();
+					if let Some(task_name_map) = &task_name_map {
+						job.tasks = job
+							.tasks
+							.into_iter()
+							.enumerate()
+							.filter_map(|(idx, task)| {
+								let task_name = task_name_map.get(&idx).expect(
+								"task name map should always contain all task indecies and names",
+							);
+
+								if filter
+									.iter()
+									.any(|filter| filter.task_matches(&job_name, task_name))
+								{
+									Some(task)
+								} else {
+									tracing::debug!(
+										"Filtering out task {job_name:?}:{task_name:?}",
+									);
+									None
+								}
+							})
+							.collect();
+					}
 				}
 
 				(job_name, job)
@@ -134,7 +137,7 @@ pub fn get_all_from<'a>(
 }
 
 #[tracing::instrument(skip(cx))]
-pub fn get(path: &Path, name: &JobName, cx: Context) -> Result<Option<Job>> {
+pub fn get(path: &Path, name: &JobName, cx: Context) -> Result<Option<(Job, Option<TaskNameMap>)>> {
 	tracing::trace!("Parsing a task from file");
 
 	let TemplatesField { templates } = Figment::new().merge(Yaml::file(path)).extract()?;

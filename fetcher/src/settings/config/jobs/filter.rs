@@ -5,49 +5,28 @@
  */
 
 use color_eyre::{eyre::eyre, Report};
-use fetcher_config::jobs::TaskId;
+use fetcher_config::jobs::{JobName, TaskName};
 use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct JobFilter {
-	pub job: String,
-	pub task: Option<TaskFilter>,
-}
-
-#[derive(Debug)]
-pub enum TaskFilter {
-	All,
-	Id(TaskId),
+	pub job: JobName,
+	pub task: Option<TaskName>,
 }
 
 impl JobFilter {
 	#[must_use]
-	pub fn job_matches(&self, job_name: &str) -> bool {
-		self.job == job_name
+	pub fn job_matches(&self, job_name: &JobName) -> bool {
+		&self.job == job_name
 	}
 
 	#[must_use]
-	pub fn task_matches_name(&self, job_name: &str, task_name: &str) -> bool {
-		self.job == job_name
-			&& self.task.as_ref().map_or(true, |task| {
-				if let TaskFilter::Id(TaskId::Name(task)) = task {
-					task == task_name
-				} else {
-					false
-				}
-			})
-	}
-
-	#[must_use]
-	pub fn task_matches_id(&self, job_name: &str, task_id: usize) -> bool {
-		self.job == job_name
-			&& self.task.as_ref().map_or(true, |task| {
-				if let TaskFilter::Id(TaskId::Id(i)) = task {
-					*i == task_id
-				} else {
-					false
-				}
-			})
+	pub fn task_matches(&self, job_name: &JobName, task_name: &TaskName) -> bool {
+		&self.job == job_name
+			&& self
+				.task
+				.as_ref()
+				.map_or(true, |task_filter| task_filter == task_name)
 	}
 }
 
@@ -57,7 +36,7 @@ impl FromStr for JobFilter {
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.split(':').count() {
 			1 => Ok(Self {
-				job: s.to_owned(),
+				job: s.to_owned().into(),
 				task: None,
 			}),
 			2 => {
@@ -66,20 +45,17 @@ impl FromStr for JobFilter {
 				let job = splits
 					.next()
 					.expect("should always exist since split count is 2, i.e. before and after")
-					.to_owned();
+					.to_owned()
+					.into();
 				let task = splits
 					.next()
 					.expect("should always exist since split count is 2, i.e. before and after")
-					.to_owned();
-
-				let task_id = match task.parse() {
-					Ok(i) => TaskId::Id(i),
-					Err(_) => TaskId::Name(task),
-				};
+					.to_owned()
+					.into();
 
 				Ok(Self {
 					job,
-					task: Some(TaskFilter::Id(task_id)),
+					task: Some(task),
 				})
 			}
 			_ => Err(eyre!(

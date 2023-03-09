@@ -701,6 +701,7 @@ dependencies = [
  "chrono",
  "duration-str",
  "fetcher-core",
+ "itertools 0.10.5",
  "serde",
  "serde_with",
  "thiserror",
