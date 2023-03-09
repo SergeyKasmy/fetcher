@@ -165,6 +165,7 @@ impl Json {
 				link: TrRes::Old(link),
 				media: TrRes::Old(img.map(|v| v.into_iter().map(Media::Photo).collect())),
 			},
+			..Default::default()
 		})
 	}
 }

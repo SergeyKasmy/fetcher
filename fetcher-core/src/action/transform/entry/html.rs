@@ -167,6 +167,7 @@ impl Html {
 				link: TrRes::Old(link),
 				media: TrRes::Old(img),
 			},
+			..Default::default()
 		})
 	}
 }

@@ -81,6 +81,7 @@ impl TransformEntry for Feed {
 						link: TrRes::Old(link),
 						..Default::default()
 					},
+					..Default::default()
 				}
 			})
 			.collect::<Vec<_>>();

@@ -23,7 +23,12 @@ impl Sink for Stdout {
 	///
 	/// # Errors
 	/// if there was an error writing to stdout
-	async fn send(&self, msg: Message, tag: Option<&str>) -> Result<Option<MessageId>, SinkError> {
+	async fn send(
+		&self,
+		msg: Message,
+		_reply_to: Option<&MessageId>,
+		tag: Option<&str>,
+	) -> Result<Option<MessageId>, SinkError> {
 		io::stdout().write_all(format!(
 			"------------------------------\nMessage:\nTitle: {title}\n\nBody:\n{body}\n\nLink: {link}\n\nMedia: {media:?}\n\nTag: {tag:?}\n------------------------------\n",
 			title = msg.title.as_deref().unwrap_or("None"),

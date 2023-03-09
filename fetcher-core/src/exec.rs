@@ -77,6 +77,7 @@ impl Sink for Exec {
 	async fn send(
 		&self,
 		message: Message,
+		_reply_to: Option<&MessageId>,
 		_tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
 		let Some(body) = message.body else {

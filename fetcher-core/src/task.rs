@@ -70,7 +70,8 @@ impl Task {
 					msg.body = entry.raw_contents.clone();
 				}
 
-				sink.send(msg, self.name.as_deref()).await?;
+				sink.send(msg, /* FIXME: */ None, self.name.as_deref())
+					.await?;
 			}
 
 			if let Some(source) = &mut self.source {

@@ -19,6 +19,7 @@ use url::Url;
 #[derive(Default, Debug)]
 pub struct TransformedEntry {
 	pub id: TransformResult<EntryId>,
+	pub reply_to: TransformResult<EntryId>,
 	pub raw_contents: TransformResult<String>,
 	pub msg: TransformedMessage,
 }
@@ -49,6 +50,7 @@ impl TransformedEntry {
 	pub fn into_entry(self, old_entry: Entry) -> Entry {
 		Entry {
 			id: self.id.get(old_entry.id),
+			reply_to: self.reply_to.get(old_entry.reply_to),
 			raw_contents: self.raw_contents.get(old_entry.raw_contents),
 			msg: self.msg.into_message(old_entry.msg),
 		}

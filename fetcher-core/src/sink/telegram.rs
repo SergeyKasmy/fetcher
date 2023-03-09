@@ -69,6 +69,7 @@ impl Sink for Telegram {
 	async fn send(
 		&self,
 		message: Message,
+		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
 		let Message {
@@ -77,6 +78,9 @@ impl Sink for Telegram {
 			link,
 			media,
 		} = message;
+
+		let reply_to = reply_to
+			.map(|id| TelMessageId(id.0.try_into().expect("FIXME: ensure this doesn't happen")));
 
 		tracing::debug!(
 			"Processing message: title: {title:?}, body len: {}, link: {}, media count: {}",
@@ -119,11 +123,13 @@ impl Sink for Telegram {
 			+ usize::from(should_insert_newline_after_body)
 			> max_char_limit
 		{
-			self.process_long_message(text, media.as_deref()).await?
+			self.process_long_message(text, media.as_deref(), reply_to)
+				.await?
 		} else {
 			self.process_short_message(
 				text,
 				media.as_deref(),
+				reply_to,
 				should_insert_newline_after_head,
 				should_insert_newline_after_body,
 			)
@@ -139,8 +145,9 @@ impl Telegram {
 		&self,
 		mut text: MsgParts<'_>,
 		media: Option<&[Media]>,
+		reply_to: Option<TelMessageId>,
 	) -> Result<Option<TelMessageId>, SinkError> {
-		let mut last_message = None;
+		let mut last_message = reply_to;
 
 		// if the message contains media, send it and MAX_MEDIA_MSG_LEN chars first
 		if let Some(media) = media {
@@ -178,6 +185,7 @@ impl Telegram {
 		&self,
 		text: MsgParts<'_>,
 		media: Option<&[Media]>,
+		reply_to: Option<TelMessageId>,
 
 		// passthrough these to avoid recalculation or desync with the previous calculations
 		// even though they do make this fn signature uglier
@@ -195,6 +203,7 @@ impl Telegram {
 		}
 
 		let MsgParts { head, body, tail } = text;
+		let mut last_message = reply_to;
 
 		let text = format!(
 			"{}{}{}{}{}",
@@ -214,8 +223,6 @@ impl Telegram {
 		let msgid = if let Some(media) = media {
 			// send several media only messages (i.e. without caption) if all the media wouldn't fit into a single message, and then a separate text message containing the caption
 			if media.len() > 10 {
-				let mut last_message = None;
-
 				for ch in media.chunks(10) {
 					let sent_msg = self
 						.send_media_with_reply_id(ch, None, last_message)
@@ -230,21 +237,19 @@ impl Telegram {
 					last_message
 				}
 			} else {
-				let media_message = self.send_media(media, text.as_deref()).await?;
+				let media_message = self
+					.send_media_with_reply_id(media, text.as_deref(), last_message)
+					.await?;
 				media_message.map(|mut v| v.swap_remove(0).id)
 			}
 		} else if let Some(text) = text {
-			Some(self.send_text(&text).await?.id)
+			Some(self.send_text_with_reply_id(&text, last_message).await?.id)
 		} else {
 			tracing::warn!("Skipping sending completely empty Telegram text message");
 			None
 		};
 
 		Ok(msgid)
-	}
-
-	async fn send_text(&self, message: &str) -> Result<TelMessage, SinkError> {
-		self.send_text_with_reply_id(message, None).await
 	}
 
 	async fn send_text_with_reply_id(
@@ -285,15 +290,6 @@ impl Telegram {
 				}
 			}
 		}
-	}
-
-	/// Refer to [`send_media_with_reply_id()`]
-	async fn send_media(
-		&self,
-		media: &[Media],
-		caption: Option<&str>,
-	) -> Result<Option<Vec<TelMessage>>, SinkError> {
-		self.send_media_with_reply_id(media, caption, None).await
 	}
 
 	/// Returns None if Media couldn't be sent but it's Telegram's fault

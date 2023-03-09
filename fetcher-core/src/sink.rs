@@ -30,6 +30,7 @@ pub trait Sink: Debug + Send + Sync {
 	async fn send(
 		&self,
 		message: Message,
+		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError>;
 }

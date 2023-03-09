@@ -185,6 +185,7 @@ impl Reddit {
 						link: Some(link),
 						media,
 					},
+					..Default::default()
 				}))
 			})
 			.collect::<Result<_, _>>()?;

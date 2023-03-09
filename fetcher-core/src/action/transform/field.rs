@@ -68,6 +68,7 @@ where
 			Field::Body => entry.msg.body.take(),
 			Field::Link => entry.msg.link.take().map(|u| u.to_string()),
 			Field::Id => entry.id.take().map(|id| id.0),
+			Field::ReplyTo => entry.reply_to.take().map(|id| id.0),
 			Field::RawContets => entry.raw_contents.take(),
 		};
 
@@ -116,6 +117,10 @@ where
 				id: final_val.map(Into::into),
 				..entry
 			},
+			Field::ReplyTo => Entry {
+				reply_to: final_val.map(Into::into),
+				..entry
+			},
 			Field::RawContets => Entry {
 				raw_contents: final_val,
 				..entry
@@ -137,6 +142,8 @@ pub enum Field {
 	Link,
 	/// [`Entry.id`] field
 	Id,
+	/// [`Entry.reply_to`] field
+	ReplyTo,
 	/// [`Entry.raw_contents`] field
 	RawContets,
 }
