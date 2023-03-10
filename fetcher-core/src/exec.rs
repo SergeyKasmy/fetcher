@@ -20,6 +20,16 @@ use crate::{
 	source::{error::SourceError, Fetch},
 };
 
+#[cfg(not(target_os = "windows"))]
+const SHELL: &str = "sh";
+#[cfg(target_os = "windows")]
+const SHELL: &str = "cmd";
+
+#[cfg(not(target_os = "windows"))]
+const SHELL_RUN_ARG: &str = r#"\C"#;
+#[cfg(target_os = "windows")]
+const SHELL: &str = "-c";
+
 /// Exec source. It can execute a shell command and source its stdout
 #[derive(Debug)]
 pub struct Exec {
@@ -48,10 +58,10 @@ impl Fetch for Exec {
 	// TODO: maybe, instead of returining a vec, add a &mut Vec output parameter
 	// and maybe also a trait method get_vec() that automatically creates a new vec, fetches into it, and returns it
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
-		// TODO: add support for windows cmd /C
-		tracing::debug!("Spawned a shell with command {:?}", self.cmd);
-		let out = Command::new("sh")
-			.args(["-c", &self.cmd])
+		tracing::debug!("Spawning a shell with command {:?}", self.cmd);
+		let out = Command::new(SHELL)
+			.arg(SHELL_RUN_ARG)
+			.arg(&self.cmd)
 			.output()
 			.await
 			.map_err(ExecError::BadCommand)?
@@ -84,9 +94,9 @@ impl Sink for Exec {
 			return Ok(None);
 		};
 
-		tracing::debug!("Spawned process {:?}", self.cmd);
-		let mut shell = Command::new("sh")
-			.arg("-c")
+		tracing::debug!("Spawning process {:?}", self.cmd);
+		let mut shell = Command::new(SHELL)
+			.arg(SHELL_RUN_ARG)
 			.arg(&self.cmd)
 			.stdin(Stdio::piped())
 			.stdout(Stdio::null())
