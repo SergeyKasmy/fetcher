@@ -6,14 +6,17 @@
 
 //! This module contains the [`Telegram`] sink, as well as [`LinkLocation`] enum that specifies where to put a link in a telegram message
 
-use crate::sink::{
-	error::SinkError,
-	message::{Media, Message, MessageId},
-	Sink,
+use crate::{
+	sink::{
+		error::SinkError,
+		message::{Media, Message, MessageId},
+		Sink,
+	},
+	utils::OptionExt,
 };
 
 use async_trait::async_trait;
-use std::{fmt::Debug, time::Duration};
+use std::{fmt::Debug, num::TryFromIntError, time::Duration};
 use teloxide::{
 	adaptors::{throttle::Limits, Throttle},
 	payloads::{SendMediaGroupSetters, SendMessageSetters},
@@ -79,8 +82,10 @@ impl Sink for Telegram {
 			media,
 		} = message;
 
-		let reply_to = reply_to
-			.map(|id| TelMessageId(id.0.try_into().expect("FIXME: ensure this doesn't happen")));
+		let reply_to = reply_to.try_map(|msgid| {
+			let tel_msg_id = TelMessageId(msgid.0.try_into()?);
+			Ok::<_, TryFromIntError>(tel_msg_id)
+		})?;
 
 		tracing::debug!(
 			"Processing message: title: {title:?}, body len: {}, link: {}, media count: {}",
