@@ -45,6 +45,7 @@ pub struct Telegram {
 pub enum LinkLocation {
 	/// Try to put in the title but fall back to `Bottom` if `Message.link` is None
 	PreferTitle,
+
 	/// Put the link at the bottom of the message in a "Link" button
 	#[default]
 	Bottom,

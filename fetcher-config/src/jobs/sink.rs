@@ -27,9 +27,17 @@ impl Sink {
 		D: ProvideExternalData + ?Sized,
 	{
 		Ok(match self {
-			Sink::Telegram(x) => Box::new(x.parse(external)?),
-			Sink::Exec(x) => Box::new(x.parse()),
-			Sink::Stdout => Box::new(CStdout {}),
+			Self::Telegram(x) => Box::new(x.parse(external)?),
+			Self::Exec(x) => Box::new(x.parse()),
+			Self::Stdout => Box::new(CStdout {}),
 		})
+	}
+
+	pub fn has_message_id_support(&self) -> bool {
+		match self {
+			Self::Telegram(_) => true,
+			Self::Exec(_) => false,
+			Self::Stdout => false,
+		}
 	}
 }

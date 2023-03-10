@@ -65,7 +65,11 @@ impl Task {
 				.collect::<Result<_, _>>()
 		})?;
 
-		let entry_to_msg_map = if self.entry_to_msg_map_enabled.unwrap_or(true) {
+		let entry_to_msg_map = if self.entry_to_msg_map_enabled.unwrap_or_else(|| {
+			self.sink
+				.as_ref()
+				.map_or(false, Sink::has_message_id_support)
+		}) {
 			match external.entry_to_msg_map(job, task_name) {
 				ExternalDataResult::Ok(v) => Some(v),
 				ExternalDataResult::Unavailable => {
