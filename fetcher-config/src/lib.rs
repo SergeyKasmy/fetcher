@@ -14,7 +14,7 @@
 #![warn(clippy::unwrap_used)]
 
 pub mod error;
-pub mod settings;
 pub mod jobs;
+pub mod settings;
 
 pub use self::error::Error;

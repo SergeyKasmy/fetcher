@@ -15,14 +15,24 @@ use crate::{
 };
 
 use async_trait::async_trait;
-use egg_mode::{auth::bearer_token, entities::MediaType, tweet::user_timeline, KeyPair, Token};
+use egg_mode::{
+	auth::bearer_token,
+	entities::MediaType,
+	tweet::{user_timeline, Timeline},
+	KeyPair, Token,
+};
 
 /// A source that fetches from a Twitter feed using the Twitter API
 pub struct Twitter {
+	// the only point of this option is to enable taking timeline by value. It can be never observed to be None unless the thread panicked
+	timeline: Option<Timeline>,
 	handle: String,
-	api_key: String,
-	api_secret: String,
-	token: Option<Token>,
+	auth: Auth,
+}
+
+enum Auth {
+	NotAuthenticated { api_key: String, api_secret: String },
+	Authenticated(Token),
 }
 
 #[allow(missing_docs)] // error message is self-documenting
@@ -40,10 +50,12 @@ impl Twitter {
 	#[must_use]
 	pub fn new(handle: String, api_key: String, api_secret: String) -> Self {
 		Self {
+			timeline: None,
 			handle,
-			api_key,
-			api_secret,
-			token: None,
+			auth: Auth::NotAuthenticated {
+				api_key,
+				api_secret,
+			},
 		}
 	}
 }
@@ -60,54 +72,50 @@ impl Twitter {
 	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, TwitterError> {
 		tracing::debug!("Getting tweets");
 
-		let token = match &self.token {
-			Some(t) => t,
-			None => {
-				self.token = Some(
-					bearer_token(&KeyPair::new(self.api_key.clone(), self.api_secret.clone()))
-						.await
-						.map_err(TwitterError::Auth)?,
-				);
+		let token = match &self.auth {
+			Auth::NotAuthenticated {
+				api_key,
+				api_secret,
+			} => {
+				let token = bearer_token(&KeyPair::new(api_key.clone(), api_secret.clone()))
+					.await
+					.map_err(TwitterError::Auth)?;
 
-				self.token
-					.as_ref()
-					.expect("token should have been init just up above")
+				self.auth = Auth::Authenticated(token);
+				let Auth::Authenticated(auth) = &self.auth else {
+					unreachable!("it has just been put there, this couldn't happen");
+				};
+
+				auth
+			}
+			Auth::Authenticated(token) => token,
+		};
+
+		let (timeline, tweets) = match &self.timeline {
+			None => {
+				user_timeline(self.handle.clone(), true, true, token)
+					.start()
+					.await?
+			}
+			Some(_) => {
+				self.timeline
+					.take()
+					.expect("shouldn't be None, just matched Some")
+					.newer(None)
+					.await?
 			}
 		};
 
-		// TODO: keep a tweet id -> message id hashmap and handle enable with_replies from below
-		let (_, tweets) = user_timeline(self.handle.clone(), false, true, token)
-			/*
-			// TODO: is this doing what I think it is doing or have I gotten it wrong? The docs aren't clear enough
-			.older(
-				// read_filter
-				// 	.and_then(ReadFilter::last_read)
-				// 	.and_then(|x| x.parse().ok()),
-				if let Some(rf) = &self.read_filter {
-					if let Some(last_read_id) = rf.read().await.last_read() {
-						last_read_id.parse().ok()
-					} else {
-						None
-					}
-				} else {
-					None
-				},
-			)
-			*/
-			.start()
-			.await?;
+		self.timeline = Some(timeline);
 
-		tracing::debug!(
-			"Got {num} tweets older than the last one read",
-			num = tweets.len()
-		);
+		tracing::debug!("Got {num} tweets", num = tweets.len());
 
 		let messages = tweets
 			.iter()
 			.map(|tweet| {
 				Entry {
 					id: Some(tweet.id.to_string().into()),
-					reply_to: tweet.in_reply_to_status_id.map(|i| i.to_string().into()), 
+					reply_to: tweet.in_reply_to_status_id.map(|i| i.to_string().into()),
 					msg: Message {
 						body: Some(tweet.text.clone()),
 						link: Some(
