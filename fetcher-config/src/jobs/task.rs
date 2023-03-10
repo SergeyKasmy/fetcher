@@ -32,6 +32,7 @@ pub struct Task {
 	pub actions: Option<Vec<Action>>,
 	// TODO: several sinks or integrate into actions
 	pub sink: Option<Sink>,
+	pub entry_to_msg_map_enabled: Option<bool>,
 }
 
 impl Task {
@@ -64,13 +65,17 @@ impl Task {
 				.collect::<Result<_, _>>()
 		})?;
 
-		let entry_to_msg_map = match external.entry_to_msg_map(job, task_name) {
-			ExternalDataResult::Ok(v) => Some(v),
-			ExternalDataResult::Unavailable => {
-				tracing::warn!("Entry to message map is unavailable, skipping...");
-				None
+		let entry_to_msg_map = if self.entry_to_msg_map_enabled.unwrap_or(true) {
+			match external.entry_to_msg_map(job, task_name) {
+				ExternalDataResult::Ok(v) => Some(v),
+				ExternalDataResult::Unavailable => {
+					tracing::warn!("Entry to message map is unavailable, skipping...");
+					None
+				}
+				ExternalDataResult::Err(e) => return Err(e.into()),
 			}
-			ExternalDataResult::Err(e) => return Err(e.into()),
+		} else {
+			None
 		};
 
 		let tag = self.tag.and_then(|tag| match (tag, task_name) {

@@ -24,19 +24,20 @@ pub type TemplatesField = Option<Vec<String>>;
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Job {
 	#[serde(rename = "read_filter_type")]
-	read_filter_kind: Option<read_filter::Kind>,
-	tag: Option<Tag>,
-	source: Option<Source>,
+	pub read_filter_kind: Option<read_filter::Kind>,
+	pub tag: Option<Tag>,
+	pub source: Option<Source>,
 	#[serde(rename = "process")]
-	actions: Option<Vec<Action>>,
-	sink: Option<Sink>,
+	pub actions: Option<Vec<Action>>,
+	pub sink: Option<Sink>,
+	pub entry_to_msg_map_enabled: Option<bool>,
 
-	tasks: Option<HashMap<TaskName, Task>>,
-	refresh: Option<TimePoint>,
+	pub tasks: Option<HashMap<TaskName, Task>>,
+	pub refresh: Option<TimePoint>,
 
 	// these are meant to be used externally and are unused here
-	disabled: DisabledField,
-	templates: TemplatesField,
+	pub disabled: DisabledField,
+	pub templates: TemplatesField,
 }
 
 impl Job {
@@ -69,6 +70,10 @@ impl Job {
 					if task.sink.is_none() {
 						task.sink = self.sink.clone();
 					}
+
+					if task.entry_to_msg_map_enabled.is_none() {
+						task.entry_to_msg_map_enabled = self.entry_to_msg_map_enabled;
+					}
 				}
 
 				let tasks_and_task_name_map_iter =
@@ -99,6 +104,7 @@ impl Job {
 					source: self.source,
 					actions: self.actions,
 					sink: self.sink,
+					entry_to_msg_map_enabled: self.entry_to_msg_map_enabled,
 				};
 
 				Ok((
