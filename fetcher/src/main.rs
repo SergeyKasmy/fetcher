@@ -35,7 +35,6 @@ use color_eyre::{
 use futures::future::join_all;
 use std::{
 	collections::HashMap,
-	fmt::Write,
 	iter,
 	ops::ControlFlow,
 	time::{Duration, Instant},
@@ -509,7 +508,7 @@ async fn handle_errors(
 
 			for err in errors {
 				if err_count == max_retries {
-					return ControlFlow::Break(Err(eyre!(err.display_chain())));
+					return ControlFlow::Break(Err(err.into()));
 				}
 
 				if let Some(network_err) = err.is_connection_error() {
@@ -550,32 +549,21 @@ async fn handle_errors(
 		}
 	}
 
-	ControlFlow::Break(Err(fold_task_errors(&errors)))
-}
+	// no point in making errors mutable for the duration of the whole functions if it's needed just down here
+	let mut errors = errors;
 
-fn fold_task_errors(task_errors: &[Error]) -> Report {
-	match task_errors {
-		[] => unreachable!(),
-		[error] => {
-			// TODO: use .into()
-			eyre!(error.display_chain())
-		}
-		errors => {
-			let combined_err_str =
-				errors
-					.iter()
-					.enumerate()
-					.fold(String::new(), |mut err_str, (i, err)| {
-						_ = write!(err_str, "\n{}: {}", i + 1, err.display_chain());
-						err_str
-					});
+	// for acc_report.error(err). I believe this way it is clearer what the fold does
+	#[allow(clippy::redundant_closure_for_method_calls)]
+	let full_report = match errors.len() {
+		0 => unreachable!(),
+		1 => Report::from(errors.remove(0)),
+		i => errors.into_iter().fold(
+			eyre!("{i} tasks have finished with an error"),
+			|acc_report, err| acc_report.error(err),
+		),
+	};
 
-			eyre!(
-				"{} tasks have finished with an error: {combined_err_str}",
-				errors.len()
-			)
-		}
-	}
+	ControlFlow::Break(Err(full_report))
 }
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically

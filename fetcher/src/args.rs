@@ -4,12 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::error_chain::ErrorChainExt;
 use fetcher_config::jobs::{JobName, TaskName};
 use fetcher_core::job::Job;
 
 use argh::FromArgs;
-use color_eyre::{eyre::eyre, Report};
+use color_eyre::Report;
 use std::{path::PathBuf, str::FromStr};
 
 /// fetcher
@@ -169,9 +168,7 @@ impl FromStr for JsonJob {
 		}
 
 		let config_job: fetcher_config::jobs::Job = serde_json::from_str(s)?;
-		let job = config_job
-			.parse(&"Manual".to_owned().into(), &EmptyExternalData)
-			.map_err(|e| eyre!(e.display_chain()))?;
+		let job = config_job.parse(&"Manual".to_owned().into(), &EmptyExternalData)?;
 
 		Ok(Self(job.0))
 	}
