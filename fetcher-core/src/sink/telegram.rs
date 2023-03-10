@@ -4,11 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains the [`Telegram`] sink
-
-// FIXME: will crash when a reply_to id is no longer valid with error
-// Unknown error: "Bad Request: replied message not found"
-// I should probably report that error to teloxide... Tomorrow... Yeah.....
+//! This module contains the [`Telegram`] sink, as well as [`LinkLocation`] enum that specifies where to put a link in a telegram message
 
 use crate::sink::{
 	error::SinkError,
@@ -259,7 +255,7 @@ impl Telegram {
 	async fn send_text_with_reply_id(
 		&self,
 		message: &str,
-		reply_to_msg: Option<TelMessageId>,
+		mut reply_to_msg: Option<TelMessageId>,
 	) -> Result<TelMessage, SinkError> {
 		tracing::trace!("About to send a text message with contents: {message:?}");
 		loop {
@@ -279,6 +275,14 @@ impl Telegram {
 
 			match send_msg_cmd.send().await {
 				Ok(message) => return Ok(message),
+				Err(e)
+					if e.to_string()
+						.to_lowercase()
+						.contains("replied message not found") =>
+				{
+					tracing::warn!("Message that should be replied to doesn't exist. Resending just as a regular message");
+					reply_to_msg = None;
+				}
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tracing::error!(
 						"Exceeded rate limit while using Throttle Bot adapter, this shouldn't happen... Retrying in {}s",
@@ -304,7 +308,7 @@ impl Telegram {
 		&self,
 		media: &[Media],
 		mut caption: Option<&str>,
-		reply_to_msg: Option<TelMessageId>,
+		mut reply_to_msg: Option<TelMessageId>,
 	) -> Result<Option<Vec<TelMessage>>, SinkError> {
 		assert!(
 			media.len() <= 10,
@@ -417,6 +421,14 @@ impl Telegram {
 						tracing::warn!("Telegram disliked the media URL (\"Wrong type of the web page content\") but the caption was empty, skipping...");
 						return Ok(None);
 					}
+				}
+				Err(e)
+					if e.to_string()
+						.to_lowercase()
+						.contains("replied message not found") =>
+				{
+					tracing::warn!("Message that should be replied to doesn't exist. Resending just as a regular message");
+					reply_to_msg = None;
 				}
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tracing::error!(

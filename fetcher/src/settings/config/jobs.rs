@@ -16,7 +16,7 @@ use crate::{
 	},
 	Jobs,
 };
-use fetcher_config::jobs::{Job as ConfigJob, JobName, TaskName, TaskNameMap};
+use fetcher_config::jobs::{Job as ConfigJob, JobName, TaskNameMap};
 use fetcher_core::job::Job;
 
 use color_eyre::{eyre::eyre, Result};
@@ -25,7 +25,7 @@ use figment::{
 	Figment,
 };
 use serde::Deserialize;
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 use walkdir::WalkDir;
 
 const JOBS_DIR_NAME: &str = "jobs";
