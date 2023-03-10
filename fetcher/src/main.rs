@@ -323,7 +323,6 @@ enum ErrorHandling {
 	Sleep {
 		max_retries: u32,
 
-		// FIXME: BUG. Still checks for an error since only err_count is reset and not last_error. Combile err_count and last_error in a single field Option<(u32, Instant)>
 		// "private" state, should be 0 and None
 		// there's no point in creating a private struct with a constructor just for these
 		// since they are for private use anyways and aren't used more than a couple of times
@@ -480,7 +479,7 @@ async fn handle_errors(
 			err_count,
 			last_error,
 		} => {
-			if let Some(last_error) = last_error {
+			if let Some(last_error_instant) = last_error {
 				if let Some(refresh_time) = &job.refresh_time {
 					// if time since last error is 2 times longer than the refresh duration, than the error count can safely be reset
 					// since there hasn't been any errors for a little while
@@ -488,8 +487,9 @@ async fn handle_errors(
 
 					match refresh_time {
 						TimePoint::Duration(dur) => {
-							if last_error.elapsed() > (*dur * 2) {
+							if last_error_instant.elapsed() > (*dur * 2) {
 								*err_count = 0;
+								*last_error = None;
 							}
 						}
 						// once a day
@@ -498,8 +498,9 @@ async fn handle_errors(
 								2 /* days */ * 24 /* hours a day */ * 60 /* mins an hour */ * 60, /* secs a min */
 							);
 
-							if last_error.elapsed() > TWO_DAYS {
+							if last_error_instant.elapsed() > TWO_DAYS {
 								*err_count = 0;
+								*last_error = None;
 							}
 						}
 					}
