@@ -22,6 +22,8 @@ pub struct Message {
 	pub media: Option<Vec<Media>>,
 }
 
+// TODO: the type of the message id could be probably stored as an associated type inside Sink
+// This would allow to specify what types support message ids and which ones don't, as well as avoid conversions between different int types or even str
 /// An id of a sent message
 #[derive(Clone, Copy, Debug)]
 pub struct MessageId(pub i64);

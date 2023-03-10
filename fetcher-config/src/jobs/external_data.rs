@@ -51,8 +51,7 @@ pub enum ExternalDataError {
 		source: io::Error,
 		payload: Option<Box<dyn DisplayDebug + Send + Sync>>,
 	},
-	// TODO: impl Display for ReadFilterKind
-	#[error("Incompatible read filter types: in config: \"{expected:?}\" and found: \"{found:?}\"{}", if let Some(p) = payload { format!(": {p}") } else { String::new() })]
+	#[error("Incompatible read filter types: in config: \"{expected}\" and found: \"{found}\"{}", if let Some(p) = payload { format!(": {p}") } else { String::new() })]
 	ReadFilterIncompatibleTypes {
 		expected: ReadFilterKind,
 		found: ReadFilterKind,

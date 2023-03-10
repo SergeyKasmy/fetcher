@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use std::fmt::Display;
+
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
@@ -150,6 +152,15 @@ impl NotPresent {
 					.collect(),
 			})
 		}
+	}
+}
+
+impl Display for Kind {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.write_str(match self {
+			Self::NewerThanRead => "newer that the last one read",
+			Self::NotPresentInReadList => "not present in the marked as read list",
+		})
 	}
 }
 

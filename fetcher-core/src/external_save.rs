@@ -19,7 +19,6 @@ pub trait ExternalSave: Debug + Send + Sync {
 	///
 	/// # Errors
 	/// It may return an error if there has been issues saving, e.g. writing to disk
-	// TODO: trait for deserializing instead of dyn ReadFilter
 	async fn save_read_filter(&mut self, read_filter: &dyn ReadFilter) -> io::Result<()>;
 
 	/// Save the entry id to message id map (see [`Task.entry_to_msg_map`]) enternally
