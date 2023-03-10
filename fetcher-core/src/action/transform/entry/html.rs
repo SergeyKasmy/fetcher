@@ -91,7 +91,7 @@ pub enum HtmlError {
 impl TransformEntry for Html {
 	type Err = HtmlError;
 
-	async fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		tracing::debug!("Parsing HTML");
 
 		let dom =

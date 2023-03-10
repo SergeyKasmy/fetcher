@@ -31,7 +31,7 @@ pub trait TransformEntry: Debug {
 	type Err: Into<TransformErrorKind>;
 
 	/// Transform the `entry` into one or several separate entries
-	async fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Err>;
+	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err>;
 }
 
 #[async_trait]
@@ -39,14 +39,17 @@ impl<T> Transform for T
 where
 	T: TransformEntry + Send + Sync,
 {
-	async fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, TransformError> {
-		self.transform_entry(entry)
+	async fn transform(&self, old_entry: Entry) -> Result<Vec<Entry>, TransformError> {
+		self.transform_entry(old_entry.clone())
 			.await
-			// TODO: pass-through the entry if the returned vec is empty?
-			.map(|v| v.into_iter().map(|e| e.into_entry(entry.clone())).collect())
+			.map(|vec| {
+				vec.into_iter()
+					.map(|transformed_entry| transformed_entry.into_entry(&old_entry))
+					.collect()
+			})
 			.map_err(|kind| TransformError {
 				kind: kind.into(),
-				original_entry: entry.clone(),
+				original_entry: old_entry,
 			})
 	}
 }

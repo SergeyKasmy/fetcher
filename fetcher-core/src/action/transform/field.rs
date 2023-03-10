@@ -61,9 +61,7 @@ impl<T> Transform for TransformFieldWrapper<T>
 where
 	T: TransformField,
 {
-	async fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, TransformError> {
-		// TODO: remove this, take entry by ownership?
-		let mut entry = entry.clone();
+	async fn transform(&self, mut entry: Entry) -> Result<Vec<Entry>, TransformError> {
 		// old value of the field
 		let old_val = match self.field {
 			Field::Title => entry.msg.title.take(),
@@ -83,7 +81,7 @@ where
 			})?;
 
 		// finalized value of the field. It's the new value that can get replaced with the old value if requested
-		let final_val = new_val.get(old_val);
+		let final_val = new_val.get(|| old_val);
 
 		let new_entry = match self.field {
 			Field::Title => Entry {

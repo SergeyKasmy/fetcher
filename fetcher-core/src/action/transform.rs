@@ -33,5 +33,5 @@ pub trait Transform: Debug + Send + Sync {
 	///
 	/// # Erorrs
 	/// Refer to implementators docs
-	async fn transform(&self, entry: &Entry) -> Result<Vec<Entry>, TransformError>;
+	async fn transform(&self, entry: Entry) -> Result<Vec<Entry>, TransformError>;
 }

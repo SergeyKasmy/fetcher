@@ -42,7 +42,7 @@ impl Action {
 				let mut fully_transformed = Vec::new();
 
 				for entry in entries {
-					fully_transformed.extend(tr.transform(&entry).await?);
+					fully_transformed.extend(tr.transform(entry).await?);
 				}
 
 				Ok(fully_transformed)
