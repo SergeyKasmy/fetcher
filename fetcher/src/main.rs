@@ -10,16 +10,16 @@
 #![allow(clippy::module_name_repetitions)]
 
 pub mod args;
-pub mod error_chain;
+pub mod extentions;
 pub mod settings;
 
-use self::settings::{
-	config::jobs::filter::JobFilter, context::Context as OwnedContext,
-	context::StaticContext as Context,
-};
 use crate::{
 	args::{Args, Setting},
-	error_chain::ErrorChainExt,
+	extentions::{ErrorChainExt, SliceDisplayExt},
+	settings::{
+		config::jobs::filter::JobFilter, context::Context as OwnedContext,
+		context::StaticContext as Context,
+	},
 };
 use fetcher_config::jobs::JobName;
 use fetcher_core::{
@@ -276,24 +276,15 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 			tracing::info!("No enabled jobs found for the provided query");
 
 			let all_jobs = settings::config::jobs::get_all(None, cx)?;
-			tracing::info!(
-				"All available enabled jobs: {:?}",
-				all_jobs
-					.keys()
-					.collect::<Vec<_>>()
-					.tap_mut(|x| x.sort_unstable_by(|a, b| a.0.cmp(&b.0)))
-			);
+			tracing::info!("All available enabled jobs: {}", all_jobs.keys().display());
 
 			return Ok(None);
 		}
 
 		tracing::info!(
-			"Found {} enabled jobs for the provided query: {:?}",
+			"Found {} enabled jobs for the provided query: {}",
 			jobs.len(),
-			jobs.keys()
-				.map(|name| &**name)
-				.collect::<Vec<_>>()
-				.tap_mut(|x| x.sort_unstable())
+			jobs.keys().display()
 		);
 	} else {
 		if jobs.is_empty() {
@@ -302,12 +293,9 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 		}
 
 		tracing::info!(
-			"Found {} enabled jobs: {:?}",
+			"Found {} enabled jobs: {}",
 			jobs.len(),
-			jobs.keys()
-				.map(|name| &**name)
-				.collect::<Vec<_>>()
-				.tap_mut(|x| x.sort_unstable())
+			jobs.keys().display()
 		);
 	}
 

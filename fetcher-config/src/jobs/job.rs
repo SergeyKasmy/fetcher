@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use self::timepoint::TimePoint;
 use super::{
 	action::Action, external_data::ProvideExternalData, read_filter, sink::Sink, source::Source,
-	task::Task, JobName, Tag, TaskName,
+	tag::Tag, task::Task, JobName, TaskName,
 };
 use crate::Error;
 use fetcher_core::{job::Job as CJob, utils::OptionExt};

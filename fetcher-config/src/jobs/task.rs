@@ -17,7 +17,8 @@ use super::{
 	read_filter,
 	sink::Sink,
 	source::Source,
-	JobName, Tag, TaskName,
+	tag::Tag,
+	JobName, TaskName,
 };
 use crate::Error;
 use fetcher_core::{task::Task as CTask, utils::OptionExt};

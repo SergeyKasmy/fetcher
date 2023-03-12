@@ -5,7 +5,7 @@
  */
 
 use super::proj_dirs;
-use crate::error_chain::ErrorChainExt;
+use crate::extentions::ErrorChainExt;
 use fetcher_core::action::transform::error::TransformError;
 
 use color_eyre::Result;
