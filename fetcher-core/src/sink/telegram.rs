@@ -115,6 +115,13 @@ impl Sink for Telegram {
 		let should_insert_newline_after_head = head.is_some() && (body.is_some() || tail.is_some());
 		let should_insert_newline_after_body = body.is_some() && tail.is_some();
 
+		// ensure media vec isn't empty
+		let media = if media.as_ref().map_or(true, Vec::is_empty) {
+			None
+		} else {
+			media
+		};
+
 		let max_char_limit = if media.is_some() {
 			MAX_MEDIA_MSG_LEN
 		} else {
