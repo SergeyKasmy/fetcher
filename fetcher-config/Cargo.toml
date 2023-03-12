@@ -18,3 +18,4 @@ url = "2.3.1"
 serde_with = "2.2.0"
 duration-str = { version = "0.5.0", default-features = false }
 itertools = "0.10.5"
+tap = "1.0.1"

@@ -8,6 +8,7 @@ pub mod entry_to_msg_map;
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tap::TapOptional;
 use tokio::sync::RwLock;
 
 use super::{
@@ -65,11 +66,24 @@ impl Task {
 				.collect::<Result<_, _>>()
 		})?;
 
-		let entry_to_msg_map = if self.entry_to_msg_map_enabled.unwrap_or_else(|| {
-			self.sink
-				.as_ref()
-				.map_or(false, Sink::has_message_id_support)
-		}) {
+		let entry_to_msg_map = if self
+			.entry_to_msg_map_enabled
+			.tap_some(|b| {
+				if let Some(sink) = &self.sink {
+					// TODO: include task name
+					tracing::info!(
+						"Overriding entry_to_msg_map_enabled for {} from the default {} to {}",
+						job,
+						sink.has_message_id_support(),
+						b
+					);
+				}
+			})
+			.unwrap_or_else(|| {
+				self.sink
+					.as_ref()
+					.map_or(false, Sink::has_message_id_support)
+			}) {
 			match external.entry_to_msg_map(job, task_name) {
 				ExternalDataResult::Ok(v) => Some(v),
 				ExternalDataResult::Unavailable => {
