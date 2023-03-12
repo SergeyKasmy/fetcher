@@ -9,6 +9,7 @@
 
 pub mod message;
 
+pub mod discord;
 pub mod stdout;
 pub mod telegram;
 
