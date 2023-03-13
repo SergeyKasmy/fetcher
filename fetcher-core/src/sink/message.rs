@@ -6,8 +6,12 @@
 
 //! This module contains [`Message`] and [`Media`]
 
+pub(crate) mod compose;
+
 use std::fmt::Debug;
 use url::Url;
+
+use self::compose::ComposedMessage;
 
 /// The finalized and composed message meant to be sent to a sink
 #[derive(Clone, Default)]
@@ -35,6 +39,45 @@ pub enum Media {
 	Photo(Url),
 	/// A link to a video
 	Video(Url),
+}
+
+/// Where to put `message.link`
+#[derive(Clone, Copy, Default, Debug)]
+pub enum LinkLocation {
+	/// Try to put in the title but fall back to `Bottom` if `Message.link` is None
+	PreferTitle,
+
+	/// Put the link at the bottom of the message in a "Link" button
+	#[default]
+	Bottom,
+}
+
+impl Message {
+	pub(crate) fn compose(
+		self,
+		tag: Option<&str>,
+		link_location: LinkLocation,
+	) -> (ComposedMessage, Option<Vec<Media>>) {
+		let Message {
+			title,
+			body,
+			link,
+			media,
+		} = self;
+
+		let (head, body, tail) = compose::format_message(title, body, link, tag, link_location);
+
+		let composed_msg = ComposedMessage::new(head, body, tail);
+
+		// ensure media vec isn't empty
+		let media = if media.as_ref().map_or(true, Vec::is_empty) {
+			None
+		} else {
+			media
+		};
+
+		(composed_msg, media)
+	}
 }
 
 impl From<i64> for MessageId {

@@ -6,10 +6,11 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::jobs::external_data::{ExternalDataResult, ProvideExternalData};
-use crate::Error as ConfigError;
-use fetcher_core::sink::telegram::LinkLocation as CLinkLocation;
-use fetcher_core::sink::Telegram as CTelegram;
+use crate::{
+	jobs::external_data::{ExternalDataResult, ProvideExternalData},
+	Error as ConfigError,
+};
+use fetcher_core::sink::{message::LinkLocation as CLinkLocation, Telegram as CTelegram};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]

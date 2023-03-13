@@ -81,16 +81,15 @@ impl Task {
 					}
 
 					let tag = self.tag.as_deref();
+					let reply_to = self
+						.entry_to_msg_map
+						.as_mut()
+						.and_then(|map| map.get_if_exists(entry.id.as_ref()));
 
-					tracing::debug!("Sending {msg:?} to a sink with tag {tag:?}");
-					sink.send(
-						msg,
-						self.entry_to_msg_map
-							.as_mut()
-							.and_then(|map| map.get_if_exists(entry.id.as_ref())),
-						tag,
-					)
-					.await?
+					tracing::debug!(
+						"Sending {msg:?} to a sink with tag {tag:?}, replying to {reply_to:?}"
+					);
+					sink.send(msg, reply_to, tag).await?
 				}
 				None => None,
 			};
