@@ -9,7 +9,7 @@
 use crate::{
 	sink::{
 		error::SinkError,
-		message::{compose::ComposedMessage, LinkLocation, Media, Message, MessageId},
+		message::{compose::ComposedMessage, Media, Message, MessageId},
 		Sink,
 	},
 	utils::OptionExt,
@@ -39,6 +39,17 @@ pub struct Telegram {
 	link_location: LinkLocation,
 }
 
+/// Where to put `message.link`
+#[derive(Clone, Copy, Default, Debug)]
+pub enum LinkLocation {
+	/// Try to put in the title but fall back to `Bottom` if `Message.link` is None
+	PreferTitle,
+
+	/// Put the link at the bottom of the message in a "Link" button
+	#[default]
+	Bottom,
+}
+
 impl Telegram {
 	/// Creates a new Telegram sink using the bot `token` that sends messages to chat with `chat_id` with `Message.link` put at `link_location`
 	#[must_use]
@@ -61,7 +72,7 @@ impl Sink for Telegram {
 	#[tracing::instrument(level = "debug", skip(message))]
 	async fn send(
 		&self,
-		mut message: Message,
+		message: Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
@@ -70,13 +81,8 @@ impl Sink for Telegram {
 			Ok::<_, TryFromIntError>(tel_msg_id)
 		})?;
 
-		// escape title and body
-		message.title = message.title.map(|s| teloxide::utils::html::escape(&s));
-		message.body = message.body.map(|s| teloxide::utils::html::escape(&s));
-
-		let (composed_msg, media) = message.compose(tag, self.link_location.into());
-
-		let msg_id = self.send_processed(composed_msg, media, reply_to).await?;
+		let (processed_msg, media) = process_msg(message, tag, self.link_location);
+		let msg_id = self.send_processed(processed_msg, media, reply_to).await?;
 		Ok(msg_id.map(|tel_msgid| i64::from(tel_msgid.0).into()))
 	}
 }
@@ -322,6 +328,68 @@ impl Telegram {
 			}
 		}
 	}
+}
+
+// format and sanitize all message fields
+fn process_msg(
+	msg: Message,
+	tag: Option<&str>,
+	link_location: LinkLocation,
+) -> (ComposedMessage, Option<Vec<Media>>) {
+	let Message {
+		title,
+		body,
+		link,
+		media,
+	} = msg;
+
+	// escape title and body
+	let title = title.map(|s| teloxide::utils::html::escape(&s));
+	let body = body.map(|s| teloxide::utils::html::escape(&s));
+
+	// put the link into the message
+	let (mut head, tail) = match (title, link) {
+		// if title and link are both present
+		(Some(title), Some(link)) => match link_location {
+			// and the link should be in the title, then combine them
+			LinkLocation::PreferTitle => (Some(format!("<a href=\"{link}\">{title}</a>")), None),
+			// even it should be at the bottom, return both separately
+			LinkLocation::Bottom => (Some(title), Some(format!("<a href=\"{link}\">Link</a>"))),
+		},
+		// if only the title is presend, just print itself with an added newline
+		(Some(title), None) => (Some(title), None),
+		// and if only the link is present, but it at the bottom of the message, even if it should try to be in the title
+		(None, Some(link)) => (None, Some(format!("<a href=\"{link}\">Link</a>"))),
+		(None, None) => (None, None),
+	};
+
+	// add tag as a hashtag on top of the message
+	if let Some(tag) = tag {
+		let tag = tag.replace(
+			|c| match c {
+				'_' => false,
+				c if c.is_alphabetic() || c.is_ascii_digit() => false,
+				_ => true,
+			},
+			"_",
+		);
+
+		head = Some({
+			let mut head = head
+				// add more padding between tag and title if both are present
+				.map(|mut s| {
+					s.insert(0, '\n');
+					s
+				})
+				.unwrap_or_default();
+
+			head.insert_str(0, &format!("#{tag}\n"));
+			head
+		});
+	}
+
+	let composed_msg = ComposedMessage { head, body, tail };
+	(composed_msg, media)
 }
 
 impl Debug for Telegram {

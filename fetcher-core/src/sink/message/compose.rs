@@ -4,31 +4,21 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use url::Url;
-
-use super::LinkLocation;
-
+// TODO: use &str
 pub(crate) struct ComposedMessage {
-	head: Option<String>,
-	body: Option<String>,
-	tail: Option<String>,
+	pub head: Option<String>,
+	pub body: Option<String>,
+	pub tail: Option<String>,
 }
 
 impl ComposedMessage {
-	pub(super) fn new(head: Option<String>, body: Option<String>, tail: Option<String>) -> Self {
-		Self { head, body, tail }
+	pub(crate) fn len(&self) -> usize {
+		self.len_inner().0
 	}
 
 	pub(crate) fn split_at(&mut self, max_len: usize) -> Option<String> {
-		let should_insert_newline_after_head =
-			self.head.is_some() && (self.body.is_some() || self.tail.is_some());
-		let should_insert_newline_after_body = self.body.is_some() && self.tail.is_some();
-
-		let msg_len = self.head.as_ref().map_or(0, count_chars)
-			+ self.body.as_ref().map_or(0, count_chars)
-			+ self.tail.as_ref().map_or(0, count_chars)
-			+ usize::from(should_insert_newline_after_head)
-			+ usize::from(should_insert_newline_after_body);
+		let (msg_len, should_insert_newline_after_head, should_insert_newline_after_body) =
+			self.len_inner();
 
 		if msg_len == 0 {
 			return None;
@@ -51,71 +41,31 @@ impl ComposedMessage {
 			))
 		};
 
-		assert!(next.as_ref().map_or(true, |s| !s.is_empty()));
+		assert!(
+			next.as_ref().map_or(true, |s| !s.is_empty()),
+			"We should've ensured the final composed message isn't empty but it is anyways"
+		);
 
 		next
 	}
-}
 
-// format message's title, body, link, and other fields into (head, body, tail)
-// where the head and tail shouldn't ever be split
-pub(super) fn format_message(
-	title: Option<String>,
-	body: Option<String>,
-	link: Option<Url>,
-	tag: Option<&str>,
-	// if None, don't embed link using HTML
-	link_location: Option<LinkLocation>,
-) -> (Option<String>, Option<String>, Option<String>) {
-	let (mut head, tail) = match (title, link) {
-		// if title and link are both present
-		(Some(title), Some(link)) => match link_location {
-			// and the link should be in the title, then combine them
-			Some(LinkLocation::PreferTitle) => {
-				(Some(format!("<a href=\"{link}\">{title}</a>")), None)
-			}
-			// even it should be at the bottom, return both separately
-			Some(LinkLocation::Bottom) => {
-				(Some(title), Some(format!("<a href=\"{link}\">Link</a>")))
-			}
-			// TODO: specify that this path is for non HTML links, and the above is for HTML ones
-			None => (Some(title), Some(link.to_string())),
-		},
-		// if only the title is presend, just print itself with an added newline
-		(Some(title), None) => (Some(title), None),
-		// and if only the link is present, but it at the bottom of the message, even if it should try to be in the title
-		(None, Some(link)) if link_location.is_some() => {
-			(None, Some(format!("<a href=\"{link}\">Link</a>")))
-		}
-		// TODO: specify that this path is for non HTML links, and the above is for HTML ones
-		(None, Some(link)) => (None, Some(link.to_string())),
-		(None, None) => (None, None),
-	};
+	fn len_inner(&self) -> (usize, bool, bool) {
+		let should_insert_newline_after_head =
+			self.head.is_some() && (self.body.is_some() || self.tail.is_some());
+		let should_insert_newline_after_body = self.body.is_some() && self.tail.is_some();
 
-	if let Some(tag) = tag {
-		let tag = tag.replace(
-			|c| match c {
-				'_' => false,
-				c if c.is_alphabetic() || c.is_ascii_digit() => false,
-				_ => true,
-			},
-			"_",
-		);
+		let len = self.head.as_ref().map_or(0, count_chars)
+			+ self.body.as_ref().map_or(0, count_chars)
+			+ self.tail.as_ref().map_or(0, count_chars)
+			+ usize::from(should_insert_newline_after_head)
+			+ usize::from(should_insert_newline_after_body);
 
-		let mut head_wip = head
-			// add more padding between tag and title if both are present
-			.map(|mut s| {
-				s.insert(0, '\n');
-				s
-			})
-			.unwrap_or_default();
-
-		head_wip.insert_str(0, &format!("#{tag}\n"));
-
-		head = Some(head_wip);
+		(
+			len,
+			should_insert_newline_after_head,
+			should_insert_newline_after_body,
+		)
 	}
-
-	(head, body, tail)
 }
 
 fn compose_long_message(

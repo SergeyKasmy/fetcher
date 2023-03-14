@@ -13,6 +13,7 @@ use fetcher_core::action::transform::{
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
 
+// TODO: use a map instead of field and value, i.e. HashMap<Field, Option<Values>>
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Set {

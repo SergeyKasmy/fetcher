@@ -10,13 +10,13 @@ use crate::{
 	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 	Error as ConfigError,
 };
-use fetcher_core::sink::{message::LinkLocation as CLinkLocation, Telegram as CTelegram};
+use fetcher_core::sink::{telegram::LinkLocation as CLinkLocation, Telegram as CTelegram};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Telegram {
-	chat_id: i64,
-	link_location: Option<LinkLocation>,
+	pub chat_id: i64,
+	pub link_location: Option<LinkLocation>,
 }
 
 /// Refer to [`crate::sink::message::LinkLocation`]
