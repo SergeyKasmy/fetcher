@@ -64,20 +64,31 @@ pub(super) fn format_message(
 	body: Option<String>,
 	link: Option<Url>,
 	tag: Option<&str>,
-	link_location: LinkLocation,
+	// if None, don't embed link using HTML
+	link_location: Option<LinkLocation>,
 ) -> (Option<String>, Option<String>, Option<String>) {
 	let (mut head, tail) = match (title, link) {
 		// if title and link are both present
 		(Some(title), Some(link)) => match link_location {
 			// and the link should be in the title, then combine them
-			LinkLocation::PreferTitle => (Some(format!("<a href=\"{link}\">{title}</a>")), None),
+			Some(LinkLocation::PreferTitle) => {
+				(Some(format!("<a href=\"{link}\">{title}</a>")), None)
+			}
 			// even it should be at the bottom, return both separately
-			LinkLocation::Bottom => (Some(title), Some(format!("<a href=\"{link}\">Link</a>"))),
+			Some(LinkLocation::Bottom) => {
+				(Some(title), Some(format!("<a href=\"{link}\">Link</a>")))
+			}
+			// TODO: specify that this path is for non HTML links, and the above is for HTML ones
+			None => (Some(title), Some(link.to_string())),
 		},
 		// if only the title is presend, just print itself with an added newline
 		(Some(title), None) => (Some(title), None),
 		// and if only the link is present, but it at the bottom of the message, even if it should try to be in the title
-		(None, Some(link)) => (None, Some(format!("<a href=\"{link}\">Link</a>"))),
+		(None, Some(link)) if link_location.is_some() => {
+			(None, Some(format!("<a href=\"{link}\">Link</a>")))
+		}
+		// TODO: specify that this path is for non HTML links, and the above is for HTML ones
+		(None, Some(link)) => (None, Some(link.to_string())),
 		(None, None) => (None, None),
 	};
 
@@ -106,9 +117,6 @@ pub(super) fn format_message(
 
 	(head, body, tail)
 }
-
-/*
-*/
 
 fn compose_long_message(
 	head: &mut Option<String>,
@@ -283,9 +291,6 @@ mod tests {
 
 	#[test]
 	fn format_head_body() {
-		const HEAD: &str = "HEAD";
-		const BODY: &str = "BODY";
-
 		const FINAL: &str = "HEAD\nBODY";
 
 		let mut msg = ComposedMessage {

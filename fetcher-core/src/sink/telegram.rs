@@ -74,7 +74,7 @@ impl Sink for Telegram {
 		message.title = message.title.map(|s| teloxide::utils::html::escape(&s));
 		message.body = message.body.map(|s| teloxide::utils::html::escape(&s));
 
-		let (composed_msg, media) = message.compose(tag, self.link_location);
+		let (composed_msg, media) = message.compose(tag, self.link_location.into());
 
 		let msg_id = self.send_processed(composed_msg, media, reply_to).await?;
 		Ok(msg_id.map(|tel_msgid| i64::from(tel_msgid.0).into()))

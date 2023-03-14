@@ -56,7 +56,7 @@ impl Message {
 	pub(crate) fn compose(
 		self,
 		tag: Option<&str>,
-		link_location: LinkLocation,
+		link_location: Option<LinkLocation>,
 	) -> (ComposedMessage, Option<Vec<Media>>) {
 		let Message {
 			title,
