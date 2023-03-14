@@ -4,6 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub mod discord;
 pub mod email_password;
 pub mod google_oauth2;
 pub mod runtime_external_save;

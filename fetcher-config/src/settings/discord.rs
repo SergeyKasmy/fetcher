@@ -8,11 +8,11 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct Telegram {
+pub struct Discord {
 	pub token: String,
 }
 
-impl Telegram {
+impl Discord {
 	pub fn parse(self) -> String {
 		let Self { token } = self;
 

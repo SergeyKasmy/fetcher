@@ -22,6 +22,7 @@ pub enum ExternalDataResult<T, E = ExternalDataError> {
 	Err(E),
 }
 
+// TODO: add default impl of ExternalDataResult::Unavailable
 pub trait ProvideExternalData {
 	type ReadFilter: CReadFilter + 'static;
 
@@ -29,6 +30,7 @@ pub trait ProvideExternalData {
 	fn google_oauth2(&self) -> ExternalDataResult<fcore::auth::Google>;
 	fn email_password(&self) -> ExternalDataResult<String>;
 	fn telegram_bot_token(&self) -> ExternalDataResult<String>;
+	fn discord_bot_token(&self) -> ExternalDataResult<String>;
 
 	fn read_filter(
 		&self,
