@@ -20,7 +20,7 @@ use serenity::{
 
 use super::{
 	error::SinkError,
-	message::{compose::ComposedMessage, Media, Message, MessageId},
+	message::{length_limiter::MessageLengthLimiter, Media, Message, MessageId},
 	Sink,
 };
 use crate::utils::OptionExt;
@@ -116,10 +116,12 @@ impl Sink for Discord {
 				});
 			}
 
-			let mut composed_msg = ComposedMessage {
-				head,
-				body,
-				tail: link.map(|s| s.to_string()),
+			let link = link.map(|s| s.to_string());
+
+			let mut composed_msg = MessageLengthLimiter {
+				head: head.as_deref(),
+				body: body.as_deref(),
+				tail: link.as_deref(),
 			};
 
 			while let Some(text) = composed_msg.split_at(MAX_MSG_LEN) {

@@ -9,7 +9,7 @@
 use crate::{
 	sink::{
 		error::SinkError,
-		message::{compose::ComposedMessage, Media, Message, MessageId},
+		message::{length_limiter::MessageLengthLimiter, Media, Message, MessageId},
 		Sink,
 	},
 	utils::OptionExt,
@@ -81,7 +81,14 @@ impl Sink for Telegram {
 			Ok::<_, TryFromIntError>(tel_msg_id)
 		})?;
 
-		let (processed_msg, media) = process_msg(message, tag, self.link_location);
+		let (head, body, tail, media) = process_msg(message, tag, self.link_location);
+
+		let processed_msg = MessageLengthLimiter {
+			head: head.as_deref(),
+			body: body.as_deref(),
+			tail: tail.as_deref(),
+		};
+
 		let msg_id = self.send_processed(processed_msg, media, reply_to).await?;
 		Ok(msg_id.map(|tel_msgid| i64::from(tel_msgid.0).into()))
 	}
@@ -91,7 +98,7 @@ impl Telegram {
 	// replace option with custom error
 	async fn send_processed(
 		&self,
-		mut msg: ComposedMessage,
+		mut msg: MessageLengthLimiter<'_>,
 		media: Option<Vec<Media>>,
 		reply_to: Option<TelMessageId>,
 	) -> Result<Option<TelMessageId>, SinkError> {
@@ -330,12 +337,17 @@ impl Telegram {
 	}
 }
 
-// format and sanitize all message fields
+// format and sanitize all message fields. Returns (head, body, tail, media)
 fn process_msg(
 	msg: Message,
 	tag: Option<&str>,
 	link_location: LinkLocation,
-) -> (ComposedMessage, Option<Vec<Media>>) {
+) -> (
+	Option<String>,
+	Option<String>,
+	Option<String>,
+	Option<Vec<Media>>,
+) {
 	let Message {
 		title,
 		body,
@@ -388,8 +400,7 @@ fn process_msg(
 		});
 	}
 
-	let composed_msg = ComposedMessage { head, body, tail };
-	(composed_msg, media)
+	(head, body, tail, media)
 }
 
 impl Debug for Telegram {

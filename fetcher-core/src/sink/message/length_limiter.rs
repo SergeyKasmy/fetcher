@@ -4,21 +4,23 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// TODO: use &str
-pub(crate) struct ComposedMessage {
-	pub head: Option<String>,
-	pub body: Option<String>,
-	pub tail: Option<String>,
+pub(crate) struct MessageLengthLimiter<'a> {
+	pub head: Option<&'a str>,
+	pub body: Option<&'a str>,
+	pub tail: Option<&'a str>,
 }
 
-impl ComposedMessage {
-	pub(crate) fn len(&self) -> usize {
-		self.len_inner().0
-	}
-
+impl MessageLengthLimiter<'_> {
 	pub(crate) fn split_at(&mut self, max_len: usize) -> Option<String> {
-		let (msg_len, should_insert_newline_after_head, should_insert_newline_after_body) =
-			self.len_inner();
+		let should_insert_newline_after_head =
+			self.head.is_some() && (self.body.is_some() || self.tail.is_some());
+		let should_insert_newline_after_body = self.body.is_some() && self.tail.is_some();
+
+		let msg_len = self.head.map_or(0, count_chars)
+			+ self.body.map_or(0, count_chars)
+			+ self.tail.map_or(0, count_chars)
+			+ usize::from(should_insert_newline_after_head)
+			+ usize::from(should_insert_newline_after_body);
 
 		if msg_len == 0 {
 			return None;
@@ -48,30 +50,12 @@ impl ComposedMessage {
 
 		next
 	}
-
-	fn len_inner(&self) -> (usize, bool, bool) {
-		let should_insert_newline_after_head =
-			self.head.is_some() && (self.body.is_some() || self.tail.is_some());
-		let should_insert_newline_after_body = self.body.is_some() && self.tail.is_some();
-
-		let len = self.head.as_ref().map_or(0, count_chars)
-			+ self.body.as_ref().map_or(0, count_chars)
-			+ self.tail.as_ref().map_or(0, count_chars)
-			+ usize::from(should_insert_newline_after_head)
-			+ usize::from(should_insert_newline_after_body);
-
-		(
-			len,
-			should_insert_newline_after_head,
-			should_insert_newline_after_body,
-		)
-	}
 }
 
 fn compose_long_message(
-	head: &mut Option<String>,
-	body: &mut Option<String>,
-	tail: &mut Option<String>,
+	head: &mut Option<&str>,
+	body: &mut Option<&str>,
+	tail: &mut Option<&str>,
 	max_len: usize,
 ) -> Option<String> {
 	if head.is_none() && body.is_none() && tail.is_none() {
@@ -80,13 +64,13 @@ fn compose_long_message(
 
 	// make sure the entire head or tail can fit into the requested split
 	// since they can't be split into parts
-	let head_len = head.as_ref().map_or(0, count_chars);
+	let head_len = head.map_or(0, count_chars);
 	assert!(
 		max_len >= head_len,
 		"head has more characters: {head_len}, than can be fit in a msg part of max len: {max_len}"
 	);
 
-	let tail_len = tail.as_ref().map_or(0, count_chars);
+	let tail_len = tail.map_or(0, count_chars);
 	assert!(
 		max_len >= tail_len,
 		"tail has more characters: {tail_len}, than can be fit in a msg part of max len: {max_len}"
@@ -97,7 +81,7 @@ fn compose_long_message(
 	// put the entire head into the split
 	// should always fit because of the assertions up above
 	if let Some(head) = head.take() {
-		split_part.push_str(&head);
+		split_part.push_str(head);
 	}
 
 	if let Some(body_str) = body.take() {
@@ -130,7 +114,7 @@ fn compose_long_message(
 			// if there are some bytes remaining in the body, put them back into itself
 			let remaining_body = &body_str[body_fits_till..];
 			if !remaining_body.is_empty() {
-				*body = Some(remaining_body.to_owned());
+				*body = Some(remaining_body);
 			}
 		} else {
 			*body = Some(body_str);
@@ -154,7 +138,7 @@ fn compose_long_message(
 					split_part.push('\n');
 				}
 
-				split_part.push_str(&tail);
+				split_part.push_str(tail);
 			}
 		}
 	}
@@ -165,15 +149,13 @@ fn compose_long_message(
 		assert!(
 				split_part_chars <= max_len,
 				"Returned a part with char len of {split_part_chars} when it should never be longer than {max_len}"
-			);
+		);
 	}
 
 	Some(split_part)
 }
 
-// used to replace closures
-#[allow(clippy::ptr_arg)]
-fn count_chars(s: &String) -> usize {
+fn count_chars(s: &str) -> usize {
 	s.chars().count()
 }
 
@@ -189,7 +171,7 @@ mod tests {
 	const BODY: &str = "BODY";
 	const TAIL: &str = "TAIL";
 
-	impl Iterator for ComposedMessage {
+	impl Iterator for MessageLengthLimiter<'_> {
 		type Item = String;
 
 		fn next(&mut self) -> Option<Self::Item> {
@@ -201,10 +183,10 @@ mod tests {
 	fn format_head_body_tail() {
 		const FINAL: &str = "HEAD\nBODY\nTAIL";
 
-		let mut msg = ComposedMessage {
-			head: Some(HEAD.to_owned()),
-			body: Some(BODY.to_owned()),
-			tail: Some(TAIL.to_owned()),
+		let mut msg = MessageLengthLimiter {
+			head: Some(HEAD),
+			body: Some(BODY),
+			tail: Some(TAIL),
 		};
 
 		assert_eq!(msg.next().as_deref(), Some(FINAL));
@@ -215,10 +197,10 @@ mod tests {
 	fn format_head_tail() {
 		const FINAL: &str = "HEAD\nTAIL";
 
-		let mut msg = ComposedMessage {
-			head: Some(HEAD.to_owned()),
+		let mut msg = MessageLengthLimiter {
+			head: Some(HEAD),
 			body: None,
-			tail: Some(TAIL.to_owned()),
+			tail: Some(TAIL),
 		};
 
 		assert_eq!(msg.next().as_deref(), Some(FINAL));
@@ -229,10 +211,10 @@ mod tests {
 	fn format_body_tail() {
 		const FINAL: &str = "BODY\nTAIL";
 
-		let mut msg = ComposedMessage {
+		let mut msg = MessageLengthLimiter {
 			head: None,
-			body: Some(BODY.to_owned()),
-			tail: Some(TAIL.to_owned()),
+			body: Some(BODY),
+			tail: Some(TAIL),
 		};
 
 		assert_eq!(msg.next().as_deref(), Some(FINAL));
@@ -243,9 +225,9 @@ mod tests {
 	fn format_head_body() {
 		const FINAL: &str = "HEAD\nBODY";
 
-		let mut msg = ComposedMessage {
-			head: Some(HEAD.to_owned()),
-			body: Some(BODY.to_owned()),
+		let mut msg = MessageLengthLimiter {
+			head: Some(HEAD),
+			body: Some(BODY),
 			tail: None,
 		};
 
@@ -257,9 +239,9 @@ mod tests {
 	fn short_body() {
 		const STR: &str = "Hello, World!";
 
-		let mut msg = ComposedMessage {
+		let mut msg = MessageLengthLimiter {
 			head: None,
-			body: Some(STR.to_owned()),
+			body: Some(STR),
 			tail: None,
 		};
 
@@ -274,9 +256,9 @@ mod tests {
 			body.push('b');
 		}
 
-		let msg = ComposedMessage {
+		let msg = MessageLengthLimiter {
 			head: None,
-			body: Some(body.clone()),
+			body: Some(&body),
 			tail: None,
 		};
 
@@ -299,9 +281,9 @@ mod tests {
 			body.push('b');
 		}
 
-		let msg = ComposedMessage {
-			head: Some(head),
-			body: Some(body),
+		let msg = MessageLengthLimiter {
+			head: Some(&head),
+			body: Some(&body),
 			tail: None,
 		};
 
@@ -319,10 +301,10 @@ mod tests {
 
 		let tail = "tt".to_owned(); // and tail is 2 char
 
-		let msg = ComposedMessage {
+		let msg = MessageLengthLimiter {
 			head: None,
-			body: Some(body),
-			tail: Some(tail),
+			body: Some(&body),
+			tail: Some(&tail),
 		};
 
 		assert_eq!(msg.count(), BODY_COUNT + 1); // tail shouldn't be split and thus should be put into it's own msg
@@ -345,10 +327,10 @@ mod tests {
 			tail.push('t');
 		}
 
-		let msg = ComposedMessage {
-			head: Some(head),
-			body: Some(body),
-			tail: Some(tail),
+		let msg = MessageLengthLimiter {
+			head: Some(&head),
+			body: Some(&body),
+			tail: Some(&tail),
 		};
 
 		// MSG_COUNT bodies + 1 head & 1 tail
