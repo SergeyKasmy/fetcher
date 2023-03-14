@@ -4,10 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+mod discord;
 mod exec;
 mod telegram;
 
-use self::{exec::Exec, telegram::Telegram};
+use self::{discord::Discord, exec::Exec, telegram::Telegram};
 use crate::{jobs::external_data::ProvideExternalData, Error};
 use fetcher_core::sink::{Sink as CSink, Stdout as CStdout};
 
@@ -17,6 +18,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Sink {
 	Telegram(Telegram),
+	Discord(Discord),
 	Exec(Exec),
 	Stdout,
 }
@@ -28,6 +30,7 @@ impl Sink {
 	{
 		Ok(match self {
 			Self::Telegram(x) => Box::new(x.parse(external)?),
+			Self::Discord(x) => Box::new(x.parse(external)?),
 			Self::Exec(x) => Box::new(x.parse()),
 			Self::Stdout => Box::new(CStdout {}),
 		})
@@ -36,8 +39,7 @@ impl Sink {
 	pub fn has_message_id_support(&self) -> bool {
 		match self {
 			Self::Telegram(_) => true,
-			Self::Exec(_) => false,
-			Self::Stdout => false,
+			Self::Discord(_) | Self::Exec(_) | Self::Stdout => false, // TODO: implement message id support for Discord
 		}
 	}
 }

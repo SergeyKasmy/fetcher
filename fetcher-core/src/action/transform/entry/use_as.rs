@@ -36,12 +36,12 @@ impl TransformEntry for Use {
 
 	async fn transform_entry(&self, ent: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		let val = match self.field {
-			Field::Title => ent.msg.title.clone(),
-			Field::Body => ent.msg.body.clone(),
-			Field::Link => ent.msg.link.as_ref().map(ToString::to_string),
-			Field::Id => ent.id.as_ref().map(|id| id.0.clone()),
-			Field::ReplyTo => ent.reply_to.as_ref().map(|id| id.0.clone()),
-			Field::RawContets => ent.raw_contents.clone(),
+			Field::Title => ent.msg.title,
+			Field::Body => ent.msg.body,
+			Field::Link => ent.msg.link.map(|s| s.to_string()),
+			Field::Id => ent.id.map(|id| id.0),
+			Field::ReplyTo => ent.reply_to.map(|id| id.0),
+			Field::RawContets => ent.raw_contents,
 		};
 
 		let mut ent = TransformedEntry::default();

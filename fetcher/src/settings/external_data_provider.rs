@@ -35,6 +35,10 @@ impl ProvideExternalData for ExternalDataFromDataDir {
 		data::telegram::get(self.cx).into()
 	}
 
+	fn discord_bot_token(&self) -> ExternalDataResult<String> {
+		data::discord::get(self.cx).into()
+	}
+
 	fn read_filter(
 		&self,
 		job: &JobName,

@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 #[serde(transparent)]
 pub struct Shorten {
 	len: usize,
-	// TODO: add
+	// TODO: add as a HashMap
 	// field: Field,
 }
 

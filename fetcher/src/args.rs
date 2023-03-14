@@ -99,6 +99,7 @@ pub enum Setting {
 	GoogleOAuth2,
 	EmailPassword,
 	Telegram,
+	Discord,
 	Twitter,
 }
 
@@ -110,6 +111,7 @@ impl FromStr for Setting {
 			"google_oauth" => Self::GoogleOAuth2,
 			"email_password" => Self::EmailPassword,
 			"telegram" => Self::Telegram,
+			"discord" => Self::Discord,
 			"twitter" => Self::Twitter,
 			s => return Err(format!("{s:?} is not a valid setting. Available settings: google_oauth, email_password, telegram, twitter")),
 		})
@@ -146,6 +148,10 @@ impl FromStr for JsonJob {
 			}
 
 			fn telegram_bot_token(&self) -> ExternalDataResult<String> {
+				ExternalDataResult::Unavailable
+			}
+
+			fn discord_bot_token(&self) -> ExternalDataResult<String> {
 				ExternalDataResult::Unavailable
 			}
 

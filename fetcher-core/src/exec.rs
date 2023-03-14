@@ -55,8 +55,6 @@ pub enum ExecError {
 
 #[async_trait]
 impl Fetch for Exec {
-	// TODO: maybe, instead of returining a vec, add a &mut Vec output parameter
-	// and maybe also a trait method get_vec() that automatically creates a new vec, fetches into it, and returns it
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
 		tracing::debug!("Spawning a shell with command {:?}", self.cmd);
 		let out = Command::new(SHELL)

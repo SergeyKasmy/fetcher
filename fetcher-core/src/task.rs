@@ -70,29 +70,31 @@ impl Task {
 		// entries should be sorted newest to oldest but we should send oldest first
 		for entry in entries.into_iter().rev() {
 			let msgid = match self.sink.as_ref() {
-				Some(sink) => {
+				// send message if it isn't empty or raw_contents of they aren't
+				Some(sink) if !entry.msg.is_empty() || entry.raw_contents.is_some() => {
 					// use raw_contents as msg.body if the message is empty
 					let mut msg = entry.msg;
-					if msg.title.is_none()
-						&& msg.body.is_none() && msg.link.is_none()
-						&& msg.media.is_none()
-					{
-						msg.body = entry.raw_contents.clone();
+
+					if msg.is_empty() {
+						msg.body = Some(
+							entry
+								.raw_contents
+								.expect("raw_contents should be some because of the match guard"),
+						);
 					}
 
 					let tag = self.tag.as_deref();
+					let reply_to = self
+						.entry_to_msg_map
+						.as_mut()
+						.and_then(|map| map.get_if_exists(entry.id.as_ref()));
 
-					tracing::debug!("Sending {msg:?} to a sink with tag {tag:?}");
-					sink.send(
-						msg,
-						self.entry_to_msg_map
-							.as_mut()
-							.and_then(|map| map.get_if_exists(entry.id.as_ref())),
-						tag,
-					)
-					.await?
+					tracing::debug!(
+						"Sending {msg:?} to a sink with tag {tag:?}, replying to {reply_to:?}"
+					);
+					sink.send(msg, reply_to, tag).await?
 				}
-				None => None,
+				_ => None,
 			};
 
 			if let Some(entry_id) = entry.id {

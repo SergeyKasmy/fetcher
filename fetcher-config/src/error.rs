@@ -24,6 +24,9 @@ pub enum Error {
 	#[error("Telegram bot token isn't set up")]
 	TelegramBotTokenMissing,
 
+	#[error("Discord bot token isn't set up")]
+	DiscordBotTokenMissing,
+
 	#[error("Wrong Google OAuth2 token")]
 	GoogleOAuth2WrongToken(#[from] fetcher_core::auth::google::GoogleOAuth2Error),
 
