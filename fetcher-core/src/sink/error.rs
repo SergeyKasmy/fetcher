@@ -22,6 +22,12 @@ pub enum SinkError {
 		msg: Box<dyn Debug + Send + Sync>,
 	},
 
+	#[error("Can't sent via Discord. Message contents: {msg:?}")]
+	Discord {
+		source: serenity::Error,
+		msg: Box<dyn Debug + Send + Sync>,
+	},
+
 	#[error("Can't pass message to a process")]
 	Exec(#[from] ExecError),
 

@@ -21,19 +21,25 @@ use super::{
 	message::{Message, MessageId},
 	Sink,
 };
+use crate::utils::OptionExt;
 
 // https://discord.com/developers/docs/resources/channel#create-message
 const MAX_MSG_LEN: usize = 2000;
 
+/// Discord sink. Supports both text channels and DMs with a user
 #[derive(Debug)]
 pub struct Discord {
 	bot: Bot,
 	target: TargetInner,
 }
 
-#[derive(Debug)]
+/// Target for the [`Discord`] sink where it sends message to
+#[derive(Clone, Copy, Debug)]
 pub enum Target {
+	/// A text channel ID
 	Channel(u64),
+
+	/// A user ID, whose DMs to send messages into
 	User(u64),
 }
 
@@ -44,6 +50,8 @@ enum TargetInner {
 }
 
 impl Discord {
+	/// Create a new [`Discord`] sink. Needs a valid Discord bot `token` and a `target` where to send messages to
+	#[must_use]
 	pub fn new(token: &str, target: Target) -> Self {
 		Self {
 			bot: Bot::new(token),
@@ -63,51 +71,53 @@ impl Sink for Discord {
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
-		// let message = self
-		// 	.channel_id
-		// 	.send_message(&self.bot, |msg| {
-		// 		msg.content(message.body.unwrap());
-		// 		msg
-		// 	})
-		// 	.await
-		// 	.unwrap();
-
-		// Ok(None)
-
 		let (mut composed_msg, _media) = msg.compose(tag, None);
 
-		let mut last_message = reply_to.map(|id| DcMessageId::from(u64::try_from(id.0).unwrap()));
+		let mut last_message = reply_to.try_map(|msgid| {
+			let dc_msgid =
+				DcMessageId::from(u64::try_from(msgid.0).map_err(SinkError::InvalidMessageIdType)?);
+
+			Ok::<_, SinkError>(dc_msgid)
+		})?;
 
 		while let Some(text) = composed_msg.split_at(MAX_MSG_LEN) {
 			let msg = self
 				.target
 				.send_message(&self.bot, |msg| {
-					msg.content(text);
+					msg.content(&text);
 					msg
 				})
-				.await;
+				.await
+				.map_err(|e| SinkError::Discord {
+					source: e,
+					msg: Box::new(text),
+				})?;
 
 			last_message = Some(msg.id);
 		}
 
-		Ok(last_message.map(|id| i64::try_from(id.0).unwrap().into()))
+		// If it does, we should crash and think of a new solution anyways
+		let msgid = last_message.map(|id| i64::try_from(id.0).expect("not sure if Discord will ever return an ID that doesn't fit into MessageId. It shouldn't do that, probably...").into());
+
+		Ok(msgid)
 	}
 }
 
 impl TargetInner {
-	async fn send_message<'a, F>(&self, bot: &Bot, f: F) -> DcMessage
+	async fn send_message<'a, F>(&self, bot: &Bot, f: F) -> Result<DcMessage, serenity::Error>
 	where
 		F: for<'b> FnOnce(&'b mut CreateMessage<'a>) -> &'b mut CreateMessage<'a>,
 	{
-		match self {
-			TargetInner::Channel(chan) => chan.send_message(bot, f).await.unwrap(),
-			TargetInner::User(user) => user
-				.create_dm_channel(bot)
-				.await
-				.unwrap()
-				.send_message(bot, f)
-				.await
-				.unwrap(),
-		}
+		let msg = match self {
+			TargetInner::Channel(chan) => chan.send_message(bot, f).await?,
+			TargetInner::User(user) => {
+				user.create_dm_channel(bot)
+					.await?
+					.send_message(bot, f)
+					.await?
+			}
+		};
+
+		Ok(msg)
 	}
 }
