@@ -4,29 +4,32 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use std::collections::HashMap;
+
 use super::Field;
 use fetcher_core::action::transform::{
 	field::set::Set as CSet, field::TransformFieldWrapper as CTransformFieldWrapper,
-	Transform as CTransform,
 };
+use fetcher_core::action::Action as CAction;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
 
-// TODO: use a map instead of field and value, i.e. HashMap<Field, Option<Values>>
 #[derive(Deserialize, Serialize, Clone, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct Set {
-	pub field: Field,
-	pub value: Option<Values>,
-}
+#[serde(transparent)]
+pub struct Set(pub HashMap<Field, Option<Values>>);
 
 impl Set {
-	pub fn parse(self) -> impl CTransform {
-		CTransformFieldWrapper {
-			field: self.field.parse(),
-			transformator: CSet(self.value.map(|x| x.0)),
-		}
+	pub fn parse(self) -> Vec<CAction> {
+		self.0
+			.into_iter()
+			.map(|(field, values)| {
+				CAction::Transform(Box::new(CTransformFieldWrapper {
+					field: field.parse(),
+					transformator: CSet(values.map(|x| x.0)),
+				}))
+			})
+			.collect()
 	}
 }
 

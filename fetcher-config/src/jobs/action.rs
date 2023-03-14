@@ -57,7 +57,7 @@ pub enum Action {
 }
 
 // TODO: add media
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Field {
 	Title,
@@ -69,19 +69,19 @@ pub enum Field {
 }
 
 impl Action {
-	pub fn parse<RF>(self, rf: Option<RF>) -> Result<Option<CAction>, Error>
+	pub fn parse<RF>(self, rf: Option<RF>) -> Result<Option<Vec<CAction>>, Error>
 	where
 		RF: CReadFilter + 'static,
 	{
 		macro_rules! transform {
 			($tr:expr) => {
-				CAction::Transform(Box::new($tr))
+				vec![CAction::Transform(Box::new($tr))]
 			};
 		}
 
 		macro_rules! filter {
 			($f:expr) => {
-				CAction::Filter(Box::new($f))
+				vec![CAction::Filter(Box::new($f))]
 			};
 		}
 
@@ -89,7 +89,7 @@ impl Action {
 			// filters
 			Action::ReadFilter => {
 				if let Some(rf) = rf {
-					CAction::Filter(Box::new(rf))
+					vec![CAction::Filter(Box::new(rf))]
 				} else {
 					tracing::warn!("Can't filter read entries when no read filter type is set up for the task!");
 					return Ok(None);
@@ -102,7 +102,7 @@ impl Action {
 			Action::Html(x) => transform!(x.parse()?),
 			Action::Http => transform!(CHttp::new(CField::Link)?),
 			Action::Json(x) => transform!(x.parse()?),
-			Action::Use(x) => transform!(x.parse()),
+			Action::Use(x) => x.parse(),
 
 			// field transforms
 			Action::Caps => transform!(CTransformFieldWrapper {
@@ -110,12 +110,12 @@ impl Action {
 				transformator: CCaps,
 			}),
 			Action::DebugPrint => transform!(CDebugPrint),
-			Action::Set(s) => transform!(s.parse()),
-			Action::Shorten(x) => transform!(x.parse()),
+			Action::Set(s) => s.parse(),
+			Action::Shorten(x) => x.parse(),
 			Action::Trim(x) => transform!(x.parse()),
 
 			// other
-			Action::Regex(x) => x.parse()?,
+			Action::Regex(x) => vec![x.parse()?],
 		};
 
 		Ok(Some(act))

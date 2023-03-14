@@ -5,22 +5,30 @@
  */
 
 use super::Field;
-use fetcher_core::action::transform::Use as CUse;
+use fetcher_core::action::{transform::Use as CUse, Action as CAction};
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct Use {
-	pub field: Field,
-	pub as_field: Field,
+#[serde(transparent)]
+pub struct Use(pub HashMap<Field, As>);
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct As {
+	pub r#as: Field,
 }
 
 impl Use {
-	pub fn parse(self) -> CUse {
-		CUse {
-			field: self.field.parse(),
-			as_field: self.as_field.parse(),
-		}
+	pub fn parse(self) -> Vec<CAction> {
+		self.0
+			.into_iter()
+			.map(|(field, as_field)| {
+				CAction::Transform(Box::new(CUse {
+					field: field.parse(),
+					as_field: as_field.r#as.parse(),
+				}))
+			})
+			.collect()
 	}
 }

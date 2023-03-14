@@ -4,30 +4,31 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::action::transform::{
-	field::{
-		shorten::Shorten as CShorten, Field as CField,
-		TransformFieldWrapper as CTransformFieldWrapper,
+use super::Field;
+use fetcher_core::action::{
+	transform::field::{
+		shorten::Shorten as CShorten, TransformFieldWrapper as CTransformFieldWrapper,
 	},
-	Transform as CTransform,
+	Action as CAction,
 };
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(transparent)]
-pub struct Shorten {
-	len: usize,
-	// TODO: add as a HashMap
-	// field: Field,
-}
+pub struct Shorten(pub HashMap<Field, usize>);
 
 impl Shorten {
-	pub fn parse(self) -> impl CTransform {
-		CTransformFieldWrapper {
-			// field: self.field.parse(),
-			field: CField::Body,
-			transformator: CShorten { len: self.len },
-		}
+	pub fn parse(self) -> Vec<CAction> {
+		self.0
+			.into_iter()
+			.map(|(field, len)| {
+				CAction::Transform(Box::new(CTransformFieldWrapper {
+					field: field.parse(),
+					transformator: CShorten { len },
+				}))
+			})
+			.collect()
 	}
 }

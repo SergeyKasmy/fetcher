@@ -32,7 +32,7 @@ pub struct Task {
 	pub source: Option<Source>,
 	#[serde(rename = "process")]
 	pub actions: Option<Vec<Action>>,
-	// TODO: several sinks or integrate into actions
+	// TODO: completely integrate into actions
 	pub sink: Option<Sink>,
 	pub entry_to_msg_map_enabled: Option<bool>,
 }
@@ -61,10 +61,12 @@ impl Task {
 			None => None,
 		};
 
-		let actions = self.actions.try_map(|x| {
-			x.into_iter()
-				.filter_map(|act| act.parse(rf.clone()).transpose())
-				.collect::<Result<_, _>>()
+		let actions = self.actions.try_map(|acts| {
+			itertools::process_results(
+				acts.into_iter()
+					.filter_map(|act| act.parse(rf.clone()).transpose()),
+				|i| i.flatten().collect(),
+			)
 		})?;
 
 		let entry_to_msg_map = if self
