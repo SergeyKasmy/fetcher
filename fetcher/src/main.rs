@@ -39,7 +39,6 @@ use std::{
 	ops::ControlFlow,
 	time::{Duration, Instant},
 };
-use tap::Tap;
 use tokio::{
 	select,
 	sync::watch::{self, Receiver},

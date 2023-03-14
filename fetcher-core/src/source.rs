@@ -34,8 +34,6 @@ pub trait Source: Fetch + MarkAsRead + Debug + Send + Sync {}
 /// A trait that defines a way to fetch (entries)[`Entry`]
 #[async_trait]
 pub trait Fetch: Debug + Send + Sync {
-	// TODO: maybe, instead of returining a vec, add a &mut Vec output parameter
-	// and maybe also a trait method get_vec() that automatically creates a new vec, fetches into it, and returns it
 	/// Fetch all available entries from the source
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError>;
 }

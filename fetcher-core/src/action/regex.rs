@@ -7,6 +7,8 @@
 //! This module contains the [`Regex`] action that can be used as a [`transform`](`crate::action::transform`) or a [`filter`](`crate::action::filter`),
 //! depending on the [`Action`] used
 
+// TODO: completely redo this crate (regex). There's no point to use typestate pattern here, even though it's really cool...
+
 pub mod action;
 
 use self::{

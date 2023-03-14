@@ -39,9 +39,7 @@ impl Sink {
 	pub fn has_message_id_support(&self) -> bool {
 		match self {
 			Self::Telegram(_) => true,
-			Self::Discord(_) => false, // TODO: implement message id support for Discord
-			Self::Exec(_) => false,
-			Self::Stdout => false,
+			Self::Discord(_) | Self::Exec(_) | Self::Stdout => false, // TODO: implement message id support for Discord
 		}
 	}
 }
