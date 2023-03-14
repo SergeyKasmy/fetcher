@@ -4,7 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_config::jobs::{JobName, TaskName};
 use fetcher_core::job::Job;
 
 use argh::FromArgs;
@@ -126,51 +125,15 @@ impl FromStr for JsonJob {
 	type Err = Report;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		use fetcher_config::jobs::external_data::{ExternalDataResult, ProvideExternalData};
+		use fetcher_config::jobs::external_data::ProvideExternalData;
 		use fetcher_core::read_filter::ReadFilter;
 
 		struct EmptyExternalData;
 
+		// TODO: add a way to provide external settings even in manual jobs
 		impl ProvideExternalData for EmptyExternalData {
 			// it's a lie but don't tell anybody...
 			type ReadFilter = Box<dyn ReadFilter>;
-
-			fn twitter_token(&self) -> ExternalDataResult<(String, String)> {
-				ExternalDataResult::Unavailable
-			}
-
-			fn google_oauth2(&self) -> ExternalDataResult<fetcher_core::auth::Google> {
-				ExternalDataResult::Unavailable
-			}
-
-			fn email_password(&self) -> ExternalDataResult<String> {
-				ExternalDataResult::Unavailable
-			}
-
-			fn telegram_bot_token(&self) -> ExternalDataResult<String> {
-				ExternalDataResult::Unavailable
-			}
-
-			fn discord_bot_token(&self) -> ExternalDataResult<String> {
-				ExternalDataResult::Unavailable
-			}
-
-			fn read_filter(
-				&self,
-				_job: &JobName,
-				_task: Option<&TaskName>,
-				_expected_rf: fetcher_config::jobs::read_filter::Kind,
-			) -> ExternalDataResult<Self::ReadFilter> {
-				ExternalDataResult::Unavailable
-			}
-
-			fn entry_to_msg_map(
-				&self,
-				_job: &JobName,
-				_task: Option<&TaskName>,
-			) -> ExternalDataResult<fetcher_core::task::entry_to_msg_map::EntryToMsgMap> {
-				ExternalDataResult::Unavailable
-			}
 		}
 
 		let config_job: fetcher_config::jobs::Job = serde_json::from_str(s)?;

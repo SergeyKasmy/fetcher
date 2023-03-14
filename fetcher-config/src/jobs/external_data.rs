@@ -26,24 +26,39 @@ pub enum ExternalDataResult<T, E = ExternalDataError> {
 pub trait ProvideExternalData {
 	type ReadFilter: CReadFilter + 'static;
 
-	fn twitter_token(&self) -> ExternalDataResult<(String, String)>;
-	fn google_oauth2(&self) -> ExternalDataResult<fcore::auth::Google>;
-	fn email_password(&self) -> ExternalDataResult<String>;
-	fn telegram_bot_token(&self) -> ExternalDataResult<String>;
-	fn discord_bot_token(&self) -> ExternalDataResult<String>;
+	fn twitter_token(&self) -> ExternalDataResult<(String, String)> {
+		ExternalDataResult::Unavailable
+	}
+
+	fn google_oauth2(&self) -> ExternalDataResult<fcore::auth::Google> {
+		ExternalDataResult::Unavailable
+	}
+	fn email_password(&self) -> ExternalDataResult<String> {
+		ExternalDataResult::Unavailable
+	}
+	fn telegram_bot_token(&self) -> ExternalDataResult<String> {
+		ExternalDataResult::Unavailable
+	}
+	fn discord_bot_token(&self) -> ExternalDataResult<String> {
+		ExternalDataResult::Unavailable
+	}
 
 	fn read_filter(
 		&self,
 		job: &JobName,
 		task: Option<&TaskName>,
 		expected_rf: ReadFilterKind,
-	) -> ExternalDataResult<Self::ReadFilter>;
+	) -> ExternalDataResult<Self::ReadFilter> {
+		ExternalDataResult::Unavailable
+	}
 
 	fn entry_to_msg_map(
 		&self,
 		job: &JobName,
 		task: Option<&TaskName>,
-	) -> ExternalDataResult<EntryToMsgMap>;
+	) -> ExternalDataResult<EntryToMsgMap> {
+		ExternalDataResult::Unavailable
+	}
 }
 
 #[derive(Error, Debug)]
