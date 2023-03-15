@@ -10,12 +10,15 @@
 //! [Message]: crate::sink::message::Message
 
 pub mod caps;
+pub mod extract;
 pub mod replace;
 pub mod set;
 pub mod shorten;
 pub mod trim;
 
-pub use self::{caps::Caps, replace::Replace, set::Set, shorten::Shorten, trim::Trim};
+pub use self::{
+	caps::Caps, extract::Extract, replace::Replace, set::Set, shorten::Shorten, trim::Trim,
+};
 pub use crate::action::regex;
 
 use async_trait::async_trait;

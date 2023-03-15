@@ -9,7 +9,10 @@
 use crate::{
 	action::{
 		regex::RegexError,
-		transform::entry::{feed::FeedError, html::HtmlError, http::HttpError, json::JsonError},
+		transform::{
+			entry::{feed::FeedError, html::HtmlError, http::HttpError, json::JsonError},
+			field::extract::ExtractError,
+		},
 	},
 	entry::Entry,
 	error::InvalidUrlError,
@@ -46,6 +49,9 @@ pub enum TransformErrorKind {
 
 	#[error("Regex error")]
 	Regex(#[from] RegexError),
+
+	#[error("Extracting error")]
+	Extract(#[from] ExtractError),
 }
 
 #[allow(missing_docs)] // error message is self-documenting
