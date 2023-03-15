@@ -29,6 +29,7 @@ use crate::{
 use async_trait::async_trait;
 use std::{borrow::Cow, convert::Infallible};
 
+// TODO: add error capture group not matched print re and text
 /// Regex with different action depending on [`action`]. All available regex actions include [`Extract`], [`Find`], [`Replace`]
 #[allow(missing_docs)]
 #[derive(Debug)]

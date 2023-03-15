@@ -22,7 +22,6 @@ pub enum ExternalDataResult<T, E = ExternalDataError> {
 	Err(E),
 }
 
-// TODO: add default impl of ExternalDataResult::Unavailable
 pub trait ProvideExternalData {
 	type ReadFilter: CReadFilter + 'static;
 
@@ -45,17 +44,17 @@ pub trait ProvideExternalData {
 
 	fn read_filter(
 		&self,
-		job: &JobName,
-		task: Option<&TaskName>,
-		expected_rf: ReadFilterKind,
+		_job: &JobName,
+		_task: Option<&TaskName>,
+		_expected_rf: ReadFilterKind,
 	) -> ExternalDataResult<Self::ReadFilter> {
 		ExternalDataResult::Unavailable
 	}
 
 	fn entry_to_msg_map(
 		&self,
-		job: &JobName,
-		task: Option<&TaskName>,
+		_job: &JobName,
+		_task: Option<&TaskName>,
 	) -> ExternalDataResult<EntryToMsgMap> {
 		ExternalDataResult::Unavailable
 	}

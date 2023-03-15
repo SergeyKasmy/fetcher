@@ -55,6 +55,7 @@ fn main() -> Result<()> {
 }
 
 fn set_up_logging() -> Result<()> {
+	use tracing::Level;
 	use tracing_subscriber::{
 		filter::LevelFilter, fmt::time::OffsetTime, layer::SubscriberExt, EnvFilter, Layer,
 	};
@@ -62,12 +63,22 @@ fn set_up_logging() -> Result<()> {
 	let env_filter = EnvFilter::try_from_env("FETCHER_LOG")
 		.unwrap_or_else(|_| EnvFilter::from("fetcher=info,fetcher_core=info"));
 
+	let is_debug_log_level = env_filter
+		.max_level_hint()
+		.map_or_else(|| false, |level| level >= Level::DEBUG);
+
 	let stdout = tracing_subscriber::fmt::layer()
-		.pretty()
-		// hide source code/debug info on release builds
-		// .with_file(cfg!(debug_assertions))
-		// .with_line_number(cfg!(debug_assertions))
+		.with_target(is_debug_log_level)
+		.with_file(is_debug_log_level)
+		.with_line_number(is_debug_log_level)
+		.with_thread_ids(is_debug_log_level)
 		.with_timer(OffsetTime::local_rfc_3339().expect("could not get local time offset"));
+
+	let stdout = if is_debug_log_level {
+		stdout.pretty().boxed()
+	} else {
+		stdout.boxed()
+	};
 
 	// enable journald logging only on release to avoid log spam on dev machines
 	let journald = if cfg!(debug_assertions) {
@@ -79,6 +90,7 @@ fn set_up_logging() -> Result<()> {
 	let subscriber = tracing_subscriber::registry()
 		.with(journald.with_filter(LevelFilter::INFO))
 		.with(stdout.with_filter(env_filter));
+
 	tracing::subscriber::set_global_default(subscriber).unwrap();
 
 	color_eyre::install()?;
@@ -200,6 +212,7 @@ async fn async_main() -> Result<()> {
 	}
 }
 
+#[tracing::instrument(level = "trace", skip(run_filter, cx))]
 async fn run_command(
 	args::Run {
 		once,
@@ -266,6 +279,7 @@ async fn run_command(
 	Ok(())
 }
 
+#[tracing::instrument(level = "debug", skip(cx))]
 #[allow(clippy::needless_pass_by_value)]
 fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jobs>> {
 	let run_by_name_is_some = run_filter.is_some();
@@ -275,8 +289,11 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 		if jobs.is_empty() {
 			tracing::info!("No enabled jobs found for the provided query");
 
-			let all_jobs = settings::config::jobs::get_all(None, cx)?;
-			tracing::info!("All available enabled jobs: {}", all_jobs.keys().display());
+			if let Ok(all_jobs) = settings::config::jobs::get_all(None, cx) {
+				tracing::info!("All available enabled jobs: {}", all_jobs.keys().display());
+			} else {
+				tracing::warn!("Can't list all available jobs because some jobs have invalid format. Try running in \"verify\" mode and correcting them");
+			}
 
 			return Ok(None);
 		}
@@ -318,6 +335,7 @@ enum ErrorHandling {
 	},
 }
 
+#[tracing::instrument(level = "trace", skip(jobs, cx))]
 async fn run_jobs(
 	jobs: impl IntoIterator<Item = (JobName, Job)>,
 	error_handling: ErrorHandling,

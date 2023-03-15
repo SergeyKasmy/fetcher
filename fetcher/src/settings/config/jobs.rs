@@ -40,7 +40,6 @@ struct TemplatesField {
 	templates: fetcher_config::jobs::job::TemplatesField,
 }
 
-#[tracing::instrument(skip(cx))]
 pub fn get_all(filter: Option<&[JobFilter]>, cx: Context) -> Result<Jobs> {
 	cx.conf_paths
 		.iter()
@@ -101,7 +100,7 @@ pub fn get_all_from<'a>(
 				.map_err(|e| e.wrap_err(format!("Invalid config at: {}", file.path().display())))
 				.transpose()?;
 
-			let named_job = job.map(|(mut job, task_name_map)| {
+			job.map(|(mut job, task_name_map)| {
 				if let Some(filter) = filter {
 					if let Some(task_name_map) = &task_name_map {
 						job.tasks = job
@@ -126,13 +125,20 @@ pub fn get_all_from<'a>(
 								}
 							})
 							.collect();
+
+						if job.tasks.is_empty() {
+							// TODO: list task filter and all available tasks (from task_name_map)
+							tracing::warn!(
+								"Asked to run job \"{job_name}\" but no tasks matched the task filter"
+							);
+							return None;
+						}
 					}
 				}
 
-				(job_name, job)
-			});
-
-			Some(named_job)
+				Some((job_name, job))
+			})
+			.transpose()
 		})
 }
 

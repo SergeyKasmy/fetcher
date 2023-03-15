@@ -17,15 +17,15 @@ use std::fs;
 
 const READ_DATA_DIR: &str = "read";
 
-#[tracing::instrument]
+#[tracing::instrument(skip(cx))]
 pub fn get(
 	job: &JobName,
 	task: Option<&TaskName>,
 	expected_rf_kind: ReadFilterKind,
-	context: Context,
+	cx: Context,
 ) -> Result<Box<dyn ReadFilter>, ExternalDataError> {
 	let path = {
-		let mut path = context.data_path.join(READ_DATA_DIR).join(&**job);
+		let mut path = cx.data_path.join(READ_DATA_DIR).join(&**job);
 
 		if let Some(task) = task {
 			path.push(&**task);
