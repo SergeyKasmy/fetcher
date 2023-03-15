@@ -8,12 +8,10 @@
 
 use super::TransformEntry;
 use crate::{
-	action::{
-		regex::{action::Replace, Regex},
-		transform::{
-			error::RawContentsNotSetError,
-			result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
-		},
+	action::transform::{
+		error::RawContentsNotSetError,
+		field::Replace,
+		result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
 	error::InvalidUrlError,
@@ -61,7 +59,7 @@ pub struct StringQuery {
 	/// a query to the key to get the string from
 	pub query: Query,
 	/// a regex to finalize the string
-	pub regex: Option<Regex<Replace>>,
+	pub regex: Option<Replace>,
 }
 
 /// A query to get the value of a JSON field

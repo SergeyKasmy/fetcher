@@ -7,12 +7,9 @@
 //! This module contains all errors that can happen in the (`parent`)[`super`] module
 
 use crate::{
-	action::{
-		regex::RegexError,
-		transform::{
-			entry::{feed::FeedError, html::HtmlError, http::HttpError, json::JsonError},
-			field::extract::ExtractError,
-		},
+	action::transform::{
+		entry::{feed::FeedError, html::HtmlError, http::HttpError, json::JsonError},
+		field::extract::ExtractError,
 	},
 	entry::Entry,
 	error::InvalidUrlError,
@@ -47,10 +44,7 @@ pub enum TransformErrorKind {
 	#[error("JSON parsing error")]
 	Json(#[from] JsonError),
 
-	#[error("Regex error")]
-	Regex(#[from] RegexError),
-
-	#[error("Extracting error")]
+	#[error("Extraction error")]
 	Extract(#[from] ExtractError),
 }
 

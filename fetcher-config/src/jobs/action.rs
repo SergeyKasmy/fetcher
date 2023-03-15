@@ -4,9 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub mod contains;
+pub mod extract;
 pub mod html;
 pub mod json;
-pub mod regex;
+pub mod replace;
 pub mod set;
 pub mod shorten;
 pub mod take;
@@ -14,8 +16,8 @@ pub mod trim;
 pub mod use_as;
 
 use self::{
-	html::Html, json::Json, regex::Regex, set::Set, shorten::Shorten, take::Take, trim::Trim,
-	use_as::Use,
+	contains::Contains, extract::Extract, html::Html, json::Json, replace::Replace, set::Set,
+	shorten::Shorten, take::Take, trim::Trim, use_as::Use,
 };
 use crate::Error;
 use fetcher_core::{
@@ -37,6 +39,7 @@ pub enum Action {
 	// filters
 	ReadFilter,
 	Take(Take),
+	Contains(Contains),
 
 	// entry transforms
 	DebugPrint,
@@ -51,9 +54,8 @@ pub enum Action {
 	Set(Set),
 	Shorten(Shorten),
 	Trim(Trim),
-
-	// other
-	Regex(Regex),
+	Replace(Replace),
+	Extract(Extract),
 }
 
 // TODO: add media
@@ -96,6 +98,7 @@ impl Action {
 				}
 			}
 			Action::Take(x) => filter!(x.parse()),
+			Action::Contains(x) => filter!(x.parse()?),
 
 			// entry transforms
 			Action::Feed => transform!(CFeed),
@@ -113,9 +116,8 @@ impl Action {
 			Action::Set(s) => s.parse(),
 			Action::Shorten(x) => x.parse(),
 			Action::Trim(x) => transform!(x.parse()),
-
-			// other
-			Action::Regex(x) => vec![x.parse()?],
+			Action::Replace(x) => transform!(x.parse()?),
+			Action::Extract(x) => transform!(x.parse()?),
 		};
 
 		Ok(Some(act))

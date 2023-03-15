@@ -19,7 +19,6 @@ pub mod trim;
 pub use self::{
 	caps::Caps, extract::Extract, replace::Replace, set::Set, shorten::Shorten, trim::Trim,
 };
-pub use crate::action::regex;
 
 use async_trait::async_trait;
 use std::fmt::Debug;

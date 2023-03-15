@@ -7,9 +7,9 @@
 //! This module contains [`ElementQuery`], that checks if an HTML element fits all provided requirements,
 //! and [`ElementDataQuery`] that extracts some kind of data from the said element
 
-use crate::action::regex::{action::Replace, Regex};
-
 use std::fmt::Display;
+
+use crate::action::transform::field::Replace;
 
 /// The type of item that should be queried
 #[derive(Clone, Debug)]
@@ -71,8 +71,8 @@ pub struct ElementDataQuery {
 	pub query: Vec<ElementQuery>,
 	/// location of the data to extract
 	pub data_location: DataLocation,
-	/// optional regex to match against and replace with if it matches
-	pub regex: Option<Regex<Replace>>,
+	/// optional [`Replace`] transform
+	pub regex: Option<Replace>,
 }
 
 /// Extention trait for `&[ElementQuery]` that adds a method that return a pretty Display implementation for itself

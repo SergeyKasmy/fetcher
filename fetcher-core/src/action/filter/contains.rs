@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`Contains`] filter
+
 use async_trait::async_trait;
 use regex::Regex;
 use std::borrow::Cow;

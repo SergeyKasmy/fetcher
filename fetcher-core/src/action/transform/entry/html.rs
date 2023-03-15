@@ -13,12 +13,9 @@ use self::query::{
 };
 use super::TransformEntry;
 use crate::{
-	action::{
-		regex::RegexError,
-		transform::{
-			error::RawContentsNotSetError,
-			result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
-		},
+	action::transform::{
+		error::RawContentsNotSetError,
+		result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
 	error::InvalidUrlError,
@@ -82,9 +79,6 @@ pub enum HtmlError {
 
 	#[error(transparent)]
 	InvalidUrl(#[from] InvalidUrlError),
-
-	#[error(transparent)]
-	RegexError(#[from] RegexError),
 }
 
 #[async_trait]

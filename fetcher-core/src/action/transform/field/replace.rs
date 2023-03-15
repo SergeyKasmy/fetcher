@@ -7,7 +7,7 @@
 //! Contains the [`Replace`] transform
 
 use regex::Regex;
-use std::convert::Infallible;
+use std::{borrow::Cow, convert::Infallible};
 
 use super::TransformField;
 use crate::{action::transform::result::TransformResult, error::BadRegexError};
@@ -45,12 +45,10 @@ impl TransformField for Replace {
 	}
 }
 
-/*
 impl Replace {
-	/// Replaces `text` with the re
+	/// Replace `text` with the [`Replace::with`] if [`Replace::re`] matches
 	#[must_use]
 	pub fn replace<'a>(&self, text: &'a str) -> Cow<'a, str> {
 		self.re.replace(text, &self.with)
 	}
 }
-*/

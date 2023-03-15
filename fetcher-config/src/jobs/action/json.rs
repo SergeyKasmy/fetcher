@@ -8,7 +8,7 @@ use crate::Error;
 use fetcher_core::{
 	action::transform::{
 		entry::json::{self as c_json, Json as CJson},
-		field::regex as c_regex,
+		field::Replace as CReplace,
 	},
 	utils::OptionExt,
 };
@@ -120,13 +120,7 @@ impl StringQuery {
 }
 
 impl JsonQueryRegex {
-	pub fn parse(self) -> Result<c_regex::Regex<c_regex::action::Replace>, Error> {
-		c_regex::Regex::new(
-			&self.re,
-			c_regex::action::Replace {
-				with: self.replace_with,
-			},
-		)
-		.map_err(Into::into)
+	pub fn parse(self) -> Result<CReplace, Error> {
+		CReplace::new(&self.re, self.replace_with).map_err(Into::into)
 	}
 }
