@@ -9,9 +9,9 @@ use regex::Regex;
 use std::borrow::Cow;
 
 use super::Filter;
-use crate::{action::transform::field::Field, entry::Entry};
+use crate::{action::transform::field::Field, entry::Entry, error::BadRegexError};
 
-/// Filter out all entries whose `field` doesn't match the regular expression `re`
+/// Filter out all entries whose field doesn't match the regular expression
 #[derive(Debug)]
 pub struct Contains {
 	/// The regular expression to match
@@ -20,11 +20,6 @@ pub struct Contains {
 	/// The field that the regex should be matched against
 	pub field: Field,
 }
-
-#[allow(missing_docs)]
-#[derive(thiserror::Error, Debug)]
-#[error("Invalid regular expression")]
-pub struct BadRegexError(#[from] pub regex::Error);
 
 impl Contains {
 	/// Create a new [`Contains`] with regular expression `re` that should be matched against `field`

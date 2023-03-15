@@ -37,6 +37,11 @@ pub enum Error {
 #[error("Invalid URL: {1}")]
 pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
 
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+#[error("Invalid regular expression")]
+pub struct BadRegexError(#[from] pub regex::Error);
+
 impl Error {
 	/// Check if the current error is somehow related to network connection and return it if it is
 	#[allow(clippy::match_same_arms)]
