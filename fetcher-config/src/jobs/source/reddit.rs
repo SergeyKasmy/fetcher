@@ -7,17 +7,15 @@
 use fetcher_core::source::{reddit::Sort as CSort, Reddit as CReddit};
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, OneOrMany};
+use std::collections::HashMap;
 
-#[serde_as]
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(transparent)]
-pub struct Reddit(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<Inner>);
+pub struct Reddit(pub HashMap<String, Inner>);
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Inner {
-	subreddit: String,
 	sort: Sort,
 	score_threshold: Option<u32>,
 }
@@ -44,13 +42,16 @@ pub enum TimePeriod {
 
 impl Reddit {
 	pub fn parse(self) -> Vec<CReddit> {
-		self.0.into_iter().map(Inner::parse).collect()
+		self.0
+			.into_iter()
+			.map(|(subreddit, inner)| inner.parse(&subreddit))
+			.collect()
 	}
 }
 
 impl Inner {
-	pub fn parse(self) -> CReddit {
-		CReddit::new(&self.subreddit, self.sort.parse(), self.score_threshold)
+	pub fn parse(self, subreddit: &str) -> CReddit {
+		CReddit::new(subreddit, self.sort.parse(), self.score_threshold)
 	}
 }
 
