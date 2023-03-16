@@ -9,8 +9,7 @@ edition = "2021"
 [dependencies]
 fetcher-core = { version = "0.11.1", path = "../fetcher-core" }
 fetcher-config = { version = "0.11.1", path = "../fetcher-config" }
-# color-eyre = "0.6.2"
-color-eyre = { path = "/home/ciren/dev/testing/pc/color-eyre" }
+color-eyre = { version = "0.6.2", package = "color-eyre-attach-report" }
 figment = { version = "0.10.8", features = ["yaml"] }
 futures = "0.3.26"
 serde = { version = "1.0.152", features = ["derive"] }
