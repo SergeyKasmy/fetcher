@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! fetcher core    // TODO
+#![doc = include_str!("../README.md")]
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)] // TODO
 #![warn(missing_docs)]

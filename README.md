@@ -8,7 +8,7 @@ I wrote fetcher for myself after IFTTT had become paid, not to mention that by t
 For example, imagine I wanted to read tweets by somebody but only if it contained a particular string. Before I had to receive _all_ notifications from that user on my phone via the Twitter app and read every one of them to find those relevant to me.
 That honestly sucks. After looking for some locally hosted alternatives to IFTTT, I found none that were both lightweight and useful for me, so I decided to write my own.
 
-fetcher is both a binary, and a library crate, so it can do programmatically everything it usually can.
+fetcher is both a binary, and a [library](https://docs.rs/fetcher-core/latest/fetcher_core) crate, so it can do programmatically everything it usually can.
 
 Feel free to contribute if you want a particular feature added.
 
@@ -73,8 +73,9 @@ After finishing the prompt, you will be able to use any of these services automa
 
 ## All available config options
 
-Note: options with a X after them are exclusive with each other and are not intended to be run simultaniously but are rather just listed with all their available options in the way they are supposed to be used.
-Note: options with a O are optional
+Note: options with an X after them are exclusive with each other and are not intended to be run simultaniously but are rather just listed with all their available options in the way they are supposed to be used.
+
+Note: options with an O are optional
 
 ```yaml
 disabled: true  # O
