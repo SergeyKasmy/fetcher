@@ -288,8 +288,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "color-eyre"
+name = "color-eyre-attach-report"
 version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a63ee5e287575a0b6de4e3064507479d58e7c2b5c17120c65be443ef8c76918c"
 dependencies = [
  "backtrace",
  "color-spantrace",
@@ -745,7 +747,7 @@ version = "0.11.1"
 dependencies = [
  "argh",
  "async-trait",
- "color-eyre",
+ "color-eyre-attach-report",
  "directories",
  "fetcher-config",
  "fetcher-core",
