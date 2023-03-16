@@ -78,7 +78,7 @@ Note: options with an X after them are exclusive with each other and are not int
 Note: options with an O are optional
 
 ```yaml
-disabled: true  # O
+disabled: true # O
 read_filter_type: newer_than_read # XO. either: 
                                   # * keep only the last read entry and filter out all "older" than it
                                   # * notify when the entry is updated

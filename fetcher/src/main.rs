@@ -578,7 +578,7 @@ async fn report_error(job_name: &str, err: &str, context: Context) -> Result<()>
 	use fetcher_core::sink::{message::Message, telegram::LinkLocation, Telegram};
 
 	let admin_chat_id = std::env::var("FETCHER_TELEGRAM_ADMIN_CHAT_ID")
-		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID")?
+		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID not set")?
 		.parse::<i64>()
 		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID isn't a valid chat id")?;
 

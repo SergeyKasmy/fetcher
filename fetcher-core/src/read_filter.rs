@@ -7,6 +7,7 @@
 //! This module contains the [`ReadFilter`] that is used for keeping track of what Entry has been or not been read,
 //! including all of its stragedies
 
+// TODO: if I make it private, will the implementations still be public?
 pub mod external_implementations;
 mod external_save_wrapper;
 mod newer;
