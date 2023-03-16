@@ -154,7 +154,7 @@ pub fn get(path: &Path, name: &JobName, cx: Context) -> Result<Option<(Job, Opti
 	if let Some(templates) = templates {
 		for tmpl_name in templates {
 			let tmpl = settings::config::templates::find(&tmpl_name, cx)?
-				.ok_or_else(|| eyre!("Template not found"))?;
+				.ok_or_else(|| eyre!("Template \"{tmpl_name}\" not found"))?;
 
 			tracing::debug!("Using template: {:?}", tmpl.path);
 

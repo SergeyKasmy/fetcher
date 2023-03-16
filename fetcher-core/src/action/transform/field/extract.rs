@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`Extract`] field transform, as well as all errors that can happen while creating or executing it
+
 use regex::Regex;
 
 use super::TransformField;
