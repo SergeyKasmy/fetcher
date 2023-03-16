@@ -4,8 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::{collections::HashMap, fmt};
-
 use crate::Error;
 use fetcher_core::{
 	action::{transform::entry::html::query as c_query, transform::field::Replace as CReplace},
@@ -13,6 +11,7 @@ use fetcher_core::{
 };
 
 use serde::{de::Visitor, ser::SerializeMap, Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case")] // deny_unknown_fields not allowed since it's flattened in [`Query`]
