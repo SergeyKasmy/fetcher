@@ -52,6 +52,25 @@ tasks:
 
 This job is run every 30 minutes and has a single task named "rss". This task gets the contents of the web page `<your_rss_feed_url>`, parses it as an RSS/Atom feed, removes all feed items that have already been read (using the `newer_than_read` stradegy), and sends all items left via DMs to a Discord user `<your_user_id>`.
 
+## Running
+
+Run fetcher with `fetcher run`. This will run all jobs found in all config locations. fetcher searches for all `.yml` jobs first in `$XDG_CONFIG_HOME/fetcher/jobs`, and then in `/etc/xdg/fetcher/jobs`.
+
+You can specify a job manually in the commandline using JSON when run with `fetcher run-manual`
+
+See `fetcher --help` for more details
+
+### Login credentials
+
+To set up login credentials, run fetcher in save mode (`fetcher save`), following by a service name which is either of these:
+
+* `google-oauth2`
+* `twitter`
+* `telegram`
+* `email-password`
+
+After finishing the prompt, you will be able to use any of these services automatically without additional authorization.
+
 ## All available config options
 
 Note: options with a X after them are exclusive with each other and are not intended to be run simultaniously but are rather just listed with all their available options in the way they are supposed to be used.
@@ -214,43 +233,3 @@ sink:
   stdout # X. Just print to stdout. Isn't really useful but it is the default when run with --dry-run
 ```
 
-Here are all currently available sources:
-
-* email
-* twitter
-* http
-* file
-
-actions:
-
-* read_filter: filters out read entries
-* take: takes any num of entries from the beginning or the end
-* http: follows url
-* html: parses html
-* json: parses json
-* feed: parses rss and atom feeds
-* use_raw_contents: use unparsed data from a source as the body of the message, e.g. raw html
-* print: debug prints current entry contents  (mostly for testing)
-* set: set a field in a message to a predefined value or null (e.g. used when you don't care or have nothing to extract from the source)
-* caps: make all message text uppercase (mostly for testing)
-* trim: remove leading and trailing whitespace
-* shorten: shorten a field to be no longer than the max len
-* regex: extract string from a different string; filter out strings that don't match; replace a match with a replacement string (with capture group support)
-
-sinks:
-
-* telegram
-* stdout
-
-Since a lot of these fields are dependent on the particular source, parser, and sink types and since fetcher is in heavy development at the moment, there isn't any template or example config files but fetcher will notify you if there are missing fields and what values they can have, so it's not that difficult to make one by trial and error even without reading the source code.
-
-### Login credentials
-
-To set up login credentials, run fetcher in `save` mode, following by a service name which is either of these:
-
-* `google-oauth`
-* `twitter`
-* `telegram`
-
-After finishing the prompt, you will be able to use any of these services automatically without additional authorization.
-There's also a way to use an app password for Gmail/IMAP (saved with `email-password`) but it's insecure and shouldn't be used for anything other than testing purposes
