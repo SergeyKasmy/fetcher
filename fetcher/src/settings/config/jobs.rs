@@ -97,7 +97,7 @@ pub fn get_all_from<'a>(
 			}
 
 			let job = get(file.path(), &job_name, cx)
-				.map_err(|e| e.wrap_err(format!("Invalid config at: {}", file.path().display())))
+				.map_err(|e| e.wrap_err(format!("invalid config at: {}", file.path().display())))
 				.transpose()?;
 
 			job.map(|(mut job, task_name_map)| {
