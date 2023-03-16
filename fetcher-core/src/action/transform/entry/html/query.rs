@@ -48,7 +48,7 @@ pub struct ElementQuery {
 /// A query for a complete HTML tag. Traverses all queries one by one and extracts the data from it's [`DataLocation`], optionally transforming the data via regex
 /// Example:
 /// ```text
-/// QueryData {
+/// [`ElementDataQuery`] {
 ///     query: [Tag("div"), Attr { name: "id", value: "this-attr" }],
 ///     data_location: text,
 ///     regex: { re: ".*", replace_with: "hello, ${1}!"

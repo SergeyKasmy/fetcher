@@ -50,6 +50,7 @@ pub type Keys = Vec<Key>;
 pub struct Query {
 	#[serde(rename = "query")]
 	pub keys: Keys,
+	// TODO: should itemq really be allowed to be marked as optional?
 	pub optional: Option<bool>,
 }
 
