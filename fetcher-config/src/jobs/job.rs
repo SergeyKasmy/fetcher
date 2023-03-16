@@ -76,9 +76,13 @@ impl Job {
 					}
 				}
 
+				// NOTE: if the tasks map only has one task, don't provide the task its name to avoid it automatically adding a tag
+				// a tag should only be automatically added if there are more then 1 task in the tasks map
+				let single_task = tasks.len() == 1;
+
 				let tasks_and_task_name_map_iter =
 					tasks.into_iter().enumerate().map(|(id, (name, task))| {
-						let task = task.parse(job, Some(&name), external)?;
+						let task = task.parse(job, single_task.then_some(&name), external)?;
 
 						Ok::<_, Error>((task, (id, name)))
 					});
