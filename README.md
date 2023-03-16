@@ -1,20 +1,20 @@
 # fetcher
 
-fetcher makes it easier to see any information, like news or articles, in a place most comfortable to you.
-It fetches any info you choose from a list of available sources, e.g. RSS or Twitter; filters it, and sends it to you.
-Think if it like IFTTT but locally hosted and if it only supported transfering info.
+fetcher makes it easier to automate any information gathering, like news or blogs, into a place most comfortable to you.
+It fetches anything you choose (from a list of available sources, e.g. RSS); filters it, and sends it whereever you want it to.
+Think if it like IFTTT but locally hosted and if it only supported transfering text.
 
-I wrote fetcher for myself after IFTTT had become paid, not to mention that by that time I was already not satisfied with it. I like to receive news and notifications in one place without having to search for it.
-For example, imagine I wanted to read tweets by somebody but only if it contained a particular string. Before I had to receive _all_ notifications from that user on my phone and read every one of them to find those relevant to me.
+I wrote fetcher for myself after IFTTT had become paid, not to mention that by that time I was already not satisfied with it. I want to receive news and notifications in one place without having to search for it.
+For example, imagine I wanted to read tweets by somebody but only if it contained a particular string. Before I had to receive _all_ notifications from that user on my phone via the Twitter app and read every one of them to find those relevant to me.
 That honestly sucks. After looking for some locally hosted alternatives to IFTTT, I found none that were both lightweight and useful for me, so I decided to write my own.
-Currently it's way more specific for my personal usecase but I'm trying to make it more modular and general but it's still WIP.
 
-Feel free to contribute if you want a particular feature/source/sink added.
-I like to have my git history clean and easy to navigate through, so try to keep it this way, please :)
+fetcher is both a binary, and a library crate, so it can do programmatically everything it usually can.
+
+Feel free to contribute if you want a particular feature added.
 
 ## Install
 
-Download and install from [crates.io](https://crates.io) with 
+Download and install from [crates.io](https://crates.io/crates/fetcher) with 
 
 ```
 cargo install fetcher
@@ -32,23 +32,25 @@ The final binary will be located in `target/release/fetcher` which you can then 
 
 ## Setup
 
-The main unit of execution in fetcher is a task. A task consists of a source where to fetch some kind of data from, (a) action(s) which process the data, and a sink where to send that data to. To create a task, create a `foo.yaml` file in `$XDG_CONFIG_HOME/fetcher/tasks` or `/etc/xdg/fetcher/tasks` where `foo` is the name you want that task to have. A proper task config file looks something like this:
+The main unit of execution in fetcher is a job. A job consists of one or more tasks that are rerun every set interval or once a day at a particular time. A task contains a source where to fetch the data from, (a) action(s) which process the data (modify, filter, remove already read), and a sink where the data is later sent to. To create a job, create a `foo.yml` file in `$XDG_CONFIG_HOME/fetcher/jobs` or `/etc/xdg/fetcher/jobs` where `foo` is the name you want that job to have. A proper job config file looks something like this:
 
 ```yaml
-# optional
-disabled: true
-
-refresh: 30	 # in minutes
-read_filter_type: newer_than_read	# save only the last one sent/read
-source:
-  http: '<your_rss_feed_url>'
-process:
-  - feed
-  - read_filter	# leave out only entries newer than the last one read
-sink:
-  telegram:
-    chat_id: <your_telegram_chat_id>
+refresh: 
+  every: 30m
+tasks:
+  rss:
+    read_filter_type: newer_than_read	# save only the last one sent/read
+    source:
+      http: '<your_rss_feed_url>'
+    process:
+      - feed
+      - read_filter	# leave out only entries newer than the last one read
+    sink:
+      discord:
+        user: <your_user_id>
 ```
+
+This job is run every 30 minutes and has a single task named "rss". This task gets the contents of the web page <your_rss_feed_url>, parses it as an RSS/Atom feed, removes all feed items that have already been read (using the "newer_than_read" stradegy), and sends all items left via DMs to a Discord user <your_user_id>.
 
 Currently available sources:
 
