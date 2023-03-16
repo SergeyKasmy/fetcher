@@ -1,0 +1,10 @@
+[Unit]
+Description=Automatic news fetching and parsing
+
+[Service]
+ExecStart=fetcher run
+#Environment="FETCHER_LOG=fetcher=<LOG_LEVEL>,fetcher_core=<LOG_LEVEL>"
+StandardOutput=append:/var/log/fetcher.log
+
+[Install]
+WantedBy=default.target
