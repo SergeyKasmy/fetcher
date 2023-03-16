@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use self::timepoint::TimePoint;
 use super::{
 	action::Action, external_data::ProvideExternalData, read_filter, sink::Sink, source::Source,
-	tag::Tag, task::Task, JobName, TaskName,
+	task::Task, JobName, TaskName,
 };
 use crate::Error;
 use fetcher_core::{job::Job as CJob, utils::OptionExt};
@@ -25,7 +25,7 @@ pub type TemplatesField = Option<Vec<String>>;
 pub struct Job {
 	#[serde(rename = "read_filter_type")]
 	pub read_filter_kind: Option<read_filter::Kind>,
-	pub tag: Option<Tag>,
+	pub tag: Option<String>,
 	pub source: Option<Source>,
 	#[serde(rename = "process")]
 	pub actions: Option<Vec<Action>>,

@@ -42,8 +42,11 @@ pub enum Error {
 	#[error("Error setting up HTML parser")]
 	FetcherCoreHtml(#[from] fetcher_core::action::transform::entry::html::HtmlError),
 
-	#[error("Error setting up Regex parser")]
-	FetcherCoreRegex(#[from] fetcher_core::action::regex::RegexError),
+	#[error("Error setting up regex")]
+	FetcherCoreBadRegex(#[from] fetcher_core::error::BadRegexError),
+
+	#[error("Error setting up extract action")]
+	FetcherCoreExtract(#[from] fetcher_core::action::transform::field::extract::ExtractError),
 
 	#[error("Error setting up a source")]
 	FetcherCoreSource(#[source] Box<fetcher_core::source::error::SourceError>),

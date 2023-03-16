@@ -5,7 +5,7 @@
  */
 
 //! This module contains [`Sink`] that can be used to consume a composed [`Message`],
-//! as well as [`Message`](`message`) itself
+//! as well as the [`message`] module itself
 
 pub mod message;
 
@@ -15,11 +15,13 @@ pub mod telegram;
 
 pub mod error;
 
-pub use self::{stdout::Stdout, telegram::Telegram};
+pub use self::{discord::Discord, stdout::Stdout, telegram::Telegram};
 pub use crate::exec::Exec;
 
-use self::message::{Message, MessageId};
-use crate::sink::error::SinkError;
+use self::{
+	error::SinkError,
+	message::{Message, MessageId},
+};
 
 use async_trait::async_trait;
 use std::fmt::Debug;

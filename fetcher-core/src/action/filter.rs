@@ -6,10 +6,10 @@
 
 //! This module contains the [`Filter`] trait that can be implemented in filters as well as all types that implement it
 
+pub mod contains;
 pub mod take;
 
-pub use crate::action::regex;
-pub use take::Take;
+pub use self::{contains::Contains, take::Take};
 
 use crate::entry::Entry;
 

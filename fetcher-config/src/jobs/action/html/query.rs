@@ -6,7 +6,7 @@
 
 use crate::Error;
 use fetcher_core::{
-	action::{transform::entry::html::query as c_query, transform::field::regex as c_regex},
+	action::{transform::entry::html::query as c_query, transform::field::Replace as CReplace},
 	utils::OptionExt,
 };
 
@@ -95,13 +95,7 @@ impl ElementDataQuery {
 }
 
 impl HtmlQueryRegex {
-	pub fn parse(self) -> Result<c_regex::Regex<c_regex::action::Replace>, Error> {
-		c_regex::Regex::new(
-			&self.re,
-			c_regex::action::Replace {
-				with: self.replace_with,
-			},
-		)
-		.map_err(Into::into)
+	pub fn parse(self) -> Result<CReplace, Error> {
+		CReplace::new(&self.re, self.replace_with).map_err(Into::into)
 	}
 }
