@@ -8,10 +8,10 @@
 
 use crate::{
 	action::transform::error::TransformError, auth::google::GoogleOAuth2Error,
-	sink::error::SinkError, source::error::SourceError,
+	external_save::ExternalSaveError, sink::error::SinkError, source::error::SourceError,
 };
 
-use std::{error::Error as StdError, io};
+use std::error::Error as StdError;
 
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
@@ -29,7 +29,7 @@ pub enum Error {
 	GoogleOAuth2(#[from] GoogleOAuth2Error),
 
 	#[error("Error writing to the external save location")]
-	ExternalSave(#[source] io::Error),
+	ExternalSave(#[source] ExternalSaveError),
 }
 
 #[allow(missing_docs)] // error message is self-documenting

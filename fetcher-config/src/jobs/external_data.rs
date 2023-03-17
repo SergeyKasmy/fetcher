@@ -7,6 +7,7 @@
 use super::{read_filter::Kind as ReadFilterKind, JobName, TaskName};
 use fetcher_core::{
 	self as fcore, read_filter::ReadFilter as CReadFilter, task::entry_to_msg_map::EntryToMsgMap,
+	utils::DisplayDebug,
 };
 
 use std::{
@@ -14,7 +15,6 @@ use std::{
 	io,
 	path::Path,
 };
-use thiserror::Error;
 
 pub enum ExternalDataResult<T, E = ExternalDataError> {
 	Ok(T),
@@ -60,14 +60,14 @@ pub trait ProvideExternalData {
 	}
 }
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum ExternalDataError {
-	#[error("IO error{}", if let Some(p) = payload { format!(": {p}") } else { String::new() })]
+	#[error("IO error{}{}", .payload.is_some().then_some(": ").unwrap_or_default(), if let Some(p) = payload.as_ref() { p as &dyn Display } else { &"" })]
 	Io {
 		source: io::Error,
 		payload: Option<Box<dyn DisplayDebug + Send + Sync>>,
 	},
-	#[error("Incompatible read filter types: in config: \"{expected}\" and found: \"{found}\"{}", if let Some(p) = payload { format!(": {p}") } else { String::new() })]
+	#[error("Incompatible read filter types: in config: \"{expected}\" and found: \"{found}\"{}{}", .payload.is_some().then_some(": ").unwrap_or_default(), if let Some(p) = payload.as_ref() { p as &dyn Display } else { &"" })]
 	ReadFilterIncompatibleTypes {
 		expected: ReadFilterKind,
 		found: ReadFilterKind,
@@ -100,7 +100,7 @@ impl ExternalDataError {
 		Self::ReadFilterIncompatibleTypes {
 			expected,
 			found,
-			payload: Some(Box::new(format!("path: {}", path.to_string_lossy()))),
+			payload: Some(Box::new(format!("path: {}", path.display()))),
 		}
 	}
 }
@@ -123,6 +123,3 @@ where
 		Self::new_io_with_path(io_err.into(), path.as_ref())
 	}
 }
-
-pub trait DisplayDebug: Display + Debug {}
-impl<T: Display + Debug> DisplayDebug for T {}

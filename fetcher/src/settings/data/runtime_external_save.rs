@@ -8,10 +8,14 @@ pub mod entry_to_msg_map;
 pub mod read_filter;
 
 use fetcher_core::{
-	entry::EntryId, external_save::ExternalSave, read_filter::ReadFilter, sink::message::MessageId,
+	entry::EntryId,
+	external_save::{ExternalSave, ExternalSaveError},
+	read_filter::ReadFilter,
+	sink::message::MessageId,
 };
 
 use async_trait::async_trait;
+use core::fmt;
 use once_cell::sync::OnceCell;
 use std::{collections::HashMap, io, path::PathBuf};
 use tokio::{
@@ -25,6 +29,9 @@ pub struct TruncatingFileWriter {
 	file: OnceCell<fs::File>,
 }
 
+#[derive(Debug)]
+pub struct DisplayPath(pub PathBuf);
+
 impl TruncatingFileWriter {
 	#[must_use]
 	pub fn new(path: PathBuf) -> Self {
@@ -37,28 +44,43 @@ impl TruncatingFileWriter {
 
 #[async_trait]
 impl ExternalSave for TruncatingFileWriter {
-	async fn save_read_filter(&mut self, read_filter: &dyn ReadFilter) -> io::Result<()> {
+	async fn save_read_filter(
+		&mut self,
+		read_filter: &dyn ReadFilter,
+	) -> Result<(), ExternalSaveError> {
 		if let Some(rf_conf) =
 			fetcher_config::jobs::read_filter::ReadFilter::unparse(read_filter).await
 		{
 			let s = serde_json::to_string(&rf_conf).unwrap();
 
-			self.write(s.as_bytes()).await?;
+			self.write(s.as_bytes())
+				.await
+				.map_err(|source| ExternalSaveError {
+					source,
+					path: Some(Box::new(DisplayPath(self.path.clone()))),
+				})?;
 		}
 
 		Ok(())
 	}
 
-	async fn save_entry_to_msg_map(&mut self, map: &HashMap<EntryId, MessageId>) -> io::Result<()> {
+	async fn save_entry_to_msg_map(
+		&mut self,
+		map: &HashMap<EntryId, MessageId>,
+	) -> Result<(), ExternalSaveError> {
 		let map_conf =
 			fetcher_config::jobs::task::entry_to_msg_map::EntryToMsgMap::unparse(map.clone());
 		let s = serde_json::to_string(&map_conf).unwrap();
 
-		self.write(s.as_bytes()).await
+		self.write(s.as_bytes())
+			.await
+			.map_err(|source| ExternalSaveError {
+				source,
+				path: Some(Box::new(DisplayPath(self.path.clone()))),
+			})
 	}
 }
 
-// FIXME: ExternalSave(Os { code: 17, kind: AlreadyExists, message: "File exists" }) when running in mark-old-as-read mode. I'm pretty sure it happens here...
 impl TruncatingFileWriter {
 	async fn write(&mut self, data: &[u8]) -> io::Result<()> {
 		// create file just before writing
@@ -89,5 +111,11 @@ impl TruncatingFileWriter {
 		file.flush().await?;
 
 		Ok(())
+	}
+}
+
+impl fmt::Display for DisplayPath {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "{}", self.0.display())
 	}
 }
