@@ -33,7 +33,7 @@ pub fn get(
 
 	match fs::read_to_string(&path) {
 		Ok(map_raw) if map_raw.trim().is_empty() => {
-			tracing::debug!("Entry to message map save file is empty");
+			tracing::trace!("Entry to message map save file is empty");
 
 			Ok(EntryToMsgMap::new(TruncatingFileWriter::new(path)))
 		}

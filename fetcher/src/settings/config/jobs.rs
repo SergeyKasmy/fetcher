@@ -53,7 +53,7 @@ pub fn get_all_from<'a>(
 	cx: Context,
 ) -> impl Iterator<Item = Result<(JobName, Job)>> + 'a {
 	let jobs_dir = cfg_dir.join(JOBS_DIR_NAME);
-	tracing::debug!("Searching for job configs in {jobs_dir:?}");
+	tracing::trace!("Searching for job configs in {jobs_dir:?}");
 
 	WalkDir::new(&jobs_dir)
 		.follow_links(true)
@@ -92,7 +92,7 @@ pub fn get_all_from<'a>(
 			// filter out all jobs that don't match the job filter
 			if let Some(filter) = filter {
 				if !filter.iter().any(|filter| filter.job_matches(&job_name)) {
-					tracing::debug!("Filtering out job {job_name:?}");
+					tracing::trace!("Filtering out job {job_name:?}");
 					return None;
 				}
 			}
@@ -119,7 +119,7 @@ pub fn get_all_from<'a>(
 								{
 									Some(task)
 								} else {
-									tracing::debug!(
+									tracing::trace!(
 										"Filtering out task {job_name:?}:{task_name:?}",
 									);
 									None

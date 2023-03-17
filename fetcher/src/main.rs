@@ -339,7 +339,7 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 		);
 	}
 
-	tracing::trace!("Jobs to run: {jobs:?}");
+	tracing::trace!("Jobs to run: {jobs:#?}");
 	Ok(Some(jobs))
 }
 

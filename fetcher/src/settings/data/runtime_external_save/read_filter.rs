@@ -36,7 +36,7 @@ pub fn get(
 
 	match fs::read_to_string(&path) {
 		Ok(save_file_rf_raw) if save_file_rf_raw.trim().is_empty() => {
-			tracing::debug!("Read filter save file is empty");
+			tracing::trace!("Read filter save file is empty");
 		}
 		Err(e) => {
 			tracing::debug!("Read filter save file doesn't exist or is inaccessible: {e}");
