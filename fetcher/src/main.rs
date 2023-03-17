@@ -38,6 +38,7 @@ use std::{
 	collections::HashMap,
 	iter,
 	ops::ControlFlow,
+	path::PathBuf,
 	time::{Duration, Instant},
 };
 use tokio::{
@@ -100,45 +101,21 @@ fn set_up_logging() -> Result<()> {
 
 #[tokio::main]
 async fn async_main() -> Result<()> {
-	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
-		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
-	} else {
-		concat!(
-			"v",
-			std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT"),
-			"-",
-			std::env!("VERGEN_GIT_SHA_SHORT"),
-			" on branch ",
-			std::env!("VERGEN_GIT_BRANCH")
-		)
-	};
-	tracing::info!("Running fetcher {}", version);
-
 	let args: Args = argh::from_env();
-	let cx: Context = {
-		let data_path = match args.data_path {
-			Some(p) => p,
-			None => settings::data::default_data_path()?,
-		};
-		let conf_paths = match args.config_path {
-			Some(p) => vec![p],
-			None => settings::config::default_cfg_dirs()?,
-		};
-		let log_path = match args.log_path {
-			Some(p) => p,
-			None => settings::log::default_log_path()?,
-		};
+	let version = version();
 
-		Box::leak(Box::new(OwnedContext {
-			data_path,
-			conf_paths,
-			log_path,
-		}))
-	};
+	if args.print_version {
+		println!("fetcher {version}");
+		return Ok(());
+	}
+
+	let cx = create_contenxt(args.data_path, args.config_path, args.log_path)?;
+	tracing::info!("Running fetcher {version}");
 
 	match args.subcommand {
-		args::TopLvlSubcommand::Run(run_args) => run_command(run_args, cx).await,
-		args::TopLvlSubcommand::RunManual(args::RunManual { job }) => {
+		Some(args::TopLvlSubcommand::Run(run_args)) => run_command(run_args, cx).await,
+		None => run_command(args::Run::default(), cx).await,
+		Some(args::TopLvlSubcommand::RunManual(args::RunManual { job })) => {
 			run_jobs(
 				iter::once(("Manual".to_owned().into(), job.0)),
 				ErrorHandling::Forward,
@@ -148,7 +125,7 @@ async fn async_main() -> Result<()> {
 
 			Ok(())
 		}
-		args::TopLvlSubcommand::MarkOldAsRead(args::MarkOldAsRead { run_filter }) => {
+		Some(args::TopLvlSubcommand::MarkOldAsRead(args::MarkOldAsRead { run_filter })) => {
 			let run_filter = run_filter
 				.into_iter()
 				.map(|s| s.parse())
@@ -177,7 +154,7 @@ async fn async_main() -> Result<()> {
 
 			Ok(())
 		}
-		args::TopLvlSubcommand::Verify(args::Verify { job_run_filter }) => {
+		Some(args::TopLvlSubcommand::Verify(args::Verify { job_run_filter })) => {
 			let job_run_filter = job_run_filter
 				.into_iter()
 				.map(|s| s.parse::<JobFilter>())
@@ -199,7 +176,7 @@ async fn async_main() -> Result<()> {
 
 			Ok(())
 		}
-		args::TopLvlSubcommand::Save(save) => {
+		Some(args::TopLvlSubcommand::Save(save)) => {
 			match save.setting {
 				Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt(cx).await?,
 				Setting::EmailPassword => settings::data::email_password::prompt(cx)?,
@@ -213,6 +190,47 @@ async fn async_main() -> Result<()> {
 	}
 }
 
+/// Override default path with a custom if any of these are Some
+fn create_contenxt(
+	data_path: Option<PathBuf>,
+	config_path: Option<PathBuf>,
+	log_path: Option<PathBuf>,
+) -> Result<Context> {
+	let data_path = match data_path {
+		Some(p) => p,
+		None => settings::data::default_data_path()?,
+	};
+	let conf_paths = match config_path {
+		Some(p) => vec![p],
+		None => settings::config::default_cfg_dirs()?,
+	};
+	let log_path = match log_path {
+		Some(p) => p,
+		None => settings::log::default_log_path()?,
+	};
+
+	Ok(Box::leak(Box::new(OwnedContext {
+		data_path,
+		conf_paths,
+		log_path,
+	})))
+}
+
+fn version() -> &'static str {
+	if std::env!("VERGEN_GIT_BRANCH") == "main" {
+		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
+	} else {
+		concat!(
+			"v",
+			std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT"),
+			"-",
+			std::env!("VERGEN_GIT_SHA_SHORT"),
+			" on branch ",
+			std::env!("VERGEN_GIT_BRANCH")
+		)
+	}
+}
+
 #[tracing::instrument(level = "trace", skip(run_filter, cx))]
 async fn run_command(
 	args::Run {
@@ -222,16 +240,20 @@ async fn run_command(
 	}: args::Run,
 	cx: Context,
 ) -> Result<()> {
-	let Some(mut jobs) = ({
-		let run_filter = run_filter.into_iter().map(|s| s.parse()).collect::<Result<Vec<_>>>()?;
-		let run_filter = if run_filter.is_empty() {
+	let run_filter = {
+		let run_filter = run_filter
+			.into_iter()
+			.map(|s| s.parse())
+			.collect::<Result<Vec<_>>>()?;
+
+		if run_filter.is_empty() {
 			None
 		} else {
 			Some(run_filter)
-		};
+		}
+	};
 
-		get_jobs(run_filter, cx)?
-	}) else {
+	let Some(mut jobs) = get_jobs(run_filter, cx)? else {
 		return Ok(());
 	};
 

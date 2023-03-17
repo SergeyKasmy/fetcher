@@ -10,11 +10,11 @@ use argh::FromArgs;
 use color_eyre::Report;
 use std::{path::PathBuf, str::FromStr};
 
-/// fetcher
+/// Automatic news fetching and parsing
 #[derive(FromArgs, Debug)]
 pub struct Args {
 	#[argh(subcommand)]
-	pub subcommand: TopLvlSubcommand,
+	pub subcommand: Option<TopLvlSubcommand>,
 
 	/// config path
 	#[argh(option)]
@@ -27,6 +27,10 @@ pub struct Args {
 	/// log path
 	#[argh(option)]
 	pub log_path: Option<PathBuf>,
+
+	/// print version and exit
+	#[argh(switch, short = 'v', long = "version")]
+	pub print_version: bool,
 }
 
 #[derive(FromArgs, Debug)]
@@ -39,9 +43,9 @@ pub enum TopLvlSubcommand {
 	Save(Save),
 }
 
-/// run all jobs
+/// Run all jobs. Default if started with no command
 #[allow(clippy::struct_excessive_bools)]
-#[derive(FromArgs, Debug)]
+#[derive(FromArgs, Default, Debug)]
 #[argh(subcommand, name = "run")]
 pub struct Run {
 	/// run once (instead of looping forever)
@@ -84,7 +88,7 @@ pub struct Verify {
 	pub job_run_filter: Vec<String>,
 }
 
-/// save a setting
+/// Save a setting
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "save")]
 pub struct Save {

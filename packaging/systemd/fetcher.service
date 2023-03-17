@@ -2,7 +2,7 @@
 Description=Automatic news fetching and parsing
 
 [Service]
-ExecStart=fetcher run
+ExecStart=fetcher
 #Environment="FETCHER_LOG=fetcher=<LOG_LEVEL>,fetcher_core=<LOG_LEVEL>"
 StandardOutput=append:/var/log/fetcher.log
 
