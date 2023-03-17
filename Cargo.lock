@@ -743,7 +743,7 @@ dependencies = [
 
 [[package]]
 name = "fetcher"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "argh",
  "async-trait",
@@ -768,7 +768,7 @@ dependencies = [
 
 [[package]]
 name = "fetcher-config"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "chrono",
  "duration-str",
@@ -785,7 +785,7 @@ dependencies = [
 
 [[package]]
 name = "fetcher-core"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "assert_matches",
  "async-trait",
