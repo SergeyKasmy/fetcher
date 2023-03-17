@@ -5,36 +5,35 @@
  */
 
 //! This module contains [`Sink`] that can be used to consume a composed [`Message`],
-//! as well as [`Message`](`message`) itself
+//! as well as the [`message`] module itself
 
 pub mod message;
-pub(crate) mod stdout;
+
+pub mod discord;
+pub mod stdout;
 pub mod telegram;
 
-pub use message::{Media, Message};
-pub use stdout::Stdout;
-pub use telegram::Telegram;
+pub mod error;
 
-use crate::error::sink::Error as SinkError;
+pub use self::{discord::Discord, stdout::Stdout, telegram::Telegram};
+pub use crate::exec::Exec;
 
-/// All available sinks
-#[derive(Debug)]
-pub enum Sink {
-	/// Telegram sink
-	Telegram(Telegram),
-	/// stdout sink
-	Stdout(Stdout),
-}
+use self::{
+	error::SinkError,
+	message::{Message, MessageId},
+};
 
-impl Sink {
-	/// Send a message with an optional tag to the sink
-	///
-	/// # Errors
-	/// if there was an error sending the message
-	pub async fn send(&self, message: Message, tag: Option<&str>) -> Result<(), SinkError> {
-		match self {
-			Self::Telegram(t) => t.send(message, tag).await,
-			Self::Stdout(s) => s.send(message, tag).await,
-		}
-	}
+use async_trait::async_trait;
+use std::fmt::Debug;
+
+/// An async function that sends a message somewhere
+#[async_trait]
+pub trait Sink: Debug + Send + Sync {
+	/// Send the message with an optional tag (usually represented as a hashtag)
+	async fn send(
+		&self,
+		message: Message,
+		reply_to: Option<&MessageId>,
+		tag: Option<&str>,
+	) -> Result<Option<MessageId>, SinkError>;
 }

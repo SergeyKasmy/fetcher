@@ -7,8 +7,8 @@
 //! This module contains everything needed to contruct a new [`Entry`] (via [`TransformedEntry`]) and [`Message`] (via [`TransformedMessage`]) after parsing, optionally using previous [`Entry's`](`Entry`) data if requested
 
 use crate::{
-	entry::Entry,
-	sink::{Media, Message},
+	entry::{Entry, EntryId},
+	sink::message::{Media, Message},
 };
 
 use url::Url;
@@ -18,7 +18,8 @@ use url::Url;
 #[allow(missing_docs)]
 #[derive(Default, Debug)]
 pub struct TransformedEntry {
-	pub id: TransformResult<String>,
+	pub id: TransformResult<EntryId>,
+	pub reply_to: TransformResult<EntryId>,
 	pub raw_contents: TransformResult<String>,
 	pub msg: TransformedMessage,
 }
@@ -46,11 +47,12 @@ pub enum TransformResult<T> {
 impl TransformedEntry {
 	/// Transform [`TransformedEntry`] into a new [`Entry`], using `old_entry`'s fields as fallback if needed
 	#[must_use]
-	pub fn into_entry(self, old_entry: Entry) -> Entry {
+	pub fn into_entry(self, old_entry: &Entry) -> Entry {
 		Entry {
-			id: self.id.get(old_entry.id),
-			raw_contents: self.raw_contents.get(old_entry.raw_contents),
-			msg: self.msg.into_message(old_entry.msg),
+			id: self.id.get(|| old_entry.id.clone()),
+			reply_to: self.reply_to.get(|| old_entry.reply_to.clone()),
+			raw_contents: self.raw_contents.get(|| old_entry.raw_contents.clone()),
+			msg: self.msg.into_message(&old_entry.msg),
 		}
 	}
 }
@@ -58,24 +60,25 @@ impl TransformedEntry {
 impl TransformedMessage {
 	/// Transform [`TransformedMessage`] into a new [`Message`], using `old_msg`'s fields as fallback if needed
 	#[must_use]
-	pub fn into_message(self, old_msg: Message) -> Message {
+	pub fn into_message(self, old_msg: &Message) -> Message {
 		Message {
-			title: self.title.get(old_msg.title),
-			body: self.body.get(old_msg.body),
-			link: self.link.get(old_msg.link),
-			media: self.media.get(old_msg.media),
+			title: self.title.get(|| old_msg.title.clone()),
+			body: self.body.get(|| old_msg.body.clone()),
+			link: self.link.get(|| old_msg.link.clone()),
+			media: self.media.get(|| old_msg.media.clone()),
 		}
 	}
 }
 
 impl<T> TransformResult<T> {
 	/// Combine new value with the old value using new value's merge stradegy
-	pub fn get(self, old_val: Option<T>) -> Option<T> {
-		use TransformResult::{New, Old};
-
+	pub fn get<F>(self, old_val: F) -> Option<T>
+	where
+		F: FnOnce() -> Option<T>,
+	{
 		match self {
-			Old(val) => val.or(old_val),
-			New(val) => val,
+			Self::Old(val) => val.or_else(old_val),
+			Self::New(val) => val,
 		}
 	}
 }

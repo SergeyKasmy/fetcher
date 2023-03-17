@@ -4,12 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::{auth, error::Error};
+use crate::auth::google::{Google as GoogleAuth, GoogleOAuth2Error as GoogleAuthError};
 
 /// Authentication type for IMAP
 pub enum Auth {
 	/// Google OAuth2 with full access to Gmail
-	GoogleAuth(auth::Google),
+	GmailOAuth2(GoogleAuth),
 	/// An insecure pure text password
 	Password(String),
 }
@@ -29,12 +29,18 @@ impl imap::Authenticator for ImapOAuth2<'_> {
 
 #[async_trait::async_trait]
 pub(super) trait GoogleAuthExt {
-	async fn as_imap_oauth2<'a>(&'a mut self, email: &'a str) -> Result<ImapOAuth2<'a>, Error>;
+	async fn as_imap_oauth2<'a>(
+		&'a mut self,
+		email: &'a str,
+	) -> Result<ImapOAuth2<'a>, GoogleAuthError>;
 }
 
 #[async_trait::async_trait]
-impl GoogleAuthExt for auth::Google {
-	async fn as_imap_oauth2<'a>(&'a mut self, email: &'a str) -> Result<ImapOAuth2<'a>, Error> {
+impl GoogleAuthExt for GoogleAuth {
+	async fn as_imap_oauth2<'a>(
+		&'a mut self,
+		email: &'a str,
+	) -> Result<ImapOAuth2<'a>, GoogleAuthError> {
 		Ok(ImapOAuth2 {
 			email,
 			token: self.access_token().await?,

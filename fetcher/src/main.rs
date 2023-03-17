@@ -4,31 +4,41 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#![doc = include_str!("../README.md")]
 #![warn(clippy::pedantic)]
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::missing_errors_doc)] // TODO: add more docs (even though it a bin crate, they are for me...) and remove this
 #![allow(clippy::module_name_repetitions)]
 
 pub mod args;
+pub mod extentions;
 pub mod settings;
 
-use self::settings::{
-	context::Context as OwnedContext, context::StaticContext as Context, run_mode::RunMode,
+use crate::{
+	args::{Args, Setting},
+	extentions::{ErrorChainExt, SliceDisplayExt},
+	settings::{
+		config::jobs::filter::JobFilter, context::Context as OwnedContext,
+		context::StaticContext as Context,
+	},
 };
-use crate::args::{Args, Setting};
-use fetcher_config::tasks::{ParsedTask, ParsedTasks};
-use fetcher_core::error::{Error, ErrorChainExt};
+use fetcher_config::jobs::JobName;
+use fetcher_core::{
+	error::Error,
+	job::{timepoint::TimePoint, Job},
+	sink::{Sink, Stdout},
+};
 
 use color_eyre::{
 	eyre::{eyre, WrapErr},
-	Report, Result,
+	Report, Result, Section,
 };
-use futures::{future::try_join_all, StreamExt};
-use signal_hook::consts::TERM_SIGNALS;
-use signal_hook_tokio::Signals;
+use futures::future::join_all;
 use std::{
-	sync::{atomic::AtomicBool, Arc},
-	time::Duration,
+	collections::HashMap,
+	iter,
+	ops::ControlFlow,
+	path::PathBuf,
+	time::{Duration, Instant},
 };
 use tokio::{
 	select,
@@ -38,27 +48,38 @@ use tokio::{
 };
 use tracing::Instrument;
 
+type Jobs = HashMap<JobName, Job>;
+
 fn main() -> Result<()> {
 	set_up_logging()?;
-	async_main()?;
-
-	Ok(())
+	async_main()
 }
 
 fn set_up_logging() -> Result<()> {
+	use tracing::Level;
 	use tracing_subscriber::{
 		filter::LevelFilter, fmt::time::OffsetTime, layer::SubscriberExt, EnvFilter, Layer,
 	};
 
-	let env_filter = EnvFilter::try_from_env("FETCHER_LOG")
-		.unwrap_or_else(|_| EnvFilter::from("fetcher=info,fetcher_core=info"));
+	let env_filter =
+		EnvFilter::try_from_env("FETCHER_LOG").unwrap_or_else(|_| EnvFilter::from("info"));
+
+	let is_debug_log_level = env_filter
+		.max_level_hint()
+		.map_or_else(|| false, |level| level >= Level::DEBUG);
 
 	let stdout = tracing_subscriber::fmt::layer()
-		.pretty()
-		// hide source code/debug info on release builds
-		// .with_file(cfg!(debug_assertions))
-		// .with_line_number(cfg!(debug_assertions))
+		.with_target(is_debug_log_level)
+		.with_file(is_debug_log_level)
+		.with_line_number(is_debug_log_level)
+		.with_thread_ids(is_debug_log_level)
 		.with_timer(OffsetTime::local_rfc_3339().expect("could not get local time offset"));
+
+	let stdout = if is_debug_log_level {
+		stdout.pretty().boxed()
+	} else {
+		stdout.boxed()
+	};
 
 	// enable journald logging only on release to avoid log spam on dev machines
 	let journald = if cfg!(debug_assertions) {
@@ -70,6 +91,7 @@ fn set_up_logging() -> Result<()> {
 	let subscriber = tracing_subscriber::registry()
 		.with(journald.with_filter(LevelFilter::INFO))
 		.with(stdout.with_filter(env_filter));
+
 	tracing::subscriber::set_global_default(subscriber).unwrap();
 
 	color_eyre::install()?;
@@ -79,64 +101,122 @@ fn set_up_logging() -> Result<()> {
 #[tokio::main]
 async fn async_main() -> Result<()> {
 	let args: Args = argh::from_env();
-	let context: Context = {
-		let data_path = match args.data_path {
-			Some(p) => p,
-			None => settings::data::default_data_path()?,
-		};
-		let conf_paths = match args.config_path {
-			Some(p) => vec![p],
-			None => settings::config::default_cfg_dirs()?,
-		};
-		let log_path = match args.log_path {
-			Some(p) => p,
-			None => settings::log::default_log_path()?,
-		};
+	let version = version();
 
-		Box::leak(Box::new(OwnedContext {
-			data_path,
-			conf_paths,
-			log_path,
-		}))
-	};
-
-	match args.subcommand {
-		args::TopLvlSubcommand::Run(arg) => {
-			let mode = if arg.verify_only {
-				RunMode::VerifyOnly
-			} else {
-				RunMode::Normal {
-					once: arg.once,
-					dry_run: arg.dry_run,
-				}
-			};
-
-			run(
-				if arg.tasks.is_empty() {
-					None
-				} else {
-					Some(arg.tasks)
-				},
-				mode,
-				context,
-			)
-			.await?;
-		}
-		args::TopLvlSubcommand::Save(save) => match save.setting {
-			Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt(context).await?,
-			Setting::EmailPassword => settings::data::email_password::prompt(context)?,
-			Setting::Telegram => settings::data::telegram::prompt(context)?,
-			Setting::Twitter => settings::data::twitter::prompt(context)?,
-		},
+	if args.print_version {
+		println!("fetcher {version}");
+		return Ok(());
 	}
 
-	Ok(())
+	let cx = create_contenxt(args.data_path, args.config_path, args.log_path)?;
+	tracing::info!("Running fetcher {version}");
+
+	match args.subcommand {
+		Some(args::TopLvlSubcommand::Run(run_args)) => run_command(run_args, cx).await,
+		None => run_command(args::Run::default(), cx).await,
+		Some(args::TopLvlSubcommand::RunManual(args::RunManual { job })) => {
+			run_jobs(
+				iter::once(("Manual".to_owned().into(), job.0)),
+				ErrorHandling::Forward,
+				cx,
+			)
+			.await?;
+
+			Ok(())
+		}
+		Some(args::TopLvlSubcommand::MarkOldAsRead(args::MarkOldAsRead { run_filter })) => {
+			let run_filter = run_filter
+				.into_iter()
+				.map(|s| s.parse())
+				.collect::<Result<Vec<_>>>()?;
+			let run_filter = if run_filter.is_empty() {
+				None
+			} else {
+				Some(run_filter)
+			};
+
+			let Some(mut jobs) = get_jobs(run_filter, cx)? else {
+				return Ok(());
+			};
+
+			// just fetch and save read, don't send anything
+			for job in jobs.values_mut() {
+				job.refresh_time = None;
+
+				for task in &mut job.tasks {
+					task.sink = None;
+				}
+			}
+
+			run_jobs(jobs, ErrorHandling::LogAndIgnore, cx).await?;
+			tracing::info!("Marked jobs as read, exiting...");
+
+			Ok(())
+		}
+		Some(args::TopLvlSubcommand::Verify(args::Verify { job_run_filter })) => {
+			let job_run_filter = job_run_filter
+				.into_iter()
+				.map(|s| s.parse::<JobFilter>())
+				.map(|res| {
+					res.map(|mut filter| {
+						filter.task = None;
+						filter
+					})
+				})
+				.collect::<Result<Vec<_>>>()?;
+			let job_run_filter = if job_run_filter.is_empty() {
+				None
+			} else {
+				Some(job_run_filter)
+			};
+
+			_ = get_jobs(job_run_filter, cx)?;
+			tracing::info!("Everything verified to be working properly, exiting...");
+
+			Ok(())
+		}
+		Some(args::TopLvlSubcommand::Save(save)) => {
+			match save.setting {
+				Setting::GoogleOAuth2 => settings::data::google_oauth2::prompt(cx).await?,
+				Setting::EmailPassword => settings::data::email_password::prompt(cx)?,
+				Setting::Telegram => settings::data::telegram::prompt(cx)?,
+				Setting::Discord => settings::data::discord::prompt(cx)?,
+				Setting::Twitter => settings::data::twitter::prompt(cx)?,
+			}
+
+			Ok(())
+		}
+	}
 }
 
-/// Run once or loop?
-/// If specified, run only tasks in `run_by_name`
-async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Result<()> {
-	let version = if std::env!("VERGEN_GIT_BRANCH") == "main" {
+/// Override default path with a custom one if it is Some
+fn create_contenxt(
+	data_path: Option<PathBuf>,
+	config_path: Option<PathBuf>,
+	log_path: Option<PathBuf>,
+) -> Result<Context> {
+	let data_path = match data_path {
+		Some(p) => p,
+		None => settings::data::default_data_path()?,
+	};
+	let conf_paths = match config_path {
+		Some(p) => vec![p],
+		None => settings::config::default_cfg_dirs()?,
+	};
+	let log_path = match log_path {
+		Some(p) => p,
+		None => settings::log::default_log_path()?,
+	};
+
+	Ok(Box::leak(Box::new(OwnedContext {
+		data_path,
+		conf_paths,
+		log_path,
+	})))
+}
+
+fn version() -> &'static str {
+	if std::env!("VERGEN_GIT_BRANCH") == "main" {
 		std::env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
 	} else {
 		concat!(
@@ -147,270 +227,392 @@ async fn run(run_by_name: Option<Vec<String>>, mode: RunMode, cx: Context) -> Re
 			" on branch ",
 			std::env!("VERGEN_GIT_BRANCH")
 		)
+	}
+}
+
+#[tracing::instrument(level = "trace", skip(run_filter, cx))]
+async fn run_command(
+	args::Run {
+		once,
+		dry_run,
+		run_filter,
+	}: args::Run,
+	cx: Context,
+) -> Result<()> {
+	let run_filter = {
+		let run_filter = run_filter
+			.into_iter()
+			.map(|s| s.parse())
+			.collect::<Result<Vec<_>>>()?;
+
+		if run_filter.is_empty() {
+			None
+		} else {
+			Some(run_filter)
+		}
 	};
-	tracing::info!("Running fetcher {}", version);
 
-	let run_by_name_is_some = run_by_name.is_some();
-	let tasks = get_all_tasks(run_by_name, cx).await?;
+	let Some(mut jobs) = get_jobs(run_filter, cx)? else {
+		return Ok(());
+	};
 
-	if run_by_name_is_some {
-		if tasks.is_empty() {
-			tracing::info!("No enabled tasks found for the provided query");
+	if dry_run {
+		tracing::trace!("Making all jobs dry");
 
-			let all_tasks = get_all_tasks(None, cx).await?;
-			tracing::info!(
-				"All available enabled tasks: {:?}",
-				all_tasks.keys().collect::<Vec<_>>()
-			);
+		for job in jobs.values_mut() {
+			for task in &mut job.tasks {
+				// don't save read filtered items to the fs
+				if let Some(source) = &mut task.source {
+					source.set_read_only().await;
+				}
 
-			return Ok(());
-		}
+				// don't send anything anywhere, just print
+				if let Some(sink) = &mut task.sink {
+					*sink = Box::new(Stdout);
+				}
 
-		tracing::info!(
-			"Found {} enabled tasks for the provided query: {:?}",
-			tasks.len(),
-			tasks.keys().collect::<Vec<_>>()
-		);
-	} else {
-		if tasks.is_empty() {
-			tracing::info!("No enabled tasks found");
-			return Ok(());
-		}
-
-		tracing::info!(
-			"Found {} enabled tasks: {:?}",
-			tasks.len(),
-			tasks.keys().collect::<Vec<_>>()
-		);
-	}
-
-	let (shutdown_tx, shutdown_rx) = watch::channel(());
-
-	let sig = Signals::new(TERM_SIGNALS).expect("Error registering signals");
-	let sig_handle = sig.handle();
-
-	let sig_term_now = Arc::new(AtomicBool::new(false));
-	for s in TERM_SIGNALS {
-		use signal_hook::flag;
-
-		flag::register_conditional_shutdown(
-			*s,
-			1, /* exit status */
-			Arc::clone(&sig_term_now),
-		)
-		.expect("Error registering signal handler"); // unwrap NOTE: crash if even signal handlers can't be set up
-
-		// unwrap NOTE: crash if even signal handlers can't be set up
-		flag::register(*s, Arc::clone(&sig_term_now)).expect("Error registering signal handler");
-	}
-
-	let sig_task = tokio::spawn(async move {
-		let mut sig = sig.fuse();
-
-		while sig.next().await.is_some() {
-			shutdown_tx
-				.send(())
-				.expect("Error broadcasting signal to tasks");
-		}
-
-		Ok::<(), Report>(())
-	});
-
-	match mode {
-		RunMode::Normal { once, dry_run } => {
-			let mut tasks = tasks;
-
-			if dry_run {
-				tracing::debug!("Making all tasks dry");
-
-				make_tasks_dry(&mut tasks).await;
+				// don't save entry to msg map to the fs
+				if let Some(entry_to_msg_map) = &mut task.entry_to_msg_map {
+					entry_to_msg_map.external_save = None;
+				}
 			}
-
-			run_tasks(tasks, shutdown_rx, once, cx).await?;
-		}
-		RunMode::VerifyOnly => {
-			tracing::info!("Everything verified to be working properly, exiting...");
 		}
 	}
 
-	sig_handle.close(); // TODO: figure out wtf this is and why
-	sig_task
-		.await
-		.expect("Error shutting down of signal handler")?;
+	if once {
+		tracing::trace!("Disabling every job's refetch interval");
 
+		for job in jobs.values_mut() {
+			job.refresh_time = None;
+		}
+	}
+
+	let error_handling = if once {
+		ErrorHandling::Forward
+	} else {
+		ErrorHandling::Sleep {
+			max_retries: 15,
+			err_count: 0,
+			last_error: None,
+		}
+	};
+
+	run_jobs(jobs, error_handling, cx).await?;
 	Ok(())
 }
 
-async fn get_all_tasks(run_by_name: Option<Vec<String>>, cx: Context) -> Result<ParsedTasks> {
-	tokio::task::spawn_blocking(move || {
-		settings::config::tasks::get_all(
-			run_by_name
-				.as_ref()
-				.map(|s| s.iter().map(String::as_str).collect::<Vec<_>>())
-				.as_deref(),
-			cx,
-		)
-	})
-	.await
-	.expect("Thread crashed")
-}
+#[tracing::instrument(level = "debug", skip(cx))]
+#[allow(clippy::needless_pass_by_value)]
+fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jobs>> {
+	let run_by_name_is_some = run_filter.is_some();
+	let jobs = settings::config::jobs::get_all(run_filter.as_deref(), cx)?;
 
-async fn make_tasks_dry(tasks: &mut ParsedTasks) {
-	use fetcher_core::{
-		sink::{Sink, Stdout},
-		source::{email, Source, WithCustomRF},
-	};
+	if run_by_name_is_some {
+		if jobs.is_empty() {
+			tracing::info!("No enabled jobs found for the provided query");
 
-	for task in tasks.values_mut() {
-		// don't save read filtered items to the fs
-		match &mut task.inner.source {
-			Source::WithSharedReadFilter { rf, kind: _ } => {
-				if let Some(rf) = rf {
-					rf.write().await.external_save = None;
-				}
+			if let Ok(all_jobs) = settings::config::jobs::get_all(None, cx) {
+				tracing::info!("All available enabled jobs: {}", all_jobs.keys().display());
+			} else {
+				tracing::warn!("Can't list all available jobs because some jobs have invalid format. Try running in \"verify\" mode and correcting them");
 			}
-			Source::WithCustomReadFilter(custom_rf_source) => match custom_rf_source {
-				WithCustomRF::Email(e) => e.view_mode = email::ViewMode::ReadOnly,
-			},
+
+			return Ok(None);
 		}
 
-		// don't send anything anywhere, just print
-		if let Some(sink) = &mut task.inner.sink {
-			*sink = Sink::Stdout(Stdout);
+		tracing::info!(
+			"Found {} enabled jobs for the provided query: {}",
+			jobs.len(),
+			jobs.keys().display()
+		);
+	} else {
+		if jobs.is_empty() {
+			tracing::info!("No enabled jobs found");
+			return Ok(None);
+		}
+
+		tracing::info!(
+			"Found {} enabled jobs: {}",
+			jobs.len(),
+			jobs.keys().display()
+		);
+	}
+
+	tracing::trace!("Jobs to run: {jobs:#?}");
+	Ok(Some(jobs))
+}
+
+#[derive(Clone, Debug)]
+enum ErrorHandling {
+	Forward,
+	LogAndIgnore,
+	Sleep {
+		max_retries: u32,
+
+		// "private" state, should be 0 and None
+		// there's no point in creating a private struct with a constructor just for these
+		// since they are for private use anyways and aren't used more than a couple of times
+		err_count: u32,
+		last_error: Option<Instant>,
+	},
+}
+
+#[tracing::instrument(level = "trace", skip(jobs, cx))]
+async fn run_jobs(
+	jobs: impl IntoIterator<Item = (JobName, Job)>,
+	error_handling: ErrorHandling,
+	cx: Context,
+) -> Result<()> {
+	let shutdown_rx = set_up_signal_handler();
+
+	let jobs = jobs
+		.into_iter()
+		.map(|(name, mut job)| {
+			let async_job = {
+				let name = name.clone();
+				let mut error_handling = error_handling.clone();
+
+				async move {
+					loop {
+						let job_result = job
+							.run()
+							.instrument(tracing::info_span!("job", name = %name))
+							.await;
+
+						match handle_errors(job_result, &mut error_handling, (&name, &job), cx)
+							.await
+						{
+							ControlFlow::Continue(()) => (),
+							ControlFlow::Break(res) => return res.map_err(|e| (name, e)),
+						}
+					}
+				}
+			};
+
+			// tokio task
+			let async_task = {
+				let mut shutdown_rx = shutdown_rx.clone();
+
+				async move {
+					loop {
+						select! {
+							res = async_job => {
+								return res;
+							}
+							_ = shutdown_rx.changed() => {
+								tracing::info!("Job {name} shut down...");
+								return Ok(());
+							}
+						}
+					}
+				}
+			};
+
+			let async_task_handle = tokio::spawn(async_task);
+			flatten_task_result(async_task_handle)
+		})
+		.collect::<Vec<_>>();
+
+	// rust-analyzer is confused without these manual type annotation
+	let mut errors: Vec<(JobName, Report)> = join_all(jobs)
+		.await
+		.into_iter()
+		.filter_map(|r| match r {
+			Ok(()) => None,
+			Err(e) => Some(e),
+		})
+		.collect();
+
+	match errors.len() {
+		0 => Ok(()),
+		1 => {
+			let (name, error) = errors.pop().expect("len should be 1");
+
+			Err(error).wrap_err(format!("Job \"{name}\""))
+		}
+		i => {
+			let full_report = errors.into_iter().fold(
+				eyre!("{i} jobs have finished with an error"),
+				|acc, (name, err)| acc.report(err.wrap_err(format!("Job \"{name}\""))),
+			);
+
+			Err(full_report)
 		}
 	}
 }
 
-async fn run_tasks(
-	tasks: ParsedTasks,
-	shutdown_rx: Receiver<()>,
-	once: bool,
-	context: Context,
-) -> Result<()> {
-	let mut running_tasks = Vec::new();
-	for (name, mut t) in tasks {
-		let name2 = name.clone();
-		let mut shutdown_rx = shutdown_rx.clone();
+fn set_up_signal_handler() -> Receiver<()> {
+	let (shutdown_tx, shutdown_rx) = watch::channel(());
+	let (force_close_tx, mut force_close_rx) = watch::channel(());
 
-		let task_handle = tokio::spawn(
-			async move {
-				tracing::trace!("Task {} contents: {:#?}", name, t);
+	// signal handler
+	tokio::spawn(async move {
+		// graceful shutdown
+		tokio::signal::ctrl_c()
+			.await
+			.expect("failed to setup signal handler");
 
-				let res = select! {
-					r = task_loop(&mut t, &name, once, context) => r,
-					_ = shutdown_rx.changed() => Ok(()),
-				};
+		// shutdown signal recieved
+		shutdown_tx
+			.send(())
+			.expect("failed to broadcast shutdown signal to the jobs");
 
-				// production error reporting
-				if !cfg!(debug_assertions) {
-					if let Err(err) = &res {
-						if let Err(e) = report_error(&name, &format!("{:#}", err), context).await {
+		tracing::info!("Press Ctrl-C again to force close");
+
+		// force close
+		tokio::signal::ctrl_c()
+			.await
+			.expect("failed to setup signal handler");
+
+		force_close_tx
+			.send(())
+			.expect("failed to broadcast force shutdown signal");
+
+		Ok::<_, Report>(())
+	});
+
+	// force close signal receiver
+	tokio::spawn(async move {
+		if let Ok(()) = force_close_rx.changed().await {
+			tracing::info!("Force closing...");
+			std::process::exit(1);
+		}
+	});
+
+	shutdown_rx
+}
+
+async fn handle_errors(
+	results: Result<(), Vec<Error>>,
+	stradegy: &mut ErrorHandling,
+	(job_name, job): (&JobName, &Job),
+	cx: Context,
+) -> ControlFlow<Result<()>> {
+	let Err(errors) = results else {
+		return ControlFlow::Break(Ok(()));
+	};
+
+	match stradegy {
+		ErrorHandling::Forward => (),
+		ErrorHandling::LogAndIgnore => {
+			for error in &errors {
+				tracing::error!("{}", error.display_chain());
+			}
+
+			return ControlFlow::Continue(());
+		}
+		ErrorHandling::Sleep {
+			max_retries,
+			err_count,
+			last_error,
+		} => {
+			if let Some(last_error_instant) = last_error {
+				if let Some(refresh_time) = &job.refresh_time {
+					// if time since last error is 2 times longer than the refresh duration, than the error count can safely be reset
+					// since there hasn't been any errors for a little while
+					// TODO: maybe figure out a more optimal time interval than just 2 times longer than the refresh timer
+
+					match refresh_time {
+						TimePoint::Duration(dur) => {
+							if last_error_instant.elapsed() > (*dur * 2) {
+								*err_count = 0;
+								*last_error = None;
+							}
+						}
+						// once a day
+						TimePoint::Time(_) => {
+							const TWO_DAYS: Duration = Duration::from_secs(
+								2 /* days */ * 24 /* hours a day */ * 60 /* mins an hour */ * 60, /* secs a min */
+							);
+
+							if last_error_instant.elapsed() > TWO_DAYS {
+								*err_count = 0;
+								*last_error = None;
+							}
+						}
+					}
+				}
+			}
+
+			for err in errors {
+				if err_count == max_retries {
+					return ControlFlow::Break(Err(err.into()));
+				}
+
+				if let Some(network_err) = err.is_connection_error() {
+					tracing::warn!("Network error: {}", network_err.display_chain());
+				} else {
+					if let Error::Transform(transform_err) = &err {
+						if let Err(e) = settings::log::log_transform_err(transform_err, job_name) {
+							tracing::error!("Error logging transform error: {e:?}");
+						}
+					}
+
+					let err_msg = format!(
+						"Error #{} out of {} max allowed:\n{}",
+						*err_count + 1, // +1 cause we are counting from 0 but it'd be strange to show "Error (0 out of 255)" to users
+						*max_retries,
+						err.display_chain()
+					);
+					tracing::error!("{}", err_msg);
+
+					// TODO: make this a context switch
+					// production error reporting
+					if !cfg!(debug_assertions) {
+						if let Err(e) = report_error(job_name, &err_msg, cx).await {
 							tracing::error!("Unable to send error report to the admin: {e:?}",);
 						}
 					}
 				}
-				tracing::info!("Task {name} shut down...");
-
-				res
-			}
-			.instrument(tracing::info_span!("task", name = name2.as_str())),
-		);
-
-		running_tasks.push(flatten_task_result(task_handle));
-	}
-
-	try_join_all(running_tasks).await?;
-	Ok(())
-}
-
-async fn task_loop(t: &mut ParsedTask, task_name: &str, once: bool, cx: Context) -> Result<()> {
-	// exit with an error if there were too many consecutive transform errors
-	let transform_err_max_count: u32 = if once { 0 } else { 255 };
-	// number of consecutive(!!!) transform errors.
-	// we tolerate a pretty big amount for various reasons (being rate limited, server error, etc) but not infinite
-	let mut transform_err_count = 0;
-
-	loop {
-		// return critical errors and just log non critical ones
-		match fetcher_core::run_task(&mut t.inner).await {
-			Ok(()) => {
-				transform_err_count = 0;
-			}
-			Err(Error::Transform(transform_err)) => {
-				settings::log::log_transform_err(&transform_err, task_name).await?;
-
-				if transform_err_count == transform_err_max_count {
-					return Err(Error::Transform(transform_err).into());
-				}
-
-				let err_msg = format!(
-					"Transform error ({} out of {} max allowed):\n{}",
-					transform_err_count + 1, // +1 cause we are counting from 0 but it'd be strange to show "Error (0 out of 255)" to users
-					transform_err_max_count + 1,
-					transform_err.display_chain()
-				);
-				tracing::error!("{}", err_msg);
-
-				// production error reporting
-				if !cfg!(debug_assertions) {
-					let mut err_msg = err_msg;
-					err_msg.insert_str(0, "Non-critical:\n");
-
-					if let Err(e) = report_error(task_name, &err_msg, cx).await {
-						tracing::error!("Unable to send error report to the admin: {e:?}",);
-					}
-				}
 
 				// sleep in exponention amount of minutes, begginning with 2^0 = 1 minute
-				let sleep_dur = 2u64.saturating_pow(transform_err_count);
-				tracing::info!("Pausing task {task_name} for {sleep_dur}m");
+				let sleep_dur = 2u64.saturating_pow(*err_count);
+				tracing::info!("Pausing job {job_name} for {sleep_dur}m");
 
-				sleep(Duration::from_secs(sleep_dur * 60 /* secs in a min*/)).await;
-				transform_err_count += 1;
-
-				continue;
+				*err_count += 1;
+				sleep(Duration::from_secs(sleep_dur * 60 /* secs in a min */)).await;
 			}
-			Err(e) => {
-				if let Some(network_err) = e.is_connection_error() {
-					tracing::warn!("Network error: {}", network_err.display_chain());
-				} else {
-					return Err(e.into());
-				}
-			}
-		}
 
-		if once {
-			break;
+			return ControlFlow::Continue(());
 		}
-
-		tracing::debug!("Sleeping for {time}m", time = t.refresh);
-		sleep(Duration::from_secs(t.refresh * 60 /* secs in a min */)).await;
 	}
 
-	Ok(())
+	// no point in making errors mutable for the duration of the whole functions if it's needed just down here
+	let mut errors = errors;
+
+	// for acc_report.error(err). I believe this way it is clearer what the fold does
+	#[allow(clippy::redundant_closure_for_method_calls)]
+	let full_report = match errors.len() {
+		0 => unreachable!(),
+		1 => Report::from(errors.remove(0)),
+		i => errors.into_iter().fold(
+			eyre!("{i} tasks have finished with an error"),
+			|acc_report, err| acc_report.error(err),
+		),
+	};
+
+	ControlFlow::Break(Err(full_report))
 }
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
-async fn report_error(task_name: &str, err: &str, context: Context) -> Result<()> {
-	use fetcher_core::sink::{telegram::LinkLocation, Message, Telegram};
+async fn report_error(job_name: &str, err: &str, context: Context) -> Result<()> {
+	use fetcher_core::sink::{message::Message, telegram::LinkLocation, Telegram};
 
 	let admin_chat_id = std::env::var("FETCHER_TELEGRAM_ADMIN_CHAT_ID")
-		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID")?
+		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID not set")?
 		.parse::<i64>()
 		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID isn't a valid chat id")?;
 
-	let bot = match settings::data::telegram::get(context)? {
-		Some(b) => b,
-		None => {
-			return Err(eyre!("Telegram bot token not provided"));
-		}
+	let Ok(bot) = settings::data::telegram::get(context) else {
+		return Err(eyre!("Telegram bot token not provided"));
 	};
+
 	let msg = Message {
 		body: Some(err.to_owned()),
 		..Default::default()
 	};
 	Telegram::new(bot, admin_chat_id, LinkLocation::default())
-		.send(msg, Some(task_name))
+		.send(msg, None, Some(job_name))
 		.await
 		.map_err(fetcher_core::error::Error::Sink)?;
 

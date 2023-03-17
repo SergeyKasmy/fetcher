@@ -20,6 +20,10 @@ pub struct Template {
 	pub contents: String,
 }
 
+/// Find all templates with `name` in the default templates paths
+///
+/// # Errors
+/// if the found template path couldn't be read
 #[tracing::instrument(name = "template")]
 pub fn find(name: &str, context: Context) -> Result<Option<Template>> {
 	for template_dir_path in context.conf_paths.iter().map(|p| p.join(TEMPLATES_DIR)) {
@@ -31,11 +35,16 @@ pub fn find(name: &str, context: Context) -> Result<Option<Template>> {
 	Ok(None)
 }
 
+/// Find all templates with `name` in `templates_path`.
+/// Returns Some(Template) if the template was found in the directory, None otherwise
+///
+/// # Errors
+/// if the path couldn't be read
 pub fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>> {
-	tracing::trace!("Searching for template in {}", templates_path.display());
+	tracing::trace!("Searching for a template {name:?} in {templates_path:?}");
 	let path = templates_path.join(name).with_extension(CONFIG_FILE_EXT);
 	if !path.is_file() {
-		tracing::trace!("{path:?} is not a file");
+		tracing::debug!("{path:?} is not a file");
 		return Ok(None);
 	}
 

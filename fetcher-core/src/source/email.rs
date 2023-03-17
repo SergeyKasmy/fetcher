@@ -17,15 +17,19 @@ pub use filters::Filters;
 pub use view_mode::ViewMode;
 
 use self::auth::GoogleAuthExt;
-use crate::auth::Google as GoogleAuth;
-use crate::entry::Entry;
-use crate::error::source::EmailError;
-use crate::error::source::ImapError;
-use crate::sink::Message;
+use super::{Fetch, MarkAsRead, Source};
+use crate::{
+	auth::google::GoogleOAuth2Error as GoogleAuthError,
+	auth::Google as GoogleAuth,
+	entry::{Entry, EntryId},
+	error::Error,
+	sink::message::Message,
+	source::error::SourceError,
+};
 
+use async_trait::async_trait;
 use mailparse::ParsedMail;
-use std::fmt::Debug;
-use std::fmt::Write as _;
+use std::fmt::{Debug, Write as _};
 
 const IMAP_PORT: u16 = 993;
 
@@ -47,23 +51,72 @@ pub struct Email {
 	pub view_mode: ViewMode,
 }
 
+#[allow(missing_docs)] // error message is self-documenting
+#[allow(clippy::large_enum_variant)] // the entire enum is already boxed up above
+#[derive(thiserror::Error, Debug)]
+pub enum EmailError {
+	#[error("IMAP connection error")]
+	Imap(#[from] ImapError),
+
+	#[error("Error parsing email")]
+	Parse(#[from] mailparse::MailParseError),
+}
+
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum ImapError {
+	#[error("Failed to init TLS")]
+	TlsInitFailed(#[source] imap::Error),
+
+	#[error(transparent)]
+	GoogleOAuth2(#[from] GoogleAuthError),
+
+	#[error("Authentication error")]
+	Auth(#[source] imap::Error),
+
+	#[error(transparent)]
+	Other(#[from] imap::Error),
+}
+
+// I'd make that a function but the imap crate didn't want to agree with me
 macro_rules! authenticate {
 	($login:expr, $auth:expr, $client:expr) => {{
 		let auth = $auth;
 
 		match auth {
-			Auth::GoogleAuth(auth) => {
+			Auth::GmailOAuth2(auth) => {
 				tracing::trace!("Logging in to IMAP with Google OAuth2");
 
-				$client
-					.authenticate(
-						"XOAUTH2",
-						&auth
-							.as_imap_oauth2($login)
+				let session = $client.authenticate(
+					"XOAUTH2",
+					&auth
+						.as_imap_oauth2($login)
+						.await
+						.map_err(ImapError::GoogleOAuth2)?,
+				);
+
+				match session {
+					Ok(session) => session,
+					// refresh access token and retry
+					Err((e, client)) => {
+						tracing::error!("Denied access to IMAP via OAuth2: {e}");
+						tracing::info!("Refreshing OAuth2 access token and trying again");
+
+						auth.get_new_access_token()
 							.await
-							.map_err(|e| ImapError::GoogleAuth(Box::new(e)))?,
-					)
-					.map_err(|(e, _)| ImapError::Auth(e))?
+							.map_err(ImapError::GoogleOAuth2)?;
+
+						client
+							.authenticate(
+								"XOAUTH2",
+								&auth
+									.as_imap_oauth2($login)
+									.await
+									.map_err(ImapError::GoogleOAuth2)?,
+							)
+							.map_err(|(e, _)| ImapError::Auth(e))?
+					}
+				}
 			}
 			Auth::Password(password) => {
 				tracing::warn!("Logging in to IMAP with a password, this is insecure");
@@ -79,7 +132,7 @@ macro_rules! authenticate {
 impl Email {
 	/// Creates an [`Email`] source for use with Gmail that uses [`Google OAuth2`](`crate::auth::Google`) to authenticate
 	#[must_use]
-	pub fn with_google_oauth2(
+	pub fn new_gmail(
 		email: String,
 		auth: GoogleAuth,
 		filters: Filters,
@@ -88,7 +141,7 @@ impl Email {
 		Self {
 			imap: "imap.gmail.com".to_owned(),
 			email,
-			auth: Auth::GoogleAuth(auth),
+			auth: Auth::GmailOAuth2(auth),
 			filters,
 			view_mode,
 		}
@@ -96,7 +149,7 @@ impl Email {
 
 	/// Creates an [`Email`] source that uses a password to authenticate via IMAP
 	#[must_use]
-	pub fn with_password(
+	pub fn new_generic(
 		imap: String,
 		email: String,
 		password: String,
@@ -111,12 +164,35 @@ impl Email {
 			view_mode,
 		}
 	}
+}
 
+#[async_trait]
+impl Fetch for Email {
 	/// Even though it's marked async, the fetching itself is not async yet
 	/// It should be used with spawn_blocking probs
 	/// TODO: make it async lol
-	#[tracing::instrument(skip_all)]
-	pub async fn get(&mut self) -> Result<Vec<Entry>, EmailError> {
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		self.fetch_impl().await.map_err(Into::into)
+	}
+}
+
+#[async_trait]
+impl MarkAsRead for Email {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+		self.mark_as_read_impl(id)
+			.await
+			.map_err(|e| Error::from(SourceError::from(EmailError::from(e))))
+	}
+
+	async fn set_read_only(&mut self) {
+		self.view_mode = ViewMode::ReadOnly;
+	}
+}
+
+impl Source for Email {}
+
+impl Email {
+	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, EmailError> {
 		tracing::debug!("Fetching emails");
 		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT)
 			.rustls()
@@ -130,18 +206,18 @@ impl Email {
 			let mut tmp = "UNSEEN ".to_string();
 
 			if let Some(sender) = &self.filters.sender {
-				let _ = write!(tmp, r#"FROM "{sender}" "#);
+				_ = write!(tmp, r#"FROM "{sender}" "#);
 			}
 
 			if let Some(subjects) = &self.filters.subjects {
 				for s in subjects {
-					let _ = write!(tmp, r#"SUBJECT "{s}" "#);
+					_ = write!(tmp, r#"SUBJECT "{s}" "#);
 				}
 			}
 
 			if let Some(ex_subjects) = &self.filters.exclude_subjects {
 				for exs in ex_subjects {
-					let _ = write!(tmp, r#"NOT SUBJECT "{exs}" "#);
+					_ = write!(tmp, r#"NOT SUBJECT "{exs}" "#);
 				}
 			}
 
@@ -192,7 +268,7 @@ let uid =
 			.collect::<Result<Vec<Entry>, EmailError>>()
 	}
 
-	pub(crate) async fn mark_as_read(&mut self, id: &str) -> Result<(), ImapError> {
+	async fn mark_as_read_impl(&mut self, id: &str) -> Result<(), ImapError> {
 		if let ViewMode::ReadOnly = self.view_mode {
 			return Ok(());
 		}
@@ -245,7 +321,7 @@ fn parse(mail: &ParsedMail, id: String) -> Result<Entry, EmailError> {
 	};
 
 	Ok(Entry {
-		id: Some(id),
+		id: Some(id.into()),
 		msg: Message {
 			title: subject,
 			body: Some(body),
@@ -263,7 +339,7 @@ impl Debug for Email {
 				"auth_type",
 				match self.auth {
 					Auth::Password(_) => &"password",
-					Auth::GoogleAuth(_) => &"google_auth",
+					Auth::GmailOAuth2(_) => &"gmail_oauth2",
 				},
 			)
 			.field("email", &self.email)

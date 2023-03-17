@@ -4,17 +4,23 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::entry::Entry;
+use super::{MarkAsRead, ReadFilter};
+use crate::{
+	action::filter::Filter,
+	entry::{Entry, EntryId},
+	error::Error,
+};
 
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use std::collections::VecDeque;
+use std::{any::Any, collections::VecDeque};
 
 const MAX_LIST_LEN: usize = 500;
 
 /// Read Filter that stores a list of all entries read
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NotPresent {
-	read_list: VecDeque<(String, DateTime<Utc>)>,
+	read_list: VecDeque<(EntryId, DateTime<Utc>)>,
 }
 
 impl NotPresent {
@@ -26,46 +32,20 @@ impl NotPresent {
 		}
 	}
 
-	/// Marks the `id` as already read
-	pub fn mark_as_read(&mut self, id: &str) {
-		self.read_list
-			.push_back((id.to_owned(), chrono::Utc::now()));
-
-		while self.read_list.len() > MAX_LIST_LEN {
-			self.read_list.pop_front();
-		}
-	}
-
-	/// Removes all entries that have been marked as read from `list`
-	pub fn remove_read_from(&self, list: &mut Vec<Entry>) {
-		list.retain(|elem| {
-			// retain elements with no id
-			let id = match &elem.id {
-				Some(id) => id,
-				None => return true,
-			};
-
-			!self
-				.read_list
-				.iter()
-				.any(|(read_elem_id, _)| read_elem_id == id)
-		});
-	}
-
 	/// Returns the id of the last read entry, if any
 	#[must_use]
-	pub fn last_read(&self) -> Option<&str> {
-		self.read_list.back().map(|(s, _)| s.as_str())
+	pub fn last_read(&self) -> Option<&EntryId> {
+		self.read_list.back().map(|(s, _)| s)
 	}
 
 	/// Checks if the `id` is unread
 	#[must_use]
-	pub fn is_unread(&self, id: &str) -> bool {
+	pub fn is_unread(&self, id: &EntryId) -> bool {
 		!self.read_list.iter().any(|(ent_id, _)| ent_id == id)
 	}
 
 	/// Provides a read only view into the inner collection
-	pub fn iter(&self) -> impl Iterator<Item = &(String, DateTime<Utc>)> {
+	pub fn iter(&self) -> impl Iterator<Item = &(EntryId, DateTime<Utc>)> {
 		self.read_list.iter()
 	}
 
@@ -76,8 +56,47 @@ impl NotPresent {
 	}
 }
 
-impl FromIterator<(String, DateTime<Utc>)> for NotPresent {
-	fn from_iter<I: IntoIterator<Item = (String, DateTime<Utc>)>>(iter: I) -> Self {
+#[async_trait]
+impl ReadFilter for NotPresent {
+	async fn as_any(&self) -> Box<dyn Any> {
+		Box::new(self.clone())
+	}
+}
+
+#[async_trait]
+impl MarkAsRead for NotPresent {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+		self.read_list.push_back((id.clone(), chrono::Utc::now()));
+
+		while self.read_list.len() > MAX_LIST_LEN {
+			self.read_list.pop_front();
+		}
+
+		Ok(())
+	}
+
+	async fn set_read_only(&mut self) {
+		// NOOP
+	}
+}
+
+#[async_trait]
+impl Filter for NotPresent {
+	async fn filter(&self, entries: &mut Vec<Entry>) {
+		entries.retain(|elem| {
+			// retain elements with no id
+			let Some(id) = &elem.id else { return true };
+
+			!self
+				.read_list
+				.iter()
+				.any(|(read_elem_id, _)| read_elem_id == id)
+		});
+	}
+}
+
+impl FromIterator<(EntryId, DateTime<Utc>)> for NotPresent {
+	fn from_iter<I: IntoIterator<Item = (EntryId, DateTime<Utc>)>>(iter: I) -> Self {
 		Self {
 			read_list: iter.into_iter().collect(),
 		}
@@ -92,83 +111,72 @@ impl Default for NotPresent {
 
 #[cfg(test)]
 mod tests {
+	#![allow(clippy::unwrap_used)]
 	use super::*;
 
-	#[test]
-	fn mark_as_read() {
+	#[tokio::test]
+	async fn mark_as_read() {
 		let mut rf = NotPresent::new();
 
-		rf.mark_as_read("13");
+		rf.mark_as_read(&"13".into()).await.unwrap();
 		assert_eq!(
-			&rf.read_list
-				.iter()
-				.map(|(s, _date)| s.as_str())
-				.collect::<Vec<_>>(),
-			&["13"]
+			&rf.read_list.iter().map(|(s, _date)| s).collect::<Vec<_>>(),
+			&[&"13".into()]
 		);
 
-		rf.mark_as_read("1002");
+		rf.mark_as_read(&"1002".into()).await.unwrap();
 		assert_eq!(
-			&rf.read_list
-				.iter()
-				.map(|(s, _date)| s.as_str())
-				.collect::<Vec<_>>(),
-			&["13", "1002"]
+			&rf.read_list.iter().map(|(s, _date)| s).collect::<Vec<_>>(),
+			&[&"13".into(), &"1002".into()]
 		);
 	}
 
-	#[test]
-	fn mark_as_read_full_queue() {
+	#[tokio::test]
+	async fn mark_as_read_full_queue() {
 		let mut rf = NotPresent::new();
 		let mut v = Vec::with_capacity(MAX_LIST_LEN);
 
 		for i in 0..600 {
-			rf.mark_as_read(&i.to_string());
-			v.push(i.to_string());
+			let id = EntryId(i.to_string());
+			rf.mark_as_read(&id).await.unwrap();
+			v.push(id);
 		}
 
 		// keep only the last MAX_LIST_LEN elements
-		let trimmed_v = v[v.len() - MAX_LIST_LEN..]
-			.iter()
-			.map(String::as_str)
-			.collect::<Vec<_>>();
+		let trimmed_v = v[v.len() - MAX_LIST_LEN..].iter().collect::<Vec<_>>();
 
-		let rf_list = rf
-			.read_list
-			.iter()
-			.map(|(s, _date)| s.as_str())
-			.collect::<Vec<_>>();
+		let rf_list = rf.read_list.iter().map(|(s, _date)| s).collect::<Vec<_>>();
 
 		assert_eq!(trimmed_v, rf_list);
 	}
 
-	#[test]
-	fn last_read() {
+	#[tokio::test]
+	async fn last_read() {
 		let mut rf = NotPresent::new();
 		assert_eq!(None, rf.last_read());
 
-		rf.mark_as_read("0");
-		rf.mark_as_read("1");
-		rf.mark_as_read("2");
-		assert_eq!(Some("2"), rf.last_read());
+		rf.mark_as_read(&"0".into()).await.unwrap();
+		rf.mark_as_read(&"1".into()).await.unwrap();
+		rf.mark_as_read(&"2".into()).await.unwrap();
+		assert_eq!(Some(&"2".into()), rf.last_read());
 
-		rf.mark_as_read("4");
-		assert_eq!(Some("4"), rf.last_read());
+		rf.mark_as_read(&"4".into()).await.unwrap();
+		assert_eq!(Some(&"4".into()), rf.last_read());
 
-		rf.mark_as_read("100");
-		rf.mark_as_read("101");
-		rf.mark_as_read("200");
-		assert_eq!(Some("200"), rf.last_read());
+		rf.mark_as_read(&"100".into()).await.unwrap();
+		rf.mark_as_read(&"101".into()).await.unwrap();
+		rf.mark_as_read(&"200".into()).await.unwrap();
+		assert_eq!(Some(&"200".into()), rf.last_read());
 	}
 
-	#[test]
-	fn remove_read() {
+	#[tokio::test]
+	async fn remove_read() {
 		let mut rf = NotPresent::new();
-		rf.mark_as_read("0");
-		rf.mark_as_read("1");
-		rf.mark_as_read("2");
-		rf.mark_as_read("5");
-		rf.mark_as_read("7");
+		rf.mark_as_read(&"0".into()).await.unwrap();
+		rf.mark_as_read(&"1".into()).await.unwrap();
+		rf.mark_as_read(&"2".into()).await.unwrap();
+		rf.mark_as_read(&"5".into()).await.unwrap();
+		rf.mark_as_read(&"7".into()).await.unwrap();
 
 		let mut entries = vec![
 			Entry {
@@ -176,23 +184,23 @@ mod tests {
 				..Default::default()
 			},
 			Entry {
-				id: Some("5".to_owned()),
+				id: Some("5".into()),
 				..Default::default()
 			},
 			Entry {
-				id: Some("4".to_owned()),
+				id: Some("4".into()),
 				..Default::default()
 			},
 			Entry {
-				id: Some("0".to_owned()),
+				id: Some("0".into()),
 				..Default::default()
 			},
 			Entry {
-				id: Some("1".to_owned()),
+				id: Some("1".into()),
 				..Default::default()
 			},
 			Entry {
-				id: Some("3".to_owned()),
+				id: Some("3".into()),
 				..Default::default()
 			},
 			Entry {
@@ -200,16 +208,16 @@ mod tests {
 				..Default::default()
 			},
 			Entry {
-				id: Some("6".to_owned()),
+				id: Some("6".into()),
 				..Default::default()
 			},
 			Entry {
-				id: Some("8".to_owned()),
+				id: Some("8".into()),
 				..Default::default()
 			},
 		];
 
-		rf.remove_read_from(&mut entries);
+		rf.filter(&mut entries).await;
 
 		// remove msgs
 		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();

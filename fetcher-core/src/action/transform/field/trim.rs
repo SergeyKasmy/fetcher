@@ -6,19 +6,19 @@
 
 //! This module contains the [`Trim`] field transform
 
+use std::convert::Infallible;
+
 use super::TransformField;
 use crate::action::transform::result::TransformResult;
-
-use std::convert::Infallible;
 
 /// Trim whitespace from a field
 #[derive(Debug)]
 pub struct Trim;
 
 impl TransformField for Trim {
-	type Error = Infallible;
+	type Err = Infallible;
 
-	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Infallible> {
-		Ok(TransformResult::New(field.map(|s| s.trim().to_owned())))
+	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
+		Ok(TransformResult::New(old_val.map(|s| s.trim().to_owned())))
 	}
 }

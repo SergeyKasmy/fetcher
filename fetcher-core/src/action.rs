@@ -9,20 +9,19 @@
 pub mod filter;
 pub mod transform;
 
-// Regex is both a transform and a filter that's why it's here all alone :(
-pub mod regex;
-
-use self::transform::Transform;
-use crate::{entry::Entry, error::transform::Error as TransformError};
+use self::{
+	filter::Filter,
+	transform::{error::TransformError, Transform},
+};
+use crate::entry::Entry;
 
 /// An action that modifies a list of entries in some way
 #[derive(Debug)]
-#[allow(clippy::large_enum_variant)]
 pub enum Action {
 	/// Filter out entries
-	Filter(filter::Kind),
+	Filter(Box<dyn Filter>),
 	/// Transform some entries into one or more new entries
-	Transform(Transform),
+	Transform(Box<dyn Transform>),
 }
 
 impl Action {
@@ -40,7 +39,7 @@ impl Action {
 				let mut fully_transformed = Vec::new();
 
 				for entry in entries {
-					tr.transform(entry, &mut fully_transformed).await?;
+					fully_transformed.extend(tr.transform(entry).await?);
 				}
 
 				Ok(fully_transformed)
@@ -49,15 +48,14 @@ impl Action {
 	}
 }
 
-// can't make this generic because of conflicting impl with the Into<Transform> one :(
-impl From<filter::Kind> for Action {
-	fn from(filter: filter::Kind) -> Self {
+impl From<Box<dyn Filter>> for Action {
+	fn from(filter: Box<dyn Filter>) -> Self {
 		Action::Filter(filter)
 	}
 }
 
-impl<T: Into<Transform>> From<T> for Action {
-	fn from(transform: T) -> Self {
-		Action::Transform(transform.into())
+impl From<Box<dyn Transform>> for Action {
+	fn from(transform: Box<dyn Transform>) -> Self {
+		Action::Transform(transform)
 	}
 }

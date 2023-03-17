@@ -6,13 +6,16 @@
 
 //! This module contains the [`Reddit`] subbreddit API source
 
+use super::Fetch;
 use crate::{
 	entry::Entry,
-	error::{source::RedditError, InvalidUrlError},
-	sink::{Media, Message},
+	error::InvalidUrlError,
+	sink::message::{Media, Message},
+	source::error::SourceError,
 	utils::OptionExt,
 };
 
+use async_trait::async_trait;
 use roux::{
 	util::{FeedOption, TimePeriod},
 	Subreddit,
@@ -27,6 +30,16 @@ pub struct Reddit {
 	/// If score of a post is below this threshold, it gets skipped
 	pub score_threshold: Option<u32>,
 	subreddit: Subreddit,
+}
+
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum RedditError {
+	#[error(transparent)]
+	Reddit(#[from] roux::util::RouxError),
+
+	#[error("Reddit API returned an invalid URL to a post/post's contents, which really shouldn't happen...")]
+	InvalidUrl(#[from] InvalidUrlError),
 }
 
 /// Sorting algorithm
@@ -60,12 +73,21 @@ impl Reddit {
 			subreddit: Subreddit::new(subreddit),
 		}
 	}
+}
 
+#[async_trait]
+impl Fetch for Reddit {
 	/// Fetches all posts from a subreddit
 	///
 	/// # Errors
 	/// This function may error if the network connection is down, or Reddit API returns a bad or garbage responce
-	pub async fn get(&self) -> Result<Vec<Entry>, RedditError> {
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		self.fetch_impl().await.map_err(Into::into)
+	}
+}
+
+impl Reddit {
+	async fn fetch_impl(&self) -> Result<Vec<Entry>, RedditError> {
 		let s = &self.subreddit;
 
 		macro_rules! top_in {
@@ -155,7 +177,7 @@ impl Reddit {
 				};
 
 				Some(Ok(Entry {
-					id: Some(post.id),
+					id: Some(post.id.into()),
 					raw_contents: None,
 					msg: Message {
 						title: Some(post.title),
@@ -163,6 +185,7 @@ impl Reddit {
 						link: Some(link),
 						media,
 					},
+					..Default::default()
 				}))
 			})
 			.collect::<Result<_, _>>()?;

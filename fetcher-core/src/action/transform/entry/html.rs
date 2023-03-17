@@ -4,26 +4,29 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains the [`Html`] parser as well as a way to query an HTML tag via [`QueryData`]
+//! This module contains the [`Html`] parser as well as a way to query an HTML tag via [`ElementQuery`]
 
 pub mod query;
 
-use self::query::{DataLocation, ElementDataQuery, ElementKind, ElementQuery};
+use self::query::{
+	DataLocation, ElementDataQuery, ElementKind, ElementQuery, ElementQuerySliceExt,
+};
 use super::TransformEntry;
 use crate::{
-	action::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
-	entry::Entry,
-	error::{
-		transform::{HtmlError, RawContentsNotSetError},
-		InvalidUrlError,
+	action::transform::{
+		error::RawContentsNotSetError,
+		result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
 	},
-	sink::Media,
+	entry::Entry,
+	error::InvalidUrlError,
+	sink::message::Media,
 	utils::OptionExt,
 };
 
+use async_trait::async_trait;
 use either::Either;
 use itertools::Itertools;
-use soup::{Handle as HtmlNode, NodeExt, QueryBuilderExt, Soup};
+use soup_kuchiki::{Handle as HtmlNode, NodeExt, QueryBuilderExt, Soup};
 use std::iter;
 use url::Url;
 
@@ -31,23 +34,58 @@ use url::Url;
 #[derive(Debug)]
 pub struct Html {
 	/// Query to find an item/entry/article in a list on the page. None means to thread the entire page as a single item
-	pub itemq: Option<Vec<ElementQuery>>,
+	pub item: Option<Vec<ElementQuery>>,
+
 	/// Query to find the title of an item
-	pub titleq: Option<ElementDataQuery>,
+	pub title: Option<ElementDataQuery>,
+
 	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
-	pub textq: Option<Vec<ElementDataQuery>>, // allow to find multiple paragraphs and join them together
+	pub text: Option<Vec<ElementDataQuery>>, // allow to find multiple paragraphs and join them together
+
 	/// Query to find the id of an item
-	pub idq: Option<ElementDataQuery>,
+	pub id: Option<ElementDataQuery>,
+
 	/// Query to find the link to an item
-	pub linkq: Option<ElementDataQuery>,
+	pub link: Option<ElementDataQuery>,
+
 	/// Query to find the image of that item
-	pub imgq: Option<ElementDataQuery>,
+	pub img: Option<ElementDataQuery>,
 }
 
-impl TransformEntry for Html {
-	type Error = HtmlError;
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum HtmlError {
+	#[error(transparent)]
+	RawContentsNotSet(#[from] RawContentsNotSetError),
 
-	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+	#[error("HTML element #{} not found. From query list: \n{}",
+			.num + 1,
+			.elem_list.display()
+			)]
+	ElementNotFound {
+		num: usize,
+		elem_list: Vec<ElementQuery>,
+	},
+
+	#[error("Data not found at {data:?} in element fount at {}",
+			.element.display())]
+	DataNotFoundInElement {
+		data: DataLocation,
+		element: Vec<ElementQuery>,
+	},
+
+	#[error("HTML element {0:?} is empty")]
+	ElementEmpty(Vec<ElementQuery>),
+
+	#[error(transparent)]
+	InvalidUrl(#[from] InvalidUrlError),
+}
+
+#[async_trait]
+impl TransformEntry for Html {
+	type Err = HtmlError;
+
+	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		tracing::debug!("Parsing HTML");
 
 		let dom =
@@ -69,7 +107,7 @@ impl TransformEntry for Html {
 			return Ok(Vec::new());
 		}
 
-		let items = match self.itemq.as_ref() {
+		let items = match self.item.as_ref() {
 			Some(itemq) => Either::Left(
 				find_chain(&body, itemq)
 					.map_err(|i| HtmlError::ElementNotFound {
@@ -96,15 +134,15 @@ impl TransformEntry for Html {
 impl Html {
 	fn extract_entry(&self, html: &HtmlNode) -> Result<TransformedEntry, HtmlError> {
 		let title = self
-			.titleq
+			.title
 			.as_ref()
 			.try_and_then(|q| extract_title(html, q))?;
 
-		let body = self.textq.as_ref().try_map(|q| extract_body(html, q))?;
-		let id = self.idq.as_ref().try_and_then(|q| extract_id(html, q))?;
+		let body = self.text.as_ref().try_map(|q| extract_body(html, q))?;
+		let id = self.id.as_ref().try_and_then(|q| extract_id(html, q))?;
 
 		let link = self
-			.linkq
+			.link
 			.as_ref()
 			.try_and_then(|q| extract_url(html, q))?
 			.try_map(|mut x| {
@@ -112,10 +150,10 @@ impl Html {
 					.expect("iterator shouldn't be empty, otherwise it would've been None before")
 			})?;
 
-		let img = self.imgq.as_ref().try_and_then(|q| extract_imgs(html, q))?;
+		let img = self.img.as_ref().try_and_then(|q| extract_imgs(html, q))?;
 
 		Ok(TransformedEntry {
-			id: TrRes::Old(id),
+			id: TrRes::Old(id.map(Into::into)),
 			raw_contents: TrRes::Old(body.clone()),
 			msg: TransformedMessage {
 				title: TrRes::Old(title),
@@ -123,6 +161,7 @@ impl Html {
 				link: TrRes::Old(link),
 				media: TrRes::Old(img),
 			},
+			..Default::default()
 		})
 	}
 }
@@ -271,51 +310,3 @@ fn find(html: HtmlNode, elem_query: &ElementQuery) -> impl Iterator<Item = HtmlN
 		true
 	})
 }
-
-/*
-// TODO: rewrite the entire fn to use today/Yesterday words and date formats from the config per source and not global
-fn parse_pretty_date(mut date_str: &str) -> Result<DateTime<Utc>, HtmlError> {
-	enum DateTimeKind {
-		Today,
-		Yesterday,
-		Other,
-	}
-
-	// TODO: properly parse different languages
-	const TODAY_WORDS: &[&str] = &["Today", "Heute", "Сегодня"];
-	const YESTERDAY_WORDS: &[&str] = &["Yesterday", "Gestern", "Вчера"];
-
-	date_str = date_str.trim();
-	let mut datetime_kind = DateTimeKind::Other;
-
-	for w in TODAY_WORDS {
-		if date_str.starts_with(w) {
-			date_str = &date_str[w.len()..];
-			datetime_kind = DateTimeKind::Today;
-		}
-	}
-
-	for w in YESTERDAY_WORDS {
-		if date_str.starts_with(w) {
-			date_str = &date_str[w.len()..];
-			datetime_kind = DateTimeKind::Yesterday;
-		}
-	}
-
-	date_str = date_str.trim_matches(',').trim();
-
-	Ok(match datetime_kind {
-		DateTimeKind::Today => {
-			let time = NaiveTime::parse_from_str(date_str, "%H:%M")?;
-			Local::today().and_time(time).unwrap().into() // unwrap NOTE: no idea why it returns an option so I'll just assume it's safe and hope for the best
-		}
-		DateTimeKind::Yesterday => {
-			let time = NaiveTime::parse_from_str(date_str, "%H:%M")?;
-			Local::today().pred().and_time(time).unwrap().into() // unwrap NOTE: same as above
-		}
-		DateTimeKind::Other => Utc
-			.from_local_datetime(&NaiveDate::parse_from_str(date_str, "%d.%m.%Y")?.and_hms(0, 0, 0))
-			.unwrap(), // unwrap NOTE: same as above
-	})
-}
-*/

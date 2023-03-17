@@ -4,7 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! Miscelenious utility extention traits for external types
+//! Miscellaneous utility extention traits for external types
+
+use std::fmt;
 
 /// Alternative failable methods on [`Option`]
 #[allow(clippy::missing_errors_doc)]
@@ -19,6 +21,9 @@ pub trait OptionExt<T> {
 	where
 		F: FnOnce(T) -> Result<Option<U>, E>;
 }
+
+/// A combined trait that requires to implement both Display and Debug
+pub trait DisplayDebug: fmt::Display + fmt::Debug {}
 
 impl<T> OptionExt<T> for Option<T> {
 	fn try_map<U, E, F>(self, f: F) -> Result<Option<U>, E>
@@ -41,3 +46,5 @@ impl<T> OptionExt<T> for Option<T> {
 		}
 	}
 }
+
+impl<T: fmt::Display + fmt::Debug> DisplayDebug for T {}

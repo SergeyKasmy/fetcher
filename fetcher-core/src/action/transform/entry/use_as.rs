@@ -4,20 +4,21 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains the transform [`UseRawContents`]
+//! This module contains the transform [`Use`] that allows using the content of a [`Field`] as the new value of a different [`Field`]
 
 use super::TransformEntry;
 use crate::{
 	action::transform::{
+		error::TransformErrorKind,
 		field::Field,
 		result::{TransformResult as TrRes, TransformedEntry},
 	},
 	entry::Entry,
-	error::transform::Kind as TransformErrorKind,
 	error::InvalidUrlError,
 	utils::OptionExt,
 };
 
+use async_trait::async_trait;
 use url::Url;
 
 /// Use the value of a field as the value of a different field
@@ -29,15 +30,18 @@ pub struct Use {
 	pub as_field: Field,
 }
 
+#[async_trait]
 impl TransformEntry for Use {
-	type Error = TransformErrorKind;
+	type Err = TransformErrorKind;
 
-	fn transform_entry(&self, ent: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+	async fn transform_entry(&self, ent: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		let val = match self.field {
-			Field::Title => ent.msg.title.clone(),
-			Field::Body => ent.msg.body.clone(),
-			Field::Link => ent.msg.link.as_ref().map(ToString::to_string),
-			Field::RawContets => ent.raw_contents.clone(),
+			Field::Title => ent.msg.title,
+			Field::Body => ent.msg.body,
+			Field::Link => ent.msg.link.map(|s| s.to_string()),
+			Field::Id => ent.id.map(|id| id.0),
+			Field::ReplyTo => ent.reply_to.map(|id| id.0),
+			Field::RawContets => ent.raw_contents,
 		};
 
 		let mut ent = TransformedEntry::default();
@@ -51,7 +55,8 @@ impl TransformEntry for Use {
 					})
 				})?);
 			}
-
+			Field::Id => ent.id = TrRes::New(val.map(Into::into)),
+			Field::ReplyTo => ent.reply_to = TrRes::New(val.map(Into::into)),
 			Field::RawContets => ent.raw_contents = TrRes::New(val),
 		}
 

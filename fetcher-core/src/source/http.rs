@@ -8,22 +8,20 @@
 //!
 //! This module contains the [`Http`] struct, that is a source as well as a transform
 
-use crate::{
-	action::transform::result::{TransformResult, TransformedEntry, TransformedMessage},
-	entry::Entry,
-	error::{source::HttpError, transform::HttpError as HttpTransformError, InvalidUrlError},
-	sink::Message,
-	utils::OptionExt,
-};
+use crate::{entry::Entry, sink::message::Message, source::error::SourceError};
 
+use async_trait::async_trait;
 use once_cell::sync::OnceCell;
-use std::fmt::{Debug, Display};
+use reqwest::Client;
+use std::{fmt::Debug, time::Duration};
 use url::Url;
+
+use super::Fetch;
 
 const USER_AGENT: &str =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0";
 
-static CLIENT: OnceCell<reqwest::Client> = OnceCell::new();
+pub(crate) static CLIENT: OnceCell<reqwest::Client> = OnceCell::new();
 
 /// A source that fetches from the [`URL`](`url`)
 pub struct Http {
@@ -33,17 +31,21 @@ pub struct Http {
 	client: reqwest::Client,
 }
 
-/// When used as a transform, which field to get the link from?
-#[derive(Clone, Copy, Debug)]
-pub enum TransformFromField {
-	/// The [`Message.link`] field
-	MessageLink,
-	/// The [`Entry.raw_contents`] field
-	RawContents,
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum HttpError {
+	#[error("Invalid JSON for the POST request")]
+	BadJson(#[from] serde_json::Error),
+
+	#[error("Failed to init TLS")]
+	TlsInitFailed(#[source] reqwest::Error),
+
+	#[error("Can't send an HTTP request to {1:?}")]
+	BadRequest(#[source] reqwest::Error, String),
 }
 
 #[derive(Debug)]
-enum Request {
+pub(crate) enum Request {
 	Get,
 	Post(serde_json::Value),
 }
@@ -64,40 +66,39 @@ impl Http {
 	pub fn new_post(url: Url, body: &str) -> Result<Self, HttpError> {
 		Self::new(url, Request::Post(serde_json::from_str(body)?))
 	}
+}
 
+#[async_trait]
+impl Fetch for Http {
 	/// Send a request to the [`URL`](`self.url`) and return the result in the [`Entry.raw_contents`] field
 	#[tracing::instrument(skip_all)]
-	pub async fn get(&self) -> Result<Entry, HttpError> {
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		self.fetch_impl().await.map(|x| vec![x]).map_err(Into::into)
+	}
+}
+
+impl Http {
+	fn new(url: Url, request: Request) -> Result<Self, HttpError> {
+		let client = CLIENT
+			.get_or_try_init(|| {
+				reqwest::ClientBuilder::new()
+					.timeout(Duration::from_secs(30))
+					.build()
+					.map_err(HttpError::TlsInitFailed)
+			})?
+			.clone();
+
+		Ok(Self {
+			url,
+			request,
+			client,
+		})
+	}
+
+	async fn fetch_impl(&self) -> Result<Entry, HttpError> {
 		tracing::debug!("Sending an HTTP request");
 
-		let request = match &self.request {
-			Request::Get => {
-				tracing::trace!("Making an HTTP GET request to {:?}", self.url.as_str());
-
-				self.client.get(self.url.as_str())
-			}
-			Request::Post(json) => {
-				tracing::trace!(
-					"Making an HTTP POST request to {:?} with {:#?}",
-					self.url.as_str(),
-					json
-				);
-
-				self.client.post(self.url.as_str()).json(json)
-			}
-		};
-
-		let response = request
-			.header(reqwest::header::USER_AGENT, USER_AGENT)
-			.send()
-			.await
-			.map_err(|e| HttpError::BadRequest(e, self.url.to_string()))?;
-
-		tracing::trace!("Getting text body of the response");
-		let page = response
-			.text()
-			.await
-			.map_err(|e| HttpError::BadRequest(e, self.url.to_string()))?;
+		let page = send_request(&self.client, &self.request, &self.url).await?;
 
 		// tracing::trace!("Done. Body: ----------------------------------------\n{page:?}\n----------------------------------------\n");
 
@@ -110,59 +111,41 @@ impl Http {
 			..Default::default()
 		})
 	}
-
-	/// Get the URL from the `entry`, send a GET request to it, and put the result into the [`Entry::raw_contents`] field
-	///
-	/// # Errors
-	/// * if, depending on `from_field`, either [`Message::link`] or [`Entry::raw_contents`] is None
-	/// * if the string in the [`Entry::raw_contents`] field when using [`TransformFromField::RawContents`] is not a valid URL
-	/// * if there was an error sending the HTTP request
-	pub async fn transform(
-		entry: &Entry,
-		from_field: TransformFromField,
-	) -> Result<TransformedEntry, HttpTransformError> {
-		let link = match from_field {
-			TransformFromField::MessageLink => entry.msg.link.clone(),
-			TransformFromField::RawContents => entry.raw_contents.as_ref().try_map(|s| {
-				Url::try_from(s.as_str()).map_err(|e| InvalidUrlError(e, s.clone()))
-			})?,
-		};
-		let link = link.ok_or(HttpTransformError::MissingUrl(from_field))?;
-
-		let Entry {
-			raw_contents,
-			msg: Message { link, .. },
-			..
-		} = Self::new(link, Request::Get)?.get().await?;
-
-		Ok(TransformedEntry {
-			raw_contents: TransformResult::New(raw_contents),
-			msg: TransformedMessage {
-				link: TransformResult::New(link),
-				..Default::default()
-			},
-			..Default::default()
-		})
-	}
 }
 
-impl Http {
-	fn new(url: Url, request: Request) -> Result<Self, HttpError> {
-		let client = CLIENT
-			.get_or_try_init(|| {
-				reqwest::ClientBuilder::new()
-					.timeout(std::time::Duration::from_secs(30))
-					.build()
-					.map_err(HttpError::TlsInitFailed)
-			})?
-			.clone();
+pub(crate) async fn send_request(
+	client: &Client,
+	request: &Request,
+	url: &Url,
+) -> Result<String, HttpError> {
+	let request = match request {
+		Request::Get => {
+			tracing::trace!("Making an HTTP GET request to {:?}", url.as_str());
 
-		Ok(Self {
-			url,
-			request,
-			client,
-		})
-	}
+			client.get(url.as_str())
+		}
+		Request::Post(json) => {
+			tracing::trace!(
+				"Making an HTTP POST request to {:?} with {:#?}",
+				url.as_str(),
+				json
+			);
+
+			client.post(url.as_str()).json(json)
+		}
+	};
+
+	let response = request
+		.header(reqwest::header::USER_AGENT, USER_AGENT)
+		.send()
+		.await
+		.map_err(|e| HttpError::BadRequest(e, url.to_string()))?;
+
+	tracing::trace!("Getting text body of the response");
+	response
+		.text()
+		.await
+		.map_err(|e| HttpError::BadRequest(e, url.to_string()))
 }
 
 impl Debug for Http {
@@ -171,14 +154,5 @@ impl Debug for Http {
 			.field("url", &self.url.as_str())
 			.field("request", &self.request)
 			.finish_non_exhaustive()
-	}
-}
-
-impl Display for TransformFromField {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.write_str(match self {
-			TransformFromField::MessageLink => "message's link",
-			TransformFromField::RawContents => "raw_contents",
-		})
 	}
 }

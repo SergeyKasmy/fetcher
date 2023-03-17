@@ -8,11 +8,14 @@
 
 use super::TransformEntry;
 use crate::{
-	action::transform::result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+	action::transform::{
+		error::RawContentsNotSetError,
+		result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+	},
 	entry::Entry,
-	error::transform::{FeedError, RawContentsNotSetError},
 };
 
+use async_trait::async_trait;
 use tap::{TapFallible, TapOptional};
 use url::Url;
 
@@ -20,10 +23,21 @@ use url::Url;
 #[derive(Debug)]
 pub struct Feed;
 
-impl TransformEntry for Feed {
-	type Error = FeedError;
+#[allow(missing_docs)] // error message is self-documenting
+#[derive(thiserror::Error, Debug)]
+pub enum FeedError {
+	#[error(transparent)]
+	RawContentsNotSet(#[from] RawContentsNotSetError),
 
-	fn transform_entry(&self, entry: &Entry) -> Result<Vec<TransformedEntry>, Self::Error> {
+	#[error(transparent)]
+	Other(#[from] feed_rs::parser::ParseFeedError),
+}
+
+#[async_trait]
+impl TransformEntry for Feed {
+	type Err = FeedError;
+
+	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		tracing::trace!("Parsing feed entries");
 
 		let feed = feed_rs::parser::parse(
@@ -59,7 +73,7 @@ impl TransformEntry for Feed {
 					.ok();
 
 				TransformedEntry {
-					id: TrRes::Old(id),
+					id: TrRes::Old(id.map(Into::into)),
 					raw_contents: TrRes::Old(body.clone()),
 					msg: TransformedMessage {
 						title: TrRes::Old(title),
@@ -67,6 +81,7 @@ impl TransformEntry for Feed {
 						link: TrRes::Old(link),
 						..Default::default()
 					},
+					..Default::default()
 				}
 			})
 			.collect::<Vec<_>>();

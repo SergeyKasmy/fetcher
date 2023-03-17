@@ -4,13 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains [`Query`] that contains everything needed to check if an HTML tag fits all the provided requirements
-//! and [`QueryData`] that has everything needed to traverse an entire HTML document in search for a tag,
-//! as well as a way to parse the data contained in it
+//! This module contains [`ElementQuery`], that checks if an HTML element fits all provided requirements,
+//! and [`ElementDataQuery`] that extracts some kind of data from the said element
 
 use std::fmt::Display;
 
-use crate::action::regex::{action::Replace, Regex};
+use crate::action::transform::field::Replace;
 
 /// The type of item that should be queried
 #[derive(Clone, Debug)]
@@ -49,7 +48,7 @@ pub struct ElementQuery {
 /// A query for a complete HTML tag. Traverses all queries one by one and extracts the data from it's [`DataLocation`], optionally transforming the data via regex
 /// Example:
 /// ```text
-/// QueryData {
+/// [`ElementDataQuery`] {
 ///     query: [Tag("div"), Attr { name: "id", value: "this-attr" }],
 ///     data_location: text,
 ///     regex: { re: ".*", replace_with: "hello, ${1}!"
@@ -72,8 +71,8 @@ pub struct ElementDataQuery {
 	pub query: Vec<ElementQuery>,
 	/// location of the data to extract
 	pub data_location: DataLocation,
-	/// optional regex to match against and replace with if it matches
-	pub regex: Option<Regex<Replace>>,
+	/// optional [`Replace`] transform
+	pub regex: Option<Replace>,
 }
 
 /// Extention trait for `&[ElementQuery]` that adds a method that return a pretty Display implementation for itself
