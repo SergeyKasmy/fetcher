@@ -30,5 +30,12 @@ pub fn prompt_user_for(prompt: &str) -> io::Result<String> {
 }
 
 pub fn default_data_path() -> Result<PathBuf> {
+	#[cfg(target_os = "linux")]
+	{
+		if nix::unistd::Uid::effective().is_root() {
+			return Ok(PathBuf::from("/var/lib/fetcher"));
+		}
+	}
+
 	Ok(proj_dirs()?.data_dir().to_path_buf())
 }
