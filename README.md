@@ -1,6 +1,6 @@
 # fetcher
 
-fetcher makes it easier to automate any information gathering, like news or blogs, into a place most comfortable to you.
+fetcher makes it easier to automate any information gathering, like news or articles from blogs, into a place most comfortable to you.
 It fetches anything you choose (from a list of available sources, e.g. RSS); filters it, and sends it whereever you want it to.
 Think if it like IFTTT but locally hosted and if it only supported transfering text.
 

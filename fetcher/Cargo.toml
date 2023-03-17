@@ -11,19 +11,19 @@ fetcher-core = { version = "0.11.1", path = "../fetcher-core" }
 fetcher-config = { version = "0.11.1", path = "../fetcher-config" }
 color-eyre = { version = "0.6.2", package = "color-eyre-attach-report" }
 figment = { version = "0.10.8", features = ["yaml"] }
-futures = "0.3.26"
-serde = { version = "1.0.152", features = ["derive"] }
-serde_json = "1.0.93"
-tokio = { version = "1.25.0", features = ["rt-multi-thread", "macros", "signal"] }
+futures = "0.3.27"
+serde = { version = "1.0.156", features = ["derive"] }
+serde_json = "1.0.94"
+tokio = { version = "1.26.0", features = ["rt-multi-thread", "macros", "signal"] }
 tracing = "0.1.37"
 tracing-journald = "0.3.0"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter", "tracing-log", "time", "local-time"] }
 argh = "0.1.10"
 directories = "4.0.1"
 once_cell = "1.17.1"
-walkdir = "2.3.2"
+walkdir = "2.3.3"
 tap = "1.0.1"
-async-trait = "0.1.64"
+async-trait = "0.1.66"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 nix = { version = "0.26.2", default-features = false, features = ["user"] }
