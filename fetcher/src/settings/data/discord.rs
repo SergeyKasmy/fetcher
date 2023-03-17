@@ -25,6 +25,10 @@ pub fn prompt(cx: Context) -> Result<()> {
 	let token = prompt_user_for("Discord bot API token: ")?;
 	let path = cx.data_path.join(FILE_NAME);
 
+	if let Some(parent) = path.parent() {
+		fs::create_dir_all(parent)?;
+	}
+
 	fs::write(
 		&path,
 		serde_json::to_string(&Config::unparse(token))

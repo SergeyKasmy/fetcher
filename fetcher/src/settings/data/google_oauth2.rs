@@ -9,7 +9,7 @@ use crate::settings::context::StaticContext as Context;
 use fetcher_config::{jobs::external_data::ExternalDataError, settings::Google as Config};
 use fetcher_core as fcore;
 
-use color_eyre as eyre;
+use color_eyre::{eyre::WrapErr, Result};
 use std::fs;
 
 const FILE_NAME: &str = "google_oauth2.json";
@@ -22,7 +22,7 @@ pub fn get(cx: Context) -> Result<fcore::auth::Google, ExternalDataError> {
 	Ok(conf.parse())
 }
 
-pub async fn prompt(cx: Context) -> eyre::Result<()> {
+pub async fn prompt(cx: Context) -> Result<()> {
 	const SCOPE: &str = "https://mail.google.com/";
 
 	let client_id = prompt_user_for("Google OAuth2 client id: ")?;
@@ -34,10 +34,14 @@ pub async fn prompt(cx: Context) -> eyre::Result<()> {
 
 	let gauth = fcore::auth::Google::new(client_id, client_secret, refresh_token);
 
-	fs::write(
-		cx.data_path.join(FILE_NAME),
-		serde_json::to_string(&Config::unparse(gauth))?,
-	)?;
+	let path = cx.data_path.join(FILE_NAME);
+
+	if let Some(parent) = path.parent() {
+		fs::create_dir_all(parent)?;
+	}
+
+	fs::write(&path, serde_json::to_string(&Config::unparse(gauth))?)
+		.wrap_err_with(|| path.to_string_lossy().into_owned())?;
 
 	Ok(())
 }

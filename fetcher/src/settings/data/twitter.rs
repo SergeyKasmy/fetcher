@@ -26,6 +26,10 @@ pub fn prompt(cx: Context) -> Result<()> {
 	let api_secret = prompt_user_for("Twitter API secret: ")?;
 	let path = cx.data_path.join(FILE_NAME);
 
+	if let Some(parent) = path.parent() {
+		fs::create_dir_all(parent)?;
+	}
+
 	fs::write(
 		&path,
 		serde_json::to_string(&Config::unparse(api_key, api_secret))
