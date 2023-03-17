@@ -25,7 +25,7 @@ use figment::{
 	Figment,
 };
 use serde::Deserialize;
-use std::path::Path;
+use std::{io, path::Path};
 use walkdir::WalkDir;
 
 const JOBS_DIR_NAME: &str = "jobs";
@@ -74,8 +74,12 @@ pub fn get_all_from<'a>(
 					dir_entry
 				}
 				Err(e) => {
-					// FIXME: don't log this if the path doesn't exist. Only log this if we have unsufficient permissions to the path
-					tracing::warn!("File or directory is inaccessible: {e}");
+					match e.io_error().map(io::Error::kind) {
+						Some(io::ErrorKind::NotFound) => (),
+						_ => {
+							tracing::warn!("File or directory is inaccessible: {e}");
+						}
+					}
 					return None;
 				}
 			};
