@@ -6,8 +6,7 @@
 
 #![doc = include_str!("../README.md")]
 #![warn(clippy::pedantic)]
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::missing_errors_doc)] // TODO: add more docs (even though it a bin crate, they are for me...) and remove this
 #![allow(clippy::module_name_repetitions)]
 
 pub mod args;
@@ -62,8 +61,8 @@ fn set_up_logging() -> Result<()> {
 		filter::LevelFilter, fmt::time::OffsetTime, layer::SubscriberExt, EnvFilter, Layer,
 	};
 
-	let env_filter = EnvFilter::try_from_env("FETCHER_LOG")
-		.unwrap_or_else(|_| EnvFilter::from("fetcher=info,fetcher_core=info"));
+	let env_filter =
+		EnvFilter::try_from_env("FETCHER_LOG").unwrap_or_else(|_| EnvFilter::from("info"));
 
 	let is_debug_log_level = env_filter
 		.max_level_hint()

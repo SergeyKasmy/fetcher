@@ -6,9 +6,9 @@
 
 #![doc = include_str!("../README.md")]
 #![warn(clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)] // TODO
 #![warn(missing_docs)]
 #![warn(clippy::unwrap_used)]
+#![allow(clippy::module_name_repetitions)]
 
 pub mod action;
 pub mod auth;

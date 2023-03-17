@@ -4,8 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// TODO: add trace logging, e.g. all config dirs, all config files, stuff like that
-
 pub mod filter;
 
 use self::filter::JobFilter;

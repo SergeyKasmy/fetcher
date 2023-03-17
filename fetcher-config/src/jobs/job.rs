@@ -112,6 +112,7 @@ impl Job {
 		}
 
 		// FIXME: broken. Filtering can remove tasks from the tasks map. Then, when checking if we should pass the task name as a tag, we ignore the fact that we could've had more tasks in the job and skip the tag which we shouldn't do
+		// TODO: add disabled field to the task and enable that instead of removing tasks when filtering outright. Then the code below will work again
 		/*
 		// NOTE: if the tasks map only has one task, don't provide the task its name to avoid it automatically adding a tag
 		// a tag should only be automatically added if there are more then 1 task in the tasks map
