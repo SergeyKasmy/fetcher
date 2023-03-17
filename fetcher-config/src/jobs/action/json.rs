@@ -18,23 +18,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Json {
-	#[serde(rename = "item_query")]
-	pub itemq: Option<Query>,
-
-	#[serde(rename = "title_query")]
-	pub titleq: Option<StringQuery>,
-
-	#[serde(rename = "text_query")]
-	pub textq: Option<Vec<StringQuery>>,
-
-	#[serde(rename = "id_query")]
-	pub idq: Option<StringQuery>,
-
-	#[serde(rename = "link_query")]
-	pub linkq: Option<StringQuery>,
-
-	#[serde(rename = "img_query")]
-	pub imgq: Option<Vec<StringQuery>>,
+	pub item: Option<Query>,
+	pub title: Option<StringQuery>,
+	pub text: Option<Vec<StringQuery>>,
+	pub id: Option<StringQuery>,
+	pub link: Option<StringQuery>,
+	pub img: Option<Vec<StringQuery>>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -72,19 +61,19 @@ pub struct JsonQueryRegex {
 impl Json {
 	pub fn parse(self) -> Result<CJson, Error> {
 		Ok(CJson {
-			itemq: self.itemq.map(Query::parse),
-			titleq: self.titleq.try_map(StringQuery::parse)?,
+			item: self.item.map(Query::parse),
+			title: self.title.try_map(StringQuery::parse)?,
 
-			textq: self.textq.try_map(|v| {
+			text: self.text.try_map(|v| {
 				v.into_iter()
 					.map(StringQuery::parse)
 					.collect::<Result<_, _>>()
 			})?,
 
-			idq: self.idq.try_map(StringQuery::parse)?,
-			linkq: self.linkq.try_map(StringQuery::parse)?,
+			id: self.id.try_map(StringQuery::parse)?,
+			link: self.link.try_map(StringQuery::parse)?,
 
-			imgq: self.imgq.try_map(|v| {
+			img: self.img.try_map(|v| {
 				v.into_iter()
 					.map(StringQuery::parse)
 					.collect::<Result<_, _>>()

@@ -34,22 +34,22 @@ use url::Url;
 #[derive(Debug)]
 pub struct Html {
 	/// Query to find an item/entry/article in a list on the page. None means to thread the entire page as a single item
-	pub itemq: Option<Vec<ElementQuery>>,
+	pub item: Option<Vec<ElementQuery>>,
 
 	/// Query to find the title of an item
-	pub titleq: Option<ElementDataQuery>,
+	pub title: Option<ElementDataQuery>,
 
 	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
-	pub textq: Option<Vec<ElementDataQuery>>, // allow to find multiple paragraphs and join them together
+	pub text: Option<Vec<ElementDataQuery>>, // allow to find multiple paragraphs and join them together
 
 	/// Query to find the id of an item
-	pub idq: Option<ElementDataQuery>,
+	pub id: Option<ElementDataQuery>,
 
 	/// Query to find the link to an item
-	pub linkq: Option<ElementDataQuery>,
+	pub link: Option<ElementDataQuery>,
 
 	/// Query to find the image of that item
-	pub imgq: Option<ElementDataQuery>,
+	pub img: Option<ElementDataQuery>,
 }
 
 #[allow(missing_docs)] // error message is self-documenting
@@ -107,7 +107,7 @@ impl TransformEntry for Html {
 			return Ok(Vec::new());
 		}
 
-		let items = match self.itemq.as_ref() {
+		let items = match self.item.as_ref() {
 			Some(itemq) => Either::Left(
 				find_chain(&body, itemq)
 					.map_err(|i| HtmlError::ElementNotFound {
@@ -134,15 +134,15 @@ impl TransformEntry for Html {
 impl Html {
 	fn extract_entry(&self, html: &HtmlNode) -> Result<TransformedEntry, HtmlError> {
 		let title = self
-			.titleq
+			.title
 			.as_ref()
 			.try_and_then(|q| extract_title(html, q))?;
 
-		let body = self.textq.as_ref().try_map(|q| extract_body(html, q))?;
-		let id = self.idq.as_ref().try_and_then(|q| extract_id(html, q))?;
+		let body = self.text.as_ref().try_map(|q| extract_body(html, q))?;
+		let id = self.id.as_ref().try_and_then(|q| extract_id(html, q))?;
 
 		let link = self
-			.linkq
+			.link
 			.as_ref()
 			.try_and_then(|q| extract_url(html, q))?
 			.try_map(|mut x| {
@@ -150,7 +150,7 @@ impl Html {
 					.expect("iterator shouldn't be empty, otherwise it would've been None before")
 			})?;
 
-		let img = self.imgq.as_ref().try_and_then(|q| extract_imgs(html, q))?;
+		let img = self.img.as_ref().try_and_then(|q| extract_imgs(html, q))?;
 
 		Ok(TransformedEntry {
 			id: TrRes::Old(id.map(Into::into)),

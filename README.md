@@ -137,16 +137,22 @@ tasks:
           field: <field> # the field to match against. Refer later for which fields are valid
       - feed # parse the entries as an RSS/Atom feeds
       - html: # parse the entries as HTML. All queries use the same format, except for `item_query`
-          item_query: # O. Item is a unit of information. For example, articles in a blog or goods in an online store search are items. If the entire page is the "item", then this should be ignored
-            # either of tag|class|attr can be used any number of times. They specify a narrowing down traversal of the HTML that specifies an item. Refer to [docs.rs of ElementDataQuery](https://docs.rs/fetcher-core/latest/fetcher_core/action/transform/entry/html/query/struct.ElementDataQuery.html) for more details
-            - tag: <string>
-            - class: <string>
-            - attr:
-                <attr>: <value>	# look for match of `<html_attribute>` inside `<attr>`, i.e. `href: THIS` will match for the contents of <a href="THIS">foo</a>
-          title_query: # O. A query to get the title of the entry from. Seaches inside the item found in "item query" if it set, the entire page otherwise
+          item: # O. Item is a unit of information. For example, articles in a blog or goods in an online store search are items. If the entire page is the "item", then this should be ignored
+            query:
+              # either of tag|class|attr can be used any number of times. They specify a narrowing down traversal of the HTML that specifies an item. Refer to [docs.rs of ElementDataQuery](https://docs.rs/fetcher-core/latest/fetcher_core/action/transform/entry/html/query/struct.ElementDataQuery.html) for more details
+              - tag: <string>
+              - class: <string>
+              - attr:
+                  <attr>: <value> # look for match of `<html_attribute>` inside `<attr>`, i.e. `href: THIS` will match for the contents of <a href="THIS">foo</a>
+                ignore: # any of these can also include an `ignore` field that, in case several HTML tags matched the query, will ignore ones that match ~this~ ignore query
+                  - tag: <string>
+                  - class: <string>
+                  - attr:
+                      <attr>: <value>
+          title: # O. A query to get the title of the entry from. Seaches inside the item found in "item query" if it set, the entire page otherwise
             optional: <bool> # defines what happens when this query doesn't match anything. if 'true', the title should be left empty, if 'false', the entire task will fail. `false` by default
             query:
-              ... # the same as `itemq` above
+              ... # the same as `item` above
             data_location: text # X. Where to exact data from. `text` extracts the text of an HTML tag, i.e. `<a href="https://example.com">THIS</a>`
             data_location: 
               attr: <string> # X. While `attr` extracts the contents of the attribute, i.e. `attr: href` extracts `<a href="THIS">and not this!</a>`
@@ -158,22 +164,22 @@ tasks:
               #     re: '/.*/.*'
               #     replace_with: `Hello, $1!`
               # This regex extracts the data from `/HERE/not here/or here` and replaces the entire title with "Hello, HERE!"
-          text_query: # O. Query for the main content of the message. 
-            - ... # Same as `title_query` but is an array. This makes it possible to extract text from several different places and concatenate it into a single message body.
+          text: # O. Query for the main content of the message. 
+            - ... # Same as `title` but is an array. This makes it possible to extract text from several different places and concatenate it into a single message body.
             - ...
-          id_query: # O. Query for the ID of the item.
-            ... # same as `title_query`
-          link_query: # O. Query for the URL of the item. The entry 
-            ... # same as `title_query`
-          img_query: # O. "Query for the attached pictures of the item.
-            ... # same as `title_query`
+          id: # O. Query for the ID of the item.
+            ... # same as `title`
+          link: # O. Query for the URL of the item. The entry 
+            ... # same as `title`
+          img: # O. "Query for the attached pictures of the item.
+            ... # same as `title`
       - http # fetch a page from the link field of the message. Allows recursive web parsing.
       - json: # very similar to `html`
-          item_query: # O. "Item query". Item is a unit of information. For example, articles in a blog or goods in an online store search are items. If the entire JSON is the "item", then this should be ignored
+          item: # O. "Item query". Item is a unit of information. For example, articles in a blog or goods in an online store search are items. If the entire JSON is the "item", then this should be ignored
             query: # query that should be matched one by one to traverse the JSON and find the item
               - <string> # matches a JSON key
               - <int> # matches an item of an array or a map
-          title_query: # O. A query to get the title of the entry from. Seaches inside the item found in "item query" if it set, the entire JSON otherwise
+          title: # O. A query to get the title of the entry from. Seaches inside the item found in "item query" if it set, the entire JSON otherwise
             optional: <bool> # defines what happens when this query doesn't match anything. if 'true', the title should be left empty, if 'false', the entire task will fail. `false` by default
             query:
               ... # the same as `itemq.query` above
@@ -185,15 +191,15 @@ tasks:
               #     re: '/.*/.*'
               #     replace_with: `Hello, $1!`
               # This regex extracts the data from `/HERE/not here/or here` and replaces the entire title with "Hello, HERE!"
-          text_query: # O. "Text query". Query for the main content of the message. 
-            - ... # Same as `title_query` but is an array. This makes it possible to extract text from several different places and concatenate it into a single message body.
+          text: # O. "Text query". Query for the main content of the message. 
+            - ... # Same as `title` but is an array. This makes it possible to extract text from several different places and concatenate it into a single message body.
             - ...
-          id_query: # O. "ID query". Query for the ID of the item.
-            ... # same as `title_query`
-          link_query: # O. "Link query". Query for the URL of the item. The entry 
-            ... # same as `title_query`
-          img_query: # O. "Image query". Query for the attached pictures of the item.
-            ... # same as `title_query`
+          id: # O. "ID query". Query for the ID of the item.
+            ... # same as `title`
+          link: # O. "Link query". Query for the URL of the item. The entry 
+            ... # same as `title`
+          img: # O. "Image query". Query for the attached pictures of the item.
+            ... # same as `title`
       - use:  # copy the data of a field to a different field of a message
           <field>:  # the field to copy the data from
             as: <field> # the field to copy the data to
@@ -205,11 +211,14 @@ tasks:
         #       as: body
         # This will use the title of the message as the body of the message, i.e. they will be the same
       - set: # set a field to a specified string
-          <field>: <string>  # set <field> to <string>
-          <field>: <string>  # can be specified multiple times
+          <field>: <string> # set <field> to <string>
+          <field>: <string> # can be specified multiple times
+          <field>: 
+            - <string> # or even as an array, in which case it will choose a random one each time
+            - <string>
       - shorten: # limit the length of a field to a specified maximum amount of charachers
-          <field>: <int>  # limit <field> to <int> max charachers
-          <field>: <int>  # can be specified multiple times
+          <field>: <int> # limit <field> to <int> max charachers
+          <field>: <int> # can be specified multiple times
       - trim: <field> # remove leftover whitespace to the left and to the right of the contents of the <field>
       - replace: # replace the contents of a field
           re: <regex> # replace the first regex match

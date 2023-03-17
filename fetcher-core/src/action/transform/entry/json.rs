@@ -29,17 +29,17 @@ use url::Url;
 #[derive(Debug)]
 pub struct Json {
 	/// Query to find an item/entry/article in the list
-	pub itemq: Option<Query>,
+	pub item: Option<Query>,
 	/// Query to find the title of an item
-	pub titleq: Option<StringQuery>,
+	pub title: Option<StringQuery>,
 	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
-	pub textq: Option<Vec<StringQuery>>, // adjecent
+	pub text: Option<Vec<StringQuery>>, // adjecent
 	/// Query to find the id of an item
-	pub idq: Option<StringQuery>,
+	pub id: Option<StringQuery>,
 	/// Query to find the link to an item
-	pub linkq: Option<StringQuery>,
+	pub link: Option<StringQuery>,
 	/// Query to find the image of that item
-	pub imgq: Option<Vec<StringQuery>>, // nested
+	pub img: Option<Vec<StringQuery>>, // nested
 }
 
 /// JSON key
@@ -102,7 +102,7 @@ impl TransformEntry for Json {
 		let json: Value =
 			serde_json::from_str(entry.raw_contents.as_ref().ok_or(RawContentsNotSetError)?)?;
 
-		let items = match self.itemq.as_ref() {
+		let items = match self.item.as_ref() {
 			Some(query) => match extract_data(&json, query)? {
 				Some(items) => items,
 				// don't continue if the items query is optional and wasn't found
@@ -119,10 +119,7 @@ impl TransformEntry for Json {
 			Either::Right(items.iter().map(|(_, v)| v))
 		} else {
 			return Err(JsonError::KeyWrongType {
-				key: self
-					.itemq
-					.as_ref()
-					.map_or_else(Vec::new, |v| v.keys.clone()),
+				key: self.item.as_ref().map_or_else(Vec::new, |v| v.keys.clone()),
 				expected_type: "iterator (array, map)",
 				found_type: format!("{items:?}"),
 			});
@@ -138,17 +135,14 @@ impl TransformEntry for Json {
 impl Json {
 	fn extract_entry(&self, item: &Value) -> Result<TransformedEntry, JsonError> {
 		let title = self
-			.titleq
+			.title
 			.as_ref()
 			.try_and_then(|q| extract_string(item, q))?;
-		let body = self
-			.textq
-			.as_ref()
-			.try_and_then(|v| extract_body(item, v))?;
-		let id = self.idq.as_ref().try_and_then(|q| extract_id(item, q))?;
-		let link = self.linkq.as_ref().try_and_then(|q| extract_url(item, q))?;
+		let body = self.text.as_ref().try_and_then(|v| extract_body(item, v))?;
+		let id = self.id.as_ref().try_and_then(|q| extract_id(item, q))?;
+		let link = self.link.as_ref().try_and_then(|q| extract_url(item, q))?;
 
-		let img = self.imgq.as_ref().try_map(|v| {
+		let img = self.img.as_ref().try_map(|v| {
 			v.iter()
 				.filter_map(|q| extract_url(item, q).transpose())
 				.collect::<Result<Vec<_>, _>>()

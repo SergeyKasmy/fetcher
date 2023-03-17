@@ -23,8 +23,8 @@ pub enum ElementKind {
 
 #[derive(Clone, Debug)]
 pub struct ElementAttr {
-	name: String,
-	value: String,
+	pub name: String,
+	pub value: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -43,17 +43,23 @@ pub struct ElementQuery {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct HtmlQueryRegex {
-	re: String,
-	replace_with: String,
+pub struct ItemQuery {
+	pub query: Vec<ElementQuery>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)] // deny_unknown_fields not allowed since it's flattened in [`ImageQuery`]
+#[derive(Deserialize, Serialize, Clone, Debug)] // deny_unknown_fields not allowed since it's flattened in [`ElementQuery`]
 pub struct ElementDataQuery {
 	pub optional: Option<bool>,
 	pub query: Vec<ElementQuery>,
 	pub data_location: DataLocation,
 	pub regex: Option<HtmlQueryRegex>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct HtmlQueryRegex {
+	pub re: String,
+	pub replace_with: String,
 }
 
 impl ElementKind {

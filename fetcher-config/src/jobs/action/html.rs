@@ -6,7 +6,7 @@
 
 pub mod query;
 
-use self::query::{ElementDataQuery, ElementQuery};
+use self::query::{ElementDataQuery, ElementQuery, ItemQuery};
 use crate::Error;
 use fetcher_core::{action::transform::entry::html::Html as CHtml, utils::OptionExt};
 
@@ -15,40 +15,29 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Html {
-	#[serde(rename = "item_query")]
-	pub itemq: Option<Vec<ElementQuery>>,
-
-	#[serde(rename = "title_query")]
-	pub titleq: Option<ElementDataQuery>,
-
-	#[serde(rename = "text_query")]
-	pub textq: Option<Vec<ElementDataQuery>>,
-
-	#[serde(rename = "id_query")]
-	pub idq: Option<ElementDataQuery>,
-
-	#[serde(rename = "link_query")]
-	pub linkq: Option<ElementDataQuery>,
-
-	#[serde(rename = "img_query")]
-	pub imgq: Option<ElementDataQuery>,
+	pub item: Option<ItemQuery>,
+	pub title: Option<ElementDataQuery>,
+	pub text: Option<Vec<ElementDataQuery>>,
+	pub id: Option<ElementDataQuery>,
+	pub link: Option<ElementDataQuery>,
+	pub img: Option<ElementDataQuery>,
 }
 
 impl Html {
 	pub fn parse(self) -> Result<CHtml, Error> {
 		Ok(CHtml {
-			itemq: self
-				.itemq
-				.map(|v| v.into_iter().map(ElementQuery::parse).collect()),
-			titleq: self.titleq.try_map(ElementDataQuery::parse)?,
-			textq: self.textq.try_map(|v| {
+			item: self
+				.item
+				.map(|x| x.query.into_iter().map(ElementQuery::parse).collect()),
+			title: self.title.try_map(ElementDataQuery::parse)?,
+			text: self.text.try_map(|v| {
 				v.into_iter()
 					.map(ElementDataQuery::parse)
 					.collect::<Result<_, _>>()
 			})?,
-			idq: self.idq.try_map(ElementDataQuery::parse)?,
-			linkq: self.linkq.try_map(ElementDataQuery::parse)?,
-			imgq: self.imgq.try_map(ElementDataQuery::parse)?,
+			id: self.id.try_map(ElementDataQuery::parse)?,
+			link: self.link.try_map(ElementDataQuery::parse)?,
+			img: self.img.try_map(ElementDataQuery::parse)?,
 		})
 	}
 }
