@@ -190,7 +190,7 @@ async fn async_main() -> Result<()> {
 	}
 }
 
-/// Override default path with a custom if any of these are Some
+/// Override default path with a custom one if it is Some
 fn create_contenxt(
 	data_path: Option<PathBuf>,
 	config_path: Option<PathBuf>,
@@ -497,7 +497,7 @@ async fn handle_errors(
 		ErrorHandling::Forward => (),
 		ErrorHandling::LogAndIgnore => {
 			for error in &errors {
-				tracing::error!("{error:?}");
+				tracing::error!("{}", error.display_chain());
 			}
 
 			return ControlFlow::Continue(());

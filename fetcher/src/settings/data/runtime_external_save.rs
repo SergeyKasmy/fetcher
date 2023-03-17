@@ -58,6 +58,7 @@ impl ExternalSave for TruncatingFileWriter {
 	}
 }
 
+// FIXME: ExternalSave(Os { code: 17, kind: AlreadyExists, message: "File exists" }) when running in mark-old-as-read mode. I'm pretty sure it happens here...
 impl TruncatingFileWriter {
 	async fn write(&mut self, data: &[u8]) -> io::Result<()> {
 		// create file just before writing

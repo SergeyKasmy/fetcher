@@ -14,6 +14,7 @@ pub struct JobFilter {
 	pub task: Option<TaskName>,
 }
 
+// TODO: compare in lower case
 impl JobFilter {
 	#[must_use]
 	pub fn job_matches(&self, job_name: &JobName) -> bool {

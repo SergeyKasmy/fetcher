@@ -10,6 +10,7 @@ use argh::FromArgs;
 use color_eyre::Report;
 use std::{path::PathBuf, str::FromStr};
 
+// TODO: add switch to ignore read filter save data
 /// Automatic news fetching and parsing
 #[derive(FromArgs, Debug)]
 pub struct Args {

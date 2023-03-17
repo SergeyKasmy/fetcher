@@ -74,6 +74,7 @@ pub fn get_all_from<'a>(
 					dir_entry
 				}
 				Err(e) => {
+					// FIXME: don't log this if the path doesn't exist. Only log this if we have unsufficient permissions to the path
 					tracing::warn!("File or directory is inaccessible: {e}");
 					return None;
 				}

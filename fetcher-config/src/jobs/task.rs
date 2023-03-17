@@ -37,6 +37,7 @@ pub struct Task {
 }
 
 impl Task {
+	#[tracing::instrument(level = "debug", skip(self, external))]
 	pub fn parse<D>(
 		self,
 		job: &JobName,
@@ -46,6 +47,8 @@ impl Task {
 	where
 		D: ProvideExternalData + ?Sized,
 	{
+		tracing::trace!("Parsing task config");
+
 		let rf = match self.read_filter_kind {
 			Some(expected_rf_type) => {
 				match external.read_filter(job, task_name, expected_rf_type) {
@@ -68,6 +71,7 @@ impl Task {
 			)
 		})?;
 
+		// TODO: replace with match like tag below
 		let entry_to_msg_map = if self
 			.entry_to_msg_map_enabled
 			.tap_some(|b| {
@@ -82,6 +86,7 @@ impl Task {
 				}
 			})
 			.unwrap_or_else(|| {
+				// replace with "source.supports_replies()". There's a point to keeping the map even if the sink doesn't support it, e.g. if it's changed from stdout to discord later on
 				self.sink
 					.as_ref()
 					.map_or(false, Sink::has_message_id_support)
@@ -98,8 +103,26 @@ impl Task {
 			None
 		};
 
+		let tag = match (self.tag, task_name) {
+			(Some(tag_override), Some(task_name)) => {
+				tracing::debug!(
+					"Overriding tag from task name {task_name:?} with {tag_override:?}"
+				);
+				Some(tag_override)
+			}
+			(Some(tag), None) => {
+				tracing::debug!("Setting custom tag {tag:?}");
+				Some(tag)
+			}
+			(None, Some(task_name)) => {
+				tracing::trace!("Using task name as tag");
+				Some(task_name.to_string())
+			}
+			(None, None) => None,
+		};
+
 		Ok(CTask {
-			tag: self.tag.or(task_name.map(ToString::to_string)),
+			tag,
 			source: self.source.map(|x| x.parse(rf, external)).transpose()?,
 			actions,
 			sink: self.sink.try_map(|x| x.parse(external))?,
