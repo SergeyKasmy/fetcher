@@ -22,6 +22,7 @@ pub type DisabledField = Option<bool>;
 pub type TemplatesField = Option<Vec<String>>;
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Job {
 	#[serde(rename = "read_filter_type")]
 	pub read_filter_kind: Option<read_filter::Kind>,
