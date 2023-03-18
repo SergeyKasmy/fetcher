@@ -10,14 +10,14 @@ use fetcher_core::{
 	utils::OptionExt,
 };
 
-use serde::{de::Visitor, ser::SerializeMap, Deserialize, Serialize};
-use std::fmt;
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case")] // deny_unknown_fields not allowed since it's flattened in [`Query`]
 pub enum ElementKind {
 	Tag(String),
 	Class(String),
+	#[serde(with = "crate::serde_extentions::tuple")]
 	Attr(ElementAttr),
 }
 
@@ -113,43 +113,14 @@ impl HtmlQueryRegex {
 	}
 }
 
-impl Serialize for ElementAttr {
-	fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
-	where
-		S: serde::Serializer,
-	{
-		let mut map = ser.serialize_map(Some(1))?;
-		map.serialize_entry(&self.name, &self.value)?;
-		map.end()
+impl<'a> From<&'a ElementAttr> for (&'a String, &'a String) {
+	fn from(ElementAttr { name, value }: &'a ElementAttr) -> Self {
+		(name, value)
 	}
 }
 
-impl<'de> Deserialize<'de> for ElementAttr {
-	fn deserialize<D>(deser: D) -> Result<Self, D::Error>
-	where
-		D: serde::Deserializer<'de>,
-	{
-		struct ElementAttrVisitor;
-
-		impl<'de> Visitor<'de> for ElementAttrVisitor {
-			type Value = ElementAttr;
-
-			fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-				f.write_str("a map with a single element with a string key and a string value")
-			}
-
-			fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-			where
-				A: serde::de::MapAccess<'de>,
-			{
-				let Some((name, value)) = map.next_entry()? else {
-					return Err(serde::de::Error::invalid_length(0, &self));
-				};
-
-				Ok(ElementAttr { name, value })
-			}
-		}
-
-		deser.deserialize_map(ElementAttrVisitor)
+impl From<(String, String)> for ElementAttr {
+	fn from((name, value): (String, String)) -> Self {
+		Self { name, value }
 	}
 }
