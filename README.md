@@ -38,19 +38,31 @@ The main unit of execution in fetcher is a job. A job consists of one or more ta
 refresh: 
   every: 30m
 tasks:
-  rss:
-    read_filter_type: newer_than_read	# save only the last one sent/read
+  news:
+    read_filter_type: newer_than_read
     source:
-      http: '<your_rss_feed_url>'
+      twitter: '<your_twitter_handle>'
     process:
-      - feed
-      - read_filter	# leave out only entries newer than the last one read
+      - read_filter # leave out only entries newer than the last one read
+      - contains:
+          field: body
+          re: '[Hh]ello'
+      - set:
+         title: New tweet from somebody
+      - shorten:
+          body: 50
     sink:
       discord:
         user: <your_user_id>
 ```
 
-This job is run every 30 minutes and has a single task named "rss". This task gets the contents of the web page `<your_rss_feed_url>`, parses it as an RSS/Atom feed, removes all feed items that have already been read (using the `newer_than_read` stradegy), and sends all items left via DMs to a Discord user `<your_user_id>`.
+This job is run every 30 minutes and has a single task named "news". This task:
+* gets the Twitter timeline of @<your_twitter_handle>
+* removes all tweets that have already been read (using the `newer_than_read` stradegy)
+* retains only tweets that contains "Hello" or "hello" in them
+* sets the title to "New tweet from somebody"
+* shortens the body to 50 characters if it is longer
+* and sends all tweets left via DMs to a Discord user `<your_user_id>`.
 
 ## Running
 
