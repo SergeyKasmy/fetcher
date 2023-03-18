@@ -100,7 +100,7 @@ impl Action {
 				}
 			}
 			Action::Take(x) => filter!(x.parse()),
-			Action::Contains(x) => filter!(x.parse()?),
+			Action::Contains(x) => x.parse()?,
 
 			// entry transforms
 			Action::Feed => transform!(CFeed),

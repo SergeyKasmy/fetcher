@@ -45,8 +45,7 @@ tasks:
     process:
       - read_filter # leave out only entries newer than the last one read
       - contains:
-          field: body
-          re: '[Hh]ello'
+          body: '[Hh]ello'
       - set:
          title: New tweet from somebody
       - shorten:
@@ -141,12 +140,11 @@ tasks:
                                                     # * delete: move the emails to the trash bin. Exact behavior depends on the email provider in question. Gmail archives the emails by default instead
     process:  # all actions are optional, so don't need to be marked with O
       - read_filter # filter out already read entries using `read_filter_type` stradegy
-      - take: # take `num` entries from either beginning or the end and ignore the rest
-          from: <beginning|end>
-          num: <int>
+      - take: # take `num` entries from either the newest or the oldest and ignore the rest
+          <from_newest|from_oldest>: <int>
       - contains: # filter out all entries that don't match
-          re: <regex> # regular expression to match the contents of the `field` against
-          field: <field> # the field to match against. Refer later for which fields are valid
+          <field>: <regex> # regular expression to match the contents of the <field> against
+          <field>: <regex> # can be specified several times
       - feed # parse the entries as an RSS/Atom feeds
       - html: # parse the entries as HTML. All queries use the same format, except for `item_query`
           item: # O. Item is a unit of information. For example, articles in a blog or goods in an online store search are items. If the entire page is the "item", then this should be ignored
