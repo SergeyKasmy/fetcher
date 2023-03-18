@@ -1,8 +1,8 @@
 # fetcher
 
 fetcher makes it easier to automate any information gathering, like news or articles from blogs, into a place most comfortable to you.
-It fetches anything you choose (from a list of available sources, e.g. RSS); filters it, and sends it whereever you want it to.
-Think if it like IFTTT but locally hosted and if it only supported transfering text.
+It fetches anything you choose (from a list of available sources); processes it (filters and parses), and sends it wherever you want it to.
+Think of it like IFTTT but locally hosted and if it only supported transferring text.
 
 I wrote fetcher for myself after IFTTT had become paid, not to mention that by that time I was already not satisfied with it. I want to receive news and notifications in one place without having to search for it.
 For example, imagine I wanted to read tweets by somebody but only if it contained a particular string. Before I had to receive _all_ notifications from that user on my phone via the Twitter app and read every one of them to find those relevant to me.
@@ -23,7 +23,7 @@ cargo install fetcher
 or build manually with
 
 ```
-git clone https://github.com/SergeyKasmy/fetcher.git
+git clone -b main --single-branch https://github.com/SergeyKasmy/fetcher.git
 cd fetcher
 cargo build --release
 ```

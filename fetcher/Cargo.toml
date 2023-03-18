@@ -1,14 +1,14 @@
 [package]
 name = "fetcher"
 description = "Automatic news fetching and parsing"
-version = "0.12.0"
+version = "0.12.1"
 license = "MPL-2.0"
 repository = "https://github.com/SergeyKasmy/fetcher"
 edition = "2021"
 
 [dependencies]
-fetcher-core = { version = "0.12.0", path = "../fetcher-core" }
-fetcher-config = { version = "0.12.0", path = "../fetcher-config" }
+fetcher-core = { version = "0.12.1", path = "../fetcher-core" }
+fetcher-config = { version = "0.12.1", path = "../fetcher-config" }
 color-eyre = { version = "0.6.2", package = "color-eyre-attach-report" }
 figment = { version = "0.10.8", features = ["yaml"] }
 futures = "0.3.27"
