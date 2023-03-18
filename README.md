@@ -240,6 +240,11 @@ tasks:
           from_field: <field> # extract text from this field and replace the contents of the field with it
           re: <regex> # the regex that specifies capture groups that will be concatenated and become the new contents of the field
           passthrough_if_not_found: <bool> # what to do if the regex didn't match. If `true`, the value of the field `from_field` should remain the same, if `false`, the task will be aborted
+      - remove_html: # remove any HTML tags in <field> and trim any remaining whitespace
+          in: <field> # X. either in one field
+          in:         # X. or in several at once
+            - <field>
+            - <field>
       # debug related actions:
       - caps # make the message title uppercase
       - debug_print # debug print the entire contents of the entry

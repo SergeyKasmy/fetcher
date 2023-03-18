@@ -12,6 +12,9 @@ use std::{borrow::Cow, convert::Infallible};
 use super::TransformField;
 use crate::{action::transform::result::TransformResult, error::BadRegexError};
 
+/// Replace this with "" when you want to remove all HTML tags
+pub const HTML_TAG_RE: &str = "<[^>]*>";
+
 /// Replace the first regular expression match with a string
 #[derive(Debug)]
 pub struct Replace {

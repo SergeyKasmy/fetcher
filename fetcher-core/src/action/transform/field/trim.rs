@@ -25,7 +25,10 @@ impl TransformField for Trim {
 }
 
 fn trim(s: &str) -> String {
-	s.trim().lines().map(|x| x.trim().to_owned()).join("\n")
+	s.trim()
+		.lines()
+		.map(|line| line.trim().to_owned())
+		.join("\n")
 }
 
 #[cfg(test)]

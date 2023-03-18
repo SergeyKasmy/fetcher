@@ -8,6 +8,7 @@ pub mod contains;
 pub mod extract;
 pub mod html;
 pub mod json;
+pub mod remove_html;
 pub mod replace;
 pub mod set;
 pub mod shorten;
@@ -16,8 +17,8 @@ pub mod trim;
 pub mod use_as;
 
 use self::{
-	contains::Contains, extract::Extract, html::Html, json::Json, replace::Replace, set::Set,
-	shorten::Shorten, take::Take, trim::Trim, use_as::Use,
+	contains::Contains, extract::Extract, html::Html, json::Json, remove_html::RemoveHtml,
+	replace::Replace, set::Set, shorten::Shorten, take::Take, trim::Trim, use_as::Use,
 };
 use crate::Error;
 use fetcher_core::{
@@ -56,6 +57,7 @@ pub enum Action {
 	Trim(Trim),
 	Replace(Replace),
 	Extract(Extract),
+	RemoveHtml(RemoveHtml),
 }
 
 // TODO: add media
@@ -118,6 +120,7 @@ impl Action {
 			Action::Trim(x) => transform!(x.parse()),
 			Action::Replace(x) => transform!(x.parse()?),
 			Action::Extract(x) => transform!(x.parse()?),
+			Action::RemoveHtml(x) => x.parse()?,
 		};
 
 		Ok(Some(act))
