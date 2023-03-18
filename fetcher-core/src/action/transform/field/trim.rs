@@ -6,6 +6,7 @@
 
 //! This module contains the [`Trim`] field transform
 
+use itertools::Itertools;
 use std::convert::Infallible;
 
 use super::TransformField;
@@ -18,8 +19,28 @@ pub struct Trim;
 impl TransformField for Trim {
 	type Err = Infallible;
 
-	// TODO: trim lines, no the whole block of text
 	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
-		Ok(TransformResult::New(old_val.map(|s| s.trim().to_owned())))
+		Ok(TransformResult::New(old_val.map(trim)))
+	}
+}
+
+fn trim(s: &str) -> String {
+	s.trim().lines().map(|x| x.trim().to_owned()).join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn one_line() {
+		const S: &str = "\n\n\n   \nHello, World!      \n    \n";
+		assert_eq!(trim(S), "Hello, World!");
+	}
+
+	#[test]
+	fn multi_line() {
+		const S: &str = "\n\n\n   \nHello, \n   World!      \n    \n";
+		assert_eq!(trim(S), "Hello,\nWorld!");
 	}
 }

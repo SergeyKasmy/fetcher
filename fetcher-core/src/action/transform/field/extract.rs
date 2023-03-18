@@ -83,19 +83,19 @@ mod tests {
 	const FROM: &str = "HelloxWorld";
 
 	#[test]
-	fn extract_one() {
+	fn one() {
 		let re = Regex::new("(?s)(.*)x").unwrap();
 		assert_eq!(extract_captures_from(&re, FROM).unwrap(), "Hello");
 	}
 
 	#[test]
-	fn extract_several() {
+	fn several() {
 		let re = Regex::new("(?s)(.*)x(.*)").unwrap();
 		assert_eq!(extract_captures_from(&re, FROM).unwrap(), "HelloWorld");
 	}
 
 	#[test]
-	fn extract_not_matched() {
+	fn not_matched() {
 		let re = Regex::new("(?s)(.*)xxx(.*)").unwrap();
 		assert!(extract_captures_from(&re, FROM).is_none());
 	}

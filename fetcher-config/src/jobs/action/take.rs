@@ -15,6 +15,7 @@ pub struct Take {
 	num: usize,
 }
 
+// TODO: rename to new and old
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum TakeFrom {

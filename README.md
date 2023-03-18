@@ -231,7 +231,7 @@ tasks:
       - shorten: # limit the length of a field to a specified maximum amount of charachers
           <field>: <int> # limit <field> to <int> max charachers
           <field>: <int> # can be specified multiple times
-      - trim: <field> # remove leftover whitespace to the left and to the right of the contents of the <field>
+      - trim: <field> # remove leftover whitespace to the left and to the right of every line in the <field>
       - replace: # replace the contents of a field
           re: <regex> # replace the first regex match
           field: <field> # in the field
