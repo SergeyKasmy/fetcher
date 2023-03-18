@@ -11,5 +11,7 @@ fn main() {
 	*conf.git_mut().sha_kind_mut() = ShaKind::Short;
 	*conf.git_mut().semver_kind_mut() = SemverKind::Lightweight;
 	*conf.git_mut().semver_dirty_mut() = Some("-dirty");
-	vergen(conf).unwrap();
+
+	// no git repository found, probably installing via cargo install, just ignore and move on
+	_ = vergen(conf);
 }
