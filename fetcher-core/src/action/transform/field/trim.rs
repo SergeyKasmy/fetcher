@@ -18,6 +18,7 @@ pub struct Trim;
 impl TransformField for Trim {
 	type Err = Infallible;
 
+	// TODO: trim lines, no the whole block of text
 	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
 		Ok(TransformResult::New(old_val.map(|s| s.trim().to_owned())))
 	}
