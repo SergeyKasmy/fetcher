@@ -10,6 +10,7 @@ use fetcher_core::action::filter::Contains as CContains;
 
 use serde::{Deserialize, Serialize};
 
+// TODO: use a hashmap
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Contains {

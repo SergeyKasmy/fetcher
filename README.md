@@ -238,7 +238,7 @@ tasks:
           with: <string> # with this string
       - extract: # extract text using a regex
           from_field: <field> # extract text from this field and replace the contents of the field with it
-          re: <regex> # the regex that specifies a capture group named "e" that will becone the new contents of the field
+          re: <regex> # the regex that specifies capture groups that will be concatenated and become the new contents of the field
           passthrough_if_not_found: <bool> # what to do if the regex didn't match. If `true`, the value of the field `from_field` should remain the same, if `false`, the task will be aborted
       # debug related actions:
       - caps # make the message title uppercase
