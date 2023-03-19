@@ -38,19 +38,30 @@ The main unit of execution in fetcher is a job. A job consists of one or more ta
 refresh: 
   every: 30m
 tasks:
-  rss:
-    read_filter_type: newer_than_read	# save only the last one sent/read
+  news:
+    read_filter_type: newer_than_read
     source:
-      http: '<your_rss_feed_url>'
+      twitter: '<your_twitter_handle>'
     process:
-      - feed
-      - read_filter	# leave out only entries newer than the last one read
+      - read_filter # leave out only entries newer than the last one read
+      - contains:
+          body: '[Hh]ello'
+      - set:
+         title: New tweet from somebody
+      - shorten:
+          body: 50
     sink:
       discord:
         user: <your_user_id>
 ```
 
-This job is run every 30 minutes and has a single task named "rss". This task gets the contents of the web page `<your_rss_feed_url>`, parses it as an RSS/Atom feed, removes all feed items that have already been read (using the `newer_than_read` stradegy), and sends all items left via DMs to a Discord user `<your_user_id>`.
+This job is run every 30 minutes and has a single task named "news". This task:
+* gets the Twitter timeline of @<your_twitter_handle>
+* removes all tweets that have already been read (using the `newer_than_read` stradegy)
+* retains only tweets that contains "Hello" or "hello" in them
+* sets the title to "New tweet from somebody"
+* shortens the body to 50 characters if it is longer
+* and sends all tweets left via DMs to a Discord user `<your_user_id>`.
 
 ## Running
 
@@ -129,12 +140,11 @@ tasks:
                                                     # * delete: move the emails to the trash bin. Exact behavior depends on the email provider in question. Gmail archives the emails by default instead
     process:  # all actions are optional, so don't need to be marked with O
       - read_filter # filter out already read entries using `read_filter_type` stradegy
-      - take: # take `num` entries from either beginning or the end and ignore the rest
-          from: <beginning|end>
-          num: <int>
+      - take: # take `num` entries from either the newest or the oldest and ignore the rest
+          <from_newest|from_oldest>: <int>
       - contains: # filter out all entries that don't match
-          re: <regex> # regular expression to match the contents of the `field` against
-          field: <field> # the field to match against. Refer later for which fields are valid
+          <field>: <regex> # regular expression to match the contents of the <field> against
+          <field>: <regex> # can be specified several times
       - feed # parse the entries as an RSS/Atom feeds
       - html: # parse the entries as HTML. All queries use the same format, except for `item_query`
           item: # O. Item is a unit of information. For example, articles in a blog or goods in an online store search are items. If the entire page is the "item", then this should be ignored
@@ -219,15 +229,20 @@ tasks:
       - shorten: # limit the length of a field to a specified maximum amount of charachers
           <field>: <int> # limit <field> to <int> max charachers
           <field>: <int> # can be specified multiple times
-      - trim: <field> # remove leftover whitespace to the left and to the right of the contents of the <field>
+      - trim: <field> # remove leftover whitespace to the left and to the right of every line in the <field>
       - replace: # replace the contents of a field
           re: <regex> # replace the first regex match
           field: <field> # in the field
           with: <string> # with this string
       - extract: # extract text using a regex
           from_field: <field> # extract text from this field and replace the contents of the field with it
-          re: <regex> # the regex that specifies a capture group named "e" that will becone the new contents of the field
+          re: <regex> # the regex that specifies capture groups that will be concatenated and become the new contents of the field
           passthrough_if_not_found: <bool> # what to do if the regex didn't match. If `true`, the value of the field `from_field` should remain the same, if `false`, the task will be aborted
+      - remove_html: # remove any HTML tags in <field> and trim any remaining whitespace
+          in: <field> # X. either in one field
+          in:         # X. or in several at once
+            - <field>
+            - <field>
       # debug related actions:
       - caps # make the message title uppercase
       - debug_print # debug print the entire contents of the entry

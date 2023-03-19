@@ -16,6 +16,7 @@
 
 pub mod error;
 pub mod jobs;
+mod serde_extentions;
 pub mod settings;
 
 pub use self::error::Error;

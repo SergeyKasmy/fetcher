@@ -12,6 +12,9 @@ use std::{borrow::Cow, convert::Infallible};
 use super::TransformField;
 use crate::{action::transform::result::TransformResult, error::BadRegexError};
 
+/// Replace this with "" when you want to remove all HTML tags
+pub const HTML_TAG_RE: &str = "<[^>]*>";
+
 /// Replace the first regular expression match with a string
 #[derive(Debug)]
 pub struct Replace {
@@ -39,9 +42,9 @@ impl TransformField for Replace {
 	type Err = Infallible;
 
 	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
-		Ok(TransformResult::New(
-			old_val.map(|old| self.re.replace(old, &self.with).into_owned()),
-		))
+		Ok(TransformResult::New(old_val.map(|old| {
+			self.re.replace_all(old, &self.with).into_owned()
+		})))
 	}
 }
 
@@ -49,6 +52,6 @@ impl Replace {
 	/// Replace `text` with the [`Replace::with`] if [`Replace::re`] matches
 	#[must_use]
 	pub fn replace<'a>(&self, text: &'a str) -> Cow<'a, str> {
-		self.re.replace(text, &self.with)
+		self.re.replace_all(text, &self.with)
 	}
 }

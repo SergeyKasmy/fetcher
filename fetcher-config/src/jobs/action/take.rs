@@ -9,33 +9,48 @@ use fetcher_core::action::filter::take::{Take as CTake, TakeFrom as CTakeFrom};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct Take {
-	from: TakeFrom,
-	num: usize,
+#[serde(transparent)]
+pub struct Take(#[serde(with = "crate::serde_extentions::tuple")] pub Inner);
+
+#[derive(Clone, Debug)]
+pub struct Inner {
+	pub which: TakeWhich,
+	pub num: usize,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub enum TakeFrom {
-	Beginning,
-	End,
+pub enum TakeWhich {
+	FromNewest,
+	FromOldest,
 }
 
 impl Take {
 	pub fn parse(self) -> CTake {
 		CTake {
-			from: self.from.parse(),
-			num: self.num,
+			from: self.0.which.parse(),
+			num: self.0.num,
 		}
 	}
 }
 
-impl TakeFrom {
+impl TakeWhich {
 	pub fn parse(self) -> CTakeFrom {
 		match self {
-			TakeFrom::Beginning => CTakeFrom::Beginning,
-			TakeFrom::End => CTakeFrom::End,
+			TakeWhich::FromNewest => CTakeFrom::Beginning,
+			TakeWhich::FromOldest => CTakeFrom::End,
 		}
+	}
+}
+
+impl<'a> From<&'a Inner> for (&'a TakeWhich, &'a usize) {
+	fn from(Inner { which, num }: &'a Inner) -> Self {
+		(which, num)
+	}
+}
+
+impl From<(TakeWhich, usize)> for Inner {
+	fn from((which, num): (TakeWhich, usize)) -> Self {
+		Self { which, num }
 	}
 }

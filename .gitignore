@@ -1,4 +1,4 @@
-.gdb_history
 /debug
 /target
-/tests
+.gdb_history
+justfile
