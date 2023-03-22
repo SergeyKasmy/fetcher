@@ -56,6 +56,7 @@ impl Task {
 			};
 
 			tracing::debug!("Got {} raw entries from the source(s)", raw.len());
+			tracing::trace!("Raw entries: {raw:#?}");
 
 			let processed = match &self.actions {
 				Some(actions) => process_entries(raw, actions).await?,
@@ -63,6 +64,7 @@ impl Task {
 			};
 
 			tracing::debug!("Got {} fully processed entries", processed.len());
+			tracing::trace!("Fully processed entries: {processed:#?}");
 
 			remove_duplicates(processed)
 		};
@@ -87,7 +89,7 @@ impl Task {
 					let reply_to = self
 						.entry_to_msg_map
 						.as_mut()
-						.and_then(|map| map.get_if_exists(entry.id.as_ref()));
+						.and_then(|map| map.get_if_exists(entry.reply_to.as_ref()));
 
 					tracing::debug!(
 						"Sending {msg:?} to a sink with tag {tag:?}, replying to {reply_to:?}"

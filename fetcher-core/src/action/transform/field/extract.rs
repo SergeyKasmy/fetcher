@@ -27,6 +27,7 @@ pub enum ExtractError {
 	#[error(transparent)]
 	BadRegex(#[from] BadRegexError),
 
+	// Rename to "Regex not matched"
 	#[error("Capture group not found but passthrough_if_not_found is not set")]
 	CaptureGroupNotFound,
 }
