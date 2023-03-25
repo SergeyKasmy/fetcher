@@ -70,13 +70,14 @@ impl Fetch for Twitter {
 
 impl Twitter {
 	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, TwitterError> {
-		tracing::debug!("Getting tweets");
+		tracing::trace!("Getting tweets");
 
 		let token = match &self.auth {
 			Auth::NotAuthenticated {
 				api_key,
 				api_secret,
 			} => {
+				tracing::trace!("Not authenticated yet, authenticating...");
 				let token = bearer_token(&KeyPair::new(api_key.clone(), api_secret.clone()))
 					.await
 					.map_err(TwitterError::Auth)?;
@@ -93,11 +94,15 @@ impl Twitter {
 
 		let (timeline, tweets) = match &self.timeline {
 			None => {
+				tracing::trace!("Creating a new timeline/first time getting tweets"); // read filter should remove ones already read though
 				user_timeline(self.handle.clone(), true, true, token)
 					.start()
 					.await?
 			}
 			Some(_) => {
+				tracing::trace!(
+					"Re-using timeline, just getting tweets newer than last time fetched"
+				);
 				self.timeline
 					.take()
 					.expect("shouldn't be None, just matched Some")
@@ -108,7 +113,10 @@ impl Twitter {
 
 		self.timeline = Some(timeline);
 
-		tracing::debug!("Got {num} tweets", num = tweets.len());
+		tracing::debug!(
+			"Got {num} tweets from timeline in total",
+			num = tweets.len()
+		);
 
 		let messages = tweets
 			.iter()
@@ -147,13 +155,6 @@ impl Twitter {
 				}
 			})
 			.collect::<Vec<_>>();
-
-		let unread_num = messages.len();
-		if unread_num > 0 {
-			tracing::debug!("Got {unread_num} unread filtered tweets");
-		} else {
-			tracing::debug!("All tweets have already been read, none remaining to send");
-		}
 
 		Ok(messages)
 	}

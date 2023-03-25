@@ -55,7 +55,7 @@ impl Task {
 				None => vec![Entry::default()], // return just an empty entry if there is no source
 			};
 
-			tracing::debug!("Got {} raw entries from the source(s)", raw.len());
+			tracing::debug!("Got {} raw entries from the sources", raw.len());
 			tracing::trace!("Raw entries: {raw:#?}");
 
 			let processed = match &self.actions {
@@ -63,52 +63,71 @@ impl Task {
 				None => raw,
 			};
 
-			tracing::debug!("Got {} fully processed entries", processed.len());
-			tracing::trace!("Fully processed entries: {processed:#?}");
+			let processed_len = processed.len();
+			tracing::debug!("{processed_len} entries remained after processing");
+			tracing::trace!("Entries after processing: {processed:#?}");
 
-			remove_duplicates(processed)
+			let deduped = remove_duplicates(processed);
+
+			if processed_len - deduped.len() > 0 {
+				tracing::info!(
+					"Removed {} duplicate entries",
+					processed_len - deduped.len()
+				);
+			}
+
+			deduped
 		};
 
 		// entries should be sorted newest to oldest but we should send oldest first
 		for entry in entries.into_iter().rev() {
-			let msgid = match self.sink.as_ref() {
-				// send message if it isn't empty or raw_contents of they aren't
-				Some(sink) if !entry.msg.is_empty() || entry.raw_contents.is_some() => {
-					// use raw_contents as msg.body if the message is empty
-					let mut msg = entry.msg;
+			self.send_entry(entry).await?;
+		}
 
-					if msg.is_empty() {
-						msg.body = Some(
-							entry
-								.raw_contents
-								.expect("raw_contents should be some because of the match guard"),
-						);
-					}
+		Ok(())
+	}
 
-					let tag = self.tag.as_deref();
-					let reply_to = self
-						.entry_to_msg_map
-						.as_mut()
-						.and_then(|map| map.get_if_exists(entry.reply_to.as_ref()));
+	#[tracing::instrument(level = "trace", skip_all, fields(entry_id = ?entry.id))]
+	async fn send_entry(&mut self, entry: Entry) -> Result<(), Error> {
+		tracing::trace!("Sending and marking as read entry");
 
-					tracing::debug!(
-						"Sending {msg:?} to a sink with tag {tag:?}, replying to {reply_to:?}"
+		let msgid = match self.sink.as_ref() {
+			// send message if it isn't empty or raw_contents of they aren't
+			Some(sink) if !entry.msg.is_empty() || entry.raw_contents.is_some() => {
+				// use raw_contents as msg.body if the message is empty
+				let mut msg = entry.msg;
+
+				if msg.is_empty() {
+					msg.body = Some(
+						entry
+							.raw_contents
+							.expect("raw_contents should be some because of the match guard"),
 					);
-					sink.send(msg, reply_to, tag).await?
-				}
-				_ => None,
-			};
-
-			if let Some(entry_id) = entry.id {
-				if let Some(source) = &mut self.source {
-					tracing::debug!("Marking {entry_id:?} as read");
-					source.mark_as_read(&entry_id).await?;
 				}
 
-				if let Some((msgid, map)) = msgid.zip(self.entry_to_msg_map.as_mut()) {
-					tracing::debug!("Associating entry {entry_id:?} with message {msgid:?}");
-					map.insert(entry_id, msgid).await?;
-				}
+				let tag = self.tag.as_deref();
+				let reply_to = self
+					.entry_to_msg_map
+					.as_mut()
+					.and_then(|map| map.get_if_exists(entry.reply_to.as_ref()));
+
+				tracing::debug!(
+					"Sending {msg:?} to a sink with tag {tag:?}, replying to {reply_to:?}"
+				);
+				sink.send(msg, reply_to, tag).await?
+			}
+			_ => None,
+		};
+
+		if let Some(entry_id) = entry.id {
+			if let Some(source) = &mut self.source {
+				tracing::debug!("Marking {entry_id:?} as read");
+				source.mark_as_read(&entry_id).await?;
+			}
+
+			if let Some((msgid, map)) = msgid.zip(self.entry_to_msg_map.as_mut()) {
+				tracing::debug!("Associating entry {entry_id:?} with message {msgid:?}");
+				map.insert(entry_id, msgid).await?;
 			}
 		}
 
