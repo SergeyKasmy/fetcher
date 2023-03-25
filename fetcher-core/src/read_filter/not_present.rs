@@ -82,7 +82,9 @@ impl MarkAsRead for NotPresent {
 
 #[async_trait]
 impl Filter for NotPresent {
+	#[tracing::instrument(level = "debug", name = "filter_read", skip_all)]
 	async fn filter(&self, entries: &mut Vec<Entry>) {
+		let old_len = entries.len();
 		entries.retain(|elem| {
 			// retain elements with no id
 			let Some(id) = &elem.id else { return true };
@@ -92,6 +94,10 @@ impl Filter for NotPresent {
 				.iter()
 				.any(|(read_elem_id, _)| read_elem_id == id)
 		});
+
+		let removed_elems = old_len - entries.len();
+		tracing::debug!("Removed {removed_elems} already read entries");
+		tracing::trace!("Unread entries remaining: {entries:#?}");
 	}
 }
 
