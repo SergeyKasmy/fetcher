@@ -424,7 +424,7 @@ async fn run_jobs(
 					Err(e) => Some((job_name, e)),
 				}
 			} else {
-				tracing::error!("Job {job_name} crashed",);
+				tracing::error!("Job {job_name} crashed");
 				None
 			}
 		})
@@ -436,12 +436,12 @@ async fn run_jobs(
 		1 => {
 			let (name, error) = errors.pop().expect("len should be 1");
 
-			Err(error).wrap_err(format!("Job \"{name}\""))
+			Err(error).wrap_err(format!("Job {name}"))
 		}
 		i => {
 			let full_report = errors.into_iter().fold(
 				eyre!("{i} jobs have finished with an error"),
-				|acc, (name, err)| acc.report(err.wrap_err(format!("Job \"{name}\""))),
+				|acc, (name, err)| acc.report(err.wrap_err(format!("Job {name}"))),
 			);
 
 			Err(full_report)

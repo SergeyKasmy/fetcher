@@ -132,7 +132,7 @@ pub fn get_all_from<'a>(
 						if job.tasks.is_empty() {
 							// TODO: list task filter and all available tasks (from task_name_map)
 							tracing::warn!(
-								"Asked to run job \"{job_name}\" but no tasks matched the task filter"
+								"Asked to run job {job_name} but no tasks matched the task filter"
 							);
 							return None;
 						}
