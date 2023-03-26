@@ -32,7 +32,7 @@ use color_eyre::{
 	eyre::{eyre, WrapErr},
 	Report, Result, Section,
 };
-use futures::future::join_all;
+use futures::{stream::FuturesUnordered, StreamExt};
 use std::{
 	collections::HashMap,
 	iter,
@@ -43,7 +43,6 @@ use std::{
 use tokio::{
 	select,
 	sync::watch::{self, Receiver},
-	task::JoinHandle,
 	time::sleep,
 };
 use tracing::Instrument;
@@ -380,23 +379,22 @@ async fn run_jobs(
 
 				async move {
 					loop {
-						let job_result = job
-							.run()
-							.instrument(tracing::info_span!("job", name = %name))
-							.await;
+						let job_result = job.run().await;
 
 						match handle_errors(job_result, &mut error_handling, (&name, &job), cx)
 							.await
 						{
 							ControlFlow::Continue(()) => (),
-							ControlFlow::Break(res) => return res.map_err(|e| (name, e)),
+							ControlFlow::Break(res) => return res,
 						}
 					}
 				}
-			};
+			}
+			.instrument(tracing::info_span!("job", name = %name));
 
 			// tokio task
 			let async_task = {
+				let name = name.clone();
 				let mut shutdown_rx = shutdown_rx.clone();
 
 				async move {
@@ -414,20 +412,24 @@ async fn run_jobs(
 				}
 			};
 
-			let async_task_handle = tokio::spawn(async_task);
-			flatten_task_result(async_task_handle)
+			async move { (name, tokio::spawn(async_task).await) }
 		})
-		.collect::<Vec<_>>();
+		.collect::<FuturesUnordered<_>>();
 
-	// rust-analyzer is confused without these manual type annotation
-	let mut errors: Vec<(JobName, Report)> = join_all(jobs)
-		.await
-		.into_iter()
-		.filter_map(|r| match r {
-			Ok(()) => None,
-			Err(e) => Some(e),
+	let mut errors: Vec<(JobName, Report)> = jobs
+		.filter_map(|(job_name, async_task_res)| async move {
+			if let Ok(job_res) = async_task_res {
+				match job_res {
+					Ok(()) => None,
+					Err(e) => Some((job_name, e)),
+				}
+			} else {
+				tracing::error!("Job {job_name} crashed",);
+				None
+			}
 		})
-		.collect();
+		.collect()
+		.await;
 
 	match errors.len() {
 		0 => Ok(()),
@@ -623,12 +625,4 @@ async fn report_error(job_name: &str, err: &str, context: Context) -> Result<()>
 		.map_err(fetcher_core::error::Error::Sink)?;
 
 	Ok(())
-}
-
-async fn flatten_task_result<T, E>(h: JoinHandle<Result<T, E>>) -> Result<T, E> {
-	match h.await {
-		Ok(Ok(res)) => Ok(res),
-		Ok(Err(err)) => Err(err),
-		e => e.expect("Thread panicked"),
-	}
 }
