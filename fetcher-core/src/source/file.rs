@@ -30,7 +30,7 @@ impl Fetch for File {
 		let text = fs::read_to_string(&self.path)
 			.await
 			.map(|s| s.trim().to_owned())
-			.map_err(|e| SourceError::FileRead(e, self.path.clone()))?;
+			.map_err(|e| SourceError::File(e, self.path.clone()))?;
 
 		Ok(vec![Entry {
 			raw_contents: Some(text),
