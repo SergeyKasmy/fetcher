@@ -19,7 +19,10 @@ use self::{
 use crate::{jobs::external_data::ProvideExternalData, Error};
 use fetcher_core::{
 	read_filter::ReadFilter as CReadFilter,
-	source::{Source as CSource, SourceWithSharedRF as CSourceWithSharedRF},
+	source::{
+		always_errors::AlwaysErrors as CAlwaysErrors, Source as CSource,
+		SourceWithSharedRF as CSourceWithSharedRF,
+	},
 };
 
 use serde::{Deserialize, Serialize};
@@ -38,6 +41,7 @@ pub enum Source {
 
 	// with custom read filter
 	Email(Email),
+	AlwaysErrors,
 }
 
 impl Source {
@@ -67,6 +71,7 @@ impl Source {
 
 			// with custom read filter
 			Self::Email(x) => Box::new(x.parse(external)?),
+			Self::AlwaysErrors => Box::new(CAlwaysErrors),
 		})
 	}
 }

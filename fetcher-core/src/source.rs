@@ -7,6 +7,7 @@
 //! This module contains [`Source`]s that can fetch data and create new [`Entries`](`Entry`) out of it
 // TODO: add google calendar source. Google OAuth2 is already implemented :)
 
+pub mod always_errors;
 pub mod email;
 pub mod file;
 pub mod http;

@@ -38,6 +38,9 @@ pub enum SourceError {
 
 	#[error("Exec error")]
 	Exec(#[from] ExecError),
+
+	#[error("This is a debug error automatically triggered for debugging purposes")]
+	Debug,
 }
 
 impl From<EmailError> for SourceError {
