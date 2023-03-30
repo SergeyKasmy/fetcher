@@ -31,7 +31,7 @@ impl<T> OptionExt<T> for Option<T> {
 		F: FnOnce(T) -> Result<U, E>,
 	{
 		match self {
-			Some(x) => f(x).map(|inner| Some(inner)),
+			Some(x) => f(x).map(Some),
 			None => Ok(None),
 		}
 	}

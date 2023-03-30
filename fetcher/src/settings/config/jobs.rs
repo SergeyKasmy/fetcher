@@ -159,7 +159,7 @@ pub fn get(path: &Path, name: &JobName, cx: Context) -> Result<Option<(Job, Opti
 			let tmpl = settings::config::templates::find(&tmpl_name, cx)?
 				.ok_or_else(|| eyre!("Template \"{tmpl_name}\" not found"))?;
 
-			tracing::debug!("Using template: {:?}", tmpl.path);
+			tracing::trace!("Using template: {:?} at {:?}", tmpl.name, tmpl.path);
 
 			full_conf = full_conf.merge(Yaml::string(&tmpl.contents));
 		}

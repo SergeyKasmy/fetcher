@@ -1,5 +1,6 @@
-/// This test asserts that the message id passed to the sink is the correct
-/// message id that corresponds to the entry that the source asked to be replied to
+//! This test asserts that the message id passed to the sink is the correct
+//! message id that corresponds to the entry that the source asked to be replied to
+
 use async_trait::async_trait;
 use fetcher_core::{
 	entry::{Entry, EntryId},

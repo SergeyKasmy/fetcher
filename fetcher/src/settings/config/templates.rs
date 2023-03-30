@@ -24,7 +24,7 @@ pub struct Template {
 ///
 /// # Errors
 /// if the found template path couldn't be read
-#[tracing::instrument(name = "template")]
+#[tracing::instrument(level = "debug", name = "template")]
 pub fn find(name: &str, context: Context) -> Result<Option<Template>> {
 	for template_dir_path in context.conf_paths.iter().map(|p| p.join(TEMPLATES_DIR)) {
 		if let Some(template) = find_in(&template_dir_path, name)? {

@@ -235,20 +235,20 @@ fn version() -> String {
 	}
 }
 
-#[tracing::instrument(level = "trace", skip(run_filter, cx))]
-async fn run_command(
-	args::Run {
+async fn run_command(run_args: args::Run, cx: Context) -> Result<()> {
+	tracing::trace!("Running in run mode with {run_args:#?}");
+
+	let args::Run {
 		once,
 		dry_run,
 		run_filter,
-	}: args::Run,
-	cx: Context,
-) -> Result<()> {
+	} = run_args;
+
 	let run_filter = {
 		let run_filter = run_filter
 			.into_iter()
 			.map(|s| s.parse())
-			.collect::<Result<Vec<_>>>()?;
+			.collect::<Result<Vec<JobFilter>>>()?;
 
 		if run_filter.is_empty() {
 			None
@@ -362,7 +362,7 @@ enum ErrorHandling {
 	},
 }
 
-#[tracing::instrument(level = "trace", skip(jobs, cx))]
+#[tracing::instrument(level = "trace", skip_all)]
 async fn run_jobs(
 	jobs: impl IntoIterator<Item = (JobName, Job)>,
 	error_handling: ErrorHandling,
@@ -490,6 +490,7 @@ fn set_up_signal_handler() -> Receiver<()> {
 	shutdown_rx
 }
 
+#[tracing::instrument(level = "debug", skip(job_name, job, cx))]
 async fn handle_errors(
 	results: Result<(), Vec<Error>>,
 	stradegy: &mut ErrorHandling,
