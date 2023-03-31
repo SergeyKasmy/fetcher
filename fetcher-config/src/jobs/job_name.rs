@@ -8,14 +8,15 @@ use std::{
 	borrow::Borrow,
 	fmt::{self, Display},
 	ops::Deref,
+	sync::Arc,
 };
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct JobName(pub String);
+pub struct JobName(pub Arc<str>);
 
-impl From<String> for JobName {
-	fn from(value: String) -> Self {
-		Self(value)
+impl<T: Into<Arc<str>>> From<T> for JobName {
+	fn from(value: T) -> Self {
+		Self(value.into())
 	}
 }
 
@@ -23,7 +24,7 @@ impl Deref for JobName {
 	type Target = str;
 
 	fn deref(&self) -> &Self::Target {
-		self.0.as_str()
+		&self.0
 	}
 }
 
@@ -35,6 +36,6 @@ impl Borrow<str> for JobName {
 
 impl Display for JobName {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "{}", self.0)
+		write!(f, "\"{}\"", self.0)
 	}
 }

@@ -73,6 +73,7 @@ impl Filter for Newer {
 	/// * id 9
 	/// * id 8
 	/// * id 3
+	#[tracing::instrument(level = "debug", name = "filter_read", skip_all)]
 	async fn filter(&self, entries: &mut Vec<Entry>) {
 		if let Some(last_read_id) = &self.last_read_id {
 			if let Some(last_read_id_pos) = entries.iter().position(|x| {
@@ -80,7 +81,9 @@ impl Filter for Newer {
 
 				last_read_id == id
 			}) {
-				entries.drain(last_read_id_pos..);
+				let removed_elems = entries.drain(last_read_id_pos..).count();
+				tracing::debug!("Removed {removed_elems} already read entries");
+				tracing::trace!("Unread entries remaining: {entries:#?}");
 			}
 		}
 	}

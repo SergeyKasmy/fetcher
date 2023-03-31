@@ -21,14 +21,8 @@ use std::{error::Error as StdError, path::PathBuf};
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum SourceError {
-	#[error("Can't create a source with an empty source list")]
-	EmptySourceList,
-
-	#[error("Can't create a source with a source list that contains different source variants")]
-	SourceListHasDifferentVariants,
-
 	#[error("Can't read file {}", .1.to_string_lossy())]
-	FileRead(#[source] std::io::Error, PathBuf),
+	File(#[source] std::io::Error, PathBuf),
 
 	#[error("HTTP error")]
 	Http(#[from] HttpError),
@@ -44,6 +38,9 @@ pub enum SourceError {
 
 	#[error("Exec error")]
 	Exec(#[from] ExecError),
+
+	#[error("This is a debug error automatically triggered for debugging purposes")]
+	Debug,
 }
 
 impl From<EmailError> for SourceError {

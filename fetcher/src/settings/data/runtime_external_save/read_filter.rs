@@ -17,7 +17,7 @@ use std::fs;
 
 const READ_DATA_DIR: &str = "read";
 
-#[tracing::instrument(skip(cx))]
+#[tracing::instrument(level = "debug", skip(cx))]
 pub fn get(
 	job: &JobName,
 	task: Option<&TaskName>,

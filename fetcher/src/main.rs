@@ -10,11 +10,13 @@
 #![allow(clippy::module_name_repetitions)]
 
 pub mod args;
+pub mod error_handling;
 pub mod extentions;
 pub mod settings;
 
 use crate::{
 	args::{Args, Setting},
+	error_handling::{ErrorHandling, PrevErrors, DEFAULT_MAX_ERROR_LIMIT},
 	extentions::{ErrorChainExt, SliceDisplayExt},
 	settings::{
 		config::jobs::filter::JobFilter, context::Context as OwnedContext,
@@ -32,18 +34,13 @@ use color_eyre::{
 	eyre::{eyre, WrapErr},
 	Report, Result, Section,
 };
-use futures::future::join_all;
-use std::{
-	collections::HashMap,
-	iter,
-	ops::ControlFlow,
-	path::PathBuf,
-	time::{Duration, Instant},
-};
+use futures::{stream::FuturesUnordered, StreamExt};
+use std::{collections::HashMap, iter, ops::ControlFlow, path::PathBuf, time::Duration};
+use tap::TapOptional;
 use tokio::{
 	select,
 	sync::watch::{self, Receiver},
-	task::JoinHandle,
+	task::JoinError,
 	time::sleep,
 };
 use tracing::Instrument;
@@ -236,20 +233,20 @@ fn version() -> String {
 	}
 }
 
-#[tracing::instrument(level = "trace", skip(run_filter, cx))]
-async fn run_command(
-	args::Run {
+async fn run_command(run_args: args::Run, cx: Context) -> Result<()> {
+	tracing::trace!("Running in run mode with {run_args:#?}");
+
+	let args::Run {
 		once,
 		dry_run,
 		run_filter,
-	}: args::Run,
-	cx: Context,
-) -> Result<()> {
+	} = run_args;
+
 	let run_filter = {
 		let run_filter = run_filter
 			.into_iter()
 			.map(|s| s.parse())
-			.collect::<Result<Vec<_>>>()?;
+			.collect::<Result<Vec<JobFilter>>>()?;
 
 		if run_filter.is_empty() {
 			None
@@ -286,7 +283,7 @@ async fn run_command(
 	}
 
 	if once {
-		tracing::trace!("Disabling every job's refetch interval");
+		tracing::trace!("Disabling every job's refresh time");
 
 		for job in jobs.values_mut() {
 			job.refresh_time = None;
@@ -297,9 +294,7 @@ async fn run_command(
 		ErrorHandling::Forward
 	} else {
 		ErrorHandling::Sleep {
-			max_retries: 15,
-			err_count: 0,
-			last_error: None,
+			prev_errors: PrevErrors::new(DEFAULT_MAX_ERROR_LIMIT),
 		}
 	};
 
@@ -348,22 +343,7 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 	Ok(Some(jobs))
 }
 
-#[derive(Clone, Debug)]
-enum ErrorHandling {
-	Forward,
-	LogAndIgnore,
-	Sleep {
-		max_retries: u32,
-
-		// "private" state, should be 0 and None
-		// there's no point in creating a private struct with a constructor just for these
-		// since they are for private use anyways and aren't used more than a couple of times
-		err_count: u32,
-		last_error: Option<Instant>,
-	},
-}
-
-#[tracing::instrument(level = "trace", skip(jobs, cx))]
+#[tracing::instrument(level = "trace", skip_all)]
 async fn run_jobs(
 	jobs: impl IntoIterator<Item = (JobName, Job)>,
 	error_handling: ErrorHandling,
@@ -373,73 +353,41 @@ async fn run_jobs(
 
 	let jobs = jobs
 		.into_iter()
-		.map(|(name, mut job)| {
-			let async_job = {
-				let name = name.clone();
-				let mut error_handling = error_handling.clone();
+		.map(|(name, job)| run_job(name, job, error_handling.clone(), shutdown_rx.clone(), cx))
+		.collect::<FuturesUnordered<_>>();
 
-				async move {
-					loop {
-						let job_result = job
-							.run()
-							.instrument(tracing::info_span!("job", name = %name))
-							.await;
-
-						match handle_errors(job_result, &mut error_handling, (&name, &job), cx)
-							.await
-						{
-							ControlFlow::Continue(()) => (),
-							ControlFlow::Break(res) => return res.map_err(|e| (name, e)),
-						}
+	let mut errors: Vec<(JobName, Report)> = jobs
+		.filter_map(|(job_name, async_task_res)| async move {
+			if let Ok(job_res) = async_task_res {
+				match job_res {
+					Ok(()) => {
+						tracing::info!("Job {job_name} has finished");
+						None
+					}
+					Err(e) => {
+						tracing::error!("Job {job_name} has exited with an error: {e:?}");
+						Some((job_name, e))
 					}
 				}
-			};
-
-			// tokio task
-			let async_task = {
-				let mut shutdown_rx = shutdown_rx.clone();
-
-				async move {
-					loop {
-						select! {
-							res = async_job => {
-								return res;
-							}
-							_ = shutdown_rx.changed() => {
-								tracing::info!("Job {name} shut down...");
-								return Ok(());
-							}
-						}
-					}
-				}
-			};
-
-			let async_task_handle = tokio::spawn(async_task);
-			flatten_task_result(async_task_handle)
+			} else {
+				tracing::error!("Job {job_name} has crashed");
+				None
+			}
 		})
-		.collect::<Vec<_>>();
-
-	// rust-analyzer is confused without these manual type annotation
-	let mut errors: Vec<(JobName, Report)> = join_all(jobs)
-		.await
-		.into_iter()
-		.filter_map(|r| match r {
-			Ok(()) => None,
-			Err(e) => Some(e),
-		})
-		.collect();
+		.collect()
+		.await;
 
 	match errors.len() {
 		0 => Ok(()),
 		1 => {
 			let (name, error) = errors.pop().expect("len should be 1");
 
-			Err(error).wrap_err(format!("Job \"{name}\""))
+			Err(error).wrap_err(format!("Job {name}"))
 		}
 		i => {
 			let full_report = errors.into_iter().fold(
-				eyre!("{i} jobs have finished with an error"),
-				|acc, (name, err)| acc.report(err.wrap_err(format!("Job \"{name}\""))),
+				eyre!("{i} jobs have exited with an error"),
+				|acc, (name, err)| acc.report(err.wrap_err(format!("Job {name}"))),
 			);
 
 			Err(full_report)
@@ -488,116 +436,202 @@ fn set_up_signal_handler() -> Receiver<()> {
 	shutdown_rx
 }
 
+async fn run_job(
+	name: JobName,
+	mut job: Job,
+	mut error_handling: ErrorHandling,
+	mut shutdown_rx: Receiver<()>,
+	cx: Context,
+) -> (JobName, Result<Result<()>, JoinError>) {
+	fn fold_task_errors(mut errors: Vec<Error>) -> Report {
+		// for acc_report.error(err). I believe this way it is clearer what the fold does
+		#[allow(clippy::redundant_closure_for_method_calls)]
+		match errors.len() {
+			0 => panic!("Empty error vec which is a programmer error, this should never happen"),
+			1 => Report::from(errors.remove(0)),
+			i => errors.into_iter().fold(
+				eyre!("{i} tasks have exited with an error"),
+				|acc_report, err| acc_report.error(err),
+			),
+		}
+	}
+
+	let async_job = {
+		let name = name.clone();
+
+		async move {
+			loop {
+				let job_result = job.run().await;
+
+				match handle_errors(job_result, &mut error_handling, (&name, &job), cx).await {
+					ControlFlow::Continue(()) => (),
+					ControlFlow::Break(res) => {
+						return res.map_err(fold_task_errors);
+					}
+				}
+			}
+		}
+	};
+
+	// tokio task
+	let async_task = {
+		let name = name.clone();
+
+		async move {
+			loop {
+				select! {
+					res = async_job => {
+						return res;
+					}
+					_ = shutdown_rx.changed() => {
+						tracing::info!("Job {name} signaled to shutdown...");
+						return Ok(());
+					}
+				}
+			}
+		}
+	}
+	.instrument(tracing::info_span!("job", name = %name));
+
+	(name, tokio::spawn(async_task).await)
+}
+
+/// ControlFlow::Continue -> continue running the job
+/// ControlFlow::Break -> stop running the job with a result
+#[tracing::instrument(level = "debug", skip(job_name, job, cx))]
 async fn handle_errors(
 	results: Result<(), Vec<Error>>,
 	stradegy: &mut ErrorHandling,
 	(job_name, job): (&JobName, &Job),
 	cx: Context,
-) -> ControlFlow<Result<()>> {
+) -> ControlFlow<Result<(), Vec<Error>>> {
 	let Err(errors) = results else {
 		return ControlFlow::Break(Ok(()));
 	};
 
 	match stradegy {
-		ErrorHandling::Forward => (),
+		ErrorHandling::Forward => {
+			tracing::trace!("Forwarding errors");
+
+			ControlFlow::Break(Err(errors))
+		}
 		ErrorHandling::LogAndIgnore => {
 			for error in &errors {
 				tracing::error!("{}", error.display_chain());
 			}
 
-			return ControlFlow::Continue(());
+			ControlFlow::Continue(())
 		}
-		ErrorHandling::Sleep {
-			max_retries,
-			err_count,
-			last_error,
-		} => {
-			if let Some(last_error_instant) = last_error {
-				if let Some(refresh_time) = &job.refresh_time {
-					// if time since last error is 2 times longer than the refresh duration, than the error count can safely be reset
-					// since there hasn't been any errors for a little while
-					// TODO: maybe figure out a more optimal time interval than just 2 times longer than the refresh timer
+		ErrorHandling::Sleep { prev_errors } => {
+			match handle_errors_sleep(
+				&errors,
+				prev_errors,
+				job_name,
+				job.refresh_time.as_ref(),
+				cx,
+			)
+			.await
+			{
+				ControlFlow::Continue(()) => ControlFlow::Continue(()),
+				ControlFlow::Break(()) => ControlFlow::Break(Err(errors)),
+			}
+		}
+	}
+}
 
-					match refresh_time {
-						TimePoint::Duration(dur) => {
-							if last_error_instant.elapsed() > (*dur * 2) {
-								*err_count = 0;
-								*last_error = None;
-							}
-						}
-						// once a day
-						TimePoint::Time(_) => {
-							const TWO_DAYS: Duration = Duration::from_secs(
-								2 /* days */ * 24 /* hours a day */ * 60 /* mins an hour */ * 60, /* secs a min */
-							);
-
-							if last_error_instant.elapsed() > TWO_DAYS {
-								*err_count = 0;
-								*last_error = None;
-							}
-						}
-					}
+// count errors and sleep exponentially
+async fn handle_errors_sleep(
+	errors: &[Error],
+	prev_errors: &mut PrevErrors,
+	job_name: &JobName,
+	job_refresh_time: Option<&TimePoint>,
+	cx: Context,
+) -> ControlFlow<()> {
+	// if time since last error is 2 times longer than the refresh duration, than the error count can safely be reset
+	// since there hasn't been any errors for a little while
+	// TODO: maybe figure out a more optimal time interval than just 2 times longer than the refresh timer
+	if let Some((last_error, refresh_time)) = prev_errors.last_error().zip(job_refresh_time) {
+		match refresh_time {
+			TimePoint::Duration(dur) => {
+				if last_error.elapsed() > (*dur * 2) {
+					prev_errors.reset();
 				}
 			}
+			// once a day
+			TimePoint::Time(_) => {
+				const TWO_DAYS: Duration = Duration::from_secs(
+					2 /* days */ * 24 /* hours a day */ * 60 /* mins an hour */ * 60, /* secs a min */
+				);
 
-			for err in errors {
-				if err_count == max_retries {
-					return ControlFlow::Break(Err(err.into()));
+				if last_error.elapsed() > TWO_DAYS {
+					prev_errors.reset();
 				}
-
-				if let Some(network_err) = err.is_connection_error() {
-					tracing::warn!("Network error: {}", network_err.display_chain());
-				} else {
-					if let Error::Transform(transform_err) = &err {
-						if let Err(e) = settings::log::log_transform_err(transform_err, job_name) {
-							tracing::error!("Error logging transform error: {e:?}");
-						}
-					}
-
-					let err_msg = format!(
-						"Error #{} out of {} max allowed:\n{}",
-						*err_count + 1, // +1 cause we are counting from 0 but it'd be strange to show "Error (0 out of 255)" to users
-						*max_retries,
-						err.display_chain()
-					);
-					tracing::error!("{}", err_msg);
-
-					// TODO: make this a context switch
-					// production error reporting
-					if !cfg!(debug_assertions) {
-						if let Err(e) = report_error(job_name, &err_msg, cx).await {
-							tracing::error!("Unable to send error report to the admin: {e:?}",);
-						}
-					}
-				}
-
-				// sleep in exponention amount of minutes, begginning with 2^0 = 1 minute
-				let sleep_dur = 2u64.saturating_pow(*err_count);
-				tracing::info!("Pausing job {job_name} for {sleep_dur}m");
-
-				*err_count += 1;
-				sleep(Duration::from_secs(sleep_dur * 60 /* secs in a min */)).await;
 			}
-
-			return ControlFlow::Continue(());
 		}
 	}
 
-	// no point in making errors mutable for the duration of the whole functions if it's needed just down here
-	let mut errors = errors;
+	// log and filter out network connection errors.
+	// they shouldn't be counted against the max error limit because they are ~usually~ temporary and not critical
+	let errors_without_net = errors.iter().filter(|e| {
+		e.is_connection_error()
+			.tap_some(|net_err| {
+				tracing::warn!("Network error: {}", net_err.display_chain());
+			})
+			.is_none()
+	});
 
-	// for acc_report.error(err). I believe this way it is clearer what the fold does
-	#[allow(clippy::redundant_closure_for_method_calls)]
-	let full_report = match errors.len() {
-		0 => unreachable!(),
-		1 => Report::from(errors.remove(0)),
-		i => errors.into_iter().fold(
-			eyre!("{i} tasks have finished with an error"),
-			|acc_report, err| acc_report.error(err),
-		),
-	};
+	if errors_without_net.clone().count() > 0 {
+		// max error limit reached
+		if prev_errors.push() {
+			tracing::warn!(
+				"Maximum error limit reached ({max} out of {max}) for job {job_name}. Stopping retrying...",
+				max = prev_errors.max_retries
+			);
+			return ControlFlow::Break(());
+		}
 
-	ControlFlow::Break(Err(full_report))
+		let mut err_msg = format!(
+			"Job {job_name} finished {job_err_count} times in an error (out of {max} max allowed)",
+			job_err_count = prev_errors.count(),
+			max = prev_errors.max_retries,
+		);
+
+		// log and report all other errors (except for network errors up above)
+		for (i, err) in errors_without_net.enumerate() {
+			if let Error::Transform(transform_err) = &err {
+				if let Err(e) = settings::log::log_transform_err(transform_err, job_name) {
+					tracing::error!("Error logging transform error: {e:?}");
+				}
+			}
+
+			err_msg += &format!(
+				"\nError #{err_num}:\n{e}\n",
+				err_num = i + 1,
+				e = err.display_chain()
+			);
+		}
+
+		tracing::error!("{}", err_msg);
+
+		// TODO: make this a context switch
+		// production error reporting
+		if !cfg!(debug_assertions) {
+			if let Err(e) = report_error(job_name, &err_msg, cx).await {
+				tracing::error!("Unable to send error report to the admin: {e:?}",);
+			}
+		}
+	}
+
+	// sleep in exponentially increasing amount of minutes, beginning with 2^0 = 1 minute.
+	// subtract 1 because prev_errors.count() is already set to 1 (because the first error has already happened)
+	// but we want to sleep beginning with ^0, not ^1
+	debug_assert!(prev_errors.count().checked_sub(1).is_some());
+	let sleep_dur = 2u64.saturating_pow(prev_errors.count() - 1);
+
+	tracing::info!("Pausing job {job_name} for {sleep_dur}m");
+	sleep(Duration::from_secs(sleep_dur * 60 /* secs in a min */)).await;
+
+	ControlFlow::Continue(())
 }
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
@@ -623,12 +657,4 @@ async fn report_error(job_name: &str, err: &str, context: Context) -> Result<()>
 		.map_err(fetcher_core::error::Error::Sink)?;
 
 	Ok(())
-}
-
-async fn flatten_task_result<T, E>(h: JoinHandle<Result<T, E>>) -> Result<T, E> {
-	match h.await {
-		Ok(Ok(res)) => Ok(res),
-		Ok(Err(err)) => Err(err),
-		e => e.expect("Thread panicked"),
-	}
 }

@@ -38,7 +38,7 @@ pub fn get(
 			Ok(EntryToMsgMap::new(TruncatingFileWriter::new(path)))
 		}
 		Err(e) => {
-			tracing::debug!("Read filter save file doesn't exist or is inaccessible: {e}");
+			tracing::debug!("Entry to message save file doesn't exist or is inaccessible: {e}");
 
 			Ok(EntryToMsgMap::new(TruncatingFileWriter::new(path)))
 		}

@@ -132,7 +132,7 @@ pub fn get_all_from<'a>(
 						if job.tasks.is_empty() {
 							// TODO: list task filter and all available tasks (from task_name_map)
 							tracing::warn!(
-								"Asked to run job \"{job_name}\" but no tasks matched the task filter"
+								"Asked to run job {job_name} but no tasks matched the task filter"
 							);
 							return None;
 						}
@@ -159,7 +159,7 @@ pub fn get(path: &Path, name: &JobName, cx: Context) -> Result<Option<(Job, Opti
 			let tmpl = settings::config::templates::find(&tmpl_name, cx)?
 				.ok_or_else(|| eyre!("Template \"{tmpl_name}\" not found"))?;
 
-			tracing::debug!("Using template: {:?}", tmpl.path);
+			tracing::trace!("Using template: {:?} at {:?}", tmpl.name, tmpl.path);
 
 			full_conf = full_conf.merge(Yaml::string(&tmpl.contents));
 		}
