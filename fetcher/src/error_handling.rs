@@ -6,6 +6,10 @@
 
 use std::time::Instant;
 
+/// With the default `2^err_num` mins sleeping stradegy, this will sleep for 5.6 days
+/// which is more than enough to be sure that the job is broken and should just be stopped
+pub const DEFAULT_MAX_ERROR_LIMIT: u32 = 13;
+
 #[derive(Clone, Debug)]
 pub enum ErrorHandling {
 	Forward,

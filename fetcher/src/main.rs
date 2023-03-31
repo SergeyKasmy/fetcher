@@ -16,7 +16,7 @@ pub mod settings;
 
 use crate::{
 	args::{Args, Setting},
-	error_handling::{ErrorHandling, PrevErrors},
+	error_handling::{ErrorHandling, PrevErrors, DEFAULT_MAX_ERROR_LIMIT},
 	extentions::{ErrorChainExt, SliceDisplayExt},
 	settings::{
 		config::jobs::filter::JobFilter, context::Context as OwnedContext,
@@ -294,7 +294,7 @@ async fn run_command(run_args: args::Run, cx: Context) -> Result<()> {
 		ErrorHandling::Forward
 	} else {
 		ErrorHandling::Sleep {
-			prev_errors: PrevErrors::new(15), // TODO: make a const, pls no magic numbers
+			prev_errors: PrevErrors::new(DEFAULT_MAX_ERROR_LIMIT),
 		}
 	};
 
