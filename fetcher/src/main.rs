@@ -625,8 +625,7 @@ async fn handle_errors_sleep(
 	// sleep in exponentially increasing amount of minutes, beginning with 2^0 = 1 minute.
 	// subtract 1 because prev_errors.count() is already set to 1 (because the first error has already happened)
 	// but we want to sleep beginning with ^0, not ^1
-	debug_assert!(prev_errors.count().checked_sub(1).is_some());
-	let sleep_dur = 2u64.saturating_pow(prev_errors.count() - 1);
+	let sleep_dur = 2u64.saturating_pow(prev_errors.count().saturating_sub(1));
 
 	tracing::info!("Pausing job {job_name} for {sleep_dur}m");
 	sleep(Duration::from_secs(sleep_dur * 60 /* secs in a min */)).await;

@@ -147,7 +147,7 @@ pub fn get_all_from<'a>(
 
 #[tracing::instrument(skip(cx))]
 pub fn get(path: &Path, name: &JobName, cx: Context) -> Result<Option<(Job, Option<TaskNameMap>)>> {
-	tracing::trace!("Parsing a task from file");
+	tracing::trace!("Parsing a job from file");
 
 	let TemplatesField { templates } = Figment::new().merge(Yaml::file(path)).extract()?;
 

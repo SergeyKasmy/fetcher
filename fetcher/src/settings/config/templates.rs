@@ -7,7 +7,7 @@
 use super::CONFIG_FILE_EXT;
 use crate::settings::context::StaticContext as Context;
 
-use color_eyre::Result;
+use color_eyre::{eyre::eyre, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -43,9 +43,18 @@ pub fn find(name: &str, context: Context) -> Result<Option<Template>> {
 pub fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>> {
 	tracing::trace!("Searching for a template {name:?} in {templates_path:?}");
 	let path = templates_path.join(name).with_extension(CONFIG_FILE_EXT);
-	if !path.is_file() {
-		tracing::debug!("{path:?} is not a file");
+
+	if !path.exists() {
+		tracing::trace!("{path:?} doesn't exist");
 		return Ok(None);
+	}
+
+	if !path.is_file() {
+		// tracing::trace!("{path:?} exists but is not a file");
+		return Err(eyre!(
+			"Template \"{name}\" exists at {} but is not a file",
+			path.display()
+		));
 	}
 
 	let contents = fs::read_to_string(&path)?;
