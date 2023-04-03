@@ -5,6 +5,7 @@
  */
 
 pub mod contains;
+pub mod decode_html;
 pub mod extract;
 pub mod html;
 pub mod import;
@@ -18,9 +19,9 @@ pub mod trim;
 pub mod use_as;
 
 use self::{
-	contains::Contains, extract::Extract, html::Html, import::Import, json::Json,
-	remove_html::RemoveHtml, replace::Replace, set::Set, shorten::Shorten, take::Take, trim::Trim,
-	use_as::Use,
+	contains::Contains, decode_html::DecodeHtml, extract::Extract, html::Html, import::Import,
+	json::Json, remove_html::RemoveHtml, replace::Replace, set::Set, shorten::Shorten, take::Take,
+	trim::Trim, use_as::Use,
 };
 use super::{external_data::ProvideExternalData, sink::Sink};
 use crate::Error;
@@ -63,6 +64,7 @@ pub enum Action {
 	Replace(Replace),
 	Extract(Extract),
 	RemoveHtml(RemoveHtml),
+	DecodeHtml(DecodeHtml),
 
 	// other
 	Sink(Sink),
@@ -135,6 +137,7 @@ impl Action {
 			Action::Replace(x) => transform!(x.parse()?),
 			Action::Extract(x) => transform!(x.parse()?),
 			Action::RemoveHtml(x) => x.parse()?,
+			Action::DecodeHtml(x) => x.parse(),
 
 			// other
 			Action::Sink(x) => vec![CAction::Sink(x.parse(external)?)],

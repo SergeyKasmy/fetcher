@@ -10,6 +10,7 @@
 //! [Message]: crate::sink::message::Message
 
 pub mod caps;
+pub mod decode_html;
 pub mod extract;
 pub mod replace;
 pub mod set;
