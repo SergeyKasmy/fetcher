@@ -97,6 +97,7 @@ fn set_up_logging() -> Result<()> {
 
 #[tokio::main]
 async fn async_main() -> Result<()> {
+	// TODO: move these to the actual main and just make async_main take (args: Args, version: String)?
 	let args: Args = argh::from_env();
 	let version = version();
 
@@ -105,7 +106,7 @@ async fn async_main() -> Result<()> {
 		return Ok(());
 	}
 
-	let cx = create_contenxt(args.data_path, args.config_path, args.log_path)?;
+	let cx = create_context(args.data_path, args.config_path, args.log_path)?;
 	tracing::info!("Running fetcher {version}");
 
 	match args.subcommand {
@@ -187,7 +188,7 @@ async fn async_main() -> Result<()> {
 }
 
 /// Override default path with a custom one if it is Some
-fn create_contenxt(
+fn create_context(
 	data_path: Option<PathBuf>,
 	config_path: Option<PathBuf>,
 	log_path: Option<PathBuf>,
