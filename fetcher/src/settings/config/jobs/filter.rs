@@ -14,20 +14,18 @@ pub struct JobFilter {
 	pub task: Option<TaskName>,
 }
 
-// TODO: compare in lower case
 impl JobFilter {
 	#[must_use]
 	pub fn job_matches(&self, job_name: &JobName) -> bool {
-		&self.job == job_name
+		self.job.to_ascii_lowercase() == job_name.to_ascii_lowercase()
 	}
 
 	#[must_use]
 	pub fn task_matches(&self, job_name: &JobName, task_name: &TaskName) -> bool {
 		&self.job == job_name
-			&& self
-				.task
-				.as_ref()
-				.map_or(true, |task_filter| task_filter == task_name)
+			&& self.task.as_ref().map_or(true, |task_filter| {
+				task_filter.to_ascii_lowercase() == task_name.to_ascii_lowercase()
+			})
 	}
 }
 
