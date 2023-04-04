@@ -5,7 +5,7 @@
  */
 
 use color_eyre::{eyre::eyre, Report};
-use fetcher_config::jobs::{JobName, TaskName};
+use fetcher_config::jobs::named::{JobName, TaskName};
 use std::str::FromStr;
 
 #[derive(Debug)]

@@ -4,7 +4,10 @@
  * file, you can obtain one at https://mozilla.org/mpl/2.0/.
  */
 
-use super::{read_filter::Kind as ReadFilterKind, JobName, TaskName};
+use super::{
+	named::{JobName, TaskName},
+	read_filter::Kind as ReadFilterKind,
+};
 use fetcher_core::{
 	self as fcore, read_filter::ReadFilter as CReadFilter, task::entry_to_msg_map::EntryToMsgMap,
 	utils::DisplayDebug,

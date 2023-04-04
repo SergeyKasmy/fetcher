@@ -23,7 +23,7 @@ use crate::{
 		context::StaticContext as Context,
 	},
 };
-use fetcher_config::jobs::JobName;
+use fetcher_config::jobs::named::JobName;
 use fetcher_core::{
 	action::Action,
 	error::Error,

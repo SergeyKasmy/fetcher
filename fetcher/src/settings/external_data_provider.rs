@@ -7,8 +7,8 @@
 use super::{context::StaticContext, data};
 use fetcher_config::jobs::{
 	external_data::{ExternalDataResult, ProvideExternalData},
+	named::{JobName, TaskName},
 	read_filter::Kind as ReadFilterKind,
-	JobName, TaskName,
 };
 use fetcher_core::{auth, read_filter::ReadFilter, task::entry_to_msg_map::EntryToMsgMap};
 

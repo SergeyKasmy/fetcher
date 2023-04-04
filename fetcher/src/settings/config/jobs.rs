@@ -14,7 +14,10 @@ use crate::{
 	},
 	Jobs,
 };
-use fetcher_config::jobs::{Job as ConfigJob, JobName, TaskNameMap};
+use fetcher_config::jobs::{
+	named::{JobName, TaskNameMap},
+	Job as ConfigJob,
+};
 use fetcher_core::job::Job;
 
 use color_eyre::{eyre::eyre, Result};

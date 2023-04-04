@@ -10,8 +10,13 @@ use std::{collections::HashMap, ops::Not};
 
 use self::timepoint::TimePoint;
 use super::{
-	action::Action, external_data::ProvideExternalData, read_filter, sink::Sink, source::Source,
-	task::Task, JobName, TaskName,
+	action::Action,
+	external_data::ProvideExternalData,
+	named::{JobName, TaskName},
+	read_filter,
+	sink::Sink,
+	source::Source,
+	task::Task,
 };
 use crate::Error;
 use fetcher_core::{job::Job as CJob, utils::OptionExt};
