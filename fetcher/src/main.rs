@@ -23,7 +23,7 @@ use crate::{
 		context::StaticContext as Context,
 	},
 };
-use fetcher_config::jobs::named::JobName;
+use fetcher_config::jobs::named::{JobName, NamedJob};
 use fetcher_core::{
 	action::Action,
 	error::Error,
@@ -46,7 +46,7 @@ use tokio::{
 };
 use tracing::Instrument;
 
-type Jobs = HashMap<JobName, Job>;
+type Jobs = HashMap<JobName, NamedJob>;
 
 fn main() -> Result<()> {
 	set_up_logging()?;
@@ -114,12 +114,7 @@ async fn async_main() -> Result<()> {
 		Some(args::TopLvlSubcommand::Run(run_args)) => run_command(run_args, cx).await,
 		None => run_command(args::Run::default(), cx).await,
 		Some(args::TopLvlSubcommand::RunManual(args::RunManual { job })) => {
-			run_jobs(
-				iter::once(("Manual".to_owned().into(), job.0)),
-				ErrorHandling::Forward,
-				cx,
-			)
-			.await?;
+			run_jobs(iter::once((job.0, job.1)), ErrorHandling::Forward, cx).await?;
 
 			Ok(())
 		}
@@ -140,9 +135,9 @@ async fn async_main() -> Result<()> {
 
 			// just fetch and save read, don't send anything
 			for job in jobs.values_mut() {
-				job.refresh_time = None;
+				job.inner.refresh_time = None;
 
-				for task in &mut job.tasks {
+				for task in &mut job.inner.tasks {
 					task.sink = None;
 				}
 			}
@@ -266,18 +261,19 @@ async fn run_command(run_args: args::Run, cx: Context) -> Result<()> {
 		tracing::trace!("Disabling every job's refresh time");
 
 		for job in jobs.values_mut() {
-			job.refresh_time = None;
+			job.inner.refresh_time = None;
 		}
 	}
 
 	if ignore_read {
 		tracing::trace!("Disabling read filters");
 		for job in jobs.values_mut() {
-			for task in &mut job.tasks {
+			for task in &mut job.inner.tasks {
 				let Some(actions) = task.actions.take() else {
 					continue
 				};
 
+				// TODO: use .retain mb
 				let new_actions = actions
 					.into_iter()
 					.filter(|act| {
@@ -302,7 +298,7 @@ async fn run_command(run_args: args::Run, cx: Context) -> Result<()> {
 		tracing::trace!("Making all jobs dry");
 
 		for job in jobs.values_mut() {
-			for task in &mut job.tasks {
+			for task in &mut job.inner.tasks {
 				// don't save read filtered items to the fs
 				if let Some(source) = &mut task.source {
 					source.set_read_only().await;
@@ -376,7 +372,7 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 
 #[tracing::instrument(level = "trace", skip_all)]
 async fn run_jobs(
-	jobs: impl IntoIterator<Item = (JobName, Job)>,
+	jobs: impl IntoIterator<Item = (JobName, NamedJob)>,
 	error_handling: ErrorHandling,
 	cx: Context,
 ) -> Result<()> {
@@ -384,7 +380,15 @@ async fn run_jobs(
 
 	let jobs = jobs
 		.into_iter()
-		.map(|(name, job)| run_job(name, job, error_handling.clone(), shutdown_rx.clone(), cx))
+		.map(|(name, job)| {
+			run_job(
+				name,
+				job.inner,
+				error_handling.clone(),
+				shutdown_rx.clone(),
+				cx,
+			)
+		})
 		.collect::<FuturesUnordered<_>>();
 
 	let mut errors: Vec<(JobName, Report)> = jobs

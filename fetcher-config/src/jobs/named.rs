@@ -16,8 +16,8 @@ use fetcher_core::job::Job;
 
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct NamedJob {
-	pub name: JobName,
-	pub job: Job,
-	pub task_names: HashMap<usize, TaskName>,
+	pub inner: Job,
+	pub task_names: Option<HashMap<usize, TaskName>>,
 }

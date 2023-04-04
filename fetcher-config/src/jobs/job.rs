@@ -12,7 +12,7 @@ use self::timepoint::TimePoint;
 use super::{
 	action::Action,
 	external_data::ProvideExternalData,
-	named::{JobName, TaskName},
+	named::{JobName, NamedJob, TaskName},
 	read_filter,
 	sink::Sink,
 	source::Source,
@@ -47,16 +47,12 @@ pub struct Job {
 }
 
 impl Job {
-	pub fn parse<D>(
-		mut self,
-		job: &JobName,
-		external: &D,
-	) -> Result<(CJob, Option<HashMap<usize, TaskName>>), Error>
+	pub fn parse<D>(mut self, name: JobName, external: &D) -> Result<(JobName, NamedJob), Error>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
 		match self.tasks.take() {
-			Some(tasks) if !tasks.is_empty() => self.parse_with_tasks_map(job, tasks, external),
+			Some(tasks) if !tasks.is_empty() => self.parse_with_tasks_map(name, tasks, external),
 			// tasks is not set
 			_ => {
 				// copy paste all values from the job to a dummy task, i.e. create a single task with all the values from the job
@@ -69,12 +65,17 @@ impl Job {
 					entry_to_msg_map_enabled: self.entry_to_msg_map_enabled,
 				};
 
+				let job = CJob {
+					tasks: vec![task.parse(&name, None, external)?],
+					refresh_time: self.refresh.try_map(TimePoint::parse)?,
+				};
+
 				Ok((
-					CJob {
-						tasks: vec![task.parse(job, None, external)?],
-						refresh_time: self.refresh.try_map(TimePoint::parse)?,
+					name,
+					NamedJob {
+						inner: job,
+						task_names: None,
 					},
-					None,
 				))
 			}
 		}
@@ -83,14 +84,14 @@ impl Job {
 	/// ignores self.tasks and uses tasks parameter instead
 	fn parse_with_tasks_map<D>(
 		self,
-		job: &JobName,
+		name: JobName,
 		mut tasks: HashMap<TaskName, Task>,
 		external: &D,
-	) -> Result<(CJob, Option<HashMap<usize, TaskName>>), Error>
+	) -> Result<(JobName, NamedJob), Error>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
-		tracing::trace!("Parsing job {job:?} with tasks {tasks:#?}");
+		tracing::trace!("Parsing job {name:?} with tasks {tasks:#?}");
 
 		// append values from the job if they are not present in the tasks
 		for task in tasks.values_mut() {
@@ -131,15 +132,19 @@ impl Job {
 		let single_task = false; // remove when above is fixed
 
 		let tasks_and_task_name_map_iter =
-			tasks.into_iter().enumerate().map(|(id, (name, task))| {
-				let task = task.parse(job, single_task.not().then_some(&name), external)?;
+			tasks
+				.into_iter()
+				.enumerate()
+				.map(|(id, (task_name, task))| {
+					let task =
+						task.parse(&name, single_task.not().then_some(&task_name), external)?;
 
-				Ok::<_, Error>((task, (id, name)))
-			});
+					Ok::<_, Error>((task, (id, task_name)))
+				});
 
 		// clippy false positive for iter.unzip()
 		#[allow(clippy::redundant_closure_for_method_calls)]
-		let (tasks, task_name_map): (Vec<_>, HashMap<usize, TaskName>) =
+		let (tasks, task_names): (Vec<_>, HashMap<usize, TaskName>) =
 			itertools::process_results(tasks_and_task_name_map_iter, |iter| iter.unzip())?;
 
 		let job = CJob {
@@ -147,6 +152,12 @@ impl Job {
 			refresh_time: self.refresh.try_map(TimePoint::parse)?,
 		};
 
-		Ok((job, Some(task_name_map)))
+		Ok((
+			name,
+			NamedJob {
+				inner: job,
+				task_names: Some(task_names),
+			},
+		))
 	}
 }
