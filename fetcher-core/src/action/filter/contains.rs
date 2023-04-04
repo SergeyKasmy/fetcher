@@ -14,7 +14,7 @@ use super::Filter;
 use crate::{action::transform::field::Field, entry::Entry, error::BadRegexError};
 
 /// Filter out all entries whose field doesn't match the regular expression
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Contains {
 	/// The regular expression to match
 	pub re: Regex,

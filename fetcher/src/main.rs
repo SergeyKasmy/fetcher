@@ -25,6 +25,7 @@ use crate::{
 };
 use fetcher_config::jobs::JobName;
 use fetcher_core::{
+	action::Action,
 	error::Error,
 	job::{timepoint::TimePoint, Job},
 	sink::{Sink, Stdout},
@@ -239,6 +240,7 @@ async fn run_command(run_args: args::Run, cx: Context) -> Result<()> {
 
 	let args::Run {
 		once,
+		no_skip_read: ignore_read,
 		dry_run,
 		run_filter,
 	} = run_args;
@@ -260,6 +262,42 @@ async fn run_command(run_args: args::Run, cx: Context) -> Result<()> {
 		return Ok(());
 	};
 
+	if once {
+		tracing::trace!("Disabling every job's refresh time");
+
+		for job in jobs.values_mut() {
+			job.refresh_time = None;
+		}
+	}
+
+	if ignore_read {
+		tracing::trace!("Disabling read filters");
+		for job in jobs.values_mut() {
+			for task in &mut job.tasks {
+				let Some(actions) = task.actions.take() else {
+					continue
+				};
+
+				let new_actions = actions
+					.into_iter()
+					.filter(|act| {
+						if let Action::Filter(filter) = &act {
+							if filter.is_readfilter() {
+								return false;
+							}
+						}
+
+						true
+					})
+					.collect::<Vec<_>>();
+
+				if !new_actions.is_empty() {
+					task.actions = Some(new_actions);
+				}
+			}
+		}
+	}
+
 	if dry_run {
 		tracing::trace!("Making all jobs dry");
 
@@ -280,14 +318,6 @@ async fn run_command(run_args: args::Run, cx: Context) -> Result<()> {
 					entry_to_msg_map.external_save = None;
 				}
 			}
-		}
-	}
-
-	if once {
-		tracing::trace!("Disabling every job's refresh time");
-
-		for job in jobs.values_mut() {
-			job.refresh_time = None;
 		}
 	}
 

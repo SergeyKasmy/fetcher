@@ -33,14 +33,13 @@ impl FromStr for JobFilter {
 	type Err = Report;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s.split(':').count() {
+		let mut splits = s.split(':');
+		match splits.clone().count() {
 			1 => Ok(Self {
 				job: s.to_owned().into(),
 				task: None,
 			}),
 			2 => {
-				let mut splits = s.split(':');
-
 				let job = splits
 					.next()
 					.expect("should always exist since split count is 2, i.e. before and after")

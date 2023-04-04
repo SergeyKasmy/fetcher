@@ -71,4 +71,8 @@ where
 	async fn filter(&self, entries: &mut Vec<Entry>) {
 		self.rf.filter(entries).await;
 	}
+
+	fn is_readfilter(&self) -> bool {
+		true
+	}
 }

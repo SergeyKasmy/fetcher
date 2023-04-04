@@ -87,6 +87,10 @@ impl Filter for Newer {
 			}
 		}
 	}
+
+	fn is_readfilter(&self) -> bool {
+		true
+	}
 }
 
 impl Default for Newer {

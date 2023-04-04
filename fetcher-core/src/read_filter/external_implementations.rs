@@ -55,6 +55,10 @@ pub mod tokio_rwlock {
 		async fn filter(&self, entries: &mut Vec<Entry>) {
 			self.read().await.filter(entries).await;
 		}
+
+		fn is_readfilter(&self) -> bool {
+			true
+		}
 	}
 }
 
@@ -85,6 +89,10 @@ pub mod boks {
 	impl Filter for Box<dyn ReadFilter> {
 		async fn filter(&self, entries: &mut Vec<Entry>) {
 			(**self).filter(entries).await;
+		}
+
+		fn is_readfilter(&self) -> bool {
+			true
 		}
 	}
 }

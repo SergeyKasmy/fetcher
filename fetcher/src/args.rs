@@ -10,7 +10,6 @@ use argh::FromArgs;
 use color_eyre::Report;
 use std::{path::PathBuf, str::FromStr};
 
-// TODO: add switch to ignore read filter save data
 /// Automatic news fetching and parsing
 #[derive(FromArgs, Debug)]
 pub struct Args {
@@ -52,6 +51,10 @@ pub struct Run {
 	/// run once (instead of looping forever)
 	#[argh(switch)]
 	pub once: bool,
+
+	/// don't filter out already read entries
+	#[argh(switch)]
+	pub no_skip_read: bool,
 
 	/// dry run, make no permanent changes to the system
 	#[argh(switch)]

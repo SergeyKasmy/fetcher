@@ -99,6 +99,10 @@ impl Filter for NotPresent {
 		tracing::debug!("Removed {removed_elems} already read entries");
 		tracing::trace!("Unread entries remaining: {entries:#?}");
 	}
+
+	fn is_readfilter(&self) -> bool {
+		true
+	}
 }
 
 impl FromIterator<(EntryId, DateTime<Utc>)> for NotPresent {
