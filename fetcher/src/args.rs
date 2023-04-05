@@ -60,7 +60,7 @@ pub struct Run {
 	#[argh(switch)]
 	pub dry_run: bool,
 
-	/// run only these jobs and tasks formatted as "job[:task]..."
+	/// run only these jobs and tasks formatted as "job\[:task\]..."
 	#[argh(positional)]
 	pub run_filter: Vec<String>,
 }
@@ -78,7 +78,7 @@ pub struct RunManual {
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "mark-old-as-read")]
 pub struct MarkOldAsRead {
-	/// mark only these jobs and tasks as read, formatted as "job[:task]..."
+	/// mark only these jobs and tasks as read, formatted as "job\[:task\]..."
 	#[argh(positional)]
 	pub run_filter: Vec<String>,
 }

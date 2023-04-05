@@ -19,10 +19,10 @@ pub const HTML_TAG_RE: &str = "<[^>]*>";
 #[derive(Debug)]
 pub struct Replace {
 	/// The regular expression to match
-	re: Regex,
+	pub re: Regex,
 
 	/// The string to replace the matched part with
-	with: String,
+	pub with: String,
 }
 
 impl Replace {

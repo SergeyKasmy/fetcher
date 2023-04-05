@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module provides [`AlwaysErrors`] source that always returns an error. Used for debug purposes
+
 use async_trait::async_trait;
 
 use super::{error::SourceError, Fetch, Source};

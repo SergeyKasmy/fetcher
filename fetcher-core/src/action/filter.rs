@@ -22,6 +22,7 @@ pub trait Filter: Debug + Send + Sync {
 	/// Filter out some entries out of the `entries` vector
 	async fn filter(&self, entries: &mut Vec<Entry>);
 
+	/// Returns true if this filter is a [`ReadFilter`](crate::read_filter::ReadFilter)
 	fn is_readfilter(&self) -> bool {
 		false
 	}

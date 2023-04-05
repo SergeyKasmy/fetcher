@@ -37,7 +37,6 @@ impl Extract {
 	///
 	/// # Errors
 	/// * if the regex is invalid
-	/// * if the regex doesn't contains capture group <[`CAPTURE_GROUP_NAME`]>
 	pub fn new(re: &str, passthrough_if_not_found: bool) -> Result<Self, ExtractError> {
 		let re = Regex::new(re).map_err(BadRegexError)?;
 
