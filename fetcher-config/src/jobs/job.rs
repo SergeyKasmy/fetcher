@@ -12,7 +12,7 @@ use self::timepoint::TimePoint;
 use super::{
 	action::Action,
 	external_data::ProvideExternalData,
-	named::{JobName, NamedJob, TaskName},
+	named::{JobName, JobWithTaskNames, TaskName},
 	read_filter,
 	sink::Sink,
 	source::Source,
@@ -47,7 +47,11 @@ pub struct Job {
 }
 
 impl Job {
-	pub fn parse<D>(mut self, name: JobName, external: &D) -> Result<(JobName, NamedJob), Error>
+	pub fn parse<D>(
+		mut self,
+		name: JobName,
+		external: &D,
+	) -> Result<(JobName, JobWithTaskNames), Error>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
@@ -72,7 +76,7 @@ impl Job {
 
 				Ok((
 					name,
-					NamedJob {
+					JobWithTaskNames {
 						inner: job,
 						task_names: None,
 					},
@@ -87,7 +91,7 @@ impl Job {
 		name: JobName,
 		mut tasks: HashMap<TaskName, Task>,
 		external: &D,
-	) -> Result<(JobName, NamedJob), Error>
+	) -> Result<(JobName, JobWithTaskNames), Error>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
@@ -154,7 +158,7 @@ impl Job {
 
 		Ok((
 			name,
-			NamedJob {
+			JobWithTaskNames {
 				inner: job,
 				task_names: Some(task_names),
 			},

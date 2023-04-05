@@ -17,13 +17,13 @@ pub mod settings;
 use crate::{
 	args::{Args, Setting},
 	error_handling::{ErrorHandling, PrevErrors, DEFAULT_MAX_ERROR_LIMIT},
-	extentions::{ErrorChainExt, SliceDisplayExt},
+	extentions::{slice_display::job_display::JobDisplay, ErrorChainExt, SliceDisplayExt},
 	settings::{
 		config::jobs::filter::JobFilter, context::Context as OwnedContext,
 		context::StaticContext as Context,
 	},
 };
-use fetcher_config::jobs::named::{JobName, NamedJob};
+use fetcher_config::jobs::named::{JobName, JobWithTaskNames};
 use fetcher_core::{
 	action::Action,
 	error::Error,
@@ -46,7 +46,7 @@ use tokio::{
 };
 use tracing::Instrument;
 
-type Jobs = HashMap<JobName, NamedJob>;
+type Jobs = HashMap<JobName, JobWithTaskNames>;
 
 fn main() -> Result<()> {
 	set_up_logging()?;
@@ -340,7 +340,11 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 			tracing::info!("No enabled jobs found for the provided query");
 
 			if let Ok(all_jobs) = settings::config::jobs::get_all(None, cx) {
-				tracing::info!("All available enabled jobs: {}", all_jobs.keys().display());
+				// tracing::info!("All available enabled jobs: {}", all_jobs.keys().display());
+				tracing::info!(
+					"All available enabled jobs: {}",
+					all_jobs.iter().map(JobDisplay).display()
+				);
 			} else {
 				tracing::warn!("Can't list all available jobs because some jobs have invalid format. Try running in \"verify\" mode and correcting them");
 			}
@@ -351,7 +355,7 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 		tracing::info!(
 			"Found {} enabled jobs for the provided query: {}",
 			jobs.len(),
-			jobs.keys().display()
+			jobs.iter().map(JobDisplay).display()
 		);
 	} else {
 		if jobs.is_empty() {
@@ -362,7 +366,7 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 		tracing::info!(
 			"Found {} enabled jobs: {}",
 			jobs.len(),
-			jobs.keys().display()
+			jobs.iter().map(JobDisplay).display()
 		);
 	}
 
@@ -372,7 +376,7 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 
 #[tracing::instrument(level = "trace", skip_all)]
 async fn run_jobs(
-	jobs: impl IntoIterator<Item = (JobName, NamedJob)>,
+	jobs: impl IntoIterator<Item = (JobName, JobWithTaskNames)>,
 	error_handling: ErrorHandling,
 	cx: Context,
 ) -> Result<()> {

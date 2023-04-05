@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_config::jobs::named::{JobName, NamedJob};
+use fetcher_config::jobs::named::{JobName, JobWithTaskNames};
 
 use argh::FromArgs;
 use color_eyre::Report;
@@ -127,7 +127,7 @@ impl FromStr for Setting {
 
 /// Wrapper around Job foreign struct to implement `FromStr` from valid job JSON
 #[derive(Debug)]
-pub struct JsonJob(pub JobName, pub NamedJob);
+pub struct JsonJob(pub JobName, pub JobWithTaskNames);
 
 impl FromStr for JsonJob {
 	type Err = Report;

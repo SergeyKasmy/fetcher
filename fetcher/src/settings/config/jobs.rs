@@ -15,7 +15,7 @@ use crate::{
 	Jobs,
 };
 use fetcher_config::jobs::{
-	named::{JobName, NamedJob},
+	named::{JobName, JobWithTaskNames},
 	Job as ConfigJob,
 };
 
@@ -51,7 +51,7 @@ pub fn get_all_from<'a>(
 	cfg_dir: &'a Path,
 	filter: Option<&'a [JobFilter]>,
 	cx: Context,
-) -> impl Iterator<Item = Result<(JobName, NamedJob)>> + 'a {
+) -> impl Iterator<Item = Result<(JobName, JobWithTaskNames)>> + 'a {
 	let jobs_dir = cfg_dir.join(JOBS_DIR_NAME);
 	tracing::trace!("Searching for job configs in {jobs_dir:?}");
 
@@ -149,7 +149,7 @@ pub fn get_all_from<'a>(
 }
 
 #[tracing::instrument(skip(cx))]
-pub fn get(path: &Path, name: JobName, cx: Context) -> Result<Option<(JobName, NamedJob)>> {
+pub fn get(path: &Path, name: JobName, cx: Context) -> Result<Option<(JobName, JobWithTaskNames)>> {
 	tracing::trace!("Parsing a job from file");
 
 	let TemplatesField { templates } = Figment::new().merge(Yaml::file(path)).extract()?;
