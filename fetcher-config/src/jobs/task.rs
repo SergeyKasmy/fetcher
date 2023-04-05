@@ -54,7 +54,7 @@ impl Task {
 				match external.read_filter(job, task_name, expected_rf_type) {
 					ExternalDataResult::Ok(rf) => Some(Arc::new(RwLock::new(rf))),
 					ExternalDataResult::Unavailable => {
-						tracing::warn!("Read filter is unavailable, skipping");
+						tracing::info!("Read filter is unavailable, skipping");
 						None
 					}
 					ExternalDataResult::Err(e) => return Err(e.into()),
@@ -94,7 +94,7 @@ impl Task {
 			match external.entry_to_msg_map(job, task_name) {
 				ExternalDataResult::Ok(v) => Some(v),
 				ExternalDataResult::Unavailable => {
-					tracing::warn!("Entry to message map is unavailable, skipping...");
+					tracing::info!("Entry to message map is unavailable, skipping...");
 					None
 				}
 				ExternalDataResult::Err(e) => return Err(e.into()),

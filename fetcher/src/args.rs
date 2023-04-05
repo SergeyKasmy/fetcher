@@ -4,12 +4,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use either::Either;
-use fetcher_config::jobs::named::{JobName, JobWithTaskNames};
+use crate::settings::{context::StaticContext, external_data_provider::ExternalDataFromDataDir};
+use fetcher_config::jobs::{
+	named::{JobName, JobWithTaskNames},
+	Job as ConfigJob,
+};
 
 use argh::FromArgs;
-use color_eyre::{eyre::eyre, Report};
-use std::{iter, path::PathBuf, str::FromStr};
+use color_eyre::{eyre::eyre, Report, Result};
+use std::{path::PathBuf, str::FromStr};
 
 /// Automatic news fetching and parsing
 #[derive(FromArgs, Debug)]
@@ -128,47 +131,40 @@ impl FromStr for Setting {
 
 /// Wrapper around Job foreign struct to implement `FromStr` from valid job JSON
 #[derive(Debug)]
-pub struct JsonJobs(pub Vec<(JobName, JobWithTaskNames)>);
+pub struct JsonJobs(Vec<(JobName, ConfigJob)>);
 
 impl FromStr for JsonJobs {
 	type Err = Report;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		use fetcher_config::jobs::external_data::ProvideExternalData;
-		use fetcher_core::read_filter::ReadFilter;
-
-		struct EmptyExternalData;
-
-		// TODO: add a way to provide external settings even in manual jobs
-		impl ProvideExternalData for EmptyExternalData {
-			// it's a lie but don't tell anybody...
-			type ReadFilter = Box<dyn ReadFilter>;
-		}
-
 		// HACK: if the input is a JSON array
-		let config_jobs = if s
-			.chars()
-			.next()
-			.ok_or_else(|| eyre!("Manual job JSON is empty"))?
-			== '['
-		{
+		let config_jobs = if s.chars().next().expect("Manual job JSON is empty") == '[' {
 			let v: Vec<fetcher_config::jobs::Job> = serde_json::from_str(s)?;
-			Either::Left(
-				v.into_iter()
-					.enumerate()
-					// use the index as the job name
-					.map(|(idx, job)| ((idx + 1).to_string(), job)),
-			)
+			v.into_iter()
+				.enumerate()
+				// use the index as the job name
+				.map(|(idx, job)| ((idx + 1).to_string().into(), job))
+				.collect()
 		} else {
 			let job: fetcher_config::jobs::Job = serde_json::from_str(s)?;
 			// just use "Manual" as the job name
-			Either::Right(iter::once(("Manual".to_owned(), job)))
+			vec![("Manual".to_owned().into(), job)]
 		};
 
-		let jobs: Result<Vec<_>, _> = config_jobs
-			.map(|(name, job)| job.parse(name.into(), &EmptyExternalData))
-			.collect();
+		Ok(Self(config_jobs))
+	}
+}
 
-		Ok(Self(jobs?))
+impl JsonJobs {
+	pub fn parse(
+		self,
+		cx: StaticContext,
+	) -> Result<impl Iterator<Item = (JobName, JobWithTaskNames)>> {
+		Ok(self
+			.0
+			.into_iter()
+			.map(|(name, config)| config.parse(name, &ExternalDataFromDataDir { cx }))
+			.collect::<Result<Vec<_>, _>>()?
+			.into_iter())
 	}
 }
