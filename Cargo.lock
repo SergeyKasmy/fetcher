@@ -749,6 +749,7 @@ dependencies = [
  "async-trait",
  "color-eyre-attach-report",
  "directories",
+ "either",
  "fetcher-config",
  "fetcher-core",
  "figment",

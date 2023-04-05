@@ -4,11 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use either::Either;
 use fetcher_config::jobs::named::{JobName, JobWithTaskNames};
 
 use argh::FromArgs;
-use color_eyre::Report;
-use std::{path::PathBuf, str::FromStr};
+use color_eyre::{eyre::eyre, Report};
+use std::{iter, path::PathBuf, str::FromStr};
 
 /// Automatic news fetching and parsing
 #[derive(FromArgs, Debug)]
@@ -71,7 +72,7 @@ pub struct Run {
 pub struct RunManual {
 	/// run this job, formatted in JSON
 	#[argh(positional)]
-	pub job: JsonJob,
+	pub jobs: JsonJobs,
 }
 
 /// Load all tasks from the config files and mark all old entries as read
@@ -127,9 +128,9 @@ impl FromStr for Setting {
 
 /// Wrapper around Job foreign struct to implement `FromStr` from valid job JSON
 #[derive(Debug)]
-pub struct JsonJob(pub JobName, pub JobWithTaskNames);
+pub struct JsonJobs(pub Vec<(JobName, JobWithTaskNames)>);
 
-impl FromStr for JsonJob {
+impl FromStr for JsonJobs {
 	type Err = Report;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -144,9 +145,30 @@ impl FromStr for JsonJob {
 			type ReadFilter = Box<dyn ReadFilter>;
 		}
 
-		let config_job: fetcher_config::jobs::Job = serde_json::from_str(s)?;
-		let job = config_job.parse("Manual".to_owned().into(), &EmptyExternalData)?;
+		// HACK: if the input is a JSON array
+		let config_jobs = if s
+			.chars()
+			.next()
+			.ok_or_else(|| eyre!("Manual job JSON is empty"))?
+			== '['
+		{
+			let v: Vec<fetcher_config::jobs::Job> = serde_json::from_str(s)?;
+			Either::Left(
+				v.into_iter()
+					.enumerate()
+					// use the index as the job name
+					.map(|(idx, job)| ((idx + 1).to_string(), job)),
+			)
+		} else {
+			let job: fetcher_config::jobs::Job = serde_json::from_str(s)?;
+			// just use "Manual" as the job name
+			Either::Right(iter::once(("Manual".to_owned(), job)))
+		};
 
-		Ok(Self(job.0, job.1))
+		let jobs: Result<Vec<_>, _> = config_jobs
+			.map(|(name, job)| job.parse(name.into(), &EmptyExternalData))
+			.collect();
+
+		Ok(Self(jobs?))
 	}
 }

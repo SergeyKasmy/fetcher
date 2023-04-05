@@ -36,7 +36,7 @@ use color_eyre::{
 	Report, Result, Section,
 };
 use futures::{stream::FuturesUnordered, StreamExt};
-use std::{collections::HashMap, iter, ops::ControlFlow, path::PathBuf, time::Duration};
+use std::{collections::HashMap, ops::ControlFlow, path::PathBuf, time::Duration};
 use tap::TapOptional;
 use tokio::{
 	select,
@@ -113,8 +113,8 @@ async fn async_main() -> Result<()> {
 	match args.subcommand {
 		Some(args::TopLvlSubcommand::Run(run_args)) => run_command(run_args, cx).await,
 		None => run_command(args::Run::default(), cx).await,
-		Some(args::TopLvlSubcommand::RunManual(args::RunManual { job })) => {
-			run_jobs(iter::once((job.0, job.1)), ErrorHandling::Forward, cx).await?;
+		Some(args::TopLvlSubcommand::RunManual(args::RunManual { jobs })) => {
+			run_jobs(jobs.0.into_iter(), ErrorHandling::Forward, cx).await?;
 
 			Ok(())
 		}
