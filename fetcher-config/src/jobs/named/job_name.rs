@@ -14,6 +14,12 @@ use std::{
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct JobName(pub Arc<str>);
 
+impl JobName {
+	pub fn as_str(&self) -> &str {
+		self
+	}
+}
+
 impl<T: Into<Arc<str>>> From<T> for JobName {
 	fn from(value: T) -> Self {
 		Self(value.into())

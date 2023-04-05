@@ -14,10 +14,10 @@ use tokio::sync::RwLock;
 use super::{
 	action::Action,
 	external_data::{ExternalDataResult, ProvideExternalData},
+	named::{JobName, TaskName},
 	read_filter,
 	sink::Sink,
 	source::Source,
-	JobName, TaskName,
 };
 use crate::Error;
 use fetcher_core::{task::Task as CTask, utils::OptionExt};

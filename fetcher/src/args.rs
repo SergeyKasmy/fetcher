@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::job::Job;
+use fetcher_config::jobs::named::{JobName, JobWithTaskNames};
 
 use argh::FromArgs;
 use color_eyre::Report;
@@ -127,7 +127,7 @@ impl FromStr for Setting {
 
 /// Wrapper around Job foreign struct to implement `FromStr` from valid job JSON
 #[derive(Debug)]
-pub struct JsonJob(pub Job);
+pub struct JsonJob(pub JobName, pub JobWithTaskNames);
 
 impl FromStr for JsonJob {
 	type Err = Report;
@@ -145,8 +145,8 @@ impl FromStr for JsonJob {
 		}
 
 		let config_job: fetcher_config::jobs::Job = serde_json::from_str(s)?;
-		let job = config_job.parse(&"Manual".to_owned().into(), &EmptyExternalData)?;
+		let job = config_job.parse("Manual".to_owned().into(), &EmptyExternalData)?;
 
-		Ok(Self(job.0))
+		Ok(Self(job.0, job.1))
 	}
 }

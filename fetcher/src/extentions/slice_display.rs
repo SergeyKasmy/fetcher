@@ -4,34 +4,40 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub mod job_display;
+
+use itertools::Itertools;
 use std::{
-	borrow::Borrow,
+	cmp::Ord,
 	fmt::{self, Display, Formatter},
 };
 
-pub trait SliceDisplayExt<'a> {
-	fn display(self) -> SliceDisplay<'a>;
+pub trait SliceDisplayExt<T> {
+	fn display(self) -> SliceDisplay<T>;
 }
 
-impl<'a, I, T> SliceDisplayExt<'a> for I
+impl<I, T> SliceDisplayExt<T> for I
 where
-	I: Iterator<Item = &'a T>,
-	T: Borrow<str> + 'a + ?Sized,
+	I: Iterator<Item = T>,
+	T: Display + Ord,
 {
-	fn display(self) -> SliceDisplay<'a> {
-		let mut v = self.map(Borrow::borrow).collect::<Vec<&str>>();
+	fn display(self) -> SliceDisplay<T> {
+		let mut v = self.collect::<Vec<_>>();
 		v.sort_unstable();
 		SliceDisplay(v)
 	}
 }
 
-pub struct SliceDisplay<'a>(Vec<&'a str>);
+pub struct SliceDisplay<T>(Vec<T>);
 
-impl Display for SliceDisplay<'_> {
+impl<T: Display> Display for SliceDisplay<T> {
 	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-		f.write_str("\"")?;
-		f.write_str(&self.0.join("\", \""))?;
-		f.write_str("\"")?;
+		if self.0.is_empty() {
+			return Ok(());
+		}
+
+		f.write_str("\n")?;
+		f.write_str(&self.0.iter().join(",\n"))?;
 
 		Ok(())
 	}

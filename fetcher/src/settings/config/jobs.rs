@@ -14,8 +14,10 @@ use crate::{
 	},
 	Jobs,
 };
-use fetcher_config::jobs::{Job as ConfigJob, JobName, TaskNameMap};
-use fetcher_core::job::Job;
+use fetcher_config::jobs::{
+	named::{JobName, JobWithTaskNames},
+	Job as ConfigJob,
+};
 
 use color_eyre::{eyre::eyre, Result};
 use figment::{
@@ -49,7 +51,7 @@ pub fn get_all_from<'a>(
 	cfg_dir: &'a Path,
 	filter: Option<&'a [JobFilter]>,
 	cx: Context,
-) -> impl Iterator<Item = Result<(JobName, Job)>> + 'a {
+) -> impl Iterator<Item = Result<(JobName, JobWithTaskNames)>> + 'a {
 	let jobs_dir = cfg_dir.join(JOBS_DIR_NAME);
 	tracing::trace!("Searching for job configs in {jobs_dir:?}");
 
@@ -99,14 +101,15 @@ pub fn get_all_from<'a>(
 				}
 			}
 
-			let job = get(file.path(), &job_name, cx)
+			let job = get(file.path(), job_name, cx)
 				.map_err(|e| e.wrap_err(format!("invalid config at: {}", file.path().display())))
 				.transpose()?;
 
-			job.map(|(mut job, task_name_map)| {
+			job.map(|(job_name, mut job)| {
 				if let Some(filter) = filter {
-					if let Some(task_name_map) = &task_name_map {
-						job.tasks = job
+					if let Some(task_name_map) = &job.task_names {
+						job.inner.tasks = job
+							.inner
 							.tasks
 							.into_iter()
 							.enumerate()
@@ -129,7 +132,7 @@ pub fn get_all_from<'a>(
 							})
 							.collect();
 
-						if job.tasks.is_empty() {
+						if job.inner.tasks.is_empty() {
 							// TODO: list task filter and all available tasks (from task_name_map)
 							tracing::warn!(
 								"Asked to run job {job_name} but no tasks matched the task filter"
@@ -146,7 +149,7 @@ pub fn get_all_from<'a>(
 }
 
 #[tracing::instrument(skip(cx))]
-pub fn get(path: &Path, name: &JobName, cx: Context) -> Result<Option<(Job, Option<TaskNameMap>)>> {
+pub fn get(path: &Path, name: JobName, cx: Context) -> Result<Option<(JobName, JobWithTaskNames)>> {
 	tracing::trace!("Parsing a job from file");
 
 	let TemplatesField { templates } = Figment::new().merge(Yaml::file(path)).extract()?;
