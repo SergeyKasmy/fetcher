@@ -13,7 +13,7 @@ use std::collections::HashSet;
 use self::entry_to_msg_map::EntryToMsgMap;
 use crate::{
 	action::Action,
-	entry::Entry,
+	entry::{Entry, EntryId},
 	error::Error,
 	sink::{message::MessageId, Sink},
 	source::Source,
@@ -95,7 +95,7 @@ impl Task {
 					// entries should be sorted newest to oldest but we should send oldest first
 					for entry in entries.iter().rev() {
 						// FIXME: remove clone
-						let msgid = send_entry(
+						let msg_id = send_entry(
 							&**s,
 							self.entry_to_msg_map.as_mut(),
 							self.tag.as_deref(),
@@ -103,19 +103,14 @@ impl Task {
 						)
 						.await?;
 
-						// FIXME: remove clone
-						if let Some(entry_id) = entry.id.clone() {
-							if let Some(mar) = &mut self.source {
-								tracing::debug!("Marking {entry_id:?} as read");
-								mar.mark_as_read(&entry_id).await?;
-							}
-
-							if let Some((msgid, map)) = msgid.zip(self.entry_to_msg_map.as_mut()) {
-								tracing::debug!(
-									"Associating entry {entry_id:?} with message {msgid:?}"
-								);
-								map.insert(entry_id, msgid).await?;
-							}
+						if let Some(entry_id) = entry.id.as_ref() {
+							mark_entry_as_read(
+								entry_id,
+								msg_id,
+								self.source.as_mut(),
+								self.entry_to_msg_map.as_mut(),
+							)
+							.await?;
 						}
 					}
 				}
@@ -158,6 +153,28 @@ async fn send_entry(
 
 	Ok(None)
 }
+
+async fn mark_entry_as_read(
+	entry_id: &EntryId,
+	msg_id: Option<MessageId>,
+	// source: Option<&mut dyn Source>, // TODO: this doesn't work. Why?
+	source: Option<&mut Box<dyn Source>>,
+	entry_to_msg_map: Option<&mut EntryToMsgMap>,
+) -> Result<(), Error> {
+	// FIXME: remove clone
+	if let Some(mar) = source {
+		tracing::debug!("Marking {entry_id:?} as read");
+		mar.mark_as_read(entry_id).await?;
+	}
+
+	if let Some((msgid, map)) = msg_id.zip(entry_to_msg_map) {
+		tracing::debug!("Associating entry {entry_id:?} with message {msgid:?}");
+		map.insert(entry_id.clone(), msgid).await?;
+	}
+
+	Ok(())
+}
+
 fn remove_duplicates(entries: Vec<Entry>) -> Vec<Entry> {
 	let num_og_entries = entries.len();
 
