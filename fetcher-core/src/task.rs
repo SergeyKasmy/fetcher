@@ -166,7 +166,6 @@ async fn mark_entry_as_read(
 	source: Option<&mut Box<dyn Source>>,
 	entry_to_msg_map: Option<&mut EntryToMsgMap>,
 ) -> Result<(), Error> {
-	// FIXME: remove clone
 	if let Some(mar) = source {
 		tracing::debug!("Marking {entry_id:?} as read");
 		mar.mark_as_read(entry_id).await?;

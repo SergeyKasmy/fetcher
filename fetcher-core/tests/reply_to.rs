@@ -3,6 +3,7 @@
 
 use async_trait::async_trait;
 use fetcher_core::{
+	action::Action,
 	entry::{Entry, EntryId},
 	error::Error,
 	read_filter::MarkAsRead,
@@ -49,7 +50,7 @@ impl Source for DummySource {}
 impl Sink for DummySink {
 	async fn send(
 		&self,
-		_message: Message,
+		_message: &Message,
 		reply_to: Option<&MessageId>,
 		_tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
@@ -70,8 +71,7 @@ async fn reply_to() {
 	let mut task = Task {
 		tag: None,
 		source: Some(Box::new(DummySource)),
-		actions: None,
-		sink: Some(Box::new(DummySink)),
+		actions: Some(vec![Action::Sink(Box::new(DummySink))]),
 		entry_to_msg_map: Some(entry_to_msg_map),
 	};
 

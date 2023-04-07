@@ -20,6 +20,7 @@ use self::{
 	contains::Contains, extract::Extract, html::Html, json::Json, remove_html::RemoveHtml,
 	replace::Replace, set::Set, shorten::Shorten, take::Take, trim::Trim, use_as::Use,
 };
+use super::{external_data::ProvideExternalData, sink::Sink};
 use crate::Error;
 use fetcher_core::{
 	action::{
@@ -58,6 +59,8 @@ pub enum Action {
 	Replace(Replace),
 	Extract(Extract),
 	RemoveHtml(RemoveHtml),
+
+	Sink(Sink),
 }
 
 // TODO: add media
@@ -73,9 +76,10 @@ pub enum Field {
 }
 
 impl Action {
-	pub fn parse<RF>(self, rf: Option<RF>) -> Result<Option<Vec<CAction>>, Error>
+	pub fn parse<RF, D>(self, rf: Option<RF>, external: &D) -> Result<Option<Vec<CAction>>, Error>
 	where
 		RF: CReadFilter + 'static,
+		D: ProvideExternalData + ?Sized,
 	{
 		macro_rules! transform {
 			($tr:expr) => {
@@ -121,6 +125,8 @@ impl Action {
 			Action::Replace(x) => transform!(x.parse()?),
 			Action::Extract(x) => transform!(x.parse()?),
 			Action::RemoveHtml(x) => x.parse()?,
+
+			Action::Sink(x) => vec![CAction::Sink(x.parse(external)?)],
 		};
 
 		Ok(Some(act))

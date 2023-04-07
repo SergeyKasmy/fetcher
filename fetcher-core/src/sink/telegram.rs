@@ -118,7 +118,7 @@ impl Telegram {
 						.expect("should always return a valid split at least once since msg char len is > max_char_limit");
 
 				let sent_msg = self
-					.send_media(&media, Some(&media_caption), last_message)
+					.send_media(media, Some(&media_caption), last_message)
 					.await?;
 				last_message = sent_msg.and_then(|v| v.first().map(|m| m.id));
 			}
@@ -337,17 +337,19 @@ impl Telegram {
 	}
 }
 
+type HeadBodyTailMedia<'a> = (
+	Option<String>,
+	Option<String>,
+	Option<String>,
+	Option<&'a [Media]>,
+);
+
 // format and sanitize all message fields. Returns (head, body, tail, media)
 fn process_msg<'a>(
 	msg: &'a Message,
 	tag: Option<&str>,
 	link_location: LinkLocation,
-) -> (
-	Option<String>,
-	Option<String>,
-	Option<String>,
-	Option<&'a [Media]>,
-) {
+) -> HeadBodyTailMedia<'a> {
 	let Message {
 		title,
 		body,

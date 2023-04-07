@@ -14,7 +14,6 @@ use super::{
 	external_data::ProvideExternalData,
 	named::{JobName, JobWithTaskNames, TaskName},
 	read_filter,
-	sink::Sink,
 	source::Source,
 	task::Task,
 };
@@ -35,7 +34,6 @@ pub struct Job {
 	pub source: Option<Source>,
 	#[serde(rename = "process")]
 	pub actions: Option<Vec<Action>>,
-	pub sink: Option<Sink>,
 	pub entry_to_msg_map_enabled: Option<bool>,
 
 	pub tasks: Option<HashMap<TaskName, Task>>,
@@ -65,7 +63,6 @@ impl Job {
 					tag: self.tag,
 					source: self.source,
 					actions: self.actions,
-					sink: self.sink,
 					entry_to_msg_map_enabled: self.entry_to_msg_map_enabled,
 				};
 
@@ -111,10 +108,6 @@ impl Job {
 
 			if task.actions.is_none() {
 				task.actions = self.actions.clone();
-			}
-
-			if task.sink.is_none() {
-				task.sink = self.sink.clone();
 			}
 
 			if task.entry_to_msg_map_enabled.is_none() {
