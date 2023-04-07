@@ -121,11 +121,12 @@ impl Task {
 			(None, None) => None,
 		};
 
+		// FIXME: parse sink as action
 		Ok(CTask {
 			tag,
 			source: self.source.map(|x| x.parse(rf, external)).transpose()?,
 			actions,
-			sink: self.sink.try_map(|x| x.parse(external))?,
+			// sink: self.sink.try_map(|x| x.parse(external))?,
 			entry_to_msg_map,
 		})
 	}

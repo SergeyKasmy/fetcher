@@ -9,6 +9,8 @@
 pub mod filter;
 pub mod transform;
 
+use crate::sink::Sink;
+
 use self::{filter::Filter, transform::Transform};
 
 /// An action that modifies a list of entries in some way
@@ -16,8 +18,12 @@ use self::{filter::Filter, transform::Transform};
 pub enum Action {
 	/// Filter out entries
 	Filter(Box<dyn Filter>),
+
 	/// Transform some entries into one or more new entries
 	Transform(Box<dyn Transform>),
+
+	/// Send entries to the Sink
+	Sink(Box<dyn Sink>),
 }
 
 impl From<Box<dyn Filter>> for Action {
@@ -29,5 +35,11 @@ impl From<Box<dyn Filter>> for Action {
 impl From<Box<dyn Transform>> for Action {
 	fn from(transform: Box<dyn Transform>) -> Self {
 		Action::Transform(transform)
+	}
+}
+
+impl From<Box<dyn Sink>> for Action {
+	fn from(sink: Box<dyn Sink>) -> Self {
+		Action::Sink(sink)
 	}
 }

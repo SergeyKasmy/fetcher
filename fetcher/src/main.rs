@@ -138,7 +138,16 @@ async fn async_main() -> Result<()> {
 				job.inner.refresh_time = None;
 
 				for task in &mut job.inner.tasks {
-					task.sink = None;
+					if let Some(actions) = task.actions.take() {
+						let no_sink_acts = actions
+							.into_iter()
+							.filter(|a| !matches!(a, Action::Sink(_)))
+							.collect::<Vec<_>>();
+
+						if !no_sink_acts.is_empty() {
+							task.actions = Some(no_sink_acts);
+						}
+					}
 				}
 			}
 
@@ -305,8 +314,10 @@ async fn run_command(run_args: args::Run, cx: Context) -> Result<()> {
 				}
 
 				// don't send anything anywhere, just print
-				if let Some(sink) = &mut task.sink {
-					*sink = Box::new(Stdout);
+				for act in task.actions.iter_mut().flatten() {
+					if let Action::Sink(sink) = act {
+						*sink = Box::new(Stdout);
+					}
 				}
 
 				// don't save entry to msg map to the fs
