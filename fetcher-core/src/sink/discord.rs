@@ -70,7 +70,7 @@ impl Discord {
 impl Sink for Discord {
 	async fn send(
 		&self,
-		msg: Message,
+		msg: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
@@ -173,7 +173,7 @@ impl Sink for Discord {
 				.await
 				.map_err(|e| SinkError::Discord {
 					source: e,
-					msg: Box::new(msg),
+					msg: Box::new(msg.clone()),
 				})?;
 
 			last_message = Some(msg.id);

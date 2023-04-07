@@ -701,7 +701,7 @@ async fn report_error(job_name: &str, err: &str, context: Context) -> Result<()>
 		..Default::default()
 	};
 	Telegram::new(bot, admin_chat_id, LinkLocation::default())
-		.send(msg, None, Some(job_name))
+		.send(&msg, None, Some(job_name))
 		.await
 		.map_err(fetcher_core::error::Error::Sink)?;
 

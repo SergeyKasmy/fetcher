@@ -72,7 +72,7 @@ impl Sink for Telegram {
 	#[tracing::instrument(level = "debug", skip(message))]
 	async fn send(
 		&self,
-		message: Message,
+		message: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
@@ -99,7 +99,7 @@ impl Telegram {
 	async fn send_processed(
 		&self,
 		mut msg: MessageLengthLimiter<'_>,
-		media: Option<Vec<Media>>,
+		media: Option<&[Media]>,
 		reply_to: Option<TelMessageId>,
 	) -> Result<Option<TelMessageId>, SinkError> {
 		let mut last_message = reply_to;
@@ -338,15 +338,15 @@ impl Telegram {
 }
 
 // format and sanitize all message fields. Returns (head, body, tail, media)
-fn process_msg(
-	msg: Message,
+fn process_msg<'a>(
+	msg: &'a Message,
 	tag: Option<&str>,
 	link_location: LinkLocation,
 ) -> (
 	Option<String>,
 	Option<String>,
 	Option<String>,
-	Option<Vec<Media>>,
+	Option<&'a [Media]>,
 ) {
 	let Message {
 		title,
@@ -356,8 +356,8 @@ fn process_msg(
 	} = msg;
 
 	// escape title and body
-	let title = title.map(|s| teloxide::utils::html::escape(&s));
-	let body = body.map(|s| teloxide::utils::html::escape(&s));
+	let title = title.as_deref().map(teloxide::utils::html::escape);
+	let body = body.as_deref().map(teloxide::utils::html::escape);
 
 	// put the link into the message
 	let (mut head, tail) = match (title, link) {
@@ -400,7 +400,7 @@ fn process_msg(
 		});
 	}
 
-	(head, body, tail, media)
+	(head, body, tail, media.as_deref())
 }
 
 impl Debug for Telegram {

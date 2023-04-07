@@ -8,16 +8,19 @@
 
 pub mod entry_to_msg_map;
 
-use std::collections::HashSet;
-
 use self::entry_to_msg_map::EntryToMsgMap;
 use crate::{
 	action::Action,
 	entry::{Entry, EntryId},
 	error::Error,
-	sink::{message::MessageId, Sink},
+	sink::{
+		message::{Message, MessageId},
+		Sink,
+	},
 	source::Source,
 };
+
+use std::{borrow::Cow, collections::HashSet};
 
 /// A core primitive of [`fetcher`](`crate`).
 /// Contains everything from a [`Source`] that allows to fetch some data, to a [`Sink`] that takes that data and sends it somewhere.
@@ -94,12 +97,11 @@ impl Task {
 
 					// entries should be sorted newest to oldest but we should send oldest first
 					for entry in entries.iter().rev() {
-						// FIXME: remove clone
 						let msg_id = send_entry(
 							&**s,
 							self.entry_to_msg_map.as_mut(),
 							self.tag.as_deref(),
-							entry.clone(),
+							entry,
 						)
 						.await?;
 
@@ -126,32 +128,35 @@ async fn send_entry(
 	sink: &dyn Sink,
 	mut entry_to_msg_map: Option<&mut EntryToMsgMap>,
 	tag: Option<&str>,
-	entry: Entry,
+	entry: &Entry,
 ) -> Result<Option<MessageId>, Error> {
 	tracing::trace!("Sending entry");
 
 	// send message if it isn't empty or raw_contents of they aren't
-	if !entry.msg.is_empty() || entry.raw_contents.is_some() {
-		// use raw_contents as msg.body if the message is empty
-		let mut msg = entry.msg;
-
-		if msg.is_empty() {
-			msg.body = Some(
-				entry
-					.raw_contents
-					.expect("raw_contents should be some because of the match guard"),
-			);
-		}
-
-		let reply_to = entry_to_msg_map
-			.as_mut()
-			.and_then(|map| map.get_if_exists(entry.reply_to.as_ref()));
-
-		tracing::debug!("Sending {msg:?} to a sink with tag {tag:?}, replying to {reply_to:?}");
-		return Ok(sink.send(msg, reply_to, tag).await?);
+	if entry.msg.is_empty() && entry.raw_contents.is_none() {
+		return Ok(None);
 	}
 
-	Ok(None)
+	let msg = if entry.msg.is_empty() {
+		Cow::Owned(Message {
+			body: Some(
+				entry
+					.raw_contents
+					.clone()
+					.expect("raw_contents should be some because of the early return check"),
+			),
+			..entry.msg.clone()
+		})
+	} else {
+		Cow::Borrowed(&entry.msg)
+	};
+
+	let reply_to = entry_to_msg_map
+		.as_mut()
+		.and_then(|map| map.get_if_exists(entry.reply_to.as_ref()));
+
+	tracing::debug!("Sending {msg:?} to a sink with tag {tag:?}, replying to {reply_to:?}");
+	Ok(sink.send(&msg, reply_to, tag).await?)
 }
 
 async fn mark_entry_as_read(

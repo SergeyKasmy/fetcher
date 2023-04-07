@@ -84,11 +84,11 @@ impl Sink for Exec {
 	/// * if the data couldn't be passed to the stdin pipe of the process
 	async fn send(
 		&self,
-		message: Message,
+		message: &Message,
 		_reply_to: Option<&MessageId>,
 		_tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
-		let Some(body) = message.body else {
+		let Some(body) = &message.body else {
 			return Ok(None);
 		};
 
