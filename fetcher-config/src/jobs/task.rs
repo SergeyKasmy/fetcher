@@ -86,7 +86,7 @@ impl Task {
 				}
 			})
 			.unwrap_or_else(|| {
-				// replace with "source.supports_replies()". There's a point to keeping the map even if the sink doesn't support it, e.g. if it's changed from stdout to discord later on
+				// TODO: replace with "source.supports_replies()". There's a point to keeping the map even if the sink doesn't support it, e.g. if it's changed from stdout to discord later on
 				self.sink
 					.as_ref()
 					.map_or(false, Sink::has_message_id_support)

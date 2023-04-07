@@ -58,10 +58,7 @@ impl Task {
 			tracing::debug!("Got {} raw entries from the sources", raw.len());
 			tracing::trace!("Raw entries: {raw:#?}");
 
-			let processed = match &self.actions {
-				Some(actions) => process_entries(raw, actions).await?,
-				None => raw,
-			};
+			let processed = self.process_entries(raw).await?;
 
 			let processed_len = processed.len();
 			tracing::debug!("{processed_len} entries remained after processing");
@@ -85,6 +82,30 @@ impl Task {
 		}
 
 		Ok(())
+	}
+
+	async fn process_entries(
+		&mut self,
+		mut entries: Vec<Entry>,
+	) -> Result<Vec<Entry>, TransformError> {
+		for act in self.actions.iter().flatten() {
+			match act {
+				Action::Filter(f) => {
+					f.filter(&mut entries).await;
+				}
+				Action::Transform(tr) => {
+					let mut fully_transformed = Vec::new();
+
+					for entry in entries {
+						fully_transformed.extend(tr.transform(entry).await?);
+					}
+
+					entries = fully_transformed;
+				}
+			}
+		}
+
+		Ok(entries)
 	}
 
 	#[tracing::instrument(level = "trace", skip_all, fields(entry_id = ?entry.id))]
@@ -133,17 +154,6 @@ impl Task {
 
 		Ok(())
 	}
-}
-
-async fn process_entries(
-	mut entries: Vec<Entry>,
-	actions: &[Action],
-) -> Result<Vec<Entry>, TransformError> {
-	for a in actions {
-		entries = a.process(entries).await?;
-	}
-
-	Ok(entries)
 }
 
 fn remove_duplicates(entries: Vec<Entry>) -> Vec<Entry> {

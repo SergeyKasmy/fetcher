@@ -11,7 +11,7 @@ use fetcher_config::jobs::{
 };
 
 use argh::FromArgs;
-use color_eyre::{eyre::eyre, Report, Result};
+use color_eyre::{Report, Result};
 use std::{path::PathBuf, str::FromStr};
 
 /// Automatic news fetching and parsing
@@ -129,7 +129,7 @@ impl FromStr for Setting {
 	}
 }
 
-/// Wrapper around Job foreign struct to implement `FromStr` from valid job JSON
+/// Wrapper around Job foreign struct to implement `FromStr` from valid job in JSON format
 #[derive(Debug)]
 pub struct JsonJobs(Vec<(JobName, ConfigJob)>);
 

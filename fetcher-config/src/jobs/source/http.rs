@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
 use url::Url;
 
-// TODO: use a map
 #[serde_as]
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(transparent)]
