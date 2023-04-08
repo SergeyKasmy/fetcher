@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::Error;
+use crate::error::Error;
 use fetcher_core::{
 	action::{transform::entry::html::query as c_query, transform::field::Replace as CReplace},
 	utils::OptionExt,

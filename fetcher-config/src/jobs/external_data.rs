@@ -5,15 +5,17 @@
  */
 
 use super::{
+	action::Action,
 	named::{JobName, TaskName},
 	read_filter::Kind as ReadFilterKind,
 };
 use fetcher_core::{
-	self as fcore, read_filter::ReadFilter as CReadFilter, task::entry_to_msg_map::EntryToMsgMap,
+	auth as c_auth, read_filter::ReadFilter as CReadFilter, task::entry_to_msg_map::EntryToMsgMap,
 	utils::DisplayDebug,
 };
 
 use std::{
+	error::Error as StdError,
 	fmt::{Debug, Display},
 	io,
 	path::Path,
@@ -32,7 +34,7 @@ pub trait ProvideExternalData {
 		ExternalDataResult::Unavailable
 	}
 
-	fn google_oauth2(&self) -> ExternalDataResult<fcore::auth::Google> {
+	fn google_oauth2(&self) -> ExternalDataResult<c_auth::Google> {
 		ExternalDataResult::Unavailable
 	}
 	fn email_password(&self) -> ExternalDataResult<String> {
@@ -61,6 +63,11 @@ pub trait ProvideExternalData {
 	) -> ExternalDataResult<EntryToMsgMap> {
 		ExternalDataResult::Unavailable
 	}
+
+	/// import action `name`
+	fn import(&self, _name: &str) -> ExternalDataResult<Vec<Action>> {
+		ExternalDataResult::Unavailable
+	}
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -70,11 +77,21 @@ pub enum ExternalDataError {
 		source: io::Error,
 		payload: Option<Box<dyn DisplayDebug + Send + Sync>>,
 	},
+
 	#[error("Incompatible read filter types: in config: \"{expected}\" and found: \"{found}\"{}{}", .payload.is_some().then_some(": ").unwrap_or_default(), if let Some(p) = payload.as_ref() { p as &dyn Display } else { &"" })]
 	ReadFilterIncompatibleTypes {
 		expected: ReadFilterKind,
 		found: ReadFilterKind,
 		payload: Option<Box<dyn DisplayDebug + Send + Sync>>,
+	},
+
+	#[error("Action \"{}\" not found", .0)]
+	ActionNotFound(String),
+
+	#[error("Can't parse action \"{name}\": {err}")]
+	ActionParsingError {
+		name: String,
+		err: Box<dyn StdError + Send + Sync>,
 	},
 }
 

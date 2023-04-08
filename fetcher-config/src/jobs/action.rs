@@ -7,6 +7,7 @@
 pub mod contains;
 pub mod extract;
 pub mod html;
+pub mod import;
 pub mod json;
 pub mod remove_html;
 pub mod replace;
@@ -17,8 +18,9 @@ pub mod trim;
 pub mod use_as;
 
 use self::{
-	contains::Contains, extract::Extract, html::Html, json::Json, remove_html::RemoveHtml,
-	replace::Replace, set::Set, shorten::Shorten, take::Take, trim::Trim, use_as::Use,
+	contains::Contains, extract::Extract, html::Html, import::Import, json::Json,
+	remove_html::RemoveHtml, replace::Replace, set::Set, shorten::Shorten, take::Take, trim::Trim,
+	use_as::Use,
 };
 use super::{external_data::ProvideExternalData, sink::Sink};
 use crate::Error;
@@ -34,6 +36,8 @@ use fetcher_core::{
 };
 
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
@@ -60,7 +64,9 @@ pub enum Action {
 	Extract(Extract),
 	RemoveHtml(RemoveHtml),
 
+	// other
 	Sink(Sink),
+	Import(Import),
 }
 
 // TODO: add media
@@ -76,7 +82,11 @@ pub enum Field {
 }
 
 impl Action {
-	pub fn parse<RF, D>(self, rf: Option<RF>, external: &D) -> Result<Option<Vec<CAction>>, Error>
+	pub fn parse<RF, D>(
+		self,
+		rf: Option<Arc<RwLock<RF>>>,
+		external: &D,
+	) -> Result<Option<Vec<CAction>>, Error>
 	where
 		RF: CReadFilter + 'static,
 		D: ProvideExternalData + ?Sized,
@@ -126,7 +136,13 @@ impl Action {
 			Action::Extract(x) => transform!(x.parse()?),
 			Action::RemoveHtml(x) => x.parse()?,
 
+			// other
 			Action::Sink(x) => vec![CAction::Sink(x.parse(external)?)],
+			Action::Import(x) => match x.parse(rf, external) {
+				Ok(Some(v)) => v,
+				// FIXME
+				other => return other,
+			},
 		};
 
 		Ok(Some(act))

@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error(transparent)]
@@ -26,6 +28,9 @@ pub enum Error {
 
 	#[error("Discord bot token isn't set up")]
 	DiscordBotTokenMissing,
+
+	#[error("Importing is unavailable")]
+	ImportingUnavailable,
 
 	#[error("Wrong Google OAuth2 token")]
 	GoogleOAuth2WrongToken(#[from] fetcher_core::auth::google::GoogleOAuth2Error),

@@ -4,9 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::{context::StaticContext, data};
+use crate::extentions::IntoStdErrorExt;
+
+use super::{config, context::StaticContext, data};
 use fetcher_config::jobs::{
-	external_data::{ExternalDataResult, ProvideExternalData},
+	action::Action as ActionConfig,
+	external_data::{ExternalDataError, ExternalDataResult, ProvideExternalData},
 	named::{JobName, TaskName},
 	read_filter::Kind as ReadFilterKind,
 };
@@ -54,5 +57,16 @@ impl ProvideExternalData for ExternalDataFromDataDir {
 		task: Option<&TaskName>,
 	) -> ExternalDataResult<EntryToMsgMap> {
 		data::runtime_external_save::entry_to_msg_map::get(job, task, self.cx).into()
+	}
+
+	fn import(&self, name: &str) -> ExternalDataResult<Vec<ActionConfig>> {
+		match config::actions::find(name, self.cx) {
+			Ok(Some(x)) => ExternalDataResult::Ok(x),
+			Ok(None) => ExternalDataResult::Err(ExternalDataError::ActionNotFound(name.to_owned())),
+			Err(e) => ExternalDataResult::Err(ExternalDataError::ActionParsingError {
+				name: name.to_owned(),
+				err: e.into_std_error(),
+			}),
+		}
 	}
 }
