@@ -85,7 +85,7 @@ pub enum ExternalDataError {
 		payload: Option<Box<dyn DisplayDebug + Send + Sync>>,
 	},
 
-	#[error("Action \"{}\" not found", .0)]
+	#[error("Action \"{0}\" not found")]
 	ActionNotFound(String),
 
 	#[error("Can't parse action \"{name}\": {err}")]

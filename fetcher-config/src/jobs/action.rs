@@ -140,8 +140,7 @@ impl Action {
 			Action::Sink(x) => vec![CAction::Sink(x.parse(external)?)],
 			Action::Import(x) => match x.parse(rf, external) {
 				Ok(Some(v)) => v,
-				// FIXME
-				other => return other,
+				not_ok => return not_ok,
 			},
 		};
 

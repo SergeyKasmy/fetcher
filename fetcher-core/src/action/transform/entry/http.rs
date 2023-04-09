@@ -33,11 +33,10 @@ pub struct Http {
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum HttpError {
-	// TODO: impl Display for Field
-	#[error("Missing URL in the entry {0:?} field")]
+	#[error("Missing URL in the entry {0} field")]
 	MissingUrl(Field),
 
-	#[error("Invalid URL in the entry {0:?} field")]
+	#[error("Invalid URL in the entry {0} field")]
 	InvalidUrl(Field, #[source] InvalidUrlError),
 
 	#[error(transparent)]

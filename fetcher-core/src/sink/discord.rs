@@ -85,7 +85,7 @@ impl Sink for Discord {
 			body,
 			link,
 			media,
-		} = msg.clone(); // clone is to be able to include the message if an error happens. TODO: Maybe there's a better solution?
+		} = msg.clone(); // clone is to be able to include the message if an error happens
 
 		// if the body of the message won't fit into an embed, then just send as regular messages
 		if body.as_ref().map_or(0, |s| s.chars().count()) > MAX_EMBED_DESCIPTION_LEN {

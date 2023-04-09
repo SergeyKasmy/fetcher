@@ -21,7 +21,7 @@ pub use self::{
 };
 
 use async_trait::async_trait;
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 use url::Url;
 
 use super::{result::TransformResult, Transform};
@@ -138,16 +138,31 @@ where
 /// List of all available fields for transformations
 #[derive(Clone, Copy, Debug)]
 pub enum Field {
-	/// [`Message.title`] field
+	/// [`Message::title`] field
 	Title,
-	/// [`Message.body`] field
+	/// [`Message::body`] field
 	Body,
-	/// [`Message.link`] field
+	/// [`Message::link`] field
 	Link,
-	/// [`Entry.id`] field
+	/// [`Entry::id`] field
 	Id,
-	/// [`Entry.reply_to`] field
+	/// [`Entry::reply_to`] field
 	ReplyTo,
-	/// [`Entry.raw_contents`] field
+	/// [`Entry::raw_contents`] field
 	RawContets,
+}
+
+impl fmt::Display for Field {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let name = match self {
+			Self::Title => "Message::title",
+			Self::Body => "Message::body",
+			Self::Link => "Message::link",
+			Self::Id => "Entry::id",
+			Self::ReplyTo => "Entry::reply_to",
+			Self::RawContets => "Entry::raw_contents",
+		};
+
+		f.write_str(name)
+	}
 }
