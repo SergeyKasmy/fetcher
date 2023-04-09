@@ -10,6 +10,7 @@ read_filter_type: newer_than_read # XO. either:
                                   # * keep only the last read entry and filter out all "older" than it
                                   # * notify when the entry is updated
 read_filter_type: not_present_in_read_list # XO. keep a list of all items read and filter out all that are present in it
+template: <name> # copy-paste the contents of $XDG_CONFIG_PATH/fetcher/templates/<name>.yml. Field re-definition overrides the old value. 
 tasks:
   foo:
     tag: <string> # mark the message with a tag. That is usually a hashtag on top of the message or some kind of subscript in it. If a job has multiple tasks, it is automatically set to the task's name
@@ -55,6 +56,17 @@ tasks:
                                                     # * mark_as_read: mark read emails as read
                                                     # * delete: move the emails to the trash bin. Exact behavior depends on the email provider in question. Gmail archives the emails by default instead
     process:  # all actions are optional, so don't need to be marked with O
+      - import: <name> # import a list of actions from $XDG_CONFIG_PATH/fetcher/actions/<name>.yml
+      - sink:
+          discord: # X. Send as a discord message
+            user: <user_id> # X. The user to DM to. This is not a handle (i.e. not User#1234) but rather the ID (see below). 
+            channel: <channel_id> # X. The channel to send messages to
+            # The ID of a user or a channel can be gotten after enabling developer settings in Discord (under Settings -> Advanced) and rightclicking on a user/channel and selecting "Copy ID"
+          telegram: # X
+            chat_id: <chat_id>  # Either the private chat (group/channel) ID that can be gotten using bots or the public handle of a chat. DM aren't supported yet.
+            link_location: <prefer_title|bottom>  # O. Where to put the link. Either as try to put it in the title if it's present, or a separate "Link" button under the message
+          exec: <cmd> # X. Start a process and write the body of the message to its stdin
+          stdout # X. Just print to stdout. Isn't really useful but it is the default when run with --dry-run
       - read_filter # filter out already read entries using `read_filter_type` stradegy
       - take: # take `num` entries from either the newest or the oldest and ignore the rest
           <from_newest|from_oldest>: <int>
@@ -162,15 +174,8 @@ tasks:
       # debug related actions:
       - caps # make the message title uppercase
       - debug_print # debug print the entire contents of the entry
+
 sink:
-  discord: # X. Send as a discord message
-    user: <user_id> # X. The user to DM to. This is not a handle (i.e. not User#1234) but rather the ID (see below). 
-    channel: <channel_id> # X. The channel to send messages to
-    # The ID of a user or a channel can be gotten after enabling developer settings in Discord (under Settings -> Advanced) and rightclicking on a user/channel and selecting "Copy ID"
-  telegram: # X
-    chat_id: <chat_id>  # Either the private chat (group/channel) ID that can be gotten using bots or the public handle of a chat. DM aren't supported yet.
-    link_location: <prefer_title|bottom>  # O. Where to put the link. Either as try to put it in the title if it's present, or a separate "Link" button under the message
-  exec: <cmd> # X. Start a process and write the body of the message to its stdin
-  stdout # X. Just print to stdout. Isn't really useful but it is the default when run with --dry-run
+  ... # same as process: sink. Just appends itself to the process list. This is useful when the process list is set in a template and thus can't be overriden
 ```
 

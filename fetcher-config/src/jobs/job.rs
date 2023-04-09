@@ -35,8 +35,8 @@ pub struct Job {
 	pub source: Option<Source>,
 	#[serde(rename = "process")]
 	pub actions: Option<Vec<Action>>,
-	pub sink: Option<Sink>,
 	pub entry_to_msg_map_enabled: Option<bool>,
+	pub sink: Option<Sink>,
 
 	pub tasks: Option<HashMap<TaskName, Task>>,
 	pub refresh: Option<TimePoint>,
@@ -65,8 +65,8 @@ impl Job {
 					tag: self.tag,
 					source: self.source,
 					actions: self.actions,
-					sink: self.sink,
 					entry_to_msg_map_enabled: self.entry_to_msg_map_enabled,
+					sink: self.sink,
 				};
 
 				let job = CJob {
@@ -113,12 +113,12 @@ impl Job {
 				task.actions = self.actions.clone();
 			}
 
-			if task.sink.is_none() {
-				task.sink = self.sink.clone();
-			}
-
 			if task.entry_to_msg_map_enabled.is_none() {
 				task.entry_to_msg_map_enabled = self.entry_to_msg_map_enabled;
+			}
+
+			if task.sink.is_none() {
+				task.sink = self.sink.clone();
 			}
 		}
 

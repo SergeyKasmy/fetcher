@@ -20,7 +20,7 @@ use super::{
 	source::Source,
 };
 use crate::Error;
-use fetcher_core::{task::Task as CTask, utils::OptionExt};
+use fetcher_core::{action::Action as CAction, task::Task as CTask, utils::OptionExt};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -31,9 +31,8 @@ pub struct Task {
 	pub source: Option<Source>,
 	#[serde(rename = "process")]
 	pub actions: Option<Vec<Action>>,
-	// TODO: completely integrate into actions
-	pub sink: Option<Sink>,
 	pub entry_to_msg_map_enabled: Option<bool>,
+	pub sink: Option<Sink>,
 }
 
 impl Task {
@@ -64,33 +63,32 @@ impl Task {
 		};
 
 		let actions = self.actions.try_map(|acts| {
-			itertools::process_results(
+			let mut acts = itertools::process_results(
 				acts.into_iter()
-					.filter_map(|act| act.parse(rf.clone()).transpose()),
-				|i| i.flatten().collect(),
-			)
+					.filter_map(|act| act.parse(rf.clone(), external).transpose()),
+				|i| i.flatten().collect::<Vec<_>>(),
+			)?;
+
+			if let Some(sink) = self.sink {
+				acts.push(CAction::Sink(sink.parse(external)?));
+			}
+
+			Ok::<_, Error>(acts)
 		})?;
 
-		// TODO: replace with match like tag below
-		let entry_to_msg_map = if self
+		let entry_to_msg_map_enabled = self
 			.entry_to_msg_map_enabled
 			.tap_some(|b| {
-				if let Some(sink) = &self.sink {
-					// TODO: include task name
-					tracing::info!(
-						"Overriding entry_to_msg_map_enabled for {} from the default {} to {}",
-						job,
-						sink.has_message_id_support(),
-						b
-					);
-				}
+				// TODO: include task name
+				tracing::info!(
+					"Overriding entry_to_msg_map_enabled for {} from the default to {}",
+					job,
+					b
+				);
 			})
-			.unwrap_or_else(|| {
-				// replace with "source.supports_replies()". There's a point to keeping the map even if the sink doesn't support it, e.g. if it's changed from stdout to discord later on
-				self.sink
-					.as_ref()
-					.map_or(false, Sink::has_message_id_support)
-			}) {
+			.unwrap_or_else(|| self.source.as_ref().map_or(false, Source::supports_replies));
+
+		let entry_to_msg_map = if entry_to_msg_map_enabled {
 			match external.entry_to_msg_map(job, task_name) {
 				ExternalDataResult::Ok(v) => Some(v),
 				ExternalDataResult::Unavailable => {
@@ -125,7 +123,6 @@ impl Task {
 			tag,
 			source: self.source.map(|x| x.parse(rf, external)).transpose()?,
 			actions,
-			sink: self.sink.try_map(|x| x.parse(external))?,
 			entry_to_msg_map,
 		})
 	}

@@ -74,4 +74,13 @@ impl Source {
 			Self::AlwaysErrors => Box::new(CAlwaysErrors),
 		})
 	}
+
+	pub fn supports_replies(&self) -> bool {
+		// Source::Email will support replies in the future
+		#[allow(clippy::match_like_matches_macro)]
+		match self {
+			Self::Twitter(_) => true,
+			_ => false,
+		}
+	}
 }

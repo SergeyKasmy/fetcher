@@ -152,6 +152,7 @@ pub fn get_all_from<'a>(
 pub fn get(path: &Path, name: JobName, cx: Context) -> Result<Option<(JobName, JobWithTaskNames)>> {
 	tracing::trace!("Parsing a job from file");
 
+	// TODO: use extract_inner()
 	let TemplatesField { templates } = Figment::new().merge(Yaml::file(path)).extract()?;
 
 	let mut full_conf = Figment::new();

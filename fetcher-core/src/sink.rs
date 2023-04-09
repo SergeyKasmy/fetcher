@@ -32,7 +32,7 @@ pub trait Sink: Debug + Send + Sync {
 	/// Send the message with an optional tag (usually represented as a hashtag)
 	async fn send(
 		&self,
-		message: Message,
+		message: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError>;
