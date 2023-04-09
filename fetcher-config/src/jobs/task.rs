@@ -16,10 +16,11 @@ use super::{
 	external_data::{ExternalDataResult, ProvideExternalData},
 	named::{JobName, TaskName},
 	read_filter,
+	sink::Sink,
 	source::Source,
 };
 use crate::Error;
-use fetcher_core::{task::Task as CTask, utils::OptionExt};
+use fetcher_core::{action::Action as CAction, task::Task as CTask, utils::OptionExt};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -31,6 +32,7 @@ pub struct Task {
 	#[serde(rename = "process")]
 	pub actions: Option<Vec<Action>>,
 	pub entry_to_msg_map_enabled: Option<bool>,
+	pub sink: Option<Sink>,
 }
 
 impl Task {
@@ -61,11 +63,17 @@ impl Task {
 		};
 
 		let actions = self.actions.try_map(|acts| {
-			itertools::process_results(
+			let mut acts = itertools::process_results(
 				acts.into_iter()
 					.filter_map(|act| act.parse(rf.clone(), external).transpose()),
-				|i| i.flatten().collect(),
-			)
+				|i| i.flatten().collect::<Vec<_>>(),
+			)?;
+
+			if let Some(sink) = self.sink {
+				acts.push(CAction::Sink(sink.parse(external)?));
+			}
+
+			Ok::<_, Error>(acts)
 		})?;
 
 		let entry_to_msg_map_enabled = self
