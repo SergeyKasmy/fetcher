@@ -11,10 +11,17 @@ use self::app::App;
 use eframe::NativeOptions;
 
 fn main() {
+	let job_list = (0..100).map(|i| format!("Job #{i}")).collect::<Vec<_>>();
+
 	eframe::run_native(
 		"fetcher",
 		NativeOptions::default(),
-		Box::new(|_ctx| Box::new(App)),
+		Box::new(|_ctx| {
+			Box::new(App {
+				job_list,
+				..Default::default()
+			})
+		}),
 	)
 	.unwrap();
 }
