@@ -3,6 +3,7 @@ members = [
 	"fetcher",
 	"fetcher-core",
 	"fetcher-config",
+	"fetcher-gui",
 ]
 
 [profile.release]
