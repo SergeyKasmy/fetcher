@@ -18,6 +18,7 @@ fn main() {
 		NativeOptions::default(),
 		Box::new(|_ctx| {
 			Box::new(App {
+				current_job: job_list[0].clone(),
 				job_list,
 				..Default::default()
 			})
