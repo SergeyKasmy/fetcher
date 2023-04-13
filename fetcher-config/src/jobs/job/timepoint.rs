@@ -9,7 +9,7 @@ use fetcher_core::job::timepoint::TimePoint as CTimePoint;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum TimePoint {
 	Every(String),

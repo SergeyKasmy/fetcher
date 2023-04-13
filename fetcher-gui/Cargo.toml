@@ -6,5 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+fetcher-core = { version = "0.13.1", path = "../fetcher-core" }
+fetcher-config = { version = "0.13.1", path = "../fetcher-config" }
 eframe = "0.21.3"
 egui = "0.21.0"

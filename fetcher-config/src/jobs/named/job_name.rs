@@ -11,7 +11,7 @@ use std::{
 	sync::Arc,
 };
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct JobName(pub Arc<str>);
 
 impl JobName {

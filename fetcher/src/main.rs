@@ -46,6 +46,7 @@ use tokio::{
 };
 use tracing::Instrument;
 
+// TODO: use a BTreeMap and avoid sorting in .display()?
 type Jobs = HashMap<JobName, JobWithTaskNames>;
 
 fn main() -> Result<()> {
