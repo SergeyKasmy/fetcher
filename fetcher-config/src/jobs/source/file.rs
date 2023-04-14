@@ -11,7 +11,7 @@ use serde_with::{serde_as, OneOrMany};
 use std::path::PathBuf;
 
 #[serde_as]
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, Clone, Debug)]
 #[serde(transparent)]
 pub struct File(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<PathBuf>);
 

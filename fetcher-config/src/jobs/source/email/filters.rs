@@ -8,12 +8,12 @@ use fetcher_core::source::email::Filters as CFilters;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, Clone, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Filters {
-	sender: Option<String>,
-	subjects: Option<Vec<String>>,
-	exclude_subjects: Option<Vec<String>>,
+	pub sender: Option<String>,
+	pub subjects: Option<Vec<String>>,
+	pub exclude_subjects: Option<Vec<String>>,
 }
 
 impl Filters {

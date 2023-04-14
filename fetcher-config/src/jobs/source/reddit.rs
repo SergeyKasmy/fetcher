@@ -9,28 +9,29 @@ use fetcher_core::source::{reddit::Sort as CSort, Reddit as CReddit};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, Clone, Default, Debug)]
 #[serde(transparent)]
 pub struct Reddit(pub HashMap<String, Inner>);
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, Clone, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Inner {
-	sort: Sort,
-	score_threshold: Option<u32>,
+	pub sort: Sort,
+	pub score_threshold: Option<u32>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, Clone, Default, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 #[rustfmt::skip]	// to put new and latest side by side
 pub enum Sort {
+	#[default]
 	Latest, New,
 	Rising,
 	Hot,
 	Top(TimePeriod),
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum TimePeriod {
 	Today,

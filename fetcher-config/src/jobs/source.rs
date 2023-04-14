@@ -26,9 +26,10 @@ use fetcher_core::{
 };
 
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Source {
 	// with shared read filter
@@ -82,5 +83,20 @@ impl Source {
 			Self::Twitter(_) => true,
 			_ => false,
 		}
+	}
+}
+
+impl fmt::Display for Source {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.write_str(match self {
+			Self::String(_) => "string",
+			Self::Http(_) => "HTTP",
+			Self::Twitter(_) => "Twitter",
+			Self::File(_) => "File",
+			Self::Reddit(_) => "Reddit",
+			Self::Exec(_) => "exec",
+			Self::Email(_) => "Email",
+			Self::AlwaysErrors => "Always Errors",
+		})
 	}
 }

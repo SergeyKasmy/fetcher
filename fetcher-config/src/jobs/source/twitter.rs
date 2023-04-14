@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
 
 #[serde_as]
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, Clone, Default, Debug)]
 #[serde(transparent)]
 pub struct Twitter(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<String>);
 

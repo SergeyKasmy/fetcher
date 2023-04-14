@@ -28,17 +28,17 @@ fn main() {
 					sink: None,
 				},
 			);
-			tasks.insert(
-				format!("Task #1 of Job#{i}").into(),
-				Task {
-					read_filter_kind: None,
-					tag: Some(format!("Tag of Task #1 of Job#{i}")),
-					source: None,
-					actions: None,
-					entry_to_msg_map_enabled: None,
-					sink: None,
-				},
-			);
+			// tasks.insert(
+			// 	format!("Task #1 of Job#{i}").into(),
+			// 	Task {
+			// 		read_filter_kind: None,
+			// 		tag: Some(format!("Tag of Task #1 of Job#{i}")),
+			// 		source: None,
+			// 		actions: None,
+			// 		entry_to_msg_map_enabled: None,
+			// 		sink: None,
+			// 	},
+			// );
 
 			(
 				format!("Job #{i}").into(),
@@ -59,12 +59,13 @@ fn main() {
 		.collect::<BTreeMap<JobName, Job>>();
 
 	eframe::run_native(
-		"fetcher",
+		"Configure fetcher",
 		NativeOptions::default(),
 		Box::new(|_ctx| {
 			Box::new(App {
 				current_job: jobs.first_key_value().unwrap().0.clone(),
 				jobs,
+				scratch_pad: HashMap::new(),
 			})
 		}),
 	)

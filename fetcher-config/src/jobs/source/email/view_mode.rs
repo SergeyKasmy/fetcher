@@ -8,10 +8,11 @@ use fetcher_core::source::email::ViewMode as CViewMode;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, Clone, Copy, Default, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum ViewMode {
 	ReadOnly,
+	#[default]
 	MarkAsRead,
 	Delete,
 }

@@ -8,23 +8,24 @@ mod auth;
 mod filters;
 mod view_mode;
 
+pub use self::{auth::Auth, filters::Filters, view_mode::ViewMode};
+
 use serde::{Deserialize, Serialize};
 
-use self::{auth::Auth, filters::Filters, view_mode::ViewMode};
 use crate::{
 	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 	Error as ConfigError,
 };
 use fetcher_core::source::Email as CEmail;
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, Clone, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Email {
-	imap: Option<String>,
-	email: String,
-	auth: Auth,
-	filters: Filters,
-	view_mode: ViewMode,
+	pub imap: Option<String>,
+	pub email: String,
+	pub auth: Auth,
+	pub filters: Filters,
+	pub view_mode: ViewMode,
 }
 
 impl Email {

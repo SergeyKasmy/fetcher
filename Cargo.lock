@@ -1480,6 +1480,7 @@ dependencies = [
  "egui",
  "fetcher-config",
  "fetcher-core",
+ "once_cell",
 ]
 
 [[package]]
