@@ -1,4 +1,5 @@
 /*
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -28,17 +29,17 @@ fn main() {
 					sink: None,
 				},
 			);
-			// tasks.insert(
-			// 	format!("Task #1 of Job#{i}").into(),
-			// 	Task {
-			// 		read_filter_kind: None,
-			// 		tag: Some(format!("Tag of Task #1 of Job#{i}")),
-			// 		source: None,
-			// 		actions: None,
-			// 		entry_to_msg_map_enabled: None,
-			// 		sink: None,
-			// 	},
-			// );
+			tasks.insert(
+				format!("Task #1 of Job#{i}").into(),
+				Task {
+					read_filter_kind: None,
+					tag: Some(format!("Tag of Task #1 of Job#{i}")),
+					source: None,
+					actions: None,
+					entry_to_msg_map_enabled: None,
+					sink: None,
+				},
+			);
 
 			(
 				format!("Job #{i}").into(),
@@ -65,7 +66,7 @@ fn main() {
 			Box::new(App {
 				current_job: jobs.first_key_value().unwrap().0.clone(),
 				jobs,
-				scratch_pad: HashMap::new(),
+				state: Default::default(),
 			})
 		}),
 	)

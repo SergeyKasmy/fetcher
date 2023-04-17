@@ -6,51 +6,71 @@
 
 pub mod task;
 
-use super::ScratchPad;
-use fetcher_config::jobs::{job::timepoint::TimePoint, named::JobName, Job};
+use self::task::TaskState;
+use fetcher_config::jobs::{
+	job::timepoint::TimePoint,
+	named::{JobName, TaskName},
+	Job,
+};
 
-pub fn show(ui: &mut egui::Ui, name: JobName, job: &mut Job, scratch_pad: &mut ScratchPad) {
-	ui.heading(name.as_str());
+use std::collections::HashMap;
 
-	let mut refresh = job
-		.refresh
-		.clone()
-		.unwrap_or_else(|| TimePoint::At(String::new()));
+#[derive(Default, Debug)]
+pub struct JobState {
+	pub task_state: HashMap<TaskName, TaskState>,
+}
 
-	let mut refresh_val = match refresh.clone() {
-		TimePoint::Every(x) => x,
-		TimePoint::At(x) => x,
-	};
+impl JobState {
+	pub fn show(&mut self, ui: &mut egui::Ui, name: JobName, job: &mut Job) {
+		ui.heading(name.as_str());
 
-	ui.horizontal(|ui| {
-		ui.label("Refresh:");
+		let mut refresh = job
+			.refresh
+			.clone()
+			.unwrap_or_else(|| TimePoint::At(String::new()));
 
-		if ui
-			.radio(matches!(refresh, TimePoint::At(_)), "at")
-			.clicked()
-		{
-			refresh = TimePoint::At(refresh_val.clone());
+		let mut refresh_val = match refresh.clone() {
+			TimePoint::Every(x) => x,
+			TimePoint::At(x) => x,
+		};
+
+		ui.horizontal(|ui| {
+			ui.label("Refresh:");
+
+			if ui
+				.radio(matches!(refresh, TimePoint::At(_)), "at")
+				.clicked()
+			{
+				refresh = TimePoint::At(refresh_val.clone());
+			}
+
+			if ui
+				.radio(matches!(refresh, TimePoint::Every(_)), "every")
+				.clicked()
+			{
+				refresh = TimePoint::Every(refresh_val.clone());
+			}
+
+			ui.text_edit_singleline(&mut refresh_val);
+
+			match &mut refresh {
+				TimePoint::Every(x) => *x = refresh_val,
+				TimePoint::At(x) => *x = refresh_val,
+			}
+		});
+		job.refresh = Some(refresh);
+
+		ui.heading("Tasks");
+
+		for (idx, (task_name, task)) in job.tasks.as_mut().unwrap().iter_mut().enumerate() {
+			if idx > 0 {
+				ui.separator();
+			}
+
+			self.task_state
+				.entry(task_name.clone())
+				.or_default()
+				.show(task, task_name, ui);
 		}
-
-		if ui
-			.radio(matches!(refresh, TimePoint::Every(_)), "every")
-			.clicked()
-		{
-			refresh = TimePoint::Every(refresh_val.clone());
-		}
-
-		ui.text_edit_singleline(&mut refresh_val);
-
-		match &mut refresh {
-			TimePoint::Every(x) => *x = refresh_val,
-			TimePoint::At(x) => *x = refresh_val,
-		}
-	});
-	job.refresh = Some(refresh);
-
-	ui.heading("Tasks");
-
-	for task in job.tasks.as_mut().unwrap().values_mut() {
-		task::show(ui, task, scratch_pad);
 	}
 }

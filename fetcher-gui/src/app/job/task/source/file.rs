@@ -4,30 +4,37 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::app::ScratchPad;
 use fetcher_config::jobs::source::file::File;
 
 use egui::Ui;
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
-pub fn show(ui: &mut Ui, File(paths): &mut File, scratch_pad: &mut ScratchPad) {
-	for (idx, path) in paths.iter_mut().enumerate() {
-		let path_str = scratch_pad
-			.entry(format!("source.file.{idx}"))
-			.or_insert_with(|| path.to_string_lossy().into_owned());
+#[derive(Default, Debug)]
+pub struct FileState {
+	pub paths: HashMap<usize, String>,
+}
 
-		ui.text_edit_singleline(path_str);
+impl FileState {
+	pub fn show(&mut self, File(paths): &mut File, ui: &mut Ui) {
+		for (idx, path) in paths.iter_mut().enumerate() {
+			let path_str = self
+				.paths
+				.entry(idx)
+				.or_insert_with(|| path.to_string_lossy().into_owned());
 
-		*path = PathBuf::from(path_str.clone());
+			ui.text_edit_singleline(path_str);
+
+			*path = PathBuf::from(path_str.clone());
+		}
+
+		ui.horizontal(|ui| {
+			if ui.button("+").clicked() {
+				paths.push(PathBuf::new());
+			}
+
+			if ui.button("-").clicked() && !paths.is_empty() {
+				paths.remove(paths.len() - 1);
+			}
+		});
 	}
-
-	ui.horizontal(|ui| {
-		if ui.button("+").clicked() {
-			paths.push(PathBuf::new());
-		}
-
-		if ui.button("-").clicked() && !paths.is_empty() {
-			paths.remove(paths.len() - 1);
-		}
-	});
 }

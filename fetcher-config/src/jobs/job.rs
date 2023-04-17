@@ -26,7 +26,7 @@ use serde::{Deserialize, Serialize};
 pub type DisabledField = Option<bool>;
 pub type TemplatesField = Option<Vec<String>>;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Job {
 	#[serde(rename = "read_filter_type")]

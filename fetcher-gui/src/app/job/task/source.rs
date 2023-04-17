@@ -12,50 +12,65 @@ pub mod reddit;
 pub mod string;
 pub mod twitter;
 
-use crate::app::ScratchPad;
+use self::{email::EmailState, file::FileState, http::HttpState, reddit::RedditState};
 use fetcher_config::jobs::source::{
 	email::Email, exec::Exec, file::File, http::Http, reddit::Reddit, string::StringSource,
 	twitter::Twitter, Source,
 };
 
 use egui::{ComboBox, Ui};
+use std::hash::Hash;
 
-pub fn show(ui: &mut Ui, source: &mut Option<Source>, scratch_pad: &mut ScratchPad) {
-	ui.horizontal(|ui| {
-		ui.label("Source:");
-		ComboBox::from_id_source("source type")
-			.wrap(false)
-			.selected_text(source.as_ref().map_or("None".to_owned(), |x| x.to_string()))
-			.show_ui(ui, |combo| {
-				combo.selectable_value(source, None, "none");
-				combo.selectable_value(
-					source,
-					Some(Source::String(StringSource::default())),
-					"string",
-				);
-				combo.selectable_value(source, Some(Source::Http(Http(Vec::new()))), "http");
-				combo.selectable_value(
-					source,
-					Some(Source::Twitter(Twitter::default())),
-					"twitter",
-				);
-				combo.selectable_value(source, Some(Source::File(File(Vec::new()))), "file");
-				combo.selectable_value(source, Some(Source::Reddit(Reddit::default())), "reddit");
-				combo.selectable_value(source, Some(Source::Exec(Exec::default())), "exec");
-				combo.selectable_value(source, Some(Source::Email(Email::default())), "email");
-			})
-	});
+#[derive(Default, Debug)]
+pub struct SourceState {
+	pub http_state: HttpState,
+	pub file_state: FileState,
+	pub reddit_state: RedditState,
+	pub email_state: EmailState,
+}
 
-	if let Some(source) = source {
-		ui.group(|ui| match source {
-			Source::String(x) => string::show(ui, x),
-			Source::Http(x) => http::show(ui, x, scratch_pad),
-			Source::Twitter(x) => twitter::show(ui, x),
-			Source::File(x) => file::show(ui, x, scratch_pad),
-			Source::Reddit(x) => reddit::show(ui, x, scratch_pad),
-			Source::Exec(x) => exec::show(ui, x),
-			Source::Email(x) => email::show(ui, x, scratch_pad),
-			Source::AlwaysErrors => todo!(),
+impl SourceState {
+	pub fn show(&mut self, source: &mut Option<Source>, task_id: impl Hash, ui: &mut Ui) {
+		ui.horizontal(|ui| {
+			ui.label("Source:");
+			ComboBox::from_id_source(("source type", task_id))
+				.wrap(false)
+				.selected_text(source.as_ref().map_or("None".to_owned(), |x| x.to_string()))
+				.show_ui(ui, |combo| {
+					combo.selectable_value(source, None, "none");
+					combo.selectable_value(
+						source,
+						Some(Source::String(StringSource::default())),
+						"string",
+					);
+					combo.selectable_value(source, Some(Source::Http(Http(Vec::new()))), "http");
+					combo.selectable_value(
+						source,
+						Some(Source::Twitter(Twitter::default())),
+						"twitter",
+					);
+					combo.selectable_value(source, Some(Source::File(File(Vec::new()))), "file");
+					combo.selectable_value(
+						source,
+						Some(Source::Reddit(Reddit::default())),
+						"reddit",
+					);
+					combo.selectable_value(source, Some(Source::Exec(Exec::default())), "exec");
+					combo.selectable_value(source, Some(Source::Email(Email::default())), "email");
+				})
 		});
+
+		if let Some(source) = source {
+			ui.group(|ui| match source {
+				Source::String(x) => string::show(ui, x),
+				Source::Http(x) => self.http_state.show(x, ui),
+				Source::Twitter(x) => twitter::show(ui, x),
+				Source::File(x) => self.file_state.show(x, ui),
+				Source::Reddit(x) => self.reddit_state.show(x, ui),
+				Source::Exec(x) => exec::show(ui, x),
+				Source::Email(x) => self.email_state.show(x, ui),
+				Source::AlwaysErrors => todo!(),
+			});
+		}
 	}
 }

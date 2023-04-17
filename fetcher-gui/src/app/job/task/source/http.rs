@@ -4,76 +4,80 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::app::{ScratchPad, COLOR_ERROR};
+use crate::app::COLOR_ERROR;
 use fetcher_config::jobs::source::http::{self, Http, Url};
 
 use egui::{ComboBox, Ui};
 use once_cell::sync::Lazy;
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 static EXAMPLE_URL: Lazy<Url> =
 	Lazy::new(|| Url::try_from("http://example.com").expect("example.com should be a valid URL"));
 
-pub fn show(ui: &mut Ui, Http(requests): &mut Http, scratch_pad: &mut ScratchPad) {
-	for (idx, request) in requests.iter_mut().enumerate() {
-		if idx > 0 {
+#[derive(Default, Debug)]
+pub struct HttpState {
+	pub urls: HashMap<usize, String>,
+}
+
+impl HttpState {
+	pub fn show(&mut self, Http(requests): &mut Http, ui: &mut Ui) {
+		for (idx, request) in requests.iter_mut().enumerate() {
+			if idx > 0 {
+				ui.separator();
+			}
+
+			match request {
+				// GET
+				http::Request::Untagged(url)
+				| http::Request::Tagged(http::TaggedRequest::Get(url)) => {
+					let scratch_pad = self.urls.entry(idx).or_insert_with(|| url.to_string());
+
+					ui.heading("GET");
+					edit_url(ui, url, scratch_pad);
+				}
+
+				// POST
+				http::Request::Tagged(http::TaggedRequest::Post { url, body }) => {
+					let scratch_pad = self.urls.entry(idx).or_insert_with(|| url.to_string());
+
+					ui.heading("POST");
+					edit_url(ui, url, scratch_pad);
+
+					ui.horizontal(|ui| {
+						ui.label("Request:");
+						ui.text_edit_multiline(body);
+					});
+				}
+			}
+		}
+
+		if !requests.is_empty() {
 			ui.separator();
 		}
 
-		match request {
-			// GET
-			http::Request::Untagged(url) | http::Request::Tagged(http::TaggedRequest::Get(url)) => {
-				let scratch_pad = scratch_pad
-					.entry(format!("source.url.{idx}"))
-					.or_insert_with(|| url.to_string());
+		ui.horizontal(|ui| {
+			ComboBox::from_id_source("add http request")
+				.selected_text("+")
+				.show_ui(ui, |combo| {
+					if combo.selectable_label(false, "GET").clicked() {
+						requests.push(http::Request::Tagged(http::TaggedRequest::Get(
+							EXAMPLE_URL.clone(),
+						)))
+					}
 
-				ui.heading("GET");
-				edit_url(ui, url, scratch_pad);
-			}
-
-			// POST
-			http::Request::Tagged(http::TaggedRequest::Post { url, body }) => {
-				let scratch_pad = scratch_pad
-					.entry(format!("source.url.{idx}"))
-					.or_insert_with(|| url.to_string());
-
-				ui.heading("POST");
-				edit_url(ui, url, scratch_pad);
-
-				ui.horizontal(|ui| {
-					ui.label("Request:");
-					ui.text_edit_multiline(body);
+					if combo.selectable_label(false, "POST").clicked() {
+						requests.push(http::Request::Tagged(http::TaggedRequest::Post {
+							url: EXAMPLE_URL.clone(),
+							body: String::new(),
+						}))
+					}
 				});
+
+			if ui.button("-").clicked() && !requests.is_empty() {
+				requests.remove(requests.len() - 1);
 			}
-		}
+		});
 	}
-
-	if !requests.is_empty() {
-		ui.separator();
-	}
-
-	ui.horizontal(|ui| {
-		ComboBox::from_id_source("add http request")
-			.selected_text("+")
-			.show_ui(ui, |combo| {
-				if combo.selectable_label(false, "GET").clicked() {
-					requests.push(http::Request::Tagged(http::TaggedRequest::Get(
-						EXAMPLE_URL.clone(),
-					)))
-				}
-
-				if combo.selectable_label(false, "POST").clicked() {
-					requests.push(http::Request::Tagged(http::TaggedRequest::Post {
-						url: EXAMPLE_URL.clone(),
-						body: String::new(),
-					}))
-				}
-			});
-
-		if ui.button("-").clicked() && !requests.is_empty() {
-			requests.remove(requests.len() - 1);
-		}
-	});
 }
 
 fn edit_url(ui: &mut egui::Ui, url: &mut Url, scratch_pad: &mut String) {

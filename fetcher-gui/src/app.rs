@@ -6,6 +6,7 @@
 
 pub mod job;
 
+use self::job::JobState;
 use fetcher_config::jobs::{named::JobName, Job};
 
 use egui::{Color32, ScrollArea, SelectableLabel};
@@ -13,13 +14,11 @@ use std::collections::{BTreeMap, HashMap};
 
 const COLOR_ERROR: Color32 = Color32::LIGHT_RED;
 
-pub type ScratchPad<Id = String> = HashMap<Id, String>;
-
 #[derive(Debug)]
 pub struct App {
-	pub jobs: BTreeMap<JobName, Job>,
 	pub current_job: JobName,
-	pub scratch_pad: ScratchPad,
+	pub jobs: BTreeMap<JobName, Job>,
+	pub state: HashMap<JobName, JobState>,
 }
 
 impl eframe::App for App {
@@ -33,12 +32,12 @@ impl App {
 		egui::SidePanel::left("job list side panel").show(ctx, |ui| self.job_list_panel(ui));
 		egui::CentralPanel::default().show(ctx, |ui| {
 			ScrollArea::vertical().show(ui, |ui| {
-				job::show(
-					ui,
-					self.current_job.clone(),
-					self.jobs.get_mut(&self.current_job).unwrap(),
-					&mut self.scratch_pad,
-				);
+				let job = self.jobs.entry(self.current_job.clone()).or_default();
+
+				self.state
+					.entry(self.current_job.clone())
+					.or_default()
+					.show(ui, self.current_job.clone(), job);
 			});
 		});
 	}

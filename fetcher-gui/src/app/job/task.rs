@@ -6,57 +6,65 @@
 
 pub mod source;
 
-use crate::app::ScratchPad;
+use self::source::SourceState;
 use fetcher_config::jobs::{read_filter, task::Task};
 
 use egui::{ComboBox, Ui};
+use std::hash::Hash;
 
-pub fn show(ui: &mut Ui, task: &mut Task, scratch_pad: &mut ScratchPad) {
-	ui.horizontal(|ui| {
-		ui.label("Read Filter type:");
-		ComboBox::from_id_source("read filter type")
-			.wrap(false)
-			.selected_text(format!("{:?}", task.read_filter_kind))
-			.show_ui(ui, |combo| {
-				combo.selectable_value(&mut task.read_filter_kind, None, "none");
-				combo.selectable_value(
-					&mut task.read_filter_kind,
-					Some(read_filter::Kind::NewerThanRead),
-					"newer than read",
-				);
-				combo.selectable_value(
-					&mut task.read_filter_kind,
-					Some(read_filter::Kind::NotPresentInReadList),
-					"not present in read list",
-				);
-			})
-	});
+#[derive(Default, Debug)]
+pub struct TaskState {
+	pub source_state: SourceState,
+}
 
-	ui.horizontal(|ui| {
-		let mut tag = task.tag.clone().unwrap();
-		ui.label("Tag:");
-		ui.text_edit_singleline(&mut tag);
-		task.tag = Some(tag);
-	});
+impl TaskState {
+	pub fn show(&mut self, task: &mut Task, task_id: impl Hash, ui: &mut Ui) {
+		ui.horizontal(|ui| {
+			ui.label("Read Filter type:");
+			ComboBox::from_id_source(("read filter type", &task_id))
+				.wrap(false)
+				.selected_text(format!("{:?}", task.read_filter_kind))
+				.show_ui(ui, |combo| {
+					combo.selectable_value(&mut task.read_filter_kind, None, "none");
+					combo.selectable_value(
+						&mut task.read_filter_kind,
+						Some(read_filter::Kind::NewerThanRead),
+						"newer than read",
+					);
+					combo.selectable_value(
+						&mut task.read_filter_kind,
+						Some(read_filter::Kind::NotPresentInReadList),
+						"not present in read list",
+					);
+				})
+		});
 
-	source::show(ui, &mut task.source, scratch_pad);
+		ui.horizontal(|ui| {
+			let mut tag = task.tag.clone().unwrap();
+			ui.label("Tag:");
+			ui.text_edit_singleline(&mut tag);
+			task.tag = Some(tag);
+		});
 
-	ui.horizontal(|ui| {
-		ui.label("Actions");
-		ui.label(format!("{:?}", task.actions));
-	});
+		self.source_state.show(&mut task.source, task_id, ui);
 
-	ui.horizontal(|ui| {
-		let mut entry_to_msg_map_enabled = task.entry_to_msg_map_enabled.unwrap_or(false);
-		ui.checkbox(
-			&mut entry_to_msg_map_enabled,
-			"Entry to message map enabled override",
-		);
-		task.entry_to_msg_map_enabled = Some(entry_to_msg_map_enabled);
-	});
+		ui.horizontal(|ui| {
+			ui.label("Actions");
+			ui.label(format!("{:?}", task.actions));
+		});
 
-	ui.horizontal(|ui| {
-		ui.label("Sink:");
-		ui.label(format!("{:?}", task.sink));
-	});
+		ui.horizontal(|ui| {
+			let mut entry_to_msg_map_enabled = task.entry_to_msg_map_enabled.unwrap_or(false);
+			ui.checkbox(
+				&mut entry_to_msg_map_enabled,
+				"Entry to message map enabled override",
+			);
+			task.entry_to_msg_map_enabled = Some(entry_to_msg_map_enabled);
+		});
+
+		ui.horizontal(|ui| {
+			ui.label("Sink:");
+			ui.label(format!("{:?}", task.sink));
+		});
+	}
 }
