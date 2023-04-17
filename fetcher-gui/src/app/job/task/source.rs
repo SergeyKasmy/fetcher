@@ -12,7 +12,7 @@ pub mod reddit;
 pub mod string;
 pub mod twitter;
 
-use self::{email::EmailState, file::FileState, http::HttpState, reddit::RedditState};
+use self::{file::FileState, http::HttpState, reddit::RedditState};
 use fetcher_config::jobs::source::{
 	email::Email, exec::Exec, file::File, http::Http, reddit::Reddit, string::StringSource,
 	twitter::Twitter, Source,
@@ -26,14 +26,13 @@ pub struct SourceState {
 	pub http_state: HttpState,
 	pub file_state: FileState,
 	pub reddit_state: RedditState,
-	pub email_state: EmailState,
 }
 
 impl SourceState {
 	pub fn show(&mut self, source: &mut Option<Source>, task_id: impl Hash, ui: &mut Ui) {
 		ui.horizontal(|ui| {
 			ui.label("Source:");
-			ComboBox::from_id_source(("source type", task_id))
+			ComboBox::from_id_source(("source type", &task_id))
 				.wrap(false)
 				.selected_text(source.as_ref().map_or("None".to_owned(), |x| x.to_string()))
 				.show_ui(ui, |combo| {
@@ -68,7 +67,7 @@ impl SourceState {
 				Source::File(x) => self.file_state.show(x, ui),
 				Source::Reddit(x) => self.reddit_state.show(x, ui),
 				Source::Exec(x) => exec::show(ui, x),
-				Source::Email(x) => self.email_state.show(x, ui),
+				Source::Email(x) => email::show(x, task_id, ui),
 				Source::AlwaysErrors => todo!(),
 			});
 		}

@@ -7,191 +7,152 @@
 use fetcher_config::jobs::source::email::{Auth, Email, ViewMode};
 
 use egui::{ComboBox, Ui};
-use std::collections::HashMap;
+use std::hash::Hash;
 
-#[derive(Default, Debug)]
-pub struct EmailState {
-	pub imap: Option<String>,
-	pub filters_sender: Option<String>,
-	pub filters_subjects: HashMap<usize, String>,
-	pub filters_exclude_subjects: HashMap<usize, String>,
-}
+pub fn show(email: &mut Email, task_id: impl Hash, ui: &mut Ui) {
+	let Email {
+		imap,
+		email,
+		auth,
+		filters,
+		view_mode,
+	} = email;
 
-impl EmailState {
-	pub fn show(&mut self, email: &mut Email, ui: &mut Ui) {
-		let Email {
-			imap,
-			email,
-			auth,
-			filters,
-			view_mode,
-		} = email;
+	let mut imap_enabled = imap.is_some();
 
-		let mut imap_enabled = imap.is_some();
+	ui.horizontal(|ui| {
+		ui.checkbox(&mut imap_enabled, "IMAP server");
 
-		ui.checkbox(&mut imap_enabled, "imap");
+		if imap_enabled {
+			let imap_str = imap.get_or_insert_with(Default::default);
+			ui.text_edit_singleline(imap_str);
+		} else {
+			*imap = None;
+		}
+	});
 
-		ui.add_enabled_ui(imap_enabled, |ui| {
-			let imap_str = self
-				.imap
-				.get_or_insert_with(|| imap.clone().unwrap_or_default());
+	ui.horizontal(|ui| {
+		ui.label("Email:");
+		ui.text_edit_singleline(email);
+	});
 
-			ui.horizontal(|ui| {
-				ui.label("IMAP server:");
-				ui.text_edit_singleline(imap_str);
-			});
-
-			if imap_enabled {
-				*imap = Some(imap_str.clone());
-			} else {
-				*imap = None;
-			}
+	ComboBox::from_id_source(("email source auth type", &task_id))
+		.selected_text(format!("{auth:?}"))
+		.show_ui(ui, |ui| {
+			ui.selectable_value(auth, Auth::GmailOAuth2, "Gmail OAuth2");
+			ui.selectable_value(auth, Auth::Password, "Password");
 		});
 
-		ui.horizontal(|ui| {
-			ui.label("Email:");
-			ui.text_edit_singleline(email);
-		});
+	ui.label("Filters");
+	ui.group(|ui| {
+		{
+			let mut sender_enabled = filters.sender.is_some();
 
-		ComboBox::from_id_source("email source auth type")
-			.selected_text(format!("{auth:?}"))
-			.show_ui(ui, |ui| {
-				ui.selectable_value(auth, Auth::GmailOAuth2, "Gmail OAuth2");
-				ui.selectable_value(auth, Auth::Password, "Password");
+			ui.checkbox(&mut sender_enabled, "sender");
+
+			ui.add_enabled_ui(sender_enabled, |ui| {
+				let sender = filters.sender.get_or_insert_with(Default::default);
+
+				ui.horizontal(|ui| {
+					ui.label("Sender:");
+					ui.text_edit_singleline(sender);
+				});
+
+				if !sender_enabled {
+					filters.sender = None;
+				}
 			});
+		}
 
-		ui.label("Filters");
-		ui.group(|ui| {
-			{
-				let mut sender_enabled = filters.sender.is_some();
+		{
+			let mut subjects_enabled = filters.subjects.is_some();
 
-				ui.checkbox(&mut sender_enabled, "sender");
+			ui.checkbox(&mut subjects_enabled, "subjects");
 
-				ui.add_enabled_ui(sender_enabled, |ui| {
-					let sender_str = self
-						.filters_sender
-						.get_or_insert_with(|| filters.sender.clone().unwrap_or_default());
-
+			ui.add_enabled_ui(subjects_enabled, |ui| {
+				for subject in filters.subjects.iter_mut().flatten() {
 					ui.horizontal(|ui| {
-						ui.label("Sender:");
-						ui.text_edit_singleline(sender_str);
+						ui.label("Subject:");
+						ui.text_edit_singleline(subject);
 					});
+				}
 
-					if sender_enabled {
-						filters.sender = Some(sender_str.clone());
-					} else {
-						filters.sender = None;
-					}
-				});
-			}
+				if subjects_enabled {
+					ui.horizontal(|ui| {
+						let subjects = filters.subjects.get_or_insert_with(Vec::new);
 
-			{
-				let mut subjects_enabled = filters.subjects.is_some();
+						if ui.button("+").clicked() {
+							subjects.push(String::new());
+						}
 
-				ui.checkbox(&mut subjects_enabled, "subjects");
-
-				ui.add_enabled_ui(subjects_enabled, |ui| {
-					for (idx, subject) in filters.subjects.iter_mut().flatten().enumerate() {
-						// FIXME: is this even needed?
-						let subject_str = self
-							.filters_subjects
-							.entry(idx)
-							.or_insert_with(|| subject.clone());
-
-						ui.horizontal(|ui| {
-							ui.label("Subject:");
-							ui.text_edit_singleline(subject_str);
-						});
-
-						*subject = subject_str.clone();
-					}
-
-					if subjects_enabled {
-						ui.horizontal(|ui| {
-							let subjects = filters.subjects.get_or_insert_with(Vec::new);
-
-							if ui.button("+").clicked() {
-								subjects.push(String::new());
-							}
-
-							if ui.button("-").clicked() && !subjects.is_empty() {
-								match &mut filters.subjects {
-									Some(v) => {
-										v.remove(v.len() - 1);
-										if v.is_empty() {
-											filters.subjects = None;
-										}
+						if ui.button("-").clicked() && !subjects.is_empty() {
+							match &mut filters.subjects {
+								Some(v) => {
+									v.remove(v.len() - 1);
+									if v.is_empty() {
+										filters.subjects = None;
 									}
-									None => (),
 								}
+								None => (),
 							}
-						});
-					} else {
-						filters.subjects = None;
-					}
-				});
-			}
+						}
+					});
+				} else {
+					filters.subjects = None;
+				}
+			});
+		}
 
-			{
-				let mut exclude_subjects_enabled = filters.exclude_subjects.is_some();
+		{
+			let mut exclude_subjects_enabled = filters.exclude_subjects.is_some();
 
-				ui.checkbox(&mut exclude_subjects_enabled, "exclude subjects");
+			ui.checkbox(&mut exclude_subjects_enabled, "exclude subjects");
 
-				ui.add_enabled_ui(exclude_subjects_enabled, |ui| {
-					for (idx, exclude_subject) in
-						filters.exclude_subjects.iter_mut().flatten().enumerate()
-					{
-						let exclude_subject_str = self
-							.filters_exclude_subjects
-							.entry(idx)
-							.or_insert_with(|| exclude_subject.clone());
+			ui.add_enabled_ui(exclude_subjects_enabled, |ui| {
+				for exclude_subject in filters.exclude_subjects.iter_mut().flatten() {
+					ui.horizontal(|ui| {
+						ui.label("Exclude subject:");
+						ui.text_edit_singleline(exclude_subject);
+					});
+				}
 
-						ui.horizontal(|ui| {
-							ui.label("Exclude subject:");
-							ui.text_edit_singleline(exclude_subject_str);
-						});
+				if exclude_subjects_enabled {
+					ui.horizontal(|ui| {
+						let exclude_subjects =
+							filters.exclude_subjects.get_or_insert_with(Vec::new);
 
-						*exclude_subject = exclude_subject_str.clone();
-					}
+						if ui.button("+").clicked() {
+							exclude_subjects.push(String::new());
+						}
 
-					if exclude_subjects_enabled {
-						ui.horizontal(|ui| {
-							let exclude_subjects =
-								filters.exclude_subjects.get_or_insert_with(Vec::new);
-
-							if ui.button("+").clicked() {
-								exclude_subjects.push(String::new());
-							}
-
-							if ui.button("-").clicked() && !exclude_subjects.is_empty() {
-								match &mut filters.exclude_subjects {
-									Some(v) => {
-										v.remove(v.len() - 1);
-										if v.is_empty() {
-											filters.exclude_subjects = None;
-										}
+						if ui.button("-").clicked() && !exclude_subjects.is_empty() {
+							match &mut filters.exclude_subjects {
+								Some(v) => {
+									v.remove(v.len() - 1);
+									if v.is_empty() {
+										filters.exclude_subjects = None;
 									}
-									None => (),
 								}
+								None => (),
 							}
-						});
-					} else {
-						filters.exclude_subjects = None;
-					}
-				});
-			}
-		});
+						}
+					});
+				} else {
+					filters.exclude_subjects = None;
+				}
+			});
+		}
+	});
 
-		ui.horizontal(|ui| {
-			ui.label("View Mode");
+	ui.horizontal(|ui| {
+		ui.label("View Mode");
 
-			ComboBox::from_id_source("email view mode")
-				.selected_text(format!("{view_mode:?}"))
-				.show_ui(ui, |ui| {
-					ui.selectable_value(view_mode, ViewMode::Delete, "delete");
-					ui.selectable_value(view_mode, ViewMode::MarkAsRead, "mark as read");
-					ui.selectable_value(view_mode, ViewMode::ReadOnly, "read only");
-				});
-		});
-	}
+		ComboBox::from_id_source(("email view mode", task_id))
+			.selected_text(format!("{view_mode:?}"))
+			.show_ui(ui, |ui| {
+				ui.selectable_value(view_mode, ViewMode::Delete, "delete");
+				ui.selectable_value(view_mode, ViewMode::MarkAsRead, "mark as read");
+				ui.selectable_value(view_mode, ViewMode::ReadOnly, "read only");
+			});
+	});
 }
