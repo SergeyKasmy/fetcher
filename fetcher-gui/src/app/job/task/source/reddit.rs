@@ -8,7 +8,7 @@ use crate::app::COLOR_ERROR;
 use fetcher_config::jobs::source::reddit::{self, Reddit};
 
 use egui::{ComboBox, Ui};
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 #[derive(Default, Debug)]
 pub struct RedditState {
@@ -17,7 +17,7 @@ pub struct RedditState {
 }
 
 impl RedditState {
-	pub fn show(&mut self, Reddit(subreddits): &mut Reddit, ui: &mut Ui) {
+	pub fn show(&mut self, Reddit(subreddits): &mut Reddit, task_id: impl Hash, ui: &mut Ui) {
 		for subreddit in subreddits.iter_mut() {
 			let (
 				name,
@@ -29,7 +29,7 @@ impl RedditState {
 
 			ui.heading(name);
 
-			ComboBox::from_id_source(format!("source.reddit.{name}.sort"))
+			ComboBox::from_id_source(("reddit source sort", name, &task_id))
 				.selected_text(format!("{sort:?}"))
 				.show_ui(ui, |ui| {
 					ui.selectable_value(sort, reddit::Sort::New, "new");
@@ -66,6 +66,7 @@ impl RedditState {
 
 			ui.checkbox(&mut score_threshold_enabled, "score threshold");
 
+			// FIXME: gets stuck on disabled with the score_threshold textedit isn't a valid number
 			ui.add_enabled_ui(score_threshold_enabled, |ui| {
 				let score_threshold_str =
 					self.score_threshold.entry(name.clone()).or_insert_with(|| {
@@ -74,6 +75,8 @@ impl RedditState {
 							.map(|x| x.to_string())
 							.unwrap_or_else(|| String::from("0"))
 					});
+
+				ui.text_edit_singleline(score_threshold_str);
 
 				if score_threshold_enabled {
 					match score_threshold_str.parse::<u32>() {
