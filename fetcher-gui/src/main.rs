@@ -8,7 +8,12 @@
 pub mod job;
 
 use self::job::JobState;
-use fetcher_config::jobs::{action::Action, named::JobName, task::Task, Job};
+use fetcher_config::jobs::{
+	action::{take::Take, Action},
+	named::JobName,
+	task::Task,
+	Job,
+};
 
 use eframe::NativeOptions;
 use egui::{Color32, ScrollArea, SelectableLabel};
@@ -35,15 +40,22 @@ fn main() {
 					tag: Some(format!("Tag of Task #0 of Job#{i}")),
 					source: None,
 					actions: Some(vec![
-						Action::Caps,
-						Action::Caps,
-						Action::Caps,
-						Action::Caps,
-						Action::Caps,
-						Action::Caps,
-						Action::Caps,
-						Action::Caps,
-						Action::Caps,
+						Action::Take(Take(fetcher_config::jobs::action::take::Inner {
+							which: fetcher_config::jobs::action::take::TakeWhich::FromNewest,
+							num: 1,
+						})),
+						Action::Contains(fetcher_config::jobs::action::contains::Contains(
+							HashMap::new(),
+						)),
+						Action::DebugPrint,
+						Action::Html(fetcher_config::jobs::action::html::Html {
+							item: None,
+							title: None,
+							text: None,
+							id: None,
+							link: None,
+							img: None,
+						}),
 					]),
 					entry_to_msg_map_enabled: None,
 					sink: None,

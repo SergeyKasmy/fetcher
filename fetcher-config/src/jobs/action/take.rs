@@ -18,7 +18,7 @@ pub struct Inner {
 	pub num: usize,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum TakeWhich {
 	FromNewest,

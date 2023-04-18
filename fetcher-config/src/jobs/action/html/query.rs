@@ -12,7 +12,7 @@ use fetcher_core::{
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "snake_case")] // deny_unknown_fields not allowed since it's flattened in [`Query`]
 pub enum ElementKind {
 	Tag(String),
@@ -21,13 +21,13 @@ pub enum ElementKind {
 	Attr(ElementAttr),
 }
 
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct ElementAttr {
 	pub name: String,
 	pub value: String,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum DataLocation {
 	Text,

@@ -189,3 +189,16 @@ impl fmt::Display for Action {
 		})
 	}
 }
+
+impl fmt::Display for Field {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.write_str(match self {
+			Field::Title => "title",
+			Field::Body => "body",
+			Field::Link => "link",
+			Field::Id => "ID",
+			Field::ReplyTo => "reply to",
+			Field::RawContents => "raw contents",
+		})
+	}
+}

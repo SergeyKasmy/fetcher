@@ -7,7 +7,7 @@
 pub mod actions;
 pub mod source;
 
-use self::{actions::ActionsState, source::SourceState};
+use self::{actions::ActionsEditorState, source::SourceState};
 use fetcher_config::jobs::{read_filter, task::Task};
 
 use egui::{ComboBox, Ui, Window};
@@ -17,7 +17,7 @@ use std::hash::Hash;
 pub struct TaskState {
 	pub source_state: SourceState,
 	pub is_actions_editor_shown: bool,
-	pub actions_state: ActionsState,
+	pub actions_state: ActionsEditorState,
 }
 
 impl TaskState {
