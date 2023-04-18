@@ -37,7 +37,7 @@ use fetcher_core::{
 };
 
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 use tokio::sync::RwLock;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -161,5 +161,31 @@ impl Field {
 			Field::ReplyTo => CField::ReplyTo,
 			Field::RawContents => CField::RawContets,
 		}
+	}
+}
+
+impl fmt::Display for Action {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.write_str(match self {
+			Self::ReadFilter => "read filter",
+			Self::Take(_) => "take",
+			Self::Contains(_) => "contains",
+			Self::DebugPrint => "debug print",
+			Self::Feed => "feed",
+			Self::Html(_) => "html",
+			Self::Http => "http",
+			Self::Json(_) => "json",
+			Self::Use(_) => "use",
+			Self::Caps => "caps",
+			Self::Set(_) => "set",
+			Self::Shorten(_) => "shorten",
+			Self::Trim(_) => "trim",
+			Self::Replace(_) => "replace",
+			Self::Extract(_) => "extract",
+			Self::RemoveHtml(_) => "remove HTML",
+			Self::DecodeHtml(_) => "decode HTML",
+			Self::Sink(_) => "sink",
+			Self::Import(_) => "import",
+		})
 	}
 }

@@ -8,7 +8,7 @@
 pub mod app;
 
 use self::app::App;
-use fetcher_config::jobs::{named::JobName, task::Task, Job};
+use fetcher_config::jobs::{action::Action, named::JobName, task::Task, Job};
 
 use eframe::NativeOptions;
 use std::collections::{BTreeMap, HashMap};
@@ -24,7 +24,17 @@ fn main() {
 					read_filter_kind: None,
 					tag: Some(format!("Tag of Task #0 of Job#{i}")),
 					source: None,
-					actions: None,
+					actions: Some(vec![
+						Action::Caps,
+						Action::Caps,
+						Action::Caps,
+						Action::Caps,
+						Action::Caps,
+						Action::Caps,
+						Action::Caps,
+						Action::Caps,
+						Action::Caps,
+					]),
 					entry_to_msg_map_enabled: None,
 					sink: None,
 				},
@@ -66,7 +76,7 @@ fn main() {
 			Box::new(App {
 				current_job: jobs.first_key_value().unwrap().0.clone(),
 				jobs,
-				state: Default::default(),
+				job_state: Default::default(),
 			})
 		}),
 	)

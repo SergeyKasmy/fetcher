@@ -18,7 +18,7 @@ use fetcher_config::jobs::source::{
 	twitter::Twitter, Source,
 };
 
-use egui::{Align2, ComboBox, Ui, Vec2, Window};
+use egui::{ComboBox, Ui, Window};
 use std::hash::Hash;
 
 #[derive(Default, Debug)]
@@ -61,15 +61,15 @@ impl SourceState {
 
 			if let Some(source) = source {
 				if ui.button("edit").clicked() {
-					self.is_edit_window_shown = !self.is_edit_window_shown;
+					self.is_edit_window_shown = true;
 				}
 
 				Window::new("Source edit")
 					.id(egui::Id::new(("source editor", &task_id)))
-					.anchor(Align2::CENTER_CENTER, Vec2::default())
-					.collapsible(false)
-					.movable(false)
-					.resizable(false)
+					// .anchor(Align2::CENTER_CENTER, Vec2::default())
+					// .collapsible(false)
+					// .movable(false)
+					// .resizable(false)
 					.open(&mut self.is_edit_window_shown)
 					.show(ui.ctx(), |ui| match source {
 						Source::String(x) => string::show(ui, x),

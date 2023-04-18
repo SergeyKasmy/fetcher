@@ -4,17 +4,20 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub mod actions;
 pub mod source;
 
-use self::source::SourceState;
+use self::{actions::ActionsState, source::SourceState};
 use fetcher_config::jobs::{read_filter, task::Task};
 
-use egui::{ComboBox, Ui};
+use egui::{ComboBox, Ui, Window};
 use std::hash::Hash;
 
 #[derive(Default, Debug)]
 pub struct TaskState {
 	pub source_state: SourceState,
+	pub is_actions_editor_shown: bool,
+	pub actions_state: ActionsState,
 }
 
 impl TaskState {
@@ -46,12 +49,24 @@ impl TaskState {
 			task.tag = Some(tag);
 		});
 
-		self.source_state.show(&mut task.source, task_id, ui);
+		self.source_state.show(&mut task.source, &task_id, ui);
 
-		ui.horizontal(|ui| {
-			ui.label("Actions");
-			ui.label(format!("{:?}", task.actions));
-		});
+		if ui
+			.button(format!(
+				"Actions: {}",
+				task.actions.as_ref().map_or(0, Vec::len)
+			))
+			.clicked()
+		{
+			self.is_actions_editor_shown = true;
+		}
+
+		Window::new("Actions edit")
+			.id(egui::Id::new(("actions editor", &task_id)))
+			.open(&mut self.is_actions_editor_shown)
+			.show(ui.ctx(), |ui| {
+				self.actions_state.show(&mut task.actions, &task_id, ui);
+			});
 
 		ui.horizontal(|ui| {
 			let mut entry_to_msg_map_enabled = task.entry_to_msg_map_enabled.unwrap_or(false);
