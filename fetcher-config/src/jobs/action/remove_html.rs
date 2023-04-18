@@ -18,9 +18,9 @@ use itertools::process_results;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
 
-// Remove HTML tags and trim any remaining whitespace
+/// Remove HTML tags and trim any remaining whitespace
 #[serde_as]
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 pub struct RemoveHtml {
 	#[serde_as(deserialize_as = "OneOrMany<_>")]
 	pub r#in: Vec<Field>,

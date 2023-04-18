@@ -8,19 +8,20 @@ use fetcher_core::action::filter::take::{Take as CTake, TakeFrom as CTakeFrom};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(transparent)]
 pub struct Take(#[serde(with = "crate::serde_extentions::tuple")] pub Inner);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct Inner {
 	pub which: TakeWhich,
 	pub num: usize,
 }
 
-#[derive(Deserialize, Serialize, PartialEq, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Clone, Default, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum TakeWhich {
+	#[default]
 	FromNewest,
 	FromOldest,
 }

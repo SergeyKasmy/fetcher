@@ -35,7 +35,9 @@ pub struct Job {
 	pub source: Option<Source>,
 	#[serde(rename = "process")]
 	pub actions: Option<Vec<Action>>,
-	pub entry_to_msg_map_enabled: Option<bool>,
+
+	#[serde(default)]
+	pub entry_to_msg_map_enabled: bool,
 	pub sink: Option<Sink>,
 
 	pub tasks: Option<HashMap<TaskName, Task>>,
@@ -113,8 +115,8 @@ impl Job {
 				task.actions = self.actions.clone();
 			}
 
-			if task.entry_to_msg_map_enabled.is_none() {
-				task.entry_to_msg_map_enabled = self.entry_to_msg_map_enabled;
+			if self.entry_to_msg_map_enabled {
+				task.entry_to_msg_map_enabled = true;
 			}
 
 			if task.sink.is_none() {

@@ -10,7 +10,7 @@ use fetcher_core::action::{transform::Use as CUse, Action as CAction};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(transparent)]
 pub struct Use(pub HashMap<Field, As>);
 

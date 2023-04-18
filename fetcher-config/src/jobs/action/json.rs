@@ -15,7 +15,7 @@ use fetcher_core::{
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Json {
 	pub item: Option<Query>,
@@ -39,8 +39,9 @@ pub type Keys = Vec<Key>;
 pub struct Query {
 	#[serde(rename = "query")]
 	pub keys: Keys,
-	// TODO: should itemq really be allowed to be marked as optional?
-	pub optional: Option<bool>,
+	// TODO: should item query really be allowed to be marked as optional?
+	#[serde(default)]
+	pub optional: bool,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -95,7 +96,7 @@ impl Query {
 	pub fn parse(self) -> c_json::Query {
 		c_json::Query {
 			keys: self.keys.into_iter().map(Key::parse).collect(),
-			optional: self.optional.unwrap_or(false),
+			optional: self.optional,
 		}
 	}
 }

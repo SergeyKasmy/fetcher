@@ -9,8 +9,13 @@ pub mod job;
 
 use self::job::JobState;
 use fetcher_config::jobs::{
-	action::{take::Take, Action},
+	action::{
+		contains::Contains, decode_html::DecodeHtml, extract::Extract, html::Html, import::Import,
+		json::Json, remove_html::RemoveHtml, replace::Replace, set::Set, shorten::Shorten,
+		take::Take, trim::Trim, use_as::Use, Action,
+	},
 	named::JobName,
+	sink::Sink,
 	task::Task,
 	Job,
 };
@@ -36,56 +41,45 @@ fn main() {
 			tasks.insert(
 				format!("Task #0 of Job#{i}").into(),
 				Task {
-					read_filter_kind: None,
 					tag: Some(format!("Tag of Task #0 of Job#{i}")),
-					source: None,
 					actions: Some(vec![
-						Action::Take(Take(fetcher_config::jobs::action::take::Inner {
-							which: fetcher_config::jobs::action::take::TakeWhich::FromNewest,
-							num: 1,
-						})),
-						Action::Contains(fetcher_config::jobs::action::contains::Contains(
-							HashMap::new(),
-						)),
+						Action::ReadFilter,
+						Action::Take(Take::default()),
+						Action::Contains(Contains::default()),
 						Action::DebugPrint,
-						Action::Html(fetcher_config::jobs::action::html::Html {
-							item: None,
-							title: None,
-							text: None,
-							id: None,
-							link: None,
-							img: None,
-						}),
+						Action::Feed,
+						Action::Html(Html::default()),
+						Action::Http,
+						Action::Json(Json::default()),
+						Action::Use(Use::default()),
+						Action::Caps,
+						Action::Set(Set::default()),
+						Action::Shorten(Shorten::default()),
+						Action::Trim(Trim::default()),
+						Action::Replace(Replace::default()),
+						Action::Extract(Extract::default()),
+						Action::RemoveHtml(RemoveHtml::default()),
+						Action::DecodeHtml(DecodeHtml::default()),
+						Action::Sink(Sink::default()),
+						Action::Import(Import::default()),
 					]),
-					entry_to_msg_map_enabled: None,
-					sink: None,
+					..Default::default()
 				},
 			);
+
 			tasks.insert(
 				format!("Task #1 of Job#{i}").into(),
 				Task {
-					read_filter_kind: None,
 					tag: Some(format!("Tag of Task #1 of Job#{i}")),
-					source: None,
-					actions: None,
-					entry_to_msg_map_enabled: None,
-					sink: None,
+					..Default::default()
 				},
 			);
 
 			(
 				format!("Job #{i}").into(),
 				Job {
-					read_filter_kind: None,
-					tag: None,
-					source: None,
-					actions: None,
-					entry_to_msg_map_enabled: None,
-					sink: None,
 					tasks: Some(tasks),
-					refresh: None,
-					disabled: None,
-					templates: None,
+					..Default::default()
 				},
 			)
 		})

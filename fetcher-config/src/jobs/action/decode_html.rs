@@ -15,7 +15,7 @@ use serde_with::{serde_as, OneOrMany};
 
 // Decode HTML escape codes
 #[serde_as]
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 pub struct DecodeHtml {
 	#[serde_as(deserialize_as = "OneOrMany<_>")]
 	pub r#in: Vec<Field>,

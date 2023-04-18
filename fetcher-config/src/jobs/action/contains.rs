@@ -13,7 +13,7 @@ use fetcher_core::action::{filter::Contains as CContains, Action as CAction};
 
 type RegEx = String;
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Contains(pub HashMap<Field, RegEx>);
 

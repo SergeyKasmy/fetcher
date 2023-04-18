@@ -15,7 +15,7 @@ use fetcher_core::action::{
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(transparent)]
 pub struct Shorten(pub HashMap<Field, usize>);
 

@@ -21,20 +21,21 @@ pub enum ElementKind {
 	Attr(ElementAttr),
 }
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Default, Debug)]
 pub struct ElementAttr {
 	pub name: String,
 	pub value: String,
 }
 
-#[derive(Deserialize, Serialize, PartialEq, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Clone, Default, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum DataLocation {
+	#[default]
 	Text,
 	Attr(String),
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)] // deny_unknown_fields not allowed since it uses flatten
+#[derive(Deserialize, Serialize, Clone, Default, Debug)] // deny_unknown_fields not allowed since it uses flatten
 pub struct ElementQuery {
 	#[serde(flatten)]
 	pub kind: ElementKind,
@@ -47,15 +48,16 @@ pub struct ItemQuery {
 	pub query: Vec<ElementQuery>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)] // deny_unknown_fields not allowed since it's flattened in [`ElementQuery`]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)] // deny_unknown_fields not allowed since it's flattened in [`ElementQuery`]
 pub struct ElementDataQuery {
-	pub optional: Option<bool>,
+	#[serde(default)]
+	pub optional: bool,
 	pub query: Vec<ElementQuery>,
 	pub data_location: DataLocation,
 	pub regex: Option<HtmlQueryRegex>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct HtmlQueryRegex {
 	pub re: String,
@@ -99,7 +101,7 @@ impl ElementQuery {
 impl ElementDataQuery {
 	pub fn parse(self) -> Result<c_query::ElementDataQuery, Error> {
 		Ok(c_query::ElementDataQuery {
-			optional: self.optional.unwrap_or(false),
+			optional: self.optional,
 			query: self.query.into_iter().map(ElementQuery::parse).collect(),
 			data_location: self.data_location.parse(),
 			regex: self.regex.try_map(HtmlQueryRegex::parse)?,
@@ -110,6 +112,12 @@ impl ElementDataQuery {
 impl HtmlQueryRegex {
 	pub fn parse(self) -> Result<CReplace, Error> {
 		CReplace::new(&self.re, self.replace_with).map_err(Into::into)
+	}
+}
+
+impl Default for ElementKind {
+	fn default() -> Self {
+		Self::Tag("div".to_owned())
 	}
 }
 

@@ -12,7 +12,7 @@ use fetcher_core::{action::transform::entry::html::Html as CHtml, utils::OptionE
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Html {
 	pub item: Option<ItemQuery>,

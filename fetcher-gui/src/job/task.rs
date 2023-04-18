@@ -68,14 +68,10 @@ impl TaskState {
 				self.actions_state.show(&mut task.actions, &task_id, ui);
 			});
 
-		ui.horizontal(|ui| {
-			let mut entry_to_msg_map_enabled = task.entry_to_msg_map_enabled.unwrap_or(false);
-			ui.checkbox(
-				&mut entry_to_msg_map_enabled,
-				"Entry to message map enabled override",
-			);
-			task.entry_to_msg_map_enabled = Some(entry_to_msg_map_enabled);
-		});
+		ui.checkbox(
+			&mut task.entry_to_msg_map_enabled,
+			"Entry to message map enabled override",
+		);
 
 		ui.horizontal(|ui| {
 			ui.label("Sink:");

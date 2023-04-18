@@ -16,13 +16,16 @@ use fetcher_core::sink::{telegram::LinkLocation as CLinkLocation, Telegram as CT
 #[serde(deny_unknown_fields)]
 pub struct Telegram {
 	pub chat_id: i64,
-	pub link_location: Option<LinkLocation>,
+
+	#[serde(default)]
+	pub link_location: LinkLocation,
 }
 
 /// Refer to [`crate::sink::message::LinkLocation`]
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum LinkLocation {
+	#[default]
 	PreferTitle,
 	Bottom,
 }
@@ -41,8 +44,7 @@ impl Telegram {
 		Ok(CTelegram::new(
 			token,
 			self.chat_id,
-			self.link_location
-				.map_or(CLinkLocation::PreferTitle, LinkLocation::parse),
+			self.link_location.parse(),
 		))
 	}
 }

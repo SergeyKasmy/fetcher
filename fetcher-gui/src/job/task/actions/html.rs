@@ -29,10 +29,7 @@ pub fn show(html: &mut Html, task_id: impl Hash, ui: &mut Ui) {
 
 		if html.item.is_none() && ui.button("+").clicked() {
 			html.item = Some(ItemQuery {
-				query: vec![ElementQuery {
-					kind: ElementKind::Tag(String::new()),
-					ignore: None,
-				}],
+				query: vec![ElementQuery::default()],
 			});
 		}
 	});
@@ -62,12 +59,7 @@ pub fn show(html: &mut Html, task_id: impl Hash, ui: &mut Ui) {
 			if ui.button("+").clicked() {
 				query
 					.get_or_insert_with(Default::default)
-					.push(ElementDataQuery {
-						optional: None,
-						query: Vec::new(),
-						data_location: DataLocation::Text,
-						regex: None,
-					});
+					.push(ElementDataQuery::default());
 			}
 
 			if ui.button("-").clicked() {
@@ -119,12 +111,7 @@ fn element_data_query(
 		}
 		None => {
 			if ui.button("Add").clicked() {
-				*elem_data_query = Some(ElementDataQuery {
-					optional: Some(false),
-					query: Vec::new(),
-					data_location: DataLocation::Text,
-					regex: None,
-				});
+				*elem_data_query = Some(ElementDataQuery::default());
 			}
 		}
 	}
@@ -135,7 +122,7 @@ fn element_data_query_inner(
 	combined_hash: impl Hash,
 	ui: &mut Ui,
 ) {
-	ui.checkbox(elem_data_query.optional.get_or_insert(false), "optional");
+	ui.checkbox(&mut elem_data_query.optional, "optional");
 
 	ui.group(|ui| element_queries(&mut elem_data_query.query, &combined_hash, ui));
 
@@ -169,12 +156,7 @@ fn element_data_query_inner(
 
 		if is_regex_enabled {
 			let HtmlQueryRegex { re, replace_with } =
-				elem_data_query.regex.get_or_insert_with(|| {
-					fetcher_config::jobs::action::html::query::HtmlQueryRegex {
-						re: String::new(),
-						replace_with: String::new(),
-					}
-				});
+				elem_data_query.regex.get_or_insert_with(Default::default);
 
 			ui.horizontal(|ui| {
 				ui.label("Regex");
@@ -200,10 +182,7 @@ fn element_queries(elem_queries: &mut Vec<ElementQuery>, combined_hash: impl Has
 
 	ui.horizontal(|ui| {
 		if ui.button("+").clicked() {
-			elem_queries.push(ElementQuery {
-				kind: ElementKind::Tag(String::new()),
-				ignore: None,
-			});
+			elem_queries.push(ElementQuery::default());
 		}
 
 		if ui.button("-").clicked() {
@@ -231,7 +210,7 @@ fn element_query(elem_query: &mut ElementQuery, combined_hash: impl Hash, ui: &m
 				elem_query
 					.ignore
 					.get_or_insert_with(Vec::new)
-					.push(ElementKind::Tag(String::new()));
+					.push(ElementKind::default());
 			}
 
 			if ui.button("-").clicked() {
@@ -255,14 +234,7 @@ fn element_kind(elem_kind: &mut ElementKind, combined_hash: impl Hash, ui: &mut 
 			.show_ui(ui, |ui| {
 				ui.selectable_value(elem_kind, ElementKind::Tag(String::new()), "tag");
 				ui.selectable_value(elem_kind, ElementKind::Class(String::new()), "class");
-				ui.selectable_value(
-					elem_kind,
-					ElementKind::Attr(ElementAttr {
-						name: String::new(),
-						value: String::new(),
-					}),
-					"attr",
-				);
+				ui.selectable_value(elem_kind, ElementKind::Attr(ElementAttr::default()), "attr");
 			});
 
 		match elem_kind {

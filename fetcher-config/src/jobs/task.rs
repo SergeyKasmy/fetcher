@@ -8,7 +8,6 @@ pub mod entry_to_msg_map;
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tap::TapOptional;
 use tokio::sync::RwLock;
 
 use super::{
@@ -22,7 +21,7 @@ use super::{
 use crate::Error;
 use fetcher_core::{action::Action as CAction, task::Task as CTask, utils::OptionExt};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Task {
 	#[serde(rename = "read_filter_type")]
@@ -31,7 +30,8 @@ pub struct Task {
 	pub source: Option<Source>,
 	#[serde(rename = "process")]
 	pub actions: Option<Vec<Action>>,
-	pub entry_to_msg_map_enabled: Option<bool>,
+	#[serde(default)]
+	pub entry_to_msg_map_enabled: bool,
 	pub sink: Option<Sink>,
 }
 
@@ -76,19 +76,15 @@ impl Task {
 			Ok::<_, Error>(acts)
 		})?;
 
-		let entry_to_msg_map_enabled = self
-			.entry_to_msg_map_enabled
-			.tap_some(|b| {
-				// TODO: include task name
-				tracing::info!(
-					"Overriding entry_to_msg_map_enabled for {} from the default to {}",
-					job,
-					b
-				);
-			})
-			.unwrap_or_else(|| self.source.as_ref().map_or(false, Source::supports_replies));
-
-		let entry_to_msg_map = if entry_to_msg_map_enabled {
+		let entry_to_msg_map = if self.entry_to_msg_map_enabled
+			|| self.source.as_ref().map_or(false, Source::supports_replies)
+		{
+			// 	// TODO: include task name
+			// 	tracing::info!(
+			// 		"Overriding entry_to_msg_map_enabled for {} from the default to {}",
+			// 		job,
+			// 		b
+			// 	);
 			match external.entry_to_msg_map(job, task_name) {
 				ExternalDataResult::Ok(v) => Some(v),
 				ExternalDataResult::Unavailable => {

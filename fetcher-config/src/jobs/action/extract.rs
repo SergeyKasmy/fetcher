@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use super::Field;
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 pub struct Extract {
 	from_field: Field,
 	re: String,

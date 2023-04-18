@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use super::Field;
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Replace {
 	pub re: String,

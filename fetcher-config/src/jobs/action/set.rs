@@ -15,7 +15,7 @@ use fetcher_core::action::Action as CAction;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(transparent)]
 pub struct Set(pub HashMap<Field, Option<Values>>);
 
