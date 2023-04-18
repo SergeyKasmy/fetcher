@@ -6,9 +6,10 @@
 
 pub mod contains;
 pub mod html;
+pub mod json;
 pub mod take;
 
-use self::{contains::ContainsState, take::TakeState};
+use self::{contains::ContainsState, json::JsonState, take::TakeState};
 use fetcher_config::jobs::action::Action;
 
 use egui::{panel::Side, CentralPanel, ScrollArea, SelectableLabel, SidePanel, TopBottomPanel, Ui};
@@ -25,6 +26,7 @@ pub enum SelectedActionState {
 	Stateless,
 	TakeState(TakeState),
 	ContainsState(ContainsState),
+	JsonState(JsonState),
 }
 
 impl ActionsEditorState {
@@ -88,18 +90,18 @@ impl SelectedActionState {
 			Action::Feed => Self::Stateless,
 			Action::Html(_) => Self::Stateless,
 			Action::Http => Self::Stateless,
-			Action::Json(_) => todo!(),
-			Action::Use(_) => todo!(),
+			Action::Json(_) => Self::JsonState(Default::default()),
+			Action::Use(_) => Self::Stateless,
 			Action::Caps => Self::Stateless,
-			Action::Set(_) => todo!(),
-			Action::Shorten(_) => todo!(),
-			Action::Trim(_) => todo!(),
-			Action::Replace(_) => todo!(),
-			Action::Extract(_) => todo!(),
-			Action::RemoveHtml(_) => todo!(),
-			Action::DecodeHtml(_) => todo!(),
-			Action::Sink(_) => todo!(),
-			Action::Import(_) => todo!(),
+			Action::Set(_) => Self::Stateless,
+			Action::Shorten(_) => Self::Stateless,
+			Action::Trim(_) => Self::Stateless,
+			Action::Replace(_) => Self::Stateless,
+			Action::Extract(_) => Self::Stateless,
+			Action::RemoveHtml(_) => Self::Stateless,
+			Action::DecodeHtml(_) => Self::Stateless,
+			Action::Sink(_) => Self::Stateless,
+			Action::Import(_) => Self::Stateless,
 		}
 	}
 
@@ -111,8 +113,8 @@ impl SelectedActionState {
 			(Self::Stateless, Action::DebugPrint) => (),
 			(Self::Stateless, Action::Feed) => (),
 			(Self::Stateless, Action::Html(x)) => html::show(x, &task_id, ui),
-			(_, Action::Http) => todo!(),
-			(_, Action::Json(_)) => todo!(),
+			(Self::Stateless, Action::Http) => (),
+			(Self::JsonState(state), Action::Json(x)) => state.show(x, &task_id, ui),
 			(_, Action::Use(_)) => todo!(),
 			(_, Action::Caps) => todo!(),
 			(_, Action::Set(_)) => todo!(),

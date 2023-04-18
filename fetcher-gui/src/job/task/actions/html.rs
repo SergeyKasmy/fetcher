@@ -104,14 +104,14 @@ fn element_data_query(
 	}
 
 	match elem_data_query {
-		Some(_) => {
-			if ui.button("Remove").clicked() {
-				*elem_data_query = None;
-			}
-		}
 		None => {
 			if ui.button("Add").clicked() {
 				*elem_data_query = Some(ElementDataQuery::default());
+			}
+		}
+		Some(_) => {
+			if ui.button("Remove").clicked() {
+				*elem_data_query = None;
 			}
 		}
 	}

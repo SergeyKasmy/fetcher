@@ -26,7 +26,7 @@ pub struct Json {
 	pub img: Option<Vec<StringQuery>>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Clone, Debug)]
 #[serde(untagged)]
 pub enum Key {
 	String(String),
@@ -34,17 +34,18 @@ pub enum Key {
 }
 pub type Keys = Vec<Key>;
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Query {
 	#[serde(rename = "query")]
 	pub keys: Keys,
+
 	// TODO: should item query really be allowed to be marked as optional?
 	#[serde(default)]
 	pub optional: bool,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct StringQuery {
 	#[serde(flatten)]
@@ -52,11 +53,11 @@ pub struct StringQuery {
 	pub regex: Option<JsonQueryRegex>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct JsonQueryRegex {
-	re: String,
-	replace_with: String,
+	pub re: String,
+	pub replace_with: String,
 }
 
 impl Json {
