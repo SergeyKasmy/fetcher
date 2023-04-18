@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::app::COLOR_ERROR;
+use crate::COLOR_ERROR;
 use fetcher_config::jobs::source::reddit::{self, Reddit};
 
 use egui::{ComboBox, Ui};
