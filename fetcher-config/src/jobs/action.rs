@@ -72,7 +72,7 @@ pub enum Action {
 }
 
 // TODO: add media
-#[derive(Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Default, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, Hash, PartialEq, Eq, Default, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Field {
 	#[default]

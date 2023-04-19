@@ -5,31 +5,42 @@
  */
 
 pub mod contains;
+pub mod field;
 pub mod html;
 pub mod json;
+pub mod set;
+pub mod shorten;
 pub mod take;
+pub mod use_as;
 
-use self::{contains::ContainsState, json::JsonState, take::TakeState};
+use self::{
+	contains::ContainsState, json::JsonState, set::SetState, shorten::ShortenState,
+	take::TakeState, use_as::UseState,
+};
 use fetcher_config::jobs::action::Action;
 
 use egui::{panel::Side, CentralPanel, ScrollArea, SelectableLabel, SidePanel, TopBottomPanel, Ui};
 use std::{collections::HashMap, hash::Hash};
 
 #[derive(Default, Debug)]
-pub struct ActionsEditorState {
+pub struct ActionEditorState {
 	pub current_action_idx: Option<usize>,
 	pub selected_action_state: HashMap<usize, SelectedActionState>,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum SelectedActionState {
 	Stateless,
 	TakeState(TakeState),
 	ContainsState(ContainsState),
 	JsonState(JsonState),
+	UseState(UseState),
+	SetState(SetState),
+	ShortenState(ShortenState),
 }
 
-impl ActionsEditorState {
+impl ActionEditorState {
 	pub fn show(&mut self, actions: &mut Option<Vec<Action>>, task_id: impl Hash, ui: &mut Ui) {
 		SidePanel::new(Side::Left, egui::Id::new(("actions list", &task_id))).show_inside(
 			ui,
@@ -91,10 +102,10 @@ impl SelectedActionState {
 			Action::Html(_) => Self::Stateless,
 			Action::Http => Self::Stateless,
 			Action::Json(_) => Self::JsonState(Default::default()),
-			Action::Use(_) => Self::Stateless,
+			Action::Use(_) => Self::UseState(Default::default()),
 			Action::Caps => Self::Stateless,
-			Action::Set(_) => Self::Stateless,
-			Action::Shorten(_) => Self::Stateless,
+			Action::Set(_) => Self::SetState(Default::default()),
+			Action::Shorten(_) => Self::ShortenState(Default::default()),
 			Action::Trim(_) => Self::Stateless,
 			Action::Replace(_) => Self::Stateless,
 			Action::Extract(_) => Self::Stateless,
@@ -106,7 +117,7 @@ impl SelectedActionState {
 	}
 
 	pub fn show(&mut self, action: &mut Action, task_id: impl Hash, ui: &mut Ui) {
-		match (self, action) {
+		match (&mut *self, &mut *action) {
 			(Self::Stateless, Action::ReadFilter) => (),
 			(Self::TakeState(state), Action::Take(x)) => state.show(x, &task_id, ui),
 			(Self::ContainsState(state), Action::Contains(x)) => state.show(x, &task_id, ui),
@@ -115,10 +126,10 @@ impl SelectedActionState {
 			(Self::Stateless, Action::Html(x)) => html::show(x, &task_id, ui),
 			(Self::Stateless, Action::Http) => (),
 			(Self::JsonState(state), Action::Json(x)) => state.show(x, &task_id, ui),
-			(_, Action::Use(_)) => todo!(),
-			(_, Action::Caps) => todo!(),
-			(_, Action::Set(_)) => todo!(),
-			(_, Action::Shorten(_)) => todo!(),
+			(Self::UseState(state), Action::Use(x)) => state.show(x, &task_id, ui),
+			(Self::Stateless, Action::Caps) => (),
+			(Self::SetState(state), Action::Set(x)) => state.show(x, &task_id, ui),
+			(Self::ShortenState(state), Action::Shorten(x)) => state.show(x, &task_id, ui),
 			(_, Action::Trim(_)) => todo!(),
 			(_, Action::Replace(_)) => todo!(),
 			(_, Action::Extract(_)) => todo!(),
@@ -126,7 +137,14 @@ impl SelectedActionState {
 			(_, Action::DecodeHtml(_)) => todo!(),
 			(_, Action::Sink(_)) => todo!(),
 			(_, Action::Import(_)) => todo!(),
-			_ => todo!(),
+			// state doesn't match the action, create a new one
+			_ => {
+				/*
+				// TODO: will create an infinite loop if no match arms still match. Create a check to avoid that
+				*self = Self::new(action);
+				self.show(action, task_id, ui);
+				*/
+			}
 		}
 	}
 }

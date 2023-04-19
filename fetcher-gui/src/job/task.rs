@@ -4,10 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub mod actions;
+pub mod action;
 pub mod source;
 
-use self::{actions::ActionsEditorState, source::SourceState};
+use self::{action::ActionEditorState, source::SourceState};
 use fetcher_config::jobs::{read_filter, task::Task};
 
 use egui::{ComboBox, Ui, Window};
@@ -17,7 +17,7 @@ use std::hash::Hash;
 pub struct TaskState {
 	pub source_state: SourceState,
 	pub is_actions_editor_shown: bool,
-	pub actions_state: ActionsEditorState,
+	pub actions_state: ActionEditorState,
 }
 
 impl TaskState {

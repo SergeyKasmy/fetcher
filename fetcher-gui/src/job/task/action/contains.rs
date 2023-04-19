@@ -25,7 +25,7 @@ impl ContainsState {
 
 		ui.horizontal(|ui| {
 			if ui.button("+").clicked() {
-				contains.0.entry(self.selected_field.clone()).or_default();
+				contains.0.entry(self.selected_field).or_default();
 			}
 
 			ComboBox::from_id_source(("action contains field", task_id))

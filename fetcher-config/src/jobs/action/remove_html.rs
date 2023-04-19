@@ -39,7 +39,7 @@ fn remove_html_action_for(field: Field) -> Result<[CAction; 2], ConfigError> {
 	let remove_html = CReplace::new(HTML_TAG_RE, "".to_owned())?;
 
 	let remove_html = CAction::Transform(Box::new(CTransformFieldWrapper {
-		field: field.clone().parse(),
+		field: field.parse(),
 		transformator: remove_html,
 	}));
 

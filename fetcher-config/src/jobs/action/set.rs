@@ -19,6 +19,10 @@ use serde_with::{serde_as, OneOrMany};
 #[serde(transparent)]
 pub struct Set(pub HashMap<Field, Option<Values>>);
 
+#[serde_as]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
+pub struct Values(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<String>);
+
 impl Set {
 	pub fn parse(self) -> Vec<CAction> {
 		self.0
@@ -32,7 +36,3 @@ impl Set {
 			.collect()
 	}
 }
-
-#[serde_as]
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct Values(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<String>);
