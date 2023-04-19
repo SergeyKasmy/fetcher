@@ -22,6 +22,7 @@ use serde_with::{serde_as, OneOrMany};
 #[serde_as]
 #[derive(Deserialize, Serialize, Clone, Default, Debug)]
 pub struct RemoveHtml {
+	// TODO: replace with a hashset?
 	#[serde_as(deserialize_as = "OneOrMany<_>")]
 	pub r#in: Vec<Field>,
 }

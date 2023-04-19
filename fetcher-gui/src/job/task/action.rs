@@ -5,9 +5,13 @@
  */
 
 pub mod contains;
+pub mod decode_html;
+pub mod extract;
 pub mod field;
 pub mod html;
 pub mod json;
+pub mod remove_html;
+pub mod replace;
 pub mod set;
 pub mod shorten;
 pub mod take;
@@ -130,13 +134,15 @@ impl SelectedActionState {
 			(Self::Stateless, Action::Caps) => (),
 			(Self::SetState(state), Action::Set(x)) => state.show(x, &task_id, ui),
 			(Self::ShortenState(state), Action::Shorten(x)) => state.show(x, &task_id, ui),
-			(_, Action::Trim(_)) => todo!(),
-			(_, Action::Replace(_)) => todo!(),
-			(_, Action::Extract(_)) => todo!(),
-			(_, Action::RemoveHtml(_)) => todo!(),
-			(_, Action::DecodeHtml(_)) => todo!(),
+			(Self::Stateless, Action::Trim(x)) => field::show(&mut x.field, &task_id, ui),
+			(Self::Stateless, Action::Replace(x)) => replace::show(x, &task_id, ui),
+			(Self::Stateless, Action::Extract(x)) => extract::show(x, &task_id, ui),
+			(Self::Stateless, Action::RemoveHtml(x)) => remove_html::show(x, &task_id, ui),
+			(Self::Stateless, Action::DecodeHtml(x)) => decode_html::show(x, &task_id, ui),
 			(_, Action::Sink(_)) => todo!(),
-			(_, Action::Import(_)) => todo!(),
+			(Self::Stateless, Action::Import(x)) => {
+				ui.text_edit_singleline(&mut x.0);
+			}
 			// state doesn't match the action, create a new one
 			_ => {
 				/*

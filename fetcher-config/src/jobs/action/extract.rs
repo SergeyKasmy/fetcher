@@ -16,9 +16,9 @@ use super::Field;
 
 #[derive(Deserialize, Serialize, Clone, Default, Debug)]
 pub struct Extract {
-	from_field: Field,
-	re: String,
-	passthrough_if_not_found: bool,
+	pub from_field: Field,
+	pub re: String,
+	pub passthrough_if_not_found: bool,
 }
 
 impl Extract {
