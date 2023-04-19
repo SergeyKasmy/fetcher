@@ -21,11 +21,11 @@ pub struct UseState {
 
 impl UseState {
 	pub fn show(&mut self, use_as: &mut Use, task_id: impl Hash, ui: &mut Ui) {
-		for (field, As { r#as: az }) in use_as.0.iter_mut() {
+		for (idx, (field, As { r#as: az })) in use_as.0.iter_mut().enumerate() {
 			ui.horizontal(|ui| {
 				ui.label(field.to_string() + " as");
 
-				field::show(az, ("action use as", &task_id), ui);
+				field::show(az, ("action use as", idx, &task_id), ui);
 			});
 		}
 

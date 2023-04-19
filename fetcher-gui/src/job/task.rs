@@ -73,9 +73,9 @@ impl TaskState {
 			"Entry to message map enabled override",
 		);
 
-		ui.horizontal(|ui| {
-			ui.label("Sink:");
-			ui.label(format!("{:?}", task.sink));
-		});
+		// ui.horizontal(|ui| {
+		// 	ui.label("Sink:");
+		// 	ui.label(format!("{:?}", task.sink));
+		// });
 	}
 }
