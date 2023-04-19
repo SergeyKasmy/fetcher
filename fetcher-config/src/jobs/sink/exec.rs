@@ -7,7 +7,7 @@
 use fetcher_core::sink::Exec as CExec;
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Default, Debug)]
 #[serde(transparent)]
 pub struct Exec {
 	pub cmd: String,

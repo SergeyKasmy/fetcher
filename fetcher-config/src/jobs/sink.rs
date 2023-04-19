@@ -4,17 +4,18 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-mod discord;
-mod exec;
-mod telegram;
+pub mod discord;
+pub mod exec;
+pub mod telegram;
 
-use self::{discord::Discord, exec::Exec, telegram::Telegram};
+pub use self::{discord::Discord, exec::Exec, telegram::Telegram};
+
 use crate::{jobs::external_data::ProvideExternalData, Error};
 use fetcher_core::sink::{Sink as CSink, Stdout as CStdout};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Default, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Default, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Sink {
 	Telegram(Telegram),

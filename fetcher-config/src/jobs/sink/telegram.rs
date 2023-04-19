@@ -12,7 +12,7 @@ use crate::{
 };
 use fetcher_core::sink::{telegram::LinkLocation as CLinkLocation, Telegram as CTelegram};
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Telegram {
 	pub chat_id: i64,
@@ -22,7 +22,7 @@ pub struct Telegram {
 }
 
 /// Refer to [`crate::sink::message::LinkLocation`]
-#[derive(Deserialize, Serialize, Clone, Default, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Default, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum LinkLocation {
 	#[default]

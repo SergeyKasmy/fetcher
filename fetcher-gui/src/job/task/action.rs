@@ -14,12 +14,13 @@ pub mod remove_html;
 pub mod replace;
 pub mod set;
 pub mod shorten;
+pub mod sink;
 pub mod take;
 pub mod use_as;
 
 use self::{
 	contains::ContainsState, json::JsonState, set::SetState, shorten::ShortenState,
-	take::TakeState, use_as::UseState,
+	sink::SinkState, take::TakeState, use_as::UseState,
 };
 use fetcher_config::jobs::action::Action;
 
@@ -42,6 +43,7 @@ pub enum SelectedActionState {
 	UseState(UseState),
 	SetState(SetState),
 	ShortenState(ShortenState),
+	SinkState(SinkState),
 }
 
 impl ActionEditorState {
@@ -115,7 +117,7 @@ impl SelectedActionState {
 			Action::Extract(_) => Self::Stateless,
 			Action::RemoveHtml(_) => Self::Stateless,
 			Action::DecodeHtml(_) => Self::Stateless,
-			Action::Sink(_) => Self::Stateless,
+			Action::Sink(_) => Self::SinkState(Default::default()),
 			Action::Import(_) => Self::Stateless,
 		}
 	}
@@ -139,7 +141,7 @@ impl SelectedActionState {
 			(Self::Stateless, Action::Extract(x)) => extract::show(x, &task_id, ui),
 			(Self::Stateless, Action::RemoveHtml(x)) => remove_html::show(x, &task_id, ui),
 			(Self::Stateless, Action::DecodeHtml(x)) => decode_html::show(x, &task_id, ui),
-			(_, Action::Sink(_)) => todo!(),
+			(Self::SinkState(state), Action::Sink(x)) => state.show(x, &task_id, ui),
 			(Self::Stateless, Action::Import(x)) => {
 				ui.text_edit_singleline(&mut x.0);
 			}
@@ -150,6 +152,7 @@ impl SelectedActionState {
 				*self = Self::new(action);
 				self.show(action, task_id, ui);
 				*/
+				todo!();
 			}
 		}
 	}
