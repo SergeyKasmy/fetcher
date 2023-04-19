@@ -5,8 +5,7 @@
  */
 
 use crate::COLOR_ERROR;
-use fetcher_config::jobs::sink::{discord, telegram};
-use fetcher_config::jobs::sink::{Discord, Exec, Sink, Telegram};
+use fetcher_config::jobs::sink::{discord, telegram, Discord, Exec, Sink, Telegram};
 
 use egui::{ComboBox, Ui};
 use std::hash::Hash;

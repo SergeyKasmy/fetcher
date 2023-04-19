@@ -22,9 +22,18 @@ use self::{
 	contains::ContainsState, json::JsonState, set::SetState, shorten::ShortenState,
 	sink::SinkState, take::TakeState, use_as::UseState,
 };
-use fetcher_config::jobs::action::Action;
+use fetcher_config::jobs::{
+	action::{
+		contains::Contains, decode_html::DecodeHtml, extract::Extract, html::Html, import::Import,
+		json::Json, remove_html::RemoveHtml, replace::Replace, set::Set, shorten::Shorten,
+		take::Take, trim::Trim, use_as::Use, Action,
+	},
+	sink::Sink,
+};
 
-use egui::{panel::Side, CentralPanel, ScrollArea, SelectableLabel, SidePanel, TopBottomPanel, Ui};
+use egui::{
+	panel::Side, CentralPanel, ComboBox, ScrollArea, SelectableLabel, SidePanel, TopBottomPanel, Ui,
+};
 use std::{collections::HashMap, hash::Hash};
 
 #[derive(Default, Debug)]
@@ -51,22 +60,66 @@ impl ActionEditorState {
 		SidePanel::new(Side::Left, egui::Id::new(("actions list", &task_id))).show_inside(
 			ui,
 			|ui| {
-				ScrollArea::vertical().show(ui, |ui| {
-					for (idx, act) in actions.iter().flatten().enumerate() {
-						// TODO: left align the text
-						if ui
-							.add_sized(
-								[ui.available_width(), 0.0],
-								SelectableLabel::new(
-									*self.current_action_idx.get_or_insert(0) == idx,
-									act.to_string(),
-								),
-							)
-							.clicked()
-						{
-							self.current_action_idx = Some(idx);
+				TopBottomPanel::bottom(egui::Id::new(("action list add button panel", &task_id)))
+					.show_separator_line(false)
+					.show_inside(ui, |ui| {
+						ComboBox::from_id_source(("action list add button", &task_id))
+							.selected_text("Add")
+							.width(ui.available_width())
+							.show_ui(ui, |ui| {
+								/// Creates ui.selectable_label's for provided actions that pushes the action with the default state to the actions list
+								macro_rules! add_button {
+						    ($(Action::$act:ident$( => $default:expr)?),+) => {
+								$({
+									if ui.selectable_label(false, stringify!($act)).clicked() {
+										actions
+											.get_or_insert_with(Vec::new)
+											.push(Action::$act$(($default))?);	// push either Action::$act (for unit variants) or Action::$act($default) if the => $default arm is present
+									}
+								})+
+						    };
 						}
-					}
+								add_button! {
+									Action::ReadFilter,
+									Action::Take => Take::default(),
+									Action::Contains => Contains::default(),
+									Action::DebugPrint,
+									Action::Feed,
+									Action::Html => Html::default(),
+									Action::Http,
+									Action::Json => Json::default(),
+									Action::Use => Use::default(),
+									Action::Caps,
+									Action::Set => Set::default(),
+									Action::Shorten => Shorten::default(),
+									Action::Trim => Trim::default(),
+									Action::Replace => Replace::default(),
+									Action::Extract => Extract::default(),
+									Action::RemoveHtml => RemoveHtml::default(),
+									Action::DecodeHtml => DecodeHtml::default(),
+									Action::Sink => Sink::default(),
+									Action::Import => Import::default()
+								};
+							});
+					});
+				CentralPanel::default().show_inside(ui, |ui| {
+					ScrollArea::vertical().show(ui, |ui| {
+						for (idx, act) in actions.iter().flatten().enumerate() {
+							// TODO: left align the text
+							if ui
+								.add_sized(
+									[ui.available_width(), 0.0],
+									SelectableLabel::new(
+										*self.current_action_idx.get_or_insert(0) == idx,
+										act.to_string(),
+									),
+								)
+								.clicked()
+							{
+								self.current_action_idx = Some(idx);
+							}
+						}
+					});
 				});
 			},
 		);
