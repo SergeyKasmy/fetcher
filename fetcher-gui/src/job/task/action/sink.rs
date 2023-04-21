@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::COLOR_ERROR;
+use crate::{get_state, COLOR_ERROR};
 use fetcher_config::jobs::sink::{discord, telegram, Discord, Exec, Sink, Telegram};
 
 use egui::{ComboBox, Ui};
@@ -42,30 +42,8 @@ impl SinkState {
 		ui.separator();
 
 		match sink {
-			Sink::Telegram(x) => {
-				// assert self is TelegramState or make replace self with TelegramState::default() otherwise
-				match self {
-					Self::TelegramState(_) => (),
-					_ => *self = Self::TelegramState(Default::default()),
-				}
-				let Self::TelegramState(state) = self else {
-					unreachable!("Should've replaced self with TelegramState in the code above");
-				};
-
-				state.show(x, task_id, ui);
-			}
-			Sink::Discord(x) => {
-				// assert self is DiscordState or make replace self with DiscordState::default() otherwise
-				match self {
-					Self::DiscordState(_) => (),
-					_ => *self = Self::DiscordState(Default::default()),
-				}
-				let Self::DiscordState(state) = self else {
-					unreachable!("Should've replaced self with DiscordState in the code above");
-				};
-
-				state.show(x, ui);
-			}
+			Sink::Telegram(x) => get_state!(self, Self::TelegramState).show(x, task_id, ui),
+			Sink::Discord(x) => get_state!(self, Self::DiscordState).show(x, ui),
 			Sink::Exec(x) => exec(x, ui),
 			Sink::Stdout => (),
 		}
