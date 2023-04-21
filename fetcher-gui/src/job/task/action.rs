@@ -18,6 +18,8 @@ pub mod sink;
 pub mod take;
 pub mod use_as;
 
+use crate::get_state;
+
 use self::{
 	contains::ContainsState, json::JsonState, set::SetState, shorten::ShortenState,
 	sink::SinkState, take::TakeState, use_as::UseState,
@@ -32,14 +34,16 @@ use fetcher_config::jobs::{
 };
 
 use egui::{
-	panel::Side, CentralPanel, ComboBox, ScrollArea, SelectableLabel, SidePanel, TopBottomPanel, Ui,
+	panel::Side, Align, Button, CentralPanel, ComboBox, Layout, ScrollArea, SelectableLabel,
+	SidePanel, TopBottomPanel, Ui,
 };
-use std::{collections::HashMap, hash::Hash};
+use std::hash::Hash;
 
 #[derive(Default, Debug)]
 pub struct ActionEditorState {
-	pub current_action_idx: Option<usize>,
-	pub selected_action_state: HashMap<usize, SelectedActionState>,
+	pub current_action_idx: usize,
+	// TODO: replace with vec and sync with actions vec to make removing actions not reset state
+	pub selected_action_state: Vec<SelectedActionState>,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -56,6 +60,17 @@ pub enum SelectedActionState {
 }
 
 impl ActionEditorState {
+	pub fn new(actions: Option<&[Action]>) -> Self {
+		Self {
+			current_action_idx: 0,
+			selected_action_state: actions
+				.into_iter()
+				.flatten()
+				.map(SelectedActionState::new)
+				.collect(),
+		}
+	}
+
 	pub fn show(&mut self, actions: &mut Option<Vec<Action>>, task_id: impl Hash, ui: &mut Ui) {
 		SidePanel::new(Side::Left, egui::Id::new(("actions list", &task_id)))
 			.show_inside(ui, |ui| self.side_panel(actions, &task_id, ui));
@@ -71,15 +86,14 @@ impl ActionEditorState {
 
 		CentralPanel::default().show_inside(ui, |ui| {
 			ScrollArea::vertical().show(ui, |ui| {
-				if let Some((idx, act)) = actions
-					.as_mut()
-					.zip(self.current_action_idx)
-					.and_then(|(actions, idx)| Some((idx, actions.get_mut(idx)?)))
-				{
-					self.selected_action_state
-						.entry(idx)
-						.or_insert_with(|| SelectedActionState::new(act))
-						.show(act, task_id, ui);
+				if let Some((state, act)) = actions.as_mut().and_then(|actions| {
+					Some((
+						self.selected_action_state
+							.get_mut(self.current_action_idx)?,
+						actions.get_mut(self.current_action_idx)?,
+					))
+				}) {
+					state.show(act, task_id, ui);
 				}
 			});
 		});
@@ -101,12 +115,21 @@ impl ActionEditorState {
 					.show_ui(ui, |ui| {
 						/// Creates ui.selectable_label's for provided actions that pushes the action with the default state to the actions list
 						macro_rules! add_button {
-						    ($(Action::$act:ident$( => $default:expr)?),+) => {
+						    (
+								$(
+									Action::$act:ident
+									$( => $default:expr)?
+								),+
+							) => {
 								$({
 									if ui.selectable_label(false, stringify!($act)).clicked() {
+										let new_action = Action::$act$(($default))?; // push either Action::$act (for unit variants) or Action::$act($default) if the => $default arm is present
+
+										self.selected_action_state.push(SelectedActionState::new(&new_action));
+
 										actions
 											.get_or_insert_with(Vec::new)
-											.push(Action::$act$(($default))?);	// push either Action::$act (for unit variants) or Action::$act($default) if the => $default arm is present
+											.push(new_action);
 									}
 								})+
 						    };
@@ -136,85 +159,103 @@ impl ActionEditorState {
 					});
 			});
 
+		let mut requested_to_delete_action = None;
 		CentralPanel::default().show_inside(ui, |ui| {
 			ScrollArea::vertical().show(ui, |ui| {
 				for (idx, act) in actions.iter().flatten().enumerate() {
-					// TODO: left align the text
-					if ui
-						.add_sized(
-							[ui.available_width(), 0.0],
-							SelectableLabel::new(
-								*self.current_action_idx.get_or_insert(0) == idx,
-								act.to_string(),
-							),
-						)
-						.clicked()
-					{
-						self.current_action_idx = Some(idx);
-					}
+					ui.with_layout(Layout::right_to_left(Align::TOP), |ui| {
+						/*
+						if ui.button("-").clicked() {
+							requested_to_delete_action = Some(idx);
+						}
+
+
+						ui.label(act.to_string());
+						if ui
+							.interact(
+								ui.min_rect(),
+								egui::Id::new(("action list item", idx, &task_id)),
+								Sense::click(),
+							)
+							.clicked()
+						{
+							self.current_action_idx = Some(idx);
+						}
+						*/
+
+						if ui.add(Button::new("-").frame(false)).clicked() {
+							requested_to_delete_action = Some(idx);
+						}
+
+						// TODO: left align the text
+						if ui
+							.add_sized(
+								[ui.available_width(), 0.0],
+								SelectableLabel::new(
+									self.current_action_idx == idx,
+									act.to_string(),
+								),
+							)
+							.clicked()
+						{
+							self.current_action_idx = idx;
+						}
+					});
 				}
 			});
 		});
+
+		if let Some((actions_vec, requested_to_delete_action)) =
+			actions.as_mut().zip(requested_to_delete_action)
+		{
+			self.current_action_idx = self.current_action_idx.saturating_sub(1);
+
+			self.selected_action_state
+				.remove(requested_to_delete_action);
+
+			actions_vec.remove(requested_to_delete_action);
+
+			if actions_vec.is_empty() {
+				*actions = None;
+			}
+		}
 	}
 }
 
 impl SelectedActionState {
 	pub fn new(for_action: &Action) -> Self {
 		match for_action {
-			Action::ReadFilter => Self::Stateless,
 			Action::Take(_) => Self::TakeState(Default::default()),
 			Action::Contains(_) => Self::ContainsState(Default::default()),
-			Action::DebugPrint => Self::Stateless,
-			Action::Feed => Self::Stateless,
-			Action::Html(_) => Self::Stateless,
-			Action::Http => Self::Stateless,
 			Action::Json(_) => Self::JsonState(Default::default()),
 			Action::Use(_) => Self::UseState(Default::default()),
-			Action::Caps => Self::Stateless,
 			Action::Set(_) => Self::SetState(Default::default()),
 			Action::Shorten(_) => Self::ShortenState(Default::default()),
-			Action::Trim(_) => Self::Stateless,
-			Action::Replace(_) => Self::Stateless,
-			Action::Extract(_) => Self::Stateless,
-			Action::RemoveHtml(_) => Self::Stateless,
-			Action::DecodeHtml(_) => Self::Stateless,
 			Action::Sink(_) => Self::SinkState(Default::default()),
-			Action::Import(_) => Self::Stateless,
+			_ => Self::Stateless,
 		}
 	}
 
 	pub fn show(&mut self, action: &mut Action, task_id: impl Hash, ui: &mut Ui) {
-		match (&mut *self, &mut *action) {
-			(Self::Stateless, Action::ReadFilter) => (),
-			(Self::TakeState(state), Action::Take(x)) => state.show(x, &task_id, ui),
-			(Self::ContainsState(state), Action::Contains(x)) => state.show(x, &task_id, ui),
-			(Self::Stateless, Action::DebugPrint) => (),
-			(Self::Stateless, Action::Feed) => (),
-			(Self::Stateless, Action::Html(x)) => html::show(x, &task_id, ui),
-			(Self::Stateless, Action::Http) => (),
-			(Self::JsonState(state), Action::Json(x)) => state.show(x, &task_id, ui),
-			(Self::UseState(state), Action::Use(x)) => state.show(x, &task_id, ui),
-			(Self::Stateless, Action::Caps) => (),
-			(Self::SetState(state), Action::Set(x)) => state.show(x, &task_id, ui),
-			(Self::ShortenState(state), Action::Shorten(x)) => state.show(x, &task_id, ui),
-			(Self::Stateless, Action::Trim(x)) => field::show(&mut x.field, &task_id, ui),
-			(Self::Stateless, Action::Replace(x)) => replace::show(x, &task_id, ui),
-			(Self::Stateless, Action::Extract(x)) => extract::show(x, &task_id, ui),
-			(Self::Stateless, Action::RemoveHtml(x)) => remove_html::show(x, &task_id, ui),
-			(Self::Stateless, Action::DecodeHtml(x)) => decode_html::show(x, &task_id, ui),
-			(Self::SinkState(state), Action::Sink(x)) => state.show(x, &task_id, ui),
-			(Self::Stateless, Action::Import(x)) => {
+		match action {
+			Action::Take(x) => get_state!(self, Self::TakeState).show(x, &task_id, ui),
+			Action::Contains(x) => get_state!(self, Self::ContainsState).show(x, &task_id, ui),
+			Action::Html(x) => html::show(x, &task_id, ui),
+			Action::Json(x) => get_state!(self, Self::JsonState).show(x, &task_id, ui),
+			Action::Use(x) => get_state!(self, Self::UseState).show(x, &task_id, ui),
+			Action::Set(x) => get_state!(self, Self::SetState).show(x, &task_id, ui),
+			Action::Shorten(x) => get_state!(self, Self::ShortenState).show(x, &task_id, ui),
+			Action::Trim(x) => field::show(&mut x.field, &task_id, ui),
+			Action::Replace(x) => replace::show(x, &task_id, ui),
+			Action::Extract(x) => extract::show(x, &task_id, ui),
+			Action::RemoveHtml(x) => remove_html::show(x, &task_id, ui),
+			Action::DecodeHtml(x) => decode_html::show(x, &task_id, ui),
+			Action::Sink(x) => get_state!(self, Self::SinkState).show(x, &task_id, ui),
+			Action::Import(x) => {
 				ui.text_edit_singleline(&mut x.0);
 			}
-			// state doesn't match the action, create a new one
-			_ => {
-				/*
-				// TODO: will create an infinite loop if no match arms still match. Create a check to avoid that
-				*self = Self::new(action);
-				self.show(action, task_id, ui);
-				*/
-				todo!();
-			}
+			// other actions have no settings
+			_ => (),
 		}
 	}
 }

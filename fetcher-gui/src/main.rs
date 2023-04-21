@@ -26,6 +26,28 @@ use std::collections::{BTreeMap, HashMap};
 
 const COLOR_ERROR: Color32 = Color32::LIGHT_RED;
 
+/// This macro makes the the enum contain the variant provided, either by matching it or by replacing it with a default one
+#[macro_export]
+macro_rules! get_state {
+    (
+		$current_state:expr, 
+		$enum:ident::$desired_state:ident
+	) => {{
+		let current_state = $current_state;
+		match current_state {
+			$enum::$desired_state(inner) => inner,
+			_ => {
+				*current_state = $enum::$desired_state(Default::default());
+				if let $enum::$desired_state(state) = current_state {
+					state
+				} else {
+					unreachable!("Current state should've just been replaced with desired state");
+				}
+			}
+		}
+	}};
+}
+
 #[derive(Debug)]
 pub struct App {
 	pub current_job: JobName,

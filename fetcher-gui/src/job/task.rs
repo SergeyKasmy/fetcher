@@ -17,7 +17,7 @@ use std::hash::Hash;
 pub struct TaskState {
 	pub source_state: SourceState,
 	pub is_actions_editor_shown: bool,
-	pub actions_state: ActionEditorState,
+	pub actions_state: Option<ActionEditorState>,
 }
 
 impl TaskState {
@@ -65,7 +65,9 @@ impl TaskState {
 			.id(egui::Id::new(("actions editor", &task_id)))
 			.open(&mut self.is_actions_editor_shown)
 			.show(ui.ctx(), |ui| {
-				self.actions_state.show(&mut task.actions, &task_id, ui);
+				self.actions_state
+					.get_or_insert_with(|| ActionEditorState::new(task.actions.as_deref()))
+					.show(&mut task.actions, &task_id, ui);
 			});
 
 		ui.checkbox(
