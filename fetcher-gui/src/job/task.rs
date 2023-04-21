@@ -43,10 +43,14 @@ impl TaskState {
 		});
 
 		ui.horizontal(|ui| {
-			let mut tag = task.tag.clone().unwrap();
+			let tag = task.tag.get_or_insert_with(Default::default);
+
 			ui.label("Tag:");
-			ui.text_edit_singleline(&mut tag);
-			task.tag = Some(tag);
+			ui.text_edit_singleline(tag);
+
+			if tag.is_empty() {
+				task.tag = None;
+			}
 		});
 
 		self.source_state.show(&mut task.source, &task_id, ui);

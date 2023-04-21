@@ -5,28 +5,47 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+// TODO: add #![deny(clippy::unwrap_used)]
+
 pub mod job;
 
 use self::job::JobState;
 use fetcher_config::jobs::{
-	action::{
-		contains::Contains, decode_html::DecodeHtml, extract::Extract, html::Html, import::Import,
-		json::Json, remove_html::RemoveHtml, replace::Replace, set::Set, shorten::Shorten,
-		take::Take, trim::Trim, use_as::Use, Action,
-	},
 	named::JobName,
-	sink::Sink,
-	task::Task,
 	Job,
 };
+use fetcher::settings::{context::{Context, StaticContext}, self};
 
 use eframe::NativeOptions;
 use egui::{Color32, ScrollArea, SelectableLabel};
-use std::collections::{BTreeMap, HashMap};
+use std::{collections::{HashMap, BTreeMap}, path::PathBuf};
+use color_eyre::Result;
 
 const COLOR_ERROR: Color32 = Color32::LIGHT_RED;
 
-/// This macro makes the the enum contain the variant provided, either by matching it or by replacing it with a default one
+/// This macro makes the enum contain the requested variant, either by matching and extracting it or by replacing it with a default one
+/// Example:
+///
+/// ```
+/// #[derive(Default)]
+/// struct First;
+///
+/// #[derive(Default)]
+/// struct Second;
+///
+/// enum State {
+///     First(First),
+///     Second(Second),
+/// }
+///
+/// let state = State::First(First);
+///
+/// // x will remain the old &mut First
+/// let x = get_state!(&mut state, State::First);
+///
+/// // x will become a newly created Second
+/// let x = get_state!(&mut state, State::Second);
+/// ```
 #[macro_export]
 macro_rules! get_state {
     (
@@ -51,61 +70,18 @@ macro_rules! get_state {
 #[derive(Debug)]
 pub struct App {
 	pub current_job: JobName,
-	pub jobs: BTreeMap<JobName, Job>,
+	pub jobs: BTreeMap<JobName, (Job, PathBuf)>,
 	pub job_state: HashMap<JobName, JobState>,
 }
 
-fn main() {
-	let jobs = (0..100)
-		.map(|i| {
-			let mut tasks = HashMap::new();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+	let context: StaticContext = Box::leak(Box::new(Context {
+		data_path: settings::data::default_data_path()?,
+		conf_paths: settings::config::default_cfg_dirs()?,
+		log_path: settings::log::default_log_path()?,
+	}));
 
-			tasks.insert(
-				format!("Task #0 of Job#{i}").into(),
-				Task {
-					tag: Some(format!("Tag of Task #0 of Job#{i}")),
-					actions: Some(vec![
-						Action::ReadFilter,
-						Action::Take(Take::default()),
-						Action::Contains(Contains::default()),
-						Action::DebugPrint,
-						Action::Feed,
-						Action::Html(Html::default()),
-						Action::Http,
-						Action::Json(Json::default()),
-						Action::Use(Use::default()),
-						Action::Caps,
-						Action::Set(Set::default()),
-						Action::Shorten(Shorten::default()),
-						Action::Trim(Trim::default()),
-						Action::Replace(Replace::default()),
-						Action::Extract(Extract::default()),
-						Action::RemoveHtml(RemoveHtml::default()),
-						Action::DecodeHtml(DecodeHtml::default()),
-						Action::Sink(Sink::default()),
-						Action::Import(Import::default()),
-					]),
-					..Default::default()
-				},
-			);
-
-			tasks.insert(
-				format!("Task #1 of Job#{i}").into(),
-				Task {
-					tag: Some(format!("Tag of Task #1 of Job#{i}")),
-					..Default::default()
-				},
-			);
-
-			(
-				format!("Job #{i}").into(),
-				Job {
-					tasks: Some(tasks),
-					..Default::default()
-				},
-			)
-		})
-		.collect::<BTreeMap<JobName, Job>>();
+	let jobs = settings::config::jobs::get_all(None, context)?.into_iter().map(|(job_name, job, path)| (job_name, (job, path))).collect::<BTreeMap<_, (_, _)>>();
 
 	eframe::run_native(
 		"Configure fetcher",
@@ -118,7 +94,9 @@ fn main() {
 			})
 		}),
 	)
-	.unwrap();
+	?;
+
+	Ok(())
 }
 
 impl eframe::App for App {
@@ -158,7 +136,7 @@ impl App {
 				self.job_state
 					.entry(self.current_job.clone())
 					.or_default()
-					.show(ui, self.current_job.clone(), job);
+					.show(ui, self.current_job.clone(), &mut job.0);
 			});
 		});
 	}

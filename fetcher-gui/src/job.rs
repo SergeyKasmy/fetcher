@@ -29,7 +29,14 @@ impl JobState {
 
 		ui.heading("Tasks");
 
-		for (idx, (task_name, task)) in job.tasks.as_mut().unwrap().iter_mut().enumerate() {
+		for (idx, (task_name, task)) in job
+			.tasks
+			.as_mut()
+			.map(HashMap::iter_mut)
+			.into_iter()
+			.flatten()
+			.enumerate()
+		{
 			if idx > 0 {
 				ui.separator();
 			}
@@ -41,4 +48,3 @@ impl JobState {
 		}
 	}
 }
-

@@ -1,13 +1,13 @@
 [package]
 name = "fetcher-gui"
-version = "0.1.0"
+version = "0.13.1"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-fetcher-core = { version = "0.13.1", path = "../fetcher-core" }
+fetcher = { version = "0.13.1", path = "../fetcher" }
 fetcher-config = { version = "0.13.1", path = "../fetcher-config" }
+
 eframe = "0.21.3"
 egui = "0.21.0"
 once_cell = "1.17.1"
+color-eyre = "0.6.2"

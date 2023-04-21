@@ -679,6 +679,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "color-eyre"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a667583cca8c4f8436db8de46ea8233c42a7d9ae424a82d338f2e4675229204"
+dependencies = [
+ "backtrace",
+ "color-spantrace",
+ "eyre",
+ "indenter",
+ "once_cell",
+ "owo-colors",
+ "tracing-error",
+]
+
+[[package]]
 name = "color-eyre-attach-report"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1474,12 +1489,13 @@ dependencies = [
 
 [[package]]
 name = "fetcher-gui"
-version = "0.1.0"
+version = "0.13.1"
 dependencies = [
+ "color-eyre",
  "eframe",
  "egui",
+ "fetcher",
  "fetcher-config",
- "fetcher-core",
  "once_cell",
 ]
 
