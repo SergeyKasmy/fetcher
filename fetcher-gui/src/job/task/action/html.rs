@@ -16,9 +16,7 @@ use egui::{ComboBox, Ui};
 use std::hash::Hash;
 
 pub fn show(html: &mut Html, task_id: impl Hash, ui: &mut Ui) {
-	// item
-	ui.group(|ui| {
-		ui.heading("Item");
+	ui.collapsing("Item", |ui| {
 		if let Some(item) = &mut html.item {
 			element_queries(&mut item.query, ("item", &task_id), ui);
 
@@ -34,17 +32,13 @@ pub fn show(html: &mut Html, task_id: impl Hash, ui: &mut Ui) {
 		}
 	});
 
-	// title
-	ui.group(|ui| {
-		ui.heading("Title");
+	ui.collapsing("Title", |ui| {
 		element_data_query(&mut html.title, ("title", &task_id), ui);
 	});
 
-	// text
-	ui.group(|ui| {
+	ui.collapsing("Text", |ui| {
 		let query = &mut html.text;
 
-		ui.heading("Text");
 		for (i, elem_data_queries) in query.iter_mut().enumerate() {
 			for (j, elem_data_query) in elem_data_queries.iter_mut().enumerate() {
 				if j > 0 {
@@ -74,21 +68,15 @@ pub fn show(html: &mut Html, task_id: impl Hash, ui: &mut Ui) {
 		});
 	});
 
-	// id
-	ui.group(|ui| {
-		ui.heading("ID");
+	ui.collapsing("ID", |ui| {
 		element_data_query(&mut html.id, ("id", &task_id), ui);
 	});
 
-	// link
-	ui.group(|ui| {
-		ui.heading("Link");
+	ui.collapsing("Link", |ui| {
 		element_data_query(&mut html.link, ("link", &task_id), ui);
 	});
 
-	// img
-	ui.group(|ui| {
-		ui.heading("IMG");
+	ui.collapsing("IMG", |ui| {
 		element_data_query(&mut html.img, ("IMG", &task_id), ui);
 	});
 }

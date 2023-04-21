@@ -136,7 +136,7 @@ impl App {
 				self.job_state
 					.entry(self.current_job.clone())
 					.or_default()
-					.show(ui, self.current_job.clone(), &mut job.0);
+					.show(self.current_job.clone(), &mut job.0, ui);
 			});
 		});
 	}

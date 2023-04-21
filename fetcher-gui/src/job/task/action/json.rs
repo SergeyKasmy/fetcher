@@ -23,9 +23,7 @@ pub struct JsonState {
 
 impl JsonState {
 	pub fn show(&mut self, json: &mut Json, task_id: impl Hash, ui: &mut Ui) {
-		// item
-		ui.group(|ui| {
-			ui.heading("Item");
+		ui.collapsing("Item", |ui| {
 			query(
 				&mut json.item,
 				&mut self.new_key_type,
@@ -35,9 +33,7 @@ impl JsonState {
 			);
 		});
 
-		// title
-		ui.group(|ui| {
-			ui.heading("Title");
+		ui.collapsing("Title", |ui| {
 			string_query(
 				&mut json.title,
 				&mut self.new_key_type,
@@ -47,9 +43,7 @@ impl JsonState {
 			);
 		});
 
-		// text
-		ui.group(|ui| {
-			ui.heading("Text");
+		ui.collapsing("Text", |ui| {
 			for (idx, str_query) in json.text.iter_mut().flatten().enumerate() {
 				keys(
 					&mut str_query.query.keys,
@@ -79,9 +73,7 @@ impl JsonState {
 			});
 		});
 
-		// id
-		ui.group(|ui| {
-			ui.heading("ID");
+		ui.collapsing("ID", |ui| {
 			string_query(
 				&mut json.id,
 				&mut self.new_key_type,
@@ -91,9 +83,7 @@ impl JsonState {
 			);
 		});
 
-		// link
-		ui.group(|ui| {
-			ui.heading("Link");
+		ui.collapsing("Link", |ui| {
 			string_query(
 				&mut json.link,
 				&mut self.new_key_type,
@@ -103,9 +93,7 @@ impl JsonState {
 			);
 		});
 
-		// img
-		ui.group(|ui| {
-			ui.heading("IMG");
+		ui.collapsing("IMG", |ui| {
 			for (idx, str_query) in json.img.iter_mut().flatten().enumerate() {
 				keys(
 					&mut str_query.query.keys,

@@ -6,8 +6,6 @@
 
 pub mod timepoint;
 
-use std::{collections::HashMap, ops::Not};
-
 use self::timepoint::TimePoint;
 use super::{
 	action::Action,
@@ -22,6 +20,7 @@ use crate::Error;
 use fetcher_core::{job::Job as CJob, utils::OptionExt};
 
 use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, ops::Not};
 
 pub type DisabledField = Option<bool>;
 pub type TemplatesField = Option<Vec<String>>;
