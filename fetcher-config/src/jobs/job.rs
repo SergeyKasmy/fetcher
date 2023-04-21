@@ -49,6 +49,7 @@ pub struct Job {
 }
 
 impl Job {
+	// TODO: remove unnecessary JobName return value (it's already passed as an argument). There's no point in returning it back. If they wanted to keep it, they could've just cloned it
 	pub fn parse<D>(
 		mut self,
 		name: JobName,

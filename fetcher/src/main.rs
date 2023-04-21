@@ -11,17 +11,18 @@
 
 pub mod args;
 pub mod error_handling;
-pub mod extentions;
-pub mod settings;
 
 use crate::{
 	args::{Args, Setting},
 	error_handling::{ErrorHandling, PrevErrors, DEFAULT_MAX_ERROR_LIMIT},
+};
+use fetcher::{
 	extentions::{slice_display::job_display::JobDisplay, ErrorChainExt, SliceDisplayExt},
 	settings::{
-		config::jobs::filter::JobFilter, context::Context as OwnedContext,
+		self, config::jobs::filter::JobFilter, context::Context as OwnedContext,
 		context::StaticContext as Context,
 	},
+	Jobs,
 };
 use fetcher_config::jobs::named::{JobName, JobWithTaskNames};
 use fetcher_core::{
@@ -36,7 +37,7 @@ use color_eyre::{
 	Report, Result, Section,
 };
 use futures::{stream::FuturesUnordered, StreamExt};
-use std::{collections::HashMap, ops::ControlFlow, path::PathBuf, time::Duration};
+use std::{ops::ControlFlow, path::PathBuf, time::Duration};
 use tap::TapOptional;
 use tokio::{
 	select,
@@ -45,9 +46,6 @@ use tokio::{
 	time::sleep,
 };
 use tracing::Instrument;
-
-// TODO: use a BTreeMap and avoid sorting in .display()?
-type Jobs = HashMap<JobName, JobWithTaskNames>;
 
 fn main() -> Result<()> {
 	set_up_logging()?;
@@ -345,13 +343,13 @@ async fn run_command(run_args: args::Run, cx: Context) -> Result<()> {
 #[allow(clippy::needless_pass_by_value)]
 fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jobs>> {
 	let run_by_name_is_some = run_filter.is_some();
-	let jobs = settings::config::jobs::get_all(run_filter.as_deref(), cx)?;
+	let jobs = settings::config::jobs::get_all_and_parse(run_filter.as_deref(), cx)?;
 
 	if run_by_name_is_some {
 		if jobs.is_empty() {
 			tracing::info!("No enabled jobs found for the provided query");
 
-			if let Ok(all_jobs) = settings::config::jobs::get_all(None, cx) {
+			if let Ok(all_jobs) = settings::config::jobs::get_all_and_parse(None, cx) {
 				// tracing::info!("All available enabled jobs: {}", all_jobs.keys().display());
 				tracing::info!(
 					"All available enabled jobs: {}",

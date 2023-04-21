@@ -14,10 +14,7 @@ use crate::{
 	},
 	Jobs,
 };
-use fetcher_config::jobs::{
-	named::{JobName, JobWithTaskNames},
-	Job as ConfigJob,
-};
+use fetcher_config::jobs::{named::JobName, Job as ConfigJob};
 
 use color_eyre::{eyre::eyre, Result};
 use figment::{
@@ -25,7 +22,10 @@ use figment::{
 	Figment,
 };
 use serde::Deserialize;
-use std::{io, path::Path};
+use std::{
+	io,
+	path::{Path, PathBuf},
+};
 use walkdir::WalkDir;
 
 const JOBS_DIR_NAME: &str = "jobs";
@@ -40,7 +40,22 @@ struct TemplatesField {
 	templates: fetcher_config::jobs::job::TemplatesField,
 }
 
-pub fn get_all(filter: Option<&[JobFilter]>, cx: Context) -> Result<Jobs> {
+// TODO: if there are several jobs with the same name, only the last one is retained. Document that?
+pub fn get_all_and_parse(filter: Option<&[JobFilter]>, cx: Context) -> Result<Jobs> {
+	get_all(filter, cx)?
+		.into_iter()
+		.map(|(job_name, config_job, _file)| {
+			config_job
+				.parse(job_name, &ExternalDataFromDataDir { cx })
+				.map_err(Into::into)
+		})
+		.collect()
+}
+
+pub fn get_all(
+	filter: Option<&[JobFilter]>,
+	cx: Context,
+) -> Result<Vec<(JobName, ConfigJob, PathBuf)>> {
 	cx.conf_paths
 		.iter()
 		.flat_map(|dir| get_all_from(dir, filter, cx))
@@ -51,7 +66,7 @@ pub fn get_all_from<'a>(
 	cfg_dir: &'a Path,
 	filter: Option<&'a [JobFilter]>,
 	cx: Context,
-) -> impl Iterator<Item = Result<(JobName, JobWithTaskNames)>> + 'a {
+) -> impl Iterator<Item = Result<(JobName, ConfigJob, PathBuf)>> + 'a {
 	let jobs_dir = cfg_dir.join(JOBS_DIR_NAME);
 	tracing::trace!("Searching for job configs in {jobs_dir:?}");
 
@@ -105,6 +120,8 @@ pub fn get_all_from<'a>(
 				.map_err(|e| e.wrap_err(format!("invalid config at: {}", file.path().display())))
 				.transpose()?;
 
+			// FIXME: re-implement job filtering
+			/*
 			job.map(|(job_name, mut job)| {
 				if let Some(filter) = filter {
 					if let Some(task_name_map) = &job.task_names {
@@ -145,11 +162,14 @@ pub fn get_all_from<'a>(
 				Some((job_name, job))
 			})
 			.transpose()
+			*/
+
+			Some(job.map(|(name, job)| (name, job, file.into_path())))
 		})
 }
 
 #[tracing::instrument(skip(cx))]
-pub fn get(path: &Path, name: JobName, cx: Context) -> Result<Option<(JobName, JobWithTaskNames)>> {
+pub fn get(path: &Path, name: JobName, cx: Context) -> Result<Option<(JobName, ConfigJob)>> {
 	tracing::trace!("Parsing a job from file");
 
 	let TemplatesField { templates } = Figment::new().merge(Yaml::file(path)).extract()?;
@@ -180,5 +200,5 @@ pub fn get(path: &Path, name: JobName, cx: Context) -> Result<Option<(JobName, J
 
 	let job: ConfigJob = full_conf.extract()?;
 
-	Ok(Some(job.parse(name, &ExternalDataFromDataDir { cx })?))
+	Ok(Some((name, job)))
 }
