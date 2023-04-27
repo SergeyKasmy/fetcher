@@ -50,14 +50,14 @@ const COLOR_ERROR: Color32 = Color32::LIGHT_RED;
 macro_rules! get_state {
     (
 		$current_state:expr, 
-		$enum:ident::$desired_state:ident
+		$desired_state:path
 	) => {{
 		let current_state = $current_state;
 		match current_state {
-			$enum::$desired_state(inner) => inner,
+			$desired_state(inner) => inner,
 			_ => {
-				*current_state = $enum::$desired_state(Default::default());
-				if let $enum::$desired_state(state) = current_state {
+				*current_state = $desired_state(Default::default());
+				if let $desired_state(state) = current_state {
 					state
 				} else {
 					unreachable!("Current state should've just been replaced with desired state");
