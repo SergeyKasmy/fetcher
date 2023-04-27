@@ -256,7 +256,7 @@ fn keys(
 		}
 
 		ComboBox::from_id_source(("action json new key type", &combined_hash))
-			.selected_text(format!("{:?}", new_key_type))
+			.selected_text(format!("{new_key_type:?}"))
 			.show_ui(ui, |ui| {
 				ui.selectable_value(new_key_type, Key::String(String::new()), "String key");
 				ui.selectable_value(new_key_type, Key::Usize(0), "Number key");
@@ -272,12 +272,12 @@ impl Default for JsonState {
 	fn default() -> Self {
 		Self {
 			new_key_type: Key::String(String::new()),
-			item_usize_scratchpad: Default::default(),
-			title_usize_scratchpad: Default::default(),
-			text_usize_scratchpad: Default::default(),
-			id_usize_scratchpad: Default::default(),
-			link_usize_scratchpad: Default::default(),
-			img_usize_scratchpad: Default::default(),
+			item_usize_scratchpad: HashMap::default(),
+			title_usize_scratchpad: HashMap::default(),
+			text_usize_scratchpad: HashMap::default(),
+			id_usize_scratchpad: HashMap::default(),
+			link_usize_scratchpad: HashMap::default(),
+			img_usize_scratchpad: HashMap::default(),
 		}
 	}
 }

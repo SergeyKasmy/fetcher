@@ -81,7 +81,7 @@ pub fn show(html: &mut Html, task_id: impl Hash, ui: &mut Ui) {
 	});
 }
 
-/// combined hash should be (task_id, query type, index)
+/// combined hash should be (`task_id`, query type, index)
 fn element_data_query(
 	elem_data_query: &mut Option<ElementDataQuery>,
 	combined_hash: impl Hash,
@@ -179,7 +179,7 @@ fn element_queries(elem_queries: &mut Vec<ElementQuery>, combined_hash: impl Has
 	});
 }
 
-/// combined hash should be (task_id, query type, index)
+/// combined hash should be (`task_id`, query type, index)
 fn element_query(elem_query: &mut ElementQuery, combined_hash: impl Hash, ui: &mut Ui) {
 	element_kind(&mut elem_query.kind, &combined_hash, ui);
 

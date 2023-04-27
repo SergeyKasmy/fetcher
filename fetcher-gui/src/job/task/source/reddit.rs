@@ -72,8 +72,7 @@ impl RedditState {
 					self.score_threshold.entry(name.clone()).or_insert_with(|| {
 						score_threshold
 							.as_ref()
-							.map(|x| x.to_string())
-							.unwrap_or_else(|| String::from("0"))
+							.map_or_else(|| String::from("0"), ToString::to_string)
 					});
 
 				ui.text_edit_singleline(score_threshold_str);
@@ -95,9 +94,7 @@ impl RedditState {
 			let edited_subreddit_name = self.subreddit_name.get_or_insert_with(|| "r/".to_owned());
 
 			if ui.button("+").clicked() {
-				subreddits
-					.entry(edited_subreddit_name.to_owned())
-					.or_default();
+				subreddits.entry(edited_subreddit_name.clone()).or_default();
 			}
 
 			ui.text_edit_singleline(edited_subreddit_name);

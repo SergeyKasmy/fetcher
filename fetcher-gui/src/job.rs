@@ -34,7 +34,7 @@ pub struct JobState {
 }
 
 impl JobState {
-	pub fn show(&mut self, name: JobName, job: &mut Job, ui: &mut egui::Ui) {
+	pub fn show(&mut self, name: &JobName, job: &mut Job, ui: &mut egui::Ui) {
 		ui.heading(name.as_str());
 
 		self.refresh_state.show(&mut job.refresh, ui);
@@ -66,11 +66,11 @@ impl JobState {
 		}
 
 		if job.read_filter_kind.is_some() {
-			task::read_filter_type::show(&mut job.read_filter_kind, &name, ui);
+			task::read_filter_type::show(&mut job.read_filter_kind, name, ui);
 		}
 
 		if job.source.is_some() {
-			self.source_state.show(&mut job.source, &name, ui);
+			self.source_state.show(&mut job.source, name, ui);
 		}
 
 		if job.actions.is_some() {
@@ -90,7 +90,7 @@ impl JobState {
 				.show(ui.ctx(), |ui| {
 					self.actions_state
 						.get_or_insert_with(|| ActionEditorState::new(job.actions.as_deref()))
-						.show(&mut job.actions, &name, ui);
+						.show(&mut job.actions, name, ui);
 				});
 		}
 
@@ -103,7 +103,7 @@ impl JobState {
 
 		if let Some(sink) = &mut job.sink {
 			ui.label("Sink:");
-			self.sink_state.show(sink, &name, ui);
+			self.sink_state.show(sink, name, ui);
 		}
 	}
 }

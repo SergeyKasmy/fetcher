@@ -113,7 +113,7 @@ impl ActionEditorState {
 					.selected_text("Add")
 					.width(ui.available_width())
 					.show_ui(ui, |ui| {
-						/// Creates ui.selectable_label's for provided actions that pushes the action with the default state to the actions list
+						/// Creates `ui.selectable_label`'s for provided actions that pushes the action with the default state to the actions list
 						macro_rules! add_button {
 						    (
 								$(
@@ -223,7 +223,9 @@ impl ActionEditorState {
 }
 
 impl SelectedActionState {
+	#[must_use]
 	pub fn new(for_action: &Action) -> Self {
+		#[allow(clippy::default_trait_access)]
 		match for_action {
 			Action::Take(_) => Self::TakeState(Default::default()),
 			Action::Contains(_) => Self::ContainsState(Default::default()),

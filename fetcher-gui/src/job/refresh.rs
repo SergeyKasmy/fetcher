@@ -56,15 +56,14 @@ impl RefreshState {
 					TimePoint::At(s) => {
 						// remember old state for later use
 						self.at = s.clone();
-						*refresh = TimePoint::Every(self.every.clone())
+						*refresh = TimePoint::Every(self.every.clone());
 					}
 					TimePoint::Every(_) => (),
 				}
 			}
 
 			ui.text_edit_singleline(match refresh {
-				TimePoint::Every(s) => s,
-				TimePoint::At(s) => s,
+				TimePoint::Every(s) | TimePoint::At(s) => s,
 			});
 		} else {
 			// remember last used refresh

@@ -6,6 +6,9 @@
  */
 
 // TODO: add #![deny(clippy::unwrap_used)]
+#![warn(clippy::pedantic)]
+#![allow(clippy::missing_errors_doc)] // TODO: add more docs (even though it a bin crate, they are for me...) and remove this
+#![allow(clippy::module_name_repetitions)]
 
 pub mod job;
 
@@ -90,7 +93,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 			Box::new(App {
 				current_job: jobs.first_key_value().unwrap().0.clone(),
 				jobs,
-				job_state: Default::default(),
+				job_state: HashMap::default(),
 			})
 		}),
 	)
@@ -123,7 +126,7 @@ impl App {
 							)
 							.clicked()
 						{
-							self.current_job = job_name.clone()
+							self.current_job = job_name.clone();
 						}
 					}
 				});
@@ -136,7 +139,7 @@ impl App {
 				self.job_state
 					.entry(self.current_job.clone())
 					.or_default()
-					.show(self.current_job.clone(), &mut job.0, ui);
+					.show(&self.current_job, &mut job.0, ui);
 			});
 		});
 	}

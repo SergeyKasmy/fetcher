@@ -108,16 +108,14 @@ impl DiscordState {
 			}
 
 			let id_str = self.id_str.get_or_insert_with(|| match discord.target {
-				discord::Target::User(i) => i.to_string(),
-				discord::Target::Channel(i) => i.to_string(),
+				discord::Target::Channel(i) | discord::Target::User(i) => i.to_string(),
 			});
 
 			ui.text_edit_singleline(id_str);
 
 			match id_str.parse::<u64>() {
 				Ok(v) => match &mut discord.target {
-					discord::Target::User(i) => *i = v,
-					discord::Target::Channel(i) => *i = v,
+					discord::Target::User(i) | discord::Target::Channel(i) => *i = v,
 				},
 				Err(_) => {
 					ui.colored_label(COLOR_ERROR, "Not a valid number");

@@ -35,7 +35,11 @@ impl SourceState {
 			ui.label("Source:");
 			ComboBox::from_id_source(("source type", &task_id))
 				.wrap(false)
-				.selected_text(source.as_ref().map_or("None".to_owned(), |x| x.to_string()))
+				.selected_text(
+					source
+						.as_ref()
+						.map_or("None".to_owned(), ToString::to_string),
+				)
 				.show_ui(ui, |combo| {
 					combo.selectable_value(source, None, "none");
 					combo.selectable_value(
@@ -79,7 +83,7 @@ impl SourceState {
 						Source::Reddit(x) => self.reddit_state.show(x, task_id, ui),
 						Source::Exec(x) => exec::show(ui, x),
 						Source::Email(x) => email::show(x, task_id, ui),
-						Source::AlwaysErrors => todo!(),
+						Source::AlwaysErrors => (), // TODO: don't even show the edit button for sources that can't be configured
 					});
 			}
 		});

@@ -20,7 +20,7 @@ pub struct ShortenState {
 
 impl ShortenState {
 	pub fn show(&mut self, shorten: &mut Shorten, task_id: impl Hash, ui: &mut Ui) {
-		for (&field, shorten_to) in shorten.0.iter_mut() {
+		for (&field, shorten_to) in &mut shorten.0 {
 			ui.horizontal(|ui| {
 				ui.label(field.to_string());
 

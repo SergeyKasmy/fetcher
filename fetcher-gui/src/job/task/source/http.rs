@@ -62,14 +62,14 @@ impl HttpState {
 					if combo.selectable_label(false, "GET").clicked() {
 						requests.push(http::Request::Tagged(http::TaggedRequest::Get(
 							EXAMPLE_URL.clone(),
-						)))
+						)));
 					}
 
 					if combo.selectable_label(false, "POST").clicked() {
 						requests.push(http::Request::Tagged(http::TaggedRequest::Post {
 							url: EXAMPLE_URL.clone(),
 							body: String::new(),
-						}))
+						}));
 					}
 				});
 
