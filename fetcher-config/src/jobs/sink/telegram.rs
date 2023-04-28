@@ -12,7 +12,7 @@ use crate::{
 };
 use fetcher_core::sink::{telegram::LinkLocation as CLinkLocation, Telegram as CTelegram};
 
-#[derive(Deserialize, Serialize, Clone, PartialEq, Default, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Eq, Default, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Telegram {
 	pub chat_id: i64,
@@ -50,6 +50,7 @@ impl Telegram {
 }
 
 impl LinkLocation {
+	#[must_use]
 	pub fn parse(self) -> CLinkLocation {
 		match self {
 			LinkLocation::PreferTitle => CLinkLocation::PreferTitle,

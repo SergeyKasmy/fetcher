@@ -26,7 +26,7 @@ pub struct Json {
 	pub img: Option<Vec<StringQuery>>,
 }
 
-#[derive(Deserialize, Serialize, PartialEq, Clone, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, Clone, Debug)]
 #[serde(untagged)]
 pub enum Key {
 	String(String),

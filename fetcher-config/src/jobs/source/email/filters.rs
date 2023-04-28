@@ -17,6 +17,7 @@ pub struct Filters {
 }
 
 impl Filters {
+	#[must_use]
 	pub fn parse(self) -> CFilters {
 		CFilters {
 			sender: self.sender,

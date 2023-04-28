@@ -18,6 +18,7 @@ pub enum ViewMode {
 }
 
 impl ViewMode {
+	#[must_use]
 	pub fn parse(self) -> CViewMode {
 		use ViewMode::{Delete, MarkAsRead, ReadOnly};
 

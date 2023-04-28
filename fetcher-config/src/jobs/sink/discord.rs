@@ -12,13 +12,13 @@ use fetcher_core::sink::discord::{Discord as CDiscord, Target as CTarget};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, PartialEq, Default, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Eq, Default, Debug)]
 #[serde(transparent)]
 pub struct Discord {
 	pub target: Target,
 }
 
-#[derive(Deserialize, Serialize, Clone, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Eq, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum Target {
 	User(u64),
@@ -41,6 +41,7 @@ impl Discord {
 }
 
 impl Target {
+	#[must_use]
 	pub fn parse(self) -> CTarget {
 		match self {
 			Target::User(i) => CTarget::User(i),
