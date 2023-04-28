@@ -30,7 +30,7 @@ pub struct PrevErrors {
 
 impl PrevErrors {
 	#[must_use]
-	pub fn new(max_retries: u32) -> Self {
+	pub const fn new(max_retries: u32) -> Self {
 		Self {
 			max_retries,
 			err_count: 0,
@@ -57,12 +57,12 @@ impl PrevErrors {
 	}
 
 	#[must_use]
-	pub fn count(&self) -> u32 {
+	pub const fn count(&self) -> u32 {
 		self.err_count
 	}
 
 	#[must_use]
-	pub fn last_error(&self) -> Option<&Instant> {
+	pub const fn last_error(&self) -> Option<&Instant> {
 		self.last_error.as_ref()
 	}
 }

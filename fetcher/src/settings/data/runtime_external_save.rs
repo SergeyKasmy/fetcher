@@ -34,7 +34,7 @@ pub struct DisplayPath(pub PathBuf);
 
 impl TruncatingFileWriter {
 	#[must_use]
-	pub fn new(path: PathBuf) -> Self {
+	pub const fn new(path: PathBuf) -> Self {
 		Self {
 			path,
 			file: OnceCell::new(),

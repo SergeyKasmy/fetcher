@@ -114,7 +114,7 @@ impl Task {
 			}
 			(None, Some(task_name)) => {
 				tracing::trace!("Using task name as tag");
-				Some(task_name.as_str().to_string())
+				Some(task_name.as_str().to_owned())
 			}
 			(None, None) => None,
 		};

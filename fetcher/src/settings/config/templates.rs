@@ -49,6 +49,7 @@ pub fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>> {
 		return Ok(None);
 	}
 
+	// TODO: replace with .is_dir() because .is_file() doesn't cover unix special file types and windows symlinks
 	if !path.is_file() {
 		// tracing::trace!("{path:?} exists but is not a file");
 		return Err(eyre!(
