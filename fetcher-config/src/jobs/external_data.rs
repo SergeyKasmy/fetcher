@@ -105,6 +105,7 @@ impl<T, E> From<Result<T, E>> for ExternalDataResult<T, E> {
 }
 
 impl ExternalDataError {
+	#[must_use]
 	pub fn new_io_with_path(io_err: io::Error, path: &Path) -> Self {
 		Self::Io {
 			source: io_err,
@@ -112,6 +113,7 @@ impl ExternalDataError {
 		}
 	}
 
+	#[must_use]
 	pub fn new_rf_incompat_with_path(
 		expected: ReadFilterKind,
 		found: ReadFilterKind,

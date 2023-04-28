@@ -20,6 +20,7 @@ use serde_with::{serde_as, OneOrMany};
 pub struct Set(pub HashMap<Field, Option<Values>>);
 
 impl Set {
+	#[must_use]
 	pub fn parse(self) -> Vec<CAction> {
 		self.0
 			.into_iter()

@@ -5,10 +5,16 @@
  */
 
 #![doc = include_str!("../README.md")]
-#![warn(clippy::pedantic)]
 #![warn(missing_docs)]
 #![warn(clippy::unwrap_used)]
+// Additional Lints
+#![warn(clippy::pedantic)]
+// some types are more descriptive with modules name in the name, especially if this type is often used out of the context of this module
 #![allow(clippy::module_name_repetitions)]
+#![warn(clippy::nursery)]
+#![allow(clippy::option_if_let_else)] // "harder to read, false branch before true branch"
+#![allow(clippy::use_self)] // may be hard to understand what Self even is deep into a function's body
+#![allow(clippy::equatable_if_let)] // matches!() adds too much noise for little benefit
 
 pub mod action;
 pub mod auth;

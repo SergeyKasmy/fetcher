@@ -188,7 +188,7 @@ impl Sink for Discord {
 impl TargetInner {
 	async fn send_message<'a, F>(&self, bot: &Bot, f: F) -> Result<DcMessage, serenity::Error>
 	where
-		F: for<'b> FnOnce(&'b mut CreateMessage<'a>) -> &'b mut CreateMessage<'a>,
+		F: for<'b> FnOnce(&'b mut CreateMessage<'a>) -> &'b mut CreateMessage<'a> + Send,
 	{
 		let msg = match self {
 			TargetInner::Channel(chan) => chan.send_message(bot, f).await?,

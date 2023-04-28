@@ -152,6 +152,7 @@ impl Action {
 }
 
 impl Field {
+	#[must_use]
 	pub fn parse(self) -> CField {
 		match self {
 			Field::Title => CField::Title,

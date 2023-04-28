@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub(crate) struct MessageLengthLimiter<'a> {
+pub struct MessageLengthLimiter<'a> {
 	pub head: Option<&'a str>,
 	pub body: Option<&'a str>,
 	pub tail: Option<&'a str>,

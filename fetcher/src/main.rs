@@ -5,9 +5,18 @@
  */
 
 #![doc = include_str!("../README.md")]
+// #![warn(clippy::unwrap_used)]
+// Additional Lints
 #![warn(clippy::pedantic)]
-#![allow(clippy::missing_errors_doc)] // TODO: add more docs (even though it a bin crate, they are for me...) and remove this
+// some types are more descriptive with modules name in the name, especially if this type is often used out of the context of this module
 #![allow(clippy::module_name_repetitions)]
+#![warn(clippy::nursery)]
+#![allow(clippy::option_if_let_else)] // "harder to read, false branch before true branch"
+#![allow(clippy::use_self)] // may be hard to understand what Self even is deep into a function's body
+#![allow(clippy::equatable_if_let)] // matches!() adds too much noise for little benefit
+#![allow(clippy::missing_const_for_fn)] // most of methods take self and self destructor can't be const, so this is pretty much iseless
+#![allow(clippy::missing_errors_doc)] // TODO: add more docs
+#![allow(clippy::future_not_send)] // not useful for a binary crate
 
 pub mod args;
 pub mod error_handling;
@@ -528,6 +537,7 @@ async fn run_job(
 		let name = name.clone();
 
 		async move {
+			#[allow(clippy::redundant_pub_crate)] // false positive
 			loop {
 				select! {
 					res = async_job => {

@@ -4,11 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub(crate) mod tuple {
+pub mod tuple {
 	use serde::{de::Visitor, ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 	use std::{fmt, marker::PhantomData};
 
-	pub(crate) fn serialize<'a, S, V, First, Second>(
+	#[allow(clippy::extra_unused_type_parameters)] // they are used in the where clause and in the function body
+	pub fn serialize<'a, S, V, First, Second>(
 		tuple: &'a V,
 		serializer: S,
 	) -> Result<S::Ok, S::Error>
@@ -24,7 +25,7 @@ pub(crate) mod tuple {
 		map.end()
 	}
 
-	pub(crate) fn deserialize<'de, D, V, First, Second>(deserializer: D) -> Result<V, D::Error>
+	pub fn deserialize<'de, D, V, First, Second>(deserializer: D) -> Result<V, D::Error>
 	where
 		D: Deserializer<'de>,
 		V: From<(First, Second)>,

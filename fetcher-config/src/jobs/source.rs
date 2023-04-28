@@ -75,6 +75,7 @@ impl Source {
 		})
 	}
 
+	#[must_use]
 	pub fn supports_replies(&self) -> bool {
 		// Source::Email will support replies in the future
 		#[allow(clippy::match_like_matches_macro)]

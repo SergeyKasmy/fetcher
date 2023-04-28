@@ -29,7 +29,7 @@ pub enum ReadFilter {
 	NotPresentInReadList(NotPresent),
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Kind {
 	NewerThanRead,
@@ -49,10 +49,12 @@ pub struct NotPresent {
 }
 
 impl EntryId {
+	#[must_use]
 	pub fn parse(self) -> CEntryId {
 		CEntryId(self.0)
 	}
 
+	#[must_use]
 	pub fn unparse(other: CEntryId) -> Self {
 		Self(other.0)
 	}
@@ -92,6 +94,7 @@ impl ReadFilter {
 		None
 	}
 
+	#[must_use]
 	pub fn to_kind(&self) -> Kind {
 		match self {
 			ReadFilter::NewerThanRead(_) => Kind::NewerThanRead,
@@ -119,12 +122,14 @@ impl Kind {
 }
 
 impl Newer {
+	#[must_use]
 	pub fn parse(self) -> CNewer {
 		CNewer {
 			last_read_id: Some(self.last_read_id.parse()),
 		}
 	}
 
+	#[must_use]
 	pub fn unparse(read_filter: &CNewer) -> Option<Self> {
 		read_filter.last_read_id.as_ref().map(|last_read_id| Self {
 			last_read_id: EntryId::unparse(last_read_id.clone()),
@@ -133,6 +138,7 @@ impl Newer {
 }
 
 impl NotPresent {
+	#[must_use]
 	pub fn parse(self) -> CNotPresent {
 		self.read_list
 			.into_iter()
@@ -140,6 +146,7 @@ impl NotPresent {
 			.collect()
 	}
 
+	#[must_use]
 	pub fn unparse(read_filter: &CNotPresent) -> Option<Self> {
 		if read_filter.is_empty() {
 			None

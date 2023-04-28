@@ -149,7 +149,7 @@ impl Email {
 
 	/// Creates an [`Email`] source that uses a password to authenticate via IMAP
 	#[must_use]
-	pub fn new_generic(
+	pub const fn new_generic(
 		imap: String,
 		email: String,
 		password: String,
