@@ -148,6 +148,13 @@ impl Json {
 				.collect::<Result<Vec<_>, _>>()
 		})?;
 
+		// make it none if it's empty
+		let img = if let Some(&[]) = img.as_deref() {
+			None
+		} else {
+			img
+		};
+
 		Ok(TransformedEntry {
 			id: TrRes::Old(id.map(Into::into)),
 			raw_contents: TrRes::Old(body.clone()),
