@@ -119,7 +119,8 @@ fn set_up_logging() -> Result<()> {
 		.with(journald.with_filter(LevelFilter::INFO))
 		.with(stdout.with_filter(env_filter));
 
-	tracing::subscriber::set_global_default(subscriber).unwrap();
+	tracing::subscriber::set_global_default(subscriber)
+		.expect("tracing shouldn't already have been set up");
 
 	color_eyre::install()?;
 	Ok(())
