@@ -628,13 +628,15 @@ async fn handle_errors_sleep(
 	job_refresh_time: Option<&TimePoint>,
 	cx: Context,
 ) -> ControlFlow<()> {
-	// if time since last error is 2 times longer than the refresh duration, than the error count can safely be reset
+	// if time since last error is 2 times longer than the refresh duration, then the error count can safely be reset
 	// since there hasn't been any errors for a little while
 	// TODO: maybe figure out a more optimal time interval than just 2 times longer than the refresh timer
 	if let Some((last_error, refresh_time)) = prev_errors.last_error().zip(job_refresh_time) {
+		let last_error_sleep_dur = exponential_backoff_duration(prev_errors.count());
 		match refresh_time {
 			TimePoint::Duration(dur) => {
-				if last_error.elapsed() > (*dur * 2) {
+				let twice_refresh_dur = *dur * 2; // two times the refresh duration to make sure the job ran at least twice with no errors
+				if last_error.elapsed() > last_error_sleep_dur + twice_refresh_dur {
 					prev_errors.reset();
 				}
 			}
@@ -644,7 +646,7 @@ async fn handle_errors_sleep(
 					2 /* days */ * 24 /* hours a day */ * 60 /* mins an hour */ * 60, /* secs a min */
 				);
 
-				if last_error.elapsed() > TWO_DAYS {
+				if last_error.elapsed() > last_error_sleep_dur + TWO_DAYS {
 					prev_errors.reset();
 				}
 			}
@@ -704,15 +706,19 @@ async fn handle_errors_sleep(
 		}
 	}
 
-	// sleep in exponentially increasing amount of minutes, beginning with 2^0 = 1 minute.
-	// subtract 1 because prev_errors.count() is already set to 1 (because the first error has already happened)
-	// but we want to sleep beginning with ^0, not ^1
-	let sleep_dur = 2u64.saturating_pow(prev_errors.count().saturating_sub(1));
-
-	tracing::info!("Pausing job {job_name} for {sleep_dur}m");
-	sleep(Duration::from_secs(sleep_dur * 60 /* secs in a min */)).await;
+	let sleep_dur = exponential_backoff_duration(prev_errors.count());
+	tracing::info!("Pausing job {job_name} for {}m", sleep_dur.as_secs() / 60);
+	sleep(sleep_dur).await;
 
 	ControlFlow::Continue(())
+}
+
+/// Sleep in exponentially increasing amount of minutes, beginning with 2^0 = 1 minute.
+const fn exponential_backoff_duration(consecutive_err_count: u32) -> Duration {
+	// subtract 1 because prev_errors.count() is already set to 1 (because the first error has already happened)
+	// but we want to sleep beginning with ^0, not ^1
+	let sleep_dur = 2u64.saturating_pow(consecutive_err_count.saturating_sub(1));
+	Duration::from_secs(sleep_dur * 60 /* secs in a min */)
 }
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
