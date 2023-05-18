@@ -252,20 +252,17 @@ fn version() -> String {
 	// no, clippy, just using env!() won't work here since we are running it conditionally and it doesn't always exist in all branches
 	#[allow(clippy::option_env_unwrap)]
 	match (
-		option_env!("VERGEN_GIT_BRANCH"),
 		option_env!("FETCHER_MAIN_BRANCH_OVERRIDE").is_some(),
+		option_env!("VERGEN_GIT_BRANCH"),
 	) {
-		(None, _) | (_, true) => concat!("v", env!("CARGO_PKG_VERSION")).to_owned(),
-		(Some(branch), _) if branch == "main" => option_env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
-			.expect("vergen should've run successfully if VERGEN_GIT_BRANCH is set")
-			.to_owned(),
-		(Some(branch), _) => format!(
+		// if main branch override isn't set and the branch isn't main
+		(false, Some(branch)) if branch != "main" => format!(
 			"v{}-{} on branch {branch}",
-			option_env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
-				.expect("vergen should've run successfully if VERGEN_GIT_BRANCH is set"),
-			option_env!("VERGEN_GIT_SHA_SHORT")
+			env!("CARGO_PKG_VERSION"),
+			option_env!("VERGEN_GIT_SHA")
 				.expect("vergen should've run successfully if VERGEN_GIT_BRANCH is set"),
 		),
+		_ => concat!("v", env!("CARGO_PKG_VERSION")).to_owned(),
 	}
 }
 
