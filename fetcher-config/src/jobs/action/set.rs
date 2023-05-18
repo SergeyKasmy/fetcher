@@ -24,6 +24,7 @@ pub struct Set(pub HashMap<Field, Option<Values>>);
 pub struct Values(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<String>);
 
 impl Set {
+	#[must_use]
 	pub fn parse(self) -> Vec<CAction> {
 		self.0
 			.into_iter()

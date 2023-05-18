@@ -14,6 +14,7 @@ pub struct Twitter {
 }
 
 impl Twitter {
+	#[must_use]
 	pub fn parse(self) -> (String, String) {
 		let Self {
 			api_key,
@@ -23,6 +24,7 @@ impl Twitter {
 		(api_key, api_secret)
 	}
 
+	#[must_use]
 	pub fn unparse(api_key: String, api_secret: String) -> Self {
 		Self {
 			api_key,

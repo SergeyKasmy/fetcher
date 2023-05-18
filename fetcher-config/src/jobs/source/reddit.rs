@@ -42,6 +42,7 @@ pub enum TimePeriod {
 }
 
 impl Reddit {
+	#[must_use]
 	pub fn parse(self) -> Vec<CReddit> {
 		self.0
 			.into_iter()
@@ -51,12 +52,14 @@ impl Reddit {
 }
 
 impl Inner {
+	#[must_use]
 	pub fn parse(self, subreddit: &str) -> CReddit {
 		CReddit::new(subreddit, self.sort.parse(), self.score_threshold)
 	}
 }
 
 impl Sort {
+	#[must_use]
 	pub fn parse(self) -> CSort {
 		match self {
 			Sort::Latest | Sort::New => CSort::Latest,

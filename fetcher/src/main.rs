@@ -5,9 +5,38 @@
  */
 
 #![doc = include_str!("../README.md")]
+// Hand selected lints
+//#![warn(missing_docs)]  // TODO: add more docs
+#![warn(clippy::unwrap_used)]
+#![forbid(unsafe_code)]
+#![warn(clippy::clone_on_ref_ptr)]
+#![warn(clippy::dbg_macro)]
+#![warn(clippy::exit)]
+#![warn(clippy::filetype_is_file)]
+#![warn(clippy::format_push_string)]
+#![warn(clippy::let_underscore_untyped)]
+#![warn(clippy::missing_assert_message)]
+// #![warn(clippy::missing_docs_in_private_items)]	// TODO: enable later
+#![warn(clippy::print_stderr)]
+#![warn(clippy::rest_pat_in_fully_bound_structs)]
+#![warn(clippy::same_name_method)]
+#![warn(clippy::str_to_string)]
+#![warn(clippy::string_to_string)]
+#![warn(clippy::tests_outside_test_module)]
+#![warn(clippy::todo)]
+#![warn(clippy::try_err)]
+#![warn(clippy::unimplemented)]
+#![warn(clippy::unimplemented)]
+// Additional automatic Lints
 #![warn(clippy::pedantic)]
-#![allow(clippy::missing_errors_doc)] // TODO: add more docs (even though it a bin crate, they are for me...) and remove this
+// some types are more descriptive with modules name in the name, especially if this type is often used out of the context of this module
 #![allow(clippy::module_name_repetitions)]
+#![warn(clippy::nursery)]
+#![allow(clippy::option_if_let_else)] // "harder to read, false branch before true branch"
+#![allow(clippy::use_self)] // may be hard to understand what Self even is deep into a function's body
+#![allow(clippy::equatable_if_let)] // matches!() adds too much noise for little benefit
+#![allow(clippy::missing_errors_doc)] // TODO: add more docs
+#![allow(clippy::future_not_send)] // not useful for a binary crate
 
 pub mod args;
 pub mod error_handling;
@@ -37,7 +66,7 @@ use color_eyre::{
 	Report, Result, Section,
 };
 use futures::{stream::FuturesUnordered, StreamExt};
-use std::{ops::ControlFlow, path::PathBuf, time::Duration};
+use std::{ops::ControlFlow, path::PathBuf, time::Duration, fmt::Write};
 use tap::TapOptional;
 use tokio::{
 	select,
@@ -89,7 +118,8 @@ fn set_up_logging() -> Result<()> {
 		.with(journald.with_filter(LevelFilter::INFO))
 		.with(stdout.with_filter(env_filter));
 
-	tracing::subscriber::set_global_default(subscriber).unwrap();
+	tracing::subscriber::set_global_default(subscriber)
+		.expect("tracing shouldn't already have been set up");
 
 	color_eyre::install()?;
 	Ok(())
@@ -172,7 +202,7 @@ async fn async_main() -> Result<()> {
 				Some(job_run_filter)
 			};
 
-			_ = get_jobs(job_run_filter, cx)?;
+			let _: Option<Jobs> = get_jobs(job_run_filter, cx)?;
 			tracing::info!("Everything verified to be working properly, exiting...");
 
 			Ok(())
@@ -221,20 +251,17 @@ fn version() -> String {
 	// no, clippy, just using env!() won't work here since we are running it conditionally and it doesn't always exist in all branches
 	#[allow(clippy::option_env_unwrap)]
 	match (
-		option_env!("VERGEN_GIT_BRANCH"),
 		option_env!("FETCHER_MAIN_BRANCH_OVERRIDE").is_some(),
+		option_env!("VERGEN_GIT_BRANCH"),
 	) {
-		(None, _) | (_, true) => concat!("v", env!("CARGO_PKG_VERSION")).to_owned(),
-		(Some(branch), _) if branch == "main" => option_env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
-			.expect("vergen should've run successfully if VERGEN_GIT_BRANCH is set")
-			.to_owned(),
-		(Some(branch), _) => format!(
+		// if main branch override isn't set and the branch isn't main
+		(false, Some(branch)) if branch != "main" => format!(
 			"v{}-{} on branch {branch}",
-			option_env!("VERGEN_GIT_SEMVER_LIGHTWEIGHT")
-				.expect("vergen should've run successfully if VERGEN_GIT_BRANCH is set"),
-			option_env!("VERGEN_GIT_SHA_SHORT")
+			env!("CARGO_PKG_VERSION"),
+			option_env!("VERGEN_GIT_SHA")
 				.expect("vergen should've run successfully if VERGEN_GIT_BRANCH is set"),
 		),
+		_ => concat!("v", env!("CARGO_PKG_VERSION")).to_owned(),
 	}
 }
 
@@ -478,6 +505,7 @@ fn set_up_signal_handler() -> Receiver<()> {
 	tokio::spawn(async move {
 		if let Ok(()) = force_close_rx.changed().await {
 			tracing::info!("Force closing...");
+			#[allow(clippy::exit)] // user requested force-close, it's allowed here
 			std::process::exit(1);
 		}
 	});
@@ -527,6 +555,7 @@ async fn run_job(
 		let name = name.clone();
 
 		async move {
+			#[allow(clippy::redundant_pub_crate)] // false positive
 			loop {
 				select! {
 					res = async_job => {
@@ -596,13 +625,15 @@ async fn handle_errors_sleep(
 	job_refresh_time: Option<&TimePoint>,
 	cx: Context,
 ) -> ControlFlow<()> {
-	// if time since last error is 2 times longer than the refresh duration, than the error count can safely be reset
+	// if time since last error is 2 times longer than the refresh duration, then the error count can safely be reset
 	// since there hasn't been any errors for a little while
 	// TODO: maybe figure out a more optimal time interval than just 2 times longer than the refresh timer
 	if let Some((last_error, refresh_time)) = prev_errors.last_error().zip(job_refresh_time) {
+		let last_error_sleep_dur = exponential_backoff_duration(prev_errors.count());
 		match refresh_time {
 			TimePoint::Duration(dur) => {
-				if last_error.elapsed() > (*dur * 2) {
+				let twice_refresh_dur = *dur * 2; // two times the refresh duration to make sure the job ran at least twice with no errors
+				if last_error.elapsed() > last_error_sleep_dur + twice_refresh_dur {
 					prev_errors.reset();
 				}
 			}
@@ -612,7 +643,7 @@ async fn handle_errors_sleep(
 					2 /* days */ * 24 /* hours a day */ * 60 /* mins an hour */ * 60, /* secs a min */
 				);
 
-				if last_error.elapsed() > TWO_DAYS {
+				if last_error.elapsed() > last_error_sleep_dur + TWO_DAYS {
 					prev_errors.reset();
 				}
 			}
@@ -653,7 +684,8 @@ async fn handle_errors_sleep(
 				}
 			}
 
-			err_msg += &format!(
+			_ = write!(
+				err_msg,
 				"\nError #{err_num}:\n{e}\n",
 				err_num = i + 1,
 				e = err.display_chain()
@@ -671,15 +703,19 @@ async fn handle_errors_sleep(
 		}
 	}
 
-	// sleep in exponentially increasing amount of minutes, beginning with 2^0 = 1 minute.
-	// subtract 1 because prev_errors.count() is already set to 1 (because the first error has already happened)
-	// but we want to sleep beginning with ^0, not ^1
-	let sleep_dur = 2u64.saturating_pow(prev_errors.count().saturating_sub(1));
-
-	tracing::info!("Pausing job {job_name} for {sleep_dur}m");
-	sleep(Duration::from_secs(sleep_dur * 60 /* secs in a min */)).await;
+	let sleep_dur = exponential_backoff_duration(prev_errors.count());
+	tracing::info!("Pausing job {job_name} for {}m", sleep_dur.as_secs() / 60);
+	sleep(sleep_dur).await;
 
 	ControlFlow::Continue(())
+}
+
+/// Sleep in exponentially increasing amount of minutes, beginning with 2^0 = 1 minute.
+const fn exponential_backoff_duration(consecutive_err_count: u32) -> Duration {
+	// subtract 1 because prev_errors.count() is already set to 1 (because the first error has already happened)
+	// but we want to sleep beginning with ^0, not ^1
+	let sleep_dur = 2u64.saturating_pow(consecutive_err_count.saturating_sub(1));
+	Duration::from_secs(sleep_dur * 60 /* secs in a min */)
 }
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically

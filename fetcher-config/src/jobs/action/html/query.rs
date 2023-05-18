@@ -65,6 +65,7 @@ pub struct HtmlQueryRegex {
 }
 
 impl ElementKind {
+	#[must_use]
 	pub fn parse(self) -> c_query::ElementKind {
 		use ElementKind::{Attr, Class, Tag};
 
@@ -77,6 +78,7 @@ impl ElementKind {
 }
 
 impl DataLocation {
+	#[must_use]
 	pub fn parse(self) -> c_query::DataLocation {
 		use DataLocation::{Attr, Text};
 
@@ -88,6 +90,7 @@ impl DataLocation {
 }
 
 impl ElementQuery {
+	#[must_use]
 	pub fn parse(self) -> c_query::ElementQuery {
 		c_query::ElementQuery {
 			kind: self.kind.parse(),

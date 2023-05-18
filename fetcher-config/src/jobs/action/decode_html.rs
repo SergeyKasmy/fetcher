@@ -22,6 +22,7 @@ pub struct DecodeHtml {
 }
 
 impl DecodeHtml {
+	#[must_use]
 	pub fn parse(self) -> Vec<CAction> {
 		self.r#in
 			.into_iter()

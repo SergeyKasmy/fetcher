@@ -24,13 +24,13 @@ pub struct Newer {
 impl Newer {
 	/// Creates a new empty [`Newer`] Read Filter
 	#[must_use]
-	pub fn new() -> Self {
+	pub const fn new() -> Self {
 		Self { last_read_id: None }
 	}
 
 	/// Returns the last read entry id, if any
 	#[must_use]
-	pub fn last_read(&self) -> Option<&EntryId> {
+	pub const fn last_read(&self) -> Option<&EntryId> {
 		self.last_read_id.as_ref()
 	}
 }

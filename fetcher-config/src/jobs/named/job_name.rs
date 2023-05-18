@@ -15,6 +15,7 @@ use std::{
 pub struct JobName(pub Arc<str>);
 
 impl JobName {
+	#[must_use]
 	pub fn as_str(&self) -> &str {
 		self
 	}

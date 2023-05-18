@@ -48,7 +48,7 @@ pub enum TwitterError {
 impl Twitter {
 	/// Creates a new [`Twitter`] source
 	#[must_use]
-	pub fn new(handle: String, api_key: String, api_secret: String) -> Self {
+	pub const fn new(handle: String, api_key: String, api_secret: String) -> Self {
 		Self {
 			timeline: None,
 			handle,

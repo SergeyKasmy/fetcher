@@ -149,7 +149,7 @@ impl Email {
 
 	/// Creates an [`Email`] source that uses a password to authenticate via IMAP
 	#[must_use]
-	pub fn new_generic(
+	pub const fn new_generic(
 		imap: String,
 		email: String,
 		password: String,
@@ -203,7 +203,7 @@ impl Email {
 		session.examine("INBOX").map_err(ImapError::Other)?;
 
 		let search_string = {
-			let mut tmp = "UNSEEN ".to_string();
+			let mut tmp = "UNSEEN ".to_owned();
 
 			if let Some(sender) = &self.filters.sender {
 				_ = write!(tmp, r#"FROM "{sender}" "#);
@@ -221,7 +221,7 @@ impl Email {
 				}
 			}
 
-			tmp.trim_end().to_string()
+			tmp.trim_end().to_owned()
 		};
 
 		let mail_ids = session

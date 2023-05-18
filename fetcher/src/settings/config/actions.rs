@@ -47,6 +47,7 @@ pub fn find_in(action_path: &Path, name: &str) -> Result<Option<Vec<ActionConfig
 		return Ok(None);
 	}
 
+	// TODO: replace with .is_dir() because .is_file() doesn't cover unix special file types and windows symlinks
 	if !path.is_file() {
 		return Err(eyre!(
 			"Action \"{name}\" exists at {} but is not a file",

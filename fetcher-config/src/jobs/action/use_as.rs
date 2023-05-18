@@ -20,6 +20,7 @@ pub struct As {
 }
 
 impl Use {
+	#[must_use]
 	pub fn parse(self) -> Vec<CAction> {
 		self.0
 			.into_iter()

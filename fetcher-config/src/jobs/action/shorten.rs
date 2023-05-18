@@ -20,6 +20,7 @@ use std::collections::HashMap;
 pub struct Shorten(pub HashMap<Field, usize>);
 
 impl Shorten {
+	#[must_use]
 	pub fn parse(self) -> Vec<CAction> {
 		self.0
 			.into_iter()

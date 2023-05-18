@@ -27,6 +27,7 @@ pub enum TakeWhich {
 }
 
 impl Take {
+	#[must_use]
 	pub fn parse(self) -> CTake {
 		CTake {
 			from: self.0.which.parse(),
@@ -36,6 +37,7 @@ impl Take {
 }
 
 impl TakeWhich {
+	#[must_use]
 	pub fn parse(self) -> CTakeFrom {
 		match self {
 			TakeWhich::FromNewest => CTakeFrom::Beginning,

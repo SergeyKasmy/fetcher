@@ -22,26 +22,31 @@ pub struct MessageId(pub i64);
 pub struct EntryToMsgMap(pub HashMap<EntryId, MessageId>);
 
 impl EntryId {
+	#[must_use]
 	pub fn parse(self) -> CEntryId {
 		self.0.into()
 	}
 
+	#[must_use]
 	pub fn unparse(eid: CEntryId) -> Self {
 		Self(eid.0)
 	}
 }
 
 impl MessageId {
+	#[must_use]
 	pub fn parse(self) -> CMessageId {
 		self.0.into()
 	}
 
+	#[must_use]
 	pub fn unparse(msgid: CMessageId) -> Self {
 		Self(msgid.0)
 	}
 }
 
 impl EntryToMsgMap {
+	#[must_use]
 	pub fn parse(self) -> HashMap<CEntryId, CMessageId> {
 		self.0
 			.into_iter()
@@ -49,6 +54,7 @@ impl EntryToMsgMap {
 			.collect()
 	}
 
+	#[must_use]
 	pub fn unparse(map: HashMap<CEntryId, CMessageId>) -> Self {
 		Self(
 			map.into_iter()

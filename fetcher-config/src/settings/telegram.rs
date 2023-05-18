@@ -13,12 +13,14 @@ pub struct Telegram {
 }
 
 impl Telegram {
+	#[must_use]
 	pub fn parse(self) -> String {
 		let Self { token } = self;
 
 		token
 	}
 
+	#[must_use]
 	pub fn unparse(token: String) -> Self {
 		Self { token }
 	}

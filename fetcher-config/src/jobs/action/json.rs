@@ -85,6 +85,7 @@ impl Json {
 }
 
 impl Key {
+	#[must_use]
 	pub fn parse(self) -> c_json::Key {
 		match self {
 			Key::String(s) => c_json::Key::String(s),

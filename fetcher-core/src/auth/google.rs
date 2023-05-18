@@ -64,7 +64,7 @@ impl Google {
 	#[allow(clippy::doc_markdown)]
 	/// Creates a new Google OAuth2 authenticator
 	#[must_use]
-	pub fn new(client_id: String, client_secret: String, refresh_token: String) -> Self {
+	pub const fn new(client_id: String, client_secret: String, refresh_token: String) -> Self {
 		Self {
 			client_id,
 			client_secret,

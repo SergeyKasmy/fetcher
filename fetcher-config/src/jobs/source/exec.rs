@@ -18,6 +18,7 @@ pub struct Exec {
 }
 
 impl Exec {
+	#[must_use]
 	pub fn parse(self) -> Vec<CExec> {
 		self.cmd.into_iter().map(|cmd| CExec { cmd }).collect()
 	}

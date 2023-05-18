@@ -16,6 +16,7 @@ use std::path::PathBuf;
 pub struct File(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<PathBuf>);
 
 impl File {
+	#[must_use]
 	pub fn parse(self) -> Vec<CFile> {
 		self.0.into_iter().map(|path| CFile { path }).collect()
 	}

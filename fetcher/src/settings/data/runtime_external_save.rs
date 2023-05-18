@@ -34,7 +34,7 @@ pub struct DisplayPath(pub PathBuf);
 
 impl TruncatingFileWriter {
 	#[must_use]
-	pub fn new(path: PathBuf) -> Self {
+	pub const fn new(path: PathBuf) -> Self {
 		Self {
 			path,
 			file: OnceCell::new(),
@@ -51,7 +51,8 @@ impl ExternalSave for TruncatingFileWriter {
 		if let Some(rf_conf) =
 			fetcher_config::jobs::read_filter::ReadFilter::unparse(read_filter).await
 		{
-			let s = serde_json::to_string(&rf_conf).unwrap();
+			let s = serde_json::to_string(&rf_conf)
+				.expect("A ReadFilter should always be serializable");
 
 			self.write(s.as_bytes())
 				.await
@@ -70,7 +71,8 @@ impl ExternalSave for TruncatingFileWriter {
 	) -> Result<(), ExternalSaveError> {
 		let map_conf =
 			fetcher_config::jobs::task::entry_to_msg_map::EntryToMsgMap::unparse(map.clone());
-		let s = serde_json::to_string(&map_conf).unwrap();
+		let s = serde_json::to_string(&map_conf)
+			.expect("An EntryToMsgMap should always be serializable");
 
 		self.write(s.as_bytes())
 			.await

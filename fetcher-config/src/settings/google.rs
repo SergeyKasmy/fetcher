@@ -17,10 +17,12 @@ pub struct Google {
 }
 
 impl Google {
+	#[must_use]
 	pub fn parse(self) -> CoreGoogleAuth {
 		CoreGoogleAuth::new(self.client_id, self.client_secret, self.refresh_token)
 	}
 
+	#[must_use]
 	pub fn unparse(auth: CoreGoogleAuth) -> Self {
 		let CoreGoogleAuth {
 			client_id,
