@@ -367,10 +367,10 @@ fn process_msg<'a>(
 		(Some(title), Some(link)) => match link_location {
 			// and the link should be in the title, then combine them
 			LinkLocation::PreferTitle => (Some(format!("<a href=\"{link}\">{title}</a>")), None),
-			// even it should be at the bottom, return both separately
+			// and it should be at the bottom, return both separately
 			LinkLocation::Bottom => (Some(title), Some(format!("<a href=\"{link}\">Link</a>"))),
 		},
-		// if only the title is presend, just print itself with an added newline
+		// if only the title is present, just return itself
 		(Some(title), None) => (Some(title), None),
 		// and if only the link is present, but it at the bottom of the message, even if it should try to be in the title
 		(None, Some(link)) => (None, Some(format!("<a href=\"{link}\">Link</a>"))),

@@ -1,6 +1,6 @@
 [package]
 name = "fetcher"
-description = "Automatic news fetching and parsing"
+description = "Automation and scalping tool"
 version = "0.13.1"
 license = "MPL-2.0"
 repository = "https://github.com/SergeyKasmy/fetcher"

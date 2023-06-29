@@ -1,6 +1,6 @@
 [package]
 name = "fetcher-config"
-description = "fetcher config"
+description = "fetcher config format and serialization/deserialization"
 version = "0.13.1"
 license = "MPL-2.0"
 repository = "https://github.com/SergeyKasmy/fetcher"
