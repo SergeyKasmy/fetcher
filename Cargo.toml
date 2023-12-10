@@ -4,6 +4,7 @@ members = [
 	"fetcher-core",
 	"fetcher-config",
 ]
+resolver = "2"
 
 [profile.release]
 lto = "thin"
