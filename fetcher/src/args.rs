@@ -14,7 +14,7 @@ use argh::FromArgs;
 use color_eyre::{Report, Result};
 use std::{path::PathBuf, str::FromStr};
 
-/// Automatic news fetching and parsing
+/// Automation and scalping tool
 #[derive(FromArgs, Debug)]
 pub struct Args {
 	#[argh(subcommand)]
