@@ -18,7 +18,7 @@ use super::{
 	source::Source,
 	task::Task,
 };
-use crate::Error;
+use crate::FetcherConfigError;
 use fetcher_core::{job::Job as CJob, utils::OptionExt};
 
 use serde::{Deserialize, Serialize};
@@ -51,7 +51,7 @@ impl Job {
 		mut self,
 		name: JobName,
 		external: &D,
-	) -> Result<(JobName, JobWithTaskNames), Error>
+	) -> Result<(JobName, JobWithTaskNames), FetcherConfigError>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
@@ -91,7 +91,7 @@ impl Job {
 		name: JobName,
 		mut tasks: HashMap<TaskName, Task>,
 		external: &D,
-	) -> Result<(JobName, JobWithTaskNames), Error>
+	) -> Result<(JobName, JobWithTaskNames), FetcherConfigError>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
@@ -143,7 +143,7 @@ impl Job {
 					let task =
 						task.parse(&name, single_task.not().then_some(&task_name), external)?;
 
-					Ok::<_, Error>((task, (id, task_name)))
+					Ok::<_, FetcherConfigError>((task, (id, task_name)))
 				});
 
 		// clippy false positive for iter.unzip()

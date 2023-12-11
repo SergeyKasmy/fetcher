@@ -15,7 +15,7 @@ use super::{MarkAsRead, ReadFilter};
 use crate::{
 	action::filter::Filter,
 	entry::{Entry, EntryId},
-	error::Error,
+	error::FetcherError,
 };
 
 /// [`ReadFilter`] implementation for `Arc<tokio::RwLock<dyn Readfilter>>`
@@ -38,7 +38,7 @@ pub mod tokio_rwlock {
 	where
 		RF: ReadFilter,
 	{
-		async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+		async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 			self.write().await.mark_as_read(id).await
 		}
 
@@ -76,7 +76,7 @@ pub mod boks {
 
 	#[async_trait]
 	impl MarkAsRead for Box<dyn ReadFilter> {
-		async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+		async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 			(**self).mark_as_read(id).await
 		}
 

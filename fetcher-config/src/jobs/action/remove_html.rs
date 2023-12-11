@@ -5,7 +5,7 @@
  */
 
 use super::Field;
-use crate::Error as ConfigError;
+use crate::FetcherConfigError as ConfigError;
 use fetcher_core::action::{
 	transform::field::{
 		replace::HTML_TAG_RE, Replace as CReplace, TransformFieldWrapper as CTransformFieldWrapper,

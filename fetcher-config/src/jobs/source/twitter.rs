@@ -6,7 +6,7 @@
 
 use crate::{
 	jobs::external_data::{ExternalDataResult, ProvideExternalData},
-	Error as ConfigError,
+	FetcherConfigError as ConfigError,
 };
 use fetcher_core::source::Twitter as CTwitter;
 

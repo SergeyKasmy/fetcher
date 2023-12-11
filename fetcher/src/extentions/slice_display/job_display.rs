@@ -56,7 +56,7 @@ impl fmt::Display for JobDisplay<'_> {
 
 impl cmp::PartialOrd for JobDisplay<'_> {
 	fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-		self.0 .0.as_str().partial_cmp(other.0 .0.as_str())
+		Some(self.cmp(other))
 	}
 }
 

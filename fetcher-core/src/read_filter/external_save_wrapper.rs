@@ -12,7 +12,7 @@ use std::{any::Any, fmt::Debug};
 use crate::{
 	action::filter::Filter,
 	entry::{Entry, EntryId},
-	error::Error,
+	error::FetcherError,
 	external_save::ExternalSave,
 	read_filter::{MarkAsRead, ReadFilter},
 };
@@ -44,14 +44,14 @@ where
 	RF: ReadFilter,
 	S: ExternalSave,
 {
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 		self.rf.mark_as_read(id).await?;
 
 		if let Some(ext_save) = &mut self.external_save {
 			ext_save
 				.save_read_filter(&self.rf)
 				.await
-				.map_err(Error::ExternalSave)?;
+				.map_err(FetcherError::ExternalSave)?;
 		}
 
 		Ok(())

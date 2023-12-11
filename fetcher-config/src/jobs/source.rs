@@ -16,7 +16,7 @@ use self::{
 	email::Email, exec::Exec, file::File, http::Http, reddit::Reddit, string::StringSource,
 	twitter::Twitter,
 };
-use crate::{jobs::external_data::ProvideExternalData, Error};
+use crate::{jobs::external_data::ProvideExternalData, FetcherConfigError};
 use fetcher_core::{
 	read_filter::ReadFilter as CReadFilter,
 	source::{
@@ -45,7 +45,11 @@ pub enum Source {
 }
 
 impl Source {
-	pub fn parse<RF, D>(self, rf: Option<RF>, external: &D) -> Result<Box<dyn CSource>, Error>
+	pub fn parse<RF, D>(
+		self,
+		rf: Option<RF>,
+		external: &D,
+	) -> Result<Box<dyn CSource>, FetcherConfigError>
 	where
 		RF: CReadFilter + 'static,
 		D: ProvideExternalData + ?Sized,

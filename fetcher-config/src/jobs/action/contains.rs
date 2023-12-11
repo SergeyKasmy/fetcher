@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use super::Field;
-use crate::error::Error as ConfigError;
+use crate::error::FetcherConfigError as ConfigError;
 use fetcher_core::action::{filter::Contains as CContains, Action as CAction};
 
 type RegEx = String;

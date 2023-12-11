@@ -8,6 +8,7 @@
 #![allow(missing_docs)] // TODO: add more docs
 #![allow(clippy::missing_docs_in_private_items)] // TODO: enable later
 #![allow(clippy::missing_errors_doc)] // TODO: add more docs
+#![allow(clippy::missing_panics_doc)] // TODO: add more docs
 #![allow(clippy::future_not_send)] // not useful in a binary crate
 
 pub mod args;
@@ -27,7 +28,7 @@ use crate::{
 use fetcher_config::jobs::named::{JobName, JobWithTaskNames};
 use fetcher_core::{
 	action::Action,
-	error::Error,
+	error::FetcherError,
 	job::{timepoint::TimePoint, Job},
 	sink::{Sink, Stdout},
 };
@@ -493,7 +494,7 @@ async fn run_job(
 	mut shutdown_rx: Receiver<()>,
 	cx: Context,
 ) -> (JobName, Result<Result<()>, JoinError>) {
-	fn fold_task_errors(mut errors: Vec<Error>) -> Report {
+	fn fold_task_errors(mut errors: Vec<FetcherError>) -> Report {
 		// for acc_report.error(err). I believe this way it is clearer what the fold does
 		#[allow(clippy::redundant_closure_for_method_calls)]
 		match errors.len() {
@@ -529,14 +530,14 @@ async fn run_job(
 
 		async move {
 			#[allow(clippy::redundant_pub_crate)] // false positive
-			loop {
+			{
 				select! {
 					res = async_job => {
-						return res;
+						res
 					}
 					_ = shutdown_rx.changed() => {
 						tracing::info!("Job {name} signaled to shutdown...");
-						return Ok(());
+						Ok(())
 					}
 				}
 			}
@@ -551,11 +552,11 @@ async fn run_job(
 /// ControlFlow::Break -> stop running the job with a result
 #[tracing::instrument(level = "debug", skip(job_name, job, cx))]
 async fn handle_errors(
-	results: Result<(), Vec<Error>>,
+	results: Result<(), Vec<FetcherError>>,
 	stradegy: &mut ErrorHandling,
 	(job_name, job): (&JobName, &Job),
 	cx: Context,
-) -> ControlFlow<Result<(), Vec<Error>>> {
+) -> ControlFlow<Result<(), Vec<FetcherError>>> {
 	let Err(errors) = results else {
 		return ControlFlow::Break(Ok(()));
 	};
@@ -592,7 +593,7 @@ async fn handle_errors(
 
 // count errors and sleep exponentially
 async fn handle_errors_sleep(
-	errors: &[Error],
+	errors: &[FetcherError],
 	prev_errors: &mut PrevErrors,
 	job_name: &JobName,
 	job_refresh_time: Option<&TimePoint>,
@@ -651,7 +652,7 @@ async fn handle_errors_sleep(
 
 		// log and report all other errors (except for network errors up above)
 		for (i, err) in errors_without_net.enumerate() {
-			if let Error::Transform(transform_err) = &err {
+			if let FetcherError::Transform(transform_err) = &err {
 				if let Err(e) = settings::log::log_transform_err(transform_err, job_name) {
 					tracing::error!("Error logging transform error: {e:?}");
 				}
@@ -711,7 +712,7 @@ async fn report_error(job_name: &str, err: &str, context: Context) -> Result<()>
 	Telegram::new(bot, admin_chat_id, LinkLocation::default())
 		.send(&msg, None, Some(job_name))
 		.await
-		.map_err(fetcher_core::error::Error::Sink)?;
+		.map_err(fetcher_core::error::FetcherError::Sink)?;
 
 	Ok(())
 }

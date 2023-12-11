@@ -9,7 +9,7 @@ mod exec;
 mod telegram;
 
 use self::{discord::Discord, exec::Exec, telegram::Telegram};
-use crate::{jobs::external_data::ProvideExternalData, Error};
+use crate::{jobs::external_data::ProvideExternalData, FetcherConfigError};
 use fetcher_core::sink::{Sink as CSink, Stdout as CStdout};
 
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,7 @@ pub enum Sink {
 }
 
 impl Sink {
-	pub fn parse<D>(self, external: &D) -> Result<Box<dyn CSink>, Error>
+	pub fn parse<D>(self, external: &D) -> Result<Box<dyn CSink>, FetcherConfigError>
 	where
 		D: ProvideExternalData + ?Sized,
 	{

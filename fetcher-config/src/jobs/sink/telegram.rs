@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
 	jobs::external_data::{ExternalDataResult, ProvideExternalData},
-	Error as ConfigError,
+	FetcherConfigError as ConfigError,
 };
 use fetcher_core::sink::{telegram::LinkLocation as CLinkLocation, Telegram as CTelegram};
 

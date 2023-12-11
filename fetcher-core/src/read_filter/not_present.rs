@@ -8,7 +8,7 @@ use super::{MarkAsRead, ReadFilter};
 use crate::{
 	action::filter::Filter,
 	entry::{Entry, EntryId},
-	error::Error,
+	error::FetcherError,
 };
 
 use async_trait::async_trait;
@@ -65,7 +65,7 @@ impl ReadFilter for NotPresent {
 
 #[async_trait]
 impl MarkAsRead for NotPresent {
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 		self.read_list.push_back((id.clone(), chrono::Utc::now()));
 
 		while self.read_list.len() > MAX_LIST_LEN {

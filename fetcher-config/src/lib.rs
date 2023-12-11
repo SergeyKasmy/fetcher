@@ -16,4 +16,4 @@ pub mod jobs;
 mod serde_extentions;
 pub mod settings;
 
-pub use self::error::Error;
+pub use self::error::FetcherConfigError;

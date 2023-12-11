@@ -292,7 +292,7 @@ fn find(html: HtmlNode, elem_query: &ElementQuery) -> impl Iterator<Item = HtmlN
 	}
 	.filter(move |found| {
 		if let Some(ignore) = &elem_query.ignore {
-			for i in ignore.iter() {
+			for i in ignore {
 				let should_be_ignored = match i {
 					ElementKind::Tag(tag) => found.name() == tag,
 					ElementKind::Class(class) => found.get("class").map_or(false, |c| &c == class),
