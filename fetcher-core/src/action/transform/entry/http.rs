@@ -101,9 +101,9 @@ impl TransformEntry for Http {
 		let new_page = source::http::send_request(&self.client, &Request::Get, &url).await?;
 
 		Ok(vec![TransformedEntry {
-			raw_contents: TransformResult::New(Some(new_page)),
+			raw_contents: TransformResult::New(new_page),
 			msg: TransformedMessage {
-				link: TransformResult::New(Some(url)),
+				link: TransformResult::New(url),
 				..Default::default()
 			},
 			..Default::default()

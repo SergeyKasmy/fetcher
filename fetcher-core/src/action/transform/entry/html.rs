@@ -15,7 +15,7 @@ use super::TransformEntry;
 use crate::{
 	action::transform::{
 		error::RawContentsNotSetError,
-		result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
 	error::InvalidUrlError,
@@ -153,13 +153,13 @@ impl Html {
 		let img = self.img.as_ref().try_and_then(|q| extract_imgs(html, q))?;
 
 		Ok(TransformedEntry {
-			id: TrRes::Old(id.map(Into::into)),
-			raw_contents: TrRes::Old(body.clone()),
+			id: id.map(Into::into).unwrap_or_prev(),
+			raw_contents: body.clone().unwrap_or_prev(),
 			msg: TransformedMessage {
-				title: TrRes::Old(title),
-				body: TrRes::Old(body),
-				link: TrRes::Old(link),
-				media: TrRes::Old(img),
+				title: title.unwrap_or_prev(),
+				body: body.unwrap_or_prev(),
+				link: link.unwrap_or_prev(),
+				media: img.unwrap_or_prev(),
 			},
 			..Default::default()
 		})

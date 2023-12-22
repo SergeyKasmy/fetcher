@@ -11,7 +11,7 @@ use crate::{
 	action::transform::{
 		error::RawContentsNotSetError,
 		field::Replace,
-		result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
 	error::InvalidUrlError,
@@ -156,13 +156,15 @@ impl Json {
 		};
 
 		Ok(TransformedEntry {
-			id: TrRes::Old(id.map(Into::into)),
-			raw_contents: TrRes::Old(body.clone()),
+			id: id.map(Into::into).unwrap_or_prev(),
+			raw_contents: body.clone().unwrap_or_prev(),
 			msg: TransformedMessage {
-				title: TrRes::Old(title),
-				body: TrRes::Old(body),
-				link: TrRes::Old(link),
-				media: TrRes::Old(img.map(|v| v.into_iter().map(Media::Photo).collect())),
+				title: title.unwrap_or_prev(),
+				body: body.unwrap_or_prev(),
+				link: link.unwrap_or_prev(),
+				media: img
+					.map(|v| v.into_iter().map(Media::Photo).collect())
+					.unwrap_or_prev(),
 			},
 			..Default::default()
 		})

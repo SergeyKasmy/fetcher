@@ -10,7 +10,7 @@ use itertools::Itertools;
 use std::convert::Infallible;
 
 use super::TransformField;
-use crate::action::transform::result::TransformResult;
+use crate::action::transform::result::{OptionUnwrapTransformResultExt, TransformResult};
 
 /// Trim whitespace from a field
 #[derive(Debug)]
@@ -20,7 +20,7 @@ impl TransformField for Trim {
 	type Err = Infallible;
 
 	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
-		Ok(TransformResult::New(old_val.map(trim)))
+		Ok(old_val.map(trim).unwrap_or_empty())
 	}
 }
 

@@ -52,7 +52,7 @@ impl TransformField for Extract {
 
 	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
 		let Some(field) = old_val else {
-			return Ok(TransformResult::Old(None));
+			return Ok(TransformResult::Previous);
 		};
 
 		let extracted = match extract_captures_from(&self.re, field) {
@@ -61,7 +61,7 @@ impl TransformField for Extract {
 			None => return Err(ExtractError::CaptureGroupNotFound),
 		};
 
-		Ok(TransformResult::New(Some(extracted)))
+		Ok(TransformResult::New(extracted))
 	}
 }
 
