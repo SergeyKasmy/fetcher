@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::error::Error as ConfigError;
+use crate::error::FetcherConfigError as ConfigError;
 use fetcher_core::action::transform::{
 	field::{Replace as CReplace, TransformFieldWrapper as CTransformFieldWrapper},
 	Transform as CTransform,

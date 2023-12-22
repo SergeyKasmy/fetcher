@@ -15,7 +15,7 @@ use std::error::Error as StdError;
 
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum FetcherError {
 	#[error("Can't fetch data")]
 	Source(#[from] SourceError),
 
@@ -42,7 +42,7 @@ pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
 #[error("Invalid regular expression")]
 pub struct BadRegexError(#[from] pub regex::Error);
 
-impl Error {
+impl FetcherError {
 	/// Check if the current error is somehow related to network connection and return it if it is
 	#[allow(clippy::match_same_arms)]
 	#[must_use]
@@ -51,16 +51,16 @@ impl Error {
 		#[allow(clippy::match_wildcard_for_single_variants)]
 		match self {
 			Self::Source(source_err) => source_err.is_connection_err(),
-			Error::Transform(tr_err) => tr_err.is_connection_err(),
-			Error::Sink(sink_err) => sink_err.is_connection_err(),
-			Error::GoogleOAuth2(google_oauth2_err) => google_oauth2_err.is_connection_err(),
+			FetcherError::Transform(tr_err) => tr_err.is_connection_err(),
+			FetcherError::Sink(sink_err) => sink_err.is_connection_err(),
+			FetcherError::GoogleOAuth2(google_oauth2_err) => google_oauth2_err.is_connection_err(),
 			_ => None,
 		}
 	}
 }
 
-impl From<TransformError> for Error {
+impl From<TransformError> for FetcherError {
 	fn from(e: TransformError) -> Self {
-		Error::Transform(Box::new(e))
+		FetcherError::Transform(Box::new(e))
 	}
 }

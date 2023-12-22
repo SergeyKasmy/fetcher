@@ -35,13 +35,26 @@ pub struct TransformedMessage {
 	pub media: TransformResult<Vec<Media>>,
 }
 
-/// An [`Option`] wrapper that can specify what to replace the value with if it's [`None`]
+/// Specify whether to use previous/old, empty, or a new value
 #[derive(Debug)]
 pub enum TransformResult<T> {
-	/// Use previous value if None, and a new one if Some
-	Old(Option<T>),
-	/// Use empty value if None, and a new one if Some
-	New(Option<T>),
+	/// Keep the previous value
+	Previous,
+
+	/// Remove this value / make it empty
+	Empty,
+
+	/// Replace the value with this new value
+	New(T),
+}
+
+/// Extension methods on [`Option<T>`] to transform [`Some(T)`] into [`TransformResult::New(T)`] and [`None`] into either [`TransformResult::Previous`] or [`TransformResult::Empty`]
+pub trait OptionUnwrapTransformResultExt<T> {
+	/// Transform [`Some(T)`] into [`TransformResult::New(T)`] and [`None`] into [`TransformResult::Previous`]
+	fn unwrap_or_prev(self) -> TransformResult<T>;
+
+	/// Transform [`Some(T)`] into [`TransformResult::New(T)`] and [`None`] into [`TransformResult::Empty`]
+	fn unwrap_or_empty(self) -> TransformResult<T>;
 }
 
 impl TransformedEntry {
@@ -77,14 +90,25 @@ impl<T> TransformResult<T> {
 		F: FnOnce() -> Option<T>,
 	{
 		match self {
-			Self::Old(val) => val.or_else(old_val),
-			Self::New(val) => val,
+			Self::Previous => old_val(),
+			Self::Empty => None,
+			Self::New(val) => Some(val),
 		}
 	}
 }
 
 impl<T> Default for TransformResult<T> {
 	fn default() -> Self {
-		TransformResult::Old(None)
+		Self::Previous
+	}
+}
+
+impl<T> OptionUnwrapTransformResultExt<T> for Option<T> {
+	fn unwrap_or_prev(self) -> TransformResult<T> {
+		self.map_or_else(|| TransformResult::Previous, TransformResult::New)
+	}
+
+	fn unwrap_or_empty(self) -> TransformResult<T> {
+		self.map_or_else(|| TransformResult::Empty, TransformResult::New)
 	}
 }

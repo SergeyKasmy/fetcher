@@ -22,7 +22,7 @@ use crate::{
 	auth::google::GoogleOAuth2Error as GoogleAuthError,
 	auth::Google as GoogleAuth,
 	entry::{Entry, EntryId},
-	error::Error,
+	error::FetcherError,
 	sink::message::Message,
 	source::error::SourceError,
 };
@@ -178,10 +178,10 @@ impl Fetch for Email {
 
 #[async_trait]
 impl MarkAsRead for Email {
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 		self.mark_as_read_impl(id)
 			.await
-			.map_err(|e| Error::from(SourceError::from(EmailError::from(e))))
+			.map_err(|e| FetcherError::from(SourceError::from(EmailError::from(e))))
 	}
 
 	async fn set_read_only(&mut self) {

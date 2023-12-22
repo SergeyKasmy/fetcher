@@ -28,6 +28,7 @@ impl TimePoint {
 	}
 
 	/// Returns the duration that is left to the next appropriate point in the day from the provided time `now`
+	#[allow(clippy::missing_panics_doc)] // doesn't actually panic
 	#[must_use]
 	pub fn remaining_from(&self, now: NaiveDateTime) -> Duration {
 		match self {

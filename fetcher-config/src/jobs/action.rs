@@ -24,7 +24,7 @@ use self::{
 	trim::Trim, use_as::Use,
 };
 use super::{external_data::ProvideExternalData, sink::Sink};
-use crate::Error;
+use crate::FetcherConfigError;
 use fetcher_core::{
 	action::{
 		transform::{
@@ -89,7 +89,7 @@ impl Action {
 		self,
 		rf: Option<Arc<RwLock<RF>>>,
 		external: &D,
-	) -> Result<Option<Vec<CAction>>, Error>
+	) -> Result<Option<Vec<CAction>>, FetcherConfigError>
 	where
 		RF: CReadFilter + 'static,
 		D: ProvideExternalData + ?Sized,

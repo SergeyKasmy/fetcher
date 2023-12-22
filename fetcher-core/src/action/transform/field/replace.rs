@@ -10,7 +10,10 @@ use regex::Regex;
 use std::{borrow::Cow, convert::Infallible};
 
 use super::TransformField;
-use crate::{action::transform::result::TransformResult, error::BadRegexError};
+use crate::{
+	action::transform::result::{OptionUnwrapTransformResultExt, TransformResult},
+	error::BadRegexError,
+};
 
 /// Replace this with "" when you want to remove all HTML tags
 pub const HTML_TAG_RE: &str = "<[^>]*>";
@@ -42,9 +45,9 @@ impl TransformField for Replace {
 	type Err = Infallible;
 
 	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
-		Ok(TransformResult::New(old_val.map(|old| {
-			self.re.replace_all(old, &self.with).into_owned()
-		})))
+		Ok(old_val
+			.map(|old| self.re.replace_all(old, &self.with).into_owned())
+			.unwrap_or_empty())
 	}
 }
 

@@ -7,7 +7,7 @@
 pub mod query;
 
 use self::query::{ElementDataQuery, ElementQuery, ItemQuery};
-use crate::Error;
+use crate::FetcherConfigError;
 use fetcher_core::{action::transform::entry::html::Html as CHtml, utils::OptionExt};
 
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,7 @@ pub struct Html {
 }
 
 impl Html {
-	pub fn parse(self) -> Result<CHtml, Error> {
+	pub fn parse(self) -> Result<CHtml, FetcherConfigError> {
 		Ok(CHtml {
 			item: self
 				.item

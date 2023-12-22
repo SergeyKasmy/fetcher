@@ -11,7 +11,7 @@ use crate::{
 	action::transform::{
 		error::TransformErrorKind,
 		field::Field,
-		result::{TransformResult as TrRes, TransformedEntry},
+		result::{OptionUnwrapTransformResultExt, TransformedEntry},
 	},
 	entry::Entry,
 	error::InvalidUrlError,
@@ -46,18 +46,20 @@ impl TransformEntry for Use {
 
 		let mut ent = TransformedEntry::default();
 		match self.as_field {
-			Field::Title => ent.msg.title = TrRes::New(val),
-			Field::Body => ent.msg.body = TrRes::New(val),
+			Field::Title => ent.msg.title = val.unwrap_or_empty(),
+			Field::Body => ent.msg.body = val.unwrap_or_empty(),
 			Field::Link => {
-				ent.msg.link = TrRes::New(val.try_map(|s| {
-					Url::try_from(s.as_str()).map_err(|e| {
-						TransformErrorKind::FieldLinkTransformInvalidUrl(InvalidUrlError(e, s))
-					})
-				})?);
+				ent.msg.link = val
+					.try_map(|s| {
+						Url::try_from(s.as_str()).map_err(|e| {
+							TransformErrorKind::FieldLinkTransformInvalidUrl(InvalidUrlError(e, s))
+						})
+					})?
+					.unwrap_or_empty();
 			}
-			Field::Id => ent.id = TrRes::New(val.map(Into::into)),
-			Field::ReplyTo => ent.reply_to = TrRes::New(val.map(Into::into)),
-			Field::RawContets => ent.raw_contents = TrRes::New(val),
+			Field::Id => ent.id = val.map(Into::into).unwrap_or_empty(),
+			Field::ReplyTo => ent.reply_to = val.map(Into::into).unwrap_or_empty(),
+			Field::RawContets => ent.raw_contents = val.unwrap_or_empty(),
 		}
 
 		Ok(vec![ent])

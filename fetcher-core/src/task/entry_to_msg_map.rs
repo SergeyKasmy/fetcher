@@ -8,7 +8,9 @@
 
 use std::collections::HashMap;
 
-use crate::{entry::EntryId, error::Error, external_save::ExternalSave, sink::message::MessageId};
+use crate::{
+	entry::EntryId, error::FetcherError, external_save::ExternalSave, sink::message::MessageId,
+};
 
 /// Map [`entries`][entry] to [`messages`][message]
 ///
@@ -53,13 +55,13 @@ impl EntryToMsgMap {
 	///
 	/// # Errors
 	/// if external save has failed
-	pub async fn insert(&mut self, eid: EntryId, msgid: MessageId) -> Result<(), Error> {
+	pub async fn insert(&mut self, eid: EntryId, msgid: MessageId) -> Result<(), FetcherError> {
 		self.map.insert(eid, msgid);
 		if let Some(ext_save) = &mut self.external_save {
 			ext_save
 				.save_entry_to_msg_map(&self.map)
 				.await
-				.map_err(Error::ExternalSave)?;
+				.map_err(FetcherError::ExternalSave)?;
 		}
 
 		Ok(())

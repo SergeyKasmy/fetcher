@@ -12,7 +12,7 @@ use self::entry_to_msg_map::EntryToMsgMap;
 use crate::{
 	action::Action,
 	entry::{Entry, EntryId},
-	error::Error,
+	error::FetcherError,
 	sink::{
 		message::{Message, MessageId},
 		Sink,
@@ -46,7 +46,7 @@ impl Task {
 	/// # Errors
 	/// If there was an error fetching the data, sending the data, or saving what data was successfully sent to an external location
 	#[tracing::instrument(skip(self))]
-	pub async fn run(&mut self) -> Result<(), Error> {
+	pub async fn run(&mut self) -> Result<(), FetcherError> {
 		tracing::trace!("Running task");
 
 		let raw = match &mut self.source {
@@ -65,7 +65,7 @@ impl Task {
 	// TODO: figure out a way to split into several functions to avoid 15 level nesting?
 	// It's a bit difficult because this function can't be a method because we are borrowing self.actions
 	// throughout the entire process
-	async fn process_entries(&mut self, mut entries: Vec<Entry>) -> Result<(), Error> {
+	async fn process_entries(&mut self, mut entries: Vec<Entry>) -> Result<(), FetcherError> {
 		for act in self.actions.iter().flatten() {
 			match act {
 				Action::Filter(f) => {
@@ -129,7 +129,7 @@ async fn send_entry(
 	mut entry_to_msg_map: Option<&mut EntryToMsgMap>,
 	tag: Option<&str>,
 	entry: &Entry,
-) -> Result<Option<MessageId>, Error> {
+) -> Result<Option<MessageId>, FetcherError> {
 	tracing::trace!("Sending entry");
 
 	// send message if it isn't empty or raw_contents of they aren't
@@ -165,7 +165,7 @@ async fn mark_entry_as_read(
 	// source: Option<&mut dyn Source>, // TODO: this doesn't work. Why?
 	source: Option<&mut Box<dyn Source>>,
 	entry_to_msg_map: Option<&mut EntryToMsgMap>,
-) -> Result<(), Error> {
+) -> Result<(), FetcherError> {
 	if let Some(mar) = source {
 		tracing::debug!("Marking {entry_id:?} as read");
 		mar.mark_as_read(entry_id).await?;

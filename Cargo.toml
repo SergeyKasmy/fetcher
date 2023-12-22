@@ -5,6 +5,53 @@ members = [
 	"fetcher-config",
 	"fetcher-gui",
 ]
+resolver = "2"
 
 [profile.release]
 lto = "thin"
+
+[workspace.lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery  = { level = "warn", priority = -1 }
+
+### Hand-picked restrictions (as of Rust 1.76.0)
+clone_on_ref_ptr = "warn"
+dbg_macro = "warn"
+error_impl_error = "warn"
+exit = "warn"
+filetype_is_file = "warn"
+format_push_string = "warn"
+let_underscore_untyped = "warn"
+missing_assert_message = "warn"
+missing_docs_in_private_items = "warn"
+needless_raw_strings = "warn"
+print_stderr = "warn"
+rest_pat_in_fully_bound_structs = "warn"
+same_name_method = "warn"
+str_to_string = "warn"
+string_to_string = "warn"
+tests_outside_test_module = "warn"
+todo = "warn"
+try_err = "warn"
+unimplemented = "warn"
+unwrap_used = "warn"
+
+### Overrides of overly restrictive pedantic and nursery lints with explanations
+# matches!() adds too much noise for little benefit
+equatable_if_let = "allow" 
+
+# too much noise for little benefit (may change in the future)
+missing_const_for_fn = "allow"
+
+# some types are more descriptive with modules name in the name, especially if this type is often used out of the context of this module
+module_name_repetitions = "allow"
+
+# "harder to read, false branch before true branch"
+option_if_let_else = "allow" 
+
+# may be hard to understand what Self even is deep into a function's body
+use_self = "allow"

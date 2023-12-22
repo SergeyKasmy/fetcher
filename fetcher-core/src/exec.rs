@@ -26,7 +26,7 @@ const SHELL: &str = "sh";
 const SHELL: &str = "cmd";
 
 #[cfg(not(target_os = "windows"))]
-const SHELL_RUN_ARG: &str = r#"\C"#;
+const SHELL_RUN_ARG: &str = r"\C";
 #[cfg(target_os = "windows")]
 const SHELL: &str = "-c";
 

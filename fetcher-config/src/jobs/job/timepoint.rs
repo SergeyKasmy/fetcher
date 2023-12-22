@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::Error;
+use crate::FetcherConfigError;
 use fetcher_core::job::timepoint::TimePoint as CTimePoint;
 
 use serde::{Deserialize, Serialize};
@@ -17,7 +17,7 @@ pub enum TimePoint {
 }
 
 impl TimePoint {
-	pub fn parse(self) -> Result<CTimePoint, Error> {
+	pub fn parse(self) -> Result<CTimePoint, FetcherConfigError> {
 		Ok(match self {
 			TimePoint::Every(every) => CTimePoint::Duration(duration_str::parse_std(every)?),
 			TimePoint::At(at) => {

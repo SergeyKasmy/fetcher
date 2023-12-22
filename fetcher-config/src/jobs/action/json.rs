@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::Error;
+use crate::FetcherConfigError;
 use fetcher_core::{
 	action::transform::{
 		entry::json::{self as c_json, Json as CJson},
@@ -61,7 +61,7 @@ pub struct JsonQueryRegex {
 }
 
 impl Json {
-	pub fn parse(self) -> Result<CJson, Error> {
+	pub fn parse(self) -> Result<CJson, FetcherConfigError> {
 		Ok(CJson {
 			item: self.item.map(Query::parse),
 			title: self.title.try_map(StringQuery::parse)?,
@@ -104,7 +104,7 @@ impl Query {
 }
 
 impl StringQuery {
-	pub fn parse(self) -> Result<c_json::StringQuery, Error> {
+	pub fn parse(self) -> Result<c_json::StringQuery, FetcherConfigError> {
 		Ok(c_json::StringQuery {
 			query: self.query.parse(),
 			regex: self.regex.try_map(JsonQueryRegex::parse)?,
@@ -113,7 +113,7 @@ impl StringQuery {
 }
 
 impl JsonQueryRegex {
-	pub fn parse(self) -> Result<CReplace, Error> {
+	pub fn parse(self) -> Result<CReplace, FetcherConfigError> {
 		CReplace::new(&self.re, self.replace_with).map_err(Into::into)
 	}
 }

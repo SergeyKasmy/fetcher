@@ -18,7 +18,7 @@ use super::{
 	sink::Sink,
 	source::Source,
 };
-use crate::Error;
+use crate::FetcherConfigError;
 use fetcher_core::{action::Action as CAction, task::Task as CTask, utils::OptionExt};
 
 #[derive(Deserialize, Serialize, Default, Debug)]
@@ -42,7 +42,7 @@ impl Task {
 		job: &JobName,
 		task_name: Option<&TaskName>,
 		external: &D,
-	) -> Result<CTask, Error>
+	) -> Result<CTask, FetcherConfigError>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
@@ -73,7 +73,7 @@ impl Task {
 				acts.push(CAction::Sink(sink.parse(external)?));
 			}
 
-			Ok::<_, Error>(acts)
+			Ok::<_, FetcherConfigError>(acts)
 		})?;
 
 		let entry_to_msg_map = if self.entry_to_msg_map_enabled

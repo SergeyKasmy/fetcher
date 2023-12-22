@@ -5,38 +5,11 @@
  */
 
 #![doc = include_str!("../README.md")]
-// Hand selected lints
-//#![warn(missing_docs)]  // TODO: add more docs
-#![warn(clippy::unwrap_used)]
-#![forbid(unsafe_code)]
-#![warn(clippy::clone_on_ref_ptr)]
-#![warn(clippy::dbg_macro)]
-#![warn(clippy::exit)]
-#![warn(clippy::filetype_is_file)]
-#![warn(clippy::format_push_string)]
-#![warn(clippy::let_underscore_untyped)]
-#![warn(clippy::missing_assert_message)]
-// #![warn(clippy::missing_docs_in_private_items)]	// TODO: enable later
-#![warn(clippy::print_stderr)]
-#![warn(clippy::rest_pat_in_fully_bound_structs)]
-#![warn(clippy::same_name_method)]
-#![warn(clippy::str_to_string)]
-#![warn(clippy::string_to_string)]
-#![warn(clippy::tests_outside_test_module)]
-#![warn(clippy::todo)]
-#![warn(clippy::try_err)]
-#![warn(clippy::unimplemented)]
-#![warn(clippy::unimplemented)]
-// Additional automatic Lints
-#![warn(clippy::pedantic)]
-// some types are more descriptive with modules name in the name, especially if this type is often used out of the context of this module
-#![allow(clippy::module_name_repetitions)]
-#![warn(clippy::nursery)]
-#![allow(clippy::option_if_let_else)] // "harder to read, false branch before true branch"
-#![allow(clippy::use_self)] // may be hard to understand what Self even is deep into a function's body
-#![allow(clippy::equatable_if_let)] // matches!() adds too much noise for little benefit
+#![allow(missing_docs)] // TODO: add more docs
+#![allow(clippy::missing_docs_in_private_items)] // TODO: enable later
 #![allow(clippy::missing_errors_doc)] // TODO: add more docs
-#![allow(clippy::future_not_send)] // not useful for a binary crate
+#![allow(clippy::missing_panics_doc)] // TODO: add more docs
+#![allow(clippy::future_not_send)] // not useful in a binary crate
 
 pub mod args;
 pub mod error_handling;
@@ -56,7 +29,7 @@ use fetcher::{
 use fetcher_config::jobs::named::{JobName, JobWithTaskNames};
 use fetcher_core::{
 	action::Action,
-	error::Error,
+	error::FetcherError,
 	job::{timepoint::TimePoint, Job},
 	sink::{Sink, Stdout},
 };
@@ -305,7 +278,7 @@ async fn run_command(run_args: args::Run, cx: Context) -> Result<()> {
 		for job in jobs.values_mut() {
 			for task in &mut job.inner.tasks {
 				let Some(actions) = task.actions.take() else {
-					continue
+					continue;
 				};
 
 				// TODO: use .retain mb
@@ -520,7 +493,7 @@ async fn run_job(
 	mut shutdown_rx: Receiver<()>,
 	cx: Context,
 ) -> (JobName, Result<Result<()>, JoinError>) {
-	fn fold_task_errors(mut errors: Vec<Error>) -> Report {
+	fn fold_task_errors(mut errors: Vec<FetcherError>) -> Report {
 		// for acc_report.error(err). I believe this way it is clearer what the fold does
 		#[allow(clippy::redundant_closure_for_method_calls)]
 		match errors.len() {
@@ -556,14 +529,14 @@ async fn run_job(
 
 		async move {
 			#[allow(clippy::redundant_pub_crate)] // false positive
-			loop {
+			{
 				select! {
 					res = async_job => {
-						return res;
+						res
 					}
 					_ = shutdown_rx.changed() => {
 						tracing::info!("Job {name} signaled to shutdown...");
-						return Ok(());
+						Ok(())
 					}
 				}
 			}
@@ -578,11 +551,11 @@ async fn run_job(
 /// ControlFlow::Break -> stop running the job with a result
 #[tracing::instrument(level = "debug", skip(job_name, job, cx))]
 async fn handle_errors(
-	results: Result<(), Vec<Error>>,
+	results: Result<(), Vec<FetcherError>>,
 	stradegy: &mut ErrorHandling,
 	(job_name, job): (&JobName, &Job),
 	cx: Context,
-) -> ControlFlow<Result<(), Vec<Error>>> {
+) -> ControlFlow<Result<(), Vec<FetcherError>>> {
 	let Err(errors) = results else {
 		return ControlFlow::Break(Ok(()));
 	};
@@ -619,7 +592,7 @@ async fn handle_errors(
 
 // count errors and sleep exponentially
 async fn handle_errors_sleep(
-	errors: &[Error],
+	errors: &[FetcherError],
 	prev_errors: &mut PrevErrors,
 	job_name: &JobName,
 	job_refresh_time: Option<&TimePoint>,
@@ -678,7 +651,7 @@ async fn handle_errors_sleep(
 
 		// log and report all other errors (except for network errors up above)
 		for (i, err) in errors_without_net.enumerate() {
-			if let Error::Transform(transform_err) = &err {
+			if let FetcherError::Transform(transform_err) = &err {
 				if let Err(e) = settings::log::log_transform_err(transform_err, job_name) {
 					tracing::error!("Error logging transform error: {e:?}");
 				}
@@ -738,7 +711,7 @@ async fn report_error(job_name: &str, err: &str, context: Context) -> Result<()>
 	Telegram::new(bot, admin_chat_id, LinkLocation::default())
 		.send(&msg, None, Some(job_name))
 		.await
-		.map_err(fetcher_core::error::Error::Sink)?;
+		.map_err(fetcher_core::error::FetcherError::Sink)?;
 
 	Ok(())
 }

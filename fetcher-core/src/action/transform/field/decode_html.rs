@@ -19,11 +19,11 @@ impl TransformField for DecodeHtml {
 
 	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
 		let Some(old_val) = old_val else {
-			return Ok(TransformResult::Old(None))
+			return Ok(TransformResult::Previous);
 		};
 
 		let escaped = html_escape::decode_html_entities(old_val).into_owned();
 
-		Ok(TransformResult::New(Some(escaped)))
+		Ok(TransformResult::New(escaped))
 	}
 }

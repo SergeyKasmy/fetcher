@@ -78,6 +78,7 @@ impl Google {
 	/// # Errors
 	/// * if there was a network connection error
 	/// * if the responce isn't a valid `refresh_token`
+	#[allow(clippy::missing_panics_doc)] // doesn't actually panic
 	pub async fn get_new_access_token(&mut self) -> Result<&AccessToken, GoogleOAuth2Error> {
 		let AccessTokenResponce {
 			access_token,

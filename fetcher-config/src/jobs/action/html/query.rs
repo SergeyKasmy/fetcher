@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::error::Error;
+use crate::error::FetcherConfigError;
 use fetcher_core::{
 	action::{transform::entry::html::query as c_query, transform::field::Replace as CReplace},
 	utils::OptionExt,
@@ -102,7 +102,7 @@ impl ElementQuery {
 }
 
 impl ElementDataQuery {
-	pub fn parse(self) -> Result<c_query::ElementDataQuery, Error> {
+	pub fn parse(self) -> Result<c_query::ElementDataQuery, FetcherConfigError> {
 		Ok(c_query::ElementDataQuery {
 			optional: self.optional,
 			query: self.query.into_iter().map(ElementQuery::parse).collect(),
@@ -113,7 +113,7 @@ impl ElementDataQuery {
 }
 
 impl HtmlQueryRegex {
-	pub fn parse(self) -> Result<CReplace, Error> {
+	pub fn parse(self) -> Result<CReplace, FetcherConfigError> {
 		CReplace::new(&self.re, self.replace_with).map_err(Into::into)
 	}
 }

@@ -5,7 +5,7 @@
  */
 
 use crate::{
-	error::{Error, Result},
+	error::{FetcherConfigError, Result},
 	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 };
 use fetcher_core::{action::Action as CAction, read_filter::ReadFilter as CReadFilter};
@@ -42,7 +42,7 @@ impl Import {
 					Ok(Some(v))
 				}
 			}
-			ExternalDataResult::Unavailable => Err(Error::ImportingUnavailable),
+			ExternalDataResult::Unavailable => Err(FetcherConfigError::ImportingUnavailable),
 			ExternalDataResult::Err(e) => Err(e.into()),
 		}
 	}

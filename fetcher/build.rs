@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! Build script - fetch git branch and commit hash
+
 use std::error::Error;
 
 use vergen::EmitBuilder;
