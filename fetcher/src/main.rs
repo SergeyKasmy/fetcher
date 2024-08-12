@@ -125,7 +125,7 @@ async fn async_main() -> Result<()> {
 			let run_filter = run_filter
 				.into_iter()
 				.map(|s| s.parse())
-				.collect::<Result<Vec<_>>>()?;
+				.collect::<Result<Vec<JobFilter>>>()?;
 			let run_filter = if run_filter.is_empty() {
 				None
 			} else {

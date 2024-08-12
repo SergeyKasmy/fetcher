@@ -14,6 +14,7 @@ mod view_mode;
 
 pub use auth::Auth;
 pub use filters::Filters;
+use imap::TlsKind;
 pub use view_mode::ViewMode;
 
 use self::auth::GoogleAuthExt;
@@ -65,8 +66,8 @@ pub enum EmailError {
 #[allow(missing_docs)] // error message is self-documenting
 #[derive(thiserror::Error, Debug)]
 pub enum ImapError {
-	#[error("Failed to init TLS")]
-	TlsInitFailed(#[source] imap::Error),
+	#[error("Failed to connect to the IMAP server")]
+	ConnectionFailed(#[source] imap::Error),
 
 	#[error(transparent)]
 	GoogleOAuth2(#[from] GoogleAuthError),
@@ -195,8 +196,9 @@ impl Email {
 	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, EmailError> {
 		tracing::debug!("Fetching emails");
 		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT)
-			.rustls()
-			.map_err(ImapError::TlsInitFailed)?;
+			.tls_kind(TlsKind::Rust)
+			.connect()
+			.map_err(ImapError::ConnectionFailed)?;
 
 		let mut session = authenticate!(&self.email, &mut self.auth, client);
 
@@ -274,8 +276,10 @@ let uid =
 		}
 
 		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT)
-			.rustls()
-			.map_err(ImapError::TlsInitFailed)?;
+			.tls_kind(TlsKind::Rust)
+			.connect()
+			.map_err(ImapError::ConnectionFailed)?;
+
 		let mut session = authenticate!(&self.email, &mut self.auth, client);
 
 		session.select("INBOX")?;

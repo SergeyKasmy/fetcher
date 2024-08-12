@@ -55,7 +55,7 @@ impl SourceError {
 		match self {
 			Self::Http(_) => Some(self),
 			Self::Email(email_err) => match &**email_err {
-				EmailError::Imap(ImapError::TlsInitFailed(_)) => Some(self),
+				EmailError::Imap(ImapError::ConnectionFailed(_)) => Some(self),
 				_ => None,
 			},
 			Self::Twitter(
