@@ -62,9 +62,7 @@ pub fn get_all_from<'a>(
 			let file = match dir_entry {
 				Ok(dir_entry) => {
 					// filter out files with no extension
-					let Some(ext) = dir_entry.path().extension() else {
-						return None;
-					};
+					let ext = dir_entry.path().extension()?;
 
 					// or if the extension isn't CONFIG_FILE_EXT
 					if ext != CONFIG_FILE_EXT {

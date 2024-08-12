@@ -93,6 +93,7 @@ impl TruncatingFileWriter {
 
 			let file = fs::OpenOptions::new()
 				.create(true)
+				.truncate(true)
 				.write(true)
 				.open(&self.path)
 				.await?;

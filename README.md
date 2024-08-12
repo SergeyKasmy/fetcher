@@ -41,7 +41,7 @@ tasks:
   news:
     read_filter_type: newer_than_read
     source:
-      twitter: '<your_twitter_handle>'
+      twitter: '<your twitter handle>'
     process:
       - read_filter # leave out only entries newer than the last one read
       - contains:
@@ -52,11 +52,11 @@ tasks:
           body: 50
     sink:
       discord:
-        user: <your_user_id>
+        user: <your user id>
 ```
 
 This job is run every 30 minutes and has a single task named "news". This task:
-* gets the Twitter timeline of @<your_twitter_handle>
+* gets the Twitter timeline of @<your twitter handle>
 * removes all tweets that have already been read (using the `newer_than_read` stradegy)
 * retains only tweets that contains "Hello" or "hello" in them
 * sets the title to "New tweet from somebody"

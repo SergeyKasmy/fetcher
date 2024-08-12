@@ -17,7 +17,7 @@ unsafe_code = "forbid"
 pedantic = { level = "warn", priority = -1 }
 nursery  = { level = "warn", priority = -1 }
 
-### Hand-picked restrictions (as of Rust 1.76.0)
+### Hand-picked restrictions (as of Rust 1.81.0)
 clone_on_ref_ptr = "warn"
 dbg_macro = "warn"
 error_impl_error = "warn"
@@ -28,6 +28,7 @@ let_underscore_untyped = "warn"
 missing_assert_message = "warn"
 missing_docs_in_private_items = "warn"
 needless_raw_strings = "warn"
+pathbuf_init_then_push = "warn"
 print_stderr = "warn"
 rest_pat_in_fully_bound_structs = "warn"
 same_name_method = "warn"
@@ -54,3 +55,6 @@ option_if_let_else = "allow"
 
 # may be hard to understand what Self even is deep into a function's body
 use_self = "allow"
+
+# often a match can better highlight which branch is more important and draw attention to it
+single_match_else = "allow"

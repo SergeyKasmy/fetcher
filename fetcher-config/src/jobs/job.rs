@@ -102,15 +102,15 @@ impl Job {
 			task.read_filter_kind = task.read_filter_kind.or(self.read_filter_kind);
 
 			if task.tag.is_none() {
-				task.tag = self.tag.clone();
+				task.tag.clone_from(&self.tag);
 			}
 
 			if task.source.is_none() {
-				task.source = self.source.clone();
+				task.source.clone_from(&self.source);
 			}
 
 			if task.actions.is_none() {
-				task.actions = self.actions.clone();
+				task.actions.clone_from(&self.actions);
 			}
 
 			if task.entry_to_msg_map_enabled.is_none() {
@@ -118,7 +118,7 @@ impl Job {
 			}
 
 			if task.sink.is_none() {
-				task.sink = self.sink.clone();
+				task.sink.clone_from(&self.sink);
 			}
 		}
 
