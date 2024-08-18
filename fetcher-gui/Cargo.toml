@@ -3,6 +3,9 @@ name = "fetcher-gui"
 version = "0.13.1"
 edition = "2021"
 
+[lints]
+workspace = true
+
 [dependencies]
 fetcher = { version = "0.13.1", path = "../fetcher" }
 fetcher-config = { version = "0.13.1", path = "../fetcher-config" }
