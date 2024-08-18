@@ -11,7 +11,7 @@ pub mod action;
 pub mod auth;
 pub mod entry;
 pub mod error;
-mod exec;
+pub mod exec;
 pub mod external_save;
 pub mod job;
 pub mod read_filter;

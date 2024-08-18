@@ -31,8 +31,8 @@ impl Job {
 	/// if any of the inner tasks return an error, refer to [`Task`] documentation
 	pub async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
 		loop {
-			let jobs = self.tasks.iter_mut().map(Task::run);
-			let results = join_all(jobs).await;
+			let tasks = self.tasks.iter_mut().map(Task::run);
+			let results = join_all(tasks).await;
 
 			let errors = results
 				.into_iter()
