@@ -20,7 +20,7 @@ pub struct Take {
 	pub num: usize,
 }
 
-#[allow(missing_docs)]
+#[expect(missing_docs, reason = "names are self-documenting")]
 #[derive(Clone, Debug)]
 pub enum TakeFrom {
 	Beginning,

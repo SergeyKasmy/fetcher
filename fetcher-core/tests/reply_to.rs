@@ -12,12 +12,12 @@ use fetcher_core::{
 	error::FetcherError,
 	read_filter::MarkAsRead,
 	sink::{
+		Sink,
 		error::SinkError,
 		message::{Message, MessageId},
-		Sink,
 	},
-	source::{error::SourceError, Fetch, Source},
-	task::{entry_to_msg_map::EntryToMsgMap, Task},
+	source::{Fetch, Source, error::SourceError},
+	task::{Task, entry_to_msg_map::EntryToMsgMap},
 };
 
 const ENTRY_ID: &str = "0";

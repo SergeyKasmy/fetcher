@@ -6,7 +6,7 @@
 
 //! This module defines the [`TimePoint`] enum that specifies either a duration or a time of day a job should be refreshed
 
-use chrono::{offset::Local as LocalTime, NaiveDateTime, NaiveTime};
+use chrono::{NaiveDateTime, NaiveTime, offset::Local as LocalTime};
 use std::time::Duration;
 
 /// A point in time of a day
@@ -28,7 +28,10 @@ impl TimePoint {
 	}
 
 	/// Returns the duration that is left to the next appropriate point in the day from the provided time `now`
-	#[allow(clippy::missing_panics_doc)] // doesn't actually panic
+	#[expect(
+		clippy::missing_panics_doc,
+		reason = "doesn't actually panic, unless bugged"
+	)]
 	#[must_use]
 	pub fn remaining_from(&self, now: NaiveDateTime) -> Duration {
 		match self {
@@ -65,10 +68,7 @@ mod tests {
 
 	use super::*;
 
-	#[allow(clippy::identity_op)]
-	const HOUR: Duration = Duration::from_secs(
-		1 /* hour */ * 60 /* mins in hour */ * 60, /* secs in min */
-	);
+	const HOUR: Duration = Duration::from_secs(60 /* mins in hour */ * 60 /* secs in min */);
 
 	// assume now is exactly 12 PM
 	static NOW: Lazy<NaiveDateTime> = Lazy::new(|| {

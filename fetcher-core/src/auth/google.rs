@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
 
-#[allow(clippy::doc_markdown)]
+#[expect(clippy::doc_markdown, reason = "false positive")]
 /// An OAuth2 access token. It can be used to actually access stuff via OAuth2
 #[derive(Clone, Debug)]
 pub struct AccessToken {
@@ -29,7 +29,7 @@ struct AccessTokenResponce {
 	expires_in: u64,
 }
 
-#[allow(clippy::doc_markdown)]
+#[expect(clippy::doc_markdown, reason = "false positive")]
 /// Google OAuth2 authenticator
 // TODO: link docs to the oauth2 spec
 #[derive(Clone, Debug)]
@@ -47,7 +47,7 @@ pub struct Google {
 	access_token: Option<AccessToken>,
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum GoogleOAuth2Error {
 	#[error("Error contacting Google servers for authentication")]
@@ -61,7 +61,7 @@ pub enum GoogleOAuth2Error {
 }
 
 impl Google {
-	#[allow(clippy::doc_markdown)]
+	#[expect(clippy::doc_markdown, reason = "false positive")]
 	/// Creates a new Google OAuth2 authenticator
 	#[must_use]
 	pub const fn new(client_id: String, client_secret: String, refresh_token: String) -> Self {
@@ -78,7 +78,7 @@ impl Google {
 	/// # Errors
 	/// * if there was a network connection error
 	/// * if the responce isn't a valid `refresh_token`
-	#[allow(clippy::missing_panics_doc)] // doesn't actually panic
+	#[expect(clippy::missing_panics_doc, reason = "doesn't actually panic")]
 	pub async fn get_new_access_token(&mut self) -> Result<&AccessToken, GoogleOAuth2Error> {
 		let AccessTokenResponce {
 			access_token,
@@ -133,7 +133,7 @@ impl Google {
 			self.get_new_access_token().await?;
 		}
 
-		#[allow(clippy::missing_panics_doc)] // this should never panic
+		//#[expect(clippy::missing_panics_doc, reason = "never panics, unless bugged")]
 		let access_token = self
 			.access_token
 			.as_ref()
@@ -153,8 +153,10 @@ impl Google {
 
 impl GoogleOAuth2Error {
 	pub(crate) fn is_connection_err(&self) -> Option<&(dyn std::error::Error + Send + Sync)> {
-		// I know it will match any future variants automatically but I actually want it to do that anyways
-		#[allow(clippy::match_wildcard_for_single_variants)]
+		// #[expect(
+		// 	clippy::match_wildcard_for_single_variants,
+		// 	reason = "yes, this will match all future variants. That's what we want"
+		// )]
 		match self {
 			GoogleOAuth2Error::Post(_) => Some(self),
 			_ => None,
@@ -162,7 +164,7 @@ impl GoogleOAuth2Error {
 	}
 }
 
-#[allow(clippy::doc_markdown)]
+#[expect(clippy::doc_markdown, reason = "false positive")]
 /// Generate and return a new Google OAuth2 refresh token using the `client_id`, `client_secret`, and `access_code`
 ///
 /// # Errors
@@ -178,7 +180,9 @@ pub async fn generate_refresh_token(
 		refresh_token: String,
 	}
 
-	tracing::debug!("Generating a new OAuth2 refresh token from client_id: {client_id:?}, client_secret: {client_secret:?}, and access_code: {access_code:?}");
+	tracing::debug!(
+		"Generating a new OAuth2 refresh token from client_id: {client_id:?}, client_secret: {client_secret:?}, and access_code: {access_code:?}"
+	);
 
 	let body = [
 		("client_id", client_id),
@@ -211,7 +215,9 @@ async fn generate_access_token(
 	client_secret: &str,
 	refresh_token: &str,
 ) -> Result<AccessTokenResponce, GoogleOAuth2Error> {
-	tracing::debug!("Generating a new OAuth2 access token from client_id: {client_id:?}, client_secret: {client_secret:?}, and refresh_token: {refresh_token:?}");
+	tracing::debug!(
+		"Generating a new OAuth2 access token from client_id: {client_id:?}, client_secret: {client_secret:?}, and refresh_token: {refresh_token:?}"
+	);
 
 	let body = [
 		("client_id", client_id),

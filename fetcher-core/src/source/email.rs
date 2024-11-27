@@ -20,8 +20,8 @@ pub use view_mode::ViewMode;
 use self::auth::GoogleAuthExt;
 use super::{Fetch, MarkAsRead, Source};
 use crate::{
-	auth::google::GoogleOAuth2Error as GoogleAuthError,
 	auth::Google as GoogleAuth,
+	auth::google::GoogleOAuth2Error as GoogleAuthError,
 	entry::{Entry, EntryId},
 	error::FetcherError,
 	sink::message::Message,
@@ -52,8 +52,8 @@ pub struct Email {
 	pub view_mode: ViewMode,
 }
 
-#[allow(missing_docs)] // error message is self-documenting
-#[allow(clippy::large_enum_variant)] // the entire enum is already boxed up above
+#[expect(missing_docs, reason = "error message is self-documenting")]
+//#[expect(clippy::large_enum_variant, reason = "the entire enum is already boxed one level above")]
 #[derive(thiserror::Error, Debug)]
 pub enum EmailError {
 	#[error("IMAP connection error")]
@@ -63,7 +63,7 @@ pub enum EmailError {
 	Parse(#[from] mailparse::MailParseError),
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum ImapError {
 	#[error("Failed to connect to the IMAP server")]
@@ -339,13 +339,10 @@ impl Debug for Email {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Email")
 			.field("imap", &self.imap)
-			.field(
-				"auth_type",
-				match self.auth {
-					Auth::Password(_) => &"password",
-					Auth::GmailOAuth2(_) => &"gmail_oauth2",
-				},
-			)
+			.field("auth_type", match self.auth {
+				Auth::Password(_) => &"password",
+				Auth::GmailOAuth2(_) => &"gmail_oauth2",
+			})
 			.field("email", &self.email)
 			.field("filters", &self.filters)
 			.field("view_mode", &self.view_mode)

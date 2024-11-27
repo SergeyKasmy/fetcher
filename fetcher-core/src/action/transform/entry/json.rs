@@ -71,7 +71,7 @@ pub struct Query {
 	pub optional: bool,
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum JsonError {
 	#[error(transparent)]
@@ -191,7 +191,7 @@ fn extract_data<'a>(json: &'a Value, query: &Query) -> Result<Option<&'a Value>,
 			return Err(JsonError::KeyNotFound {
 				num: key,
 				key_list: query.keys.clone(),
-			})
+			});
 		}
 	};
 

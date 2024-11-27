@@ -8,9 +8,9 @@
 
 use crate::{
 	sink::{
-		error::SinkError,
-		message::{length_limiter::MessageLengthLimiter, Media, Message, MessageId},
 		Sink,
+		error::SinkError,
+		message::{Media, Message, MessageId, length_limiter::MessageLengthLimiter},
 	},
 	utils::OptionExt,
 };
@@ -18,14 +18,14 @@ use crate::{
 use async_trait::async_trait;
 use std::{fmt::Debug, num::TryFromIntError, time::Duration};
 use teloxide::{
-	adaptors::{throttle::Limits, Throttle},
+	Bot, RequestError,
+	adaptors::{Throttle, throttle::Limits},
 	payloads::{SendMediaGroupSetters, SendMessageSetters},
 	requests::{Request, Requester, RequesterExt},
 	types::{
 		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, Message as TelMessage,
 		MessageId as TelMessageId, ParseMode,
 	},
-	Bot, RequestError,
 };
 use tokio::time::sleep;
 
@@ -113,9 +113,9 @@ impl Telegram {
 					last_message = sent_msg.and_then(|v| v.first().map(|m| m.id));
 				}
 			} else {
-				let media_caption = msg
-						.split_at(MAX_MEDIA_MSG_LEN)
-						.expect("should always return a valid split at least once since msg char len is > max_char_limit");
+				let media_caption = msg.split_at(MAX_MEDIA_MSG_LEN).expect(
+					"should always return a valid split at least once since msg char len is > max_char_limit",
+				);
 
 				let sent_msg = self
 					.send_media(media, Some(&media_caption), last_message)
@@ -168,7 +168,9 @@ impl Telegram {
 						.to_lowercase()
 						.contains("replied message not found") =>
 				{
-					tracing::warn!("Message that should be replied to doesn't exist. Resending just as a regular message");
+					tracing::warn!(
+						"Message that should be replied to doesn't exist. Resending just as a regular message"
+					);
 					reply_to = None;
 				}
 				Err(RequestError::RetryAfter(retry_after)) => {
@@ -191,7 +193,6 @@ impl Telegram {
 	/// Returns None if Media couldn't be sent but it's Telegram's fault
 	/// # Panics
 	/// if media.len() is more than 10
-	#[allow(clippy::too_many_lines)]
 	#[tracing::instrument(level = "trace", skip(self))]
 	async fn send_media(
 		&self,
@@ -251,7 +252,7 @@ impl Telegram {
 			};
 
 			// don't forget to return from a branch, dummy, otherwise you'll end up in an infinite loop
-			#[allow(clippy::redundant_else)] // improves control flow visualization
+			#[expect(clippy::redundant_else, reason = "improves control flow visualization")]
 			match msg_cmd.send().await {
 				Ok(messages) => return Ok(Some(messages)),
 				Err(e)
@@ -286,12 +287,16 @@ impl Telegram {
 				{
 					// TODO: reupload the image manually if this happens
 					if let Some(caption) = caption {
-						tracing::warn!("Telegram disliked the media URL (\"Wrong file identifier/HTTP URL specified\"), sending the message as pure text");
+						tracing::warn!(
+							"Telegram disliked the media URL (\"Wrong file identifier/HTTP URL specified\"), sending the message as pure text"
+						);
 						let msg = self.send_text(caption, reply_to).await?;
 
 						return Ok(Some(vec![msg]));
 					} else {
-						tracing::warn!("Telegram disliked the media URL (\"Wrong file identifier/HTTP URL specified\") but the caption was empty, skipping...");
+						tracing::warn!(
+							"Telegram disliked the media URL (\"Wrong file identifier/HTTP URL specified\") but the caption was empty, skipping..."
+						);
 						return Ok(None);
 					}
 				}
@@ -302,12 +307,16 @@ impl Telegram {
 				{
 					// TODO: reupload the image manually if this happens
 					if let Some(caption) = caption {
-						tracing::warn!("Telegram disliked the media URL (\"Wrong type of the web page content\"), sending the message as pure text");
+						tracing::warn!(
+							"Telegram disliked the media URL (\"Wrong type of the web page content\"), sending the message as pure text"
+						);
 						let msg = self.send_text(caption, reply_to).await?;
 
 						return Ok(Some(vec![msg]));
 					} else {
-						tracing::warn!("Telegram disliked the media URL (\"Wrong type of the web page content\") but the caption was empty, skipping...");
+						tracing::warn!(
+							"Telegram disliked the media URL (\"Wrong type of the web page content\") but the caption was empty, skipping..."
+						);
 						return Ok(None);
 					}
 				}
@@ -316,7 +325,9 @@ impl Telegram {
 						.to_lowercase()
 						.contains("replied message not found") =>
 				{
-					tracing::warn!("Message that should be replied to doesn't exist. Resending just as a regular message");
+					tracing::warn!(
+						"Message that should be replied to doesn't exist. Resending just as a regular message"
+					);
 					reply_to = None;
 				}
 				Err(RequestError::RetryAfter(retry_after)) => {

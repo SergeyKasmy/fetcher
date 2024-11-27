@@ -17,7 +17,7 @@ use crate::{
 
 use std::{convert::Infallible, error::Error as StdError};
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 #[error("Error transforming entry")]
 pub struct TransformError {
@@ -26,7 +26,7 @@ pub struct TransformError {
 	pub original_entry: Entry,
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum TransformErrorKind {
 	#[error("Message link is not a valid URL after transforming")]
@@ -48,7 +48,7 @@ pub enum TransformErrorKind {
 	Extract(#[from] ExtractError),
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 #[error("There's nothing to transform from")]
 pub struct RawContentsNotSetError;

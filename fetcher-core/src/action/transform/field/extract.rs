@@ -21,7 +21,7 @@ pub struct Extract {
 	passthrough_if_not_found: bool,
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum ExtractError {
 	#[error(transparent)]

@@ -5,10 +5,9 @@
  */
 
 pub mod tuple {
-	use serde::{de::Visitor, ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
+	use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Visitor, ser::SerializeMap};
 	use std::{fmt, marker::PhantomData};
 
-	#[allow(clippy::extra_unused_type_parameters)] // they are used in the where clause and in the function body
 	pub fn serialize<'a, S, V, First, Second>(
 		tuple: &'a V,
 		serializer: S,

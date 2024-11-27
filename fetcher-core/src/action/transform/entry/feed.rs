@@ -23,7 +23,7 @@ use url::Url;
 #[derive(Debug)]
 pub struct Feed;
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum FeedError {
 	#[error(transparent)]

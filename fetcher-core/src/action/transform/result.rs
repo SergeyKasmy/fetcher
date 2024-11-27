@@ -15,7 +15,10 @@ use url::Url;
 
 /// An [`Entry`] mirror that can be converted to [`Entry`] but whose fields can be chosen to inherit old entry's values on [`None`]
 /// Refer to [`Entry`] for more docs on itself and each field
-#[allow(missing_docs)]
+#[expect(
+	missing_docs,
+	reason = "a mirror of Entry struct, refer to Entry for docs"
+)]
 #[derive(Default, Debug)]
 pub struct TransformedEntry {
 	pub id: TransformResult<EntryId>,
@@ -26,7 +29,10 @@ pub struct TransformedEntry {
 
 /// A [`Message`] mirror that can be converted to [`Message`] but whose fields can be chosen to inherit old message's values on [`None`]
 /// Refer to [`Message`] for more docs on itself and each field
-#[allow(missing_docs)]
+#[expect(
+	missing_docs,
+	reason = "a mirror of Message struct, refer to Message for docs"
+)]
 #[derive(Default, Debug)]
 pub struct TransformedMessage {
 	pub title: TransformResult<String>,

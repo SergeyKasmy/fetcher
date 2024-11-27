@@ -13,11 +13,11 @@ use tokio::{io::AsyncWriteExt, process::Command};
 use crate::{
 	entry::Entry,
 	sink::{
+		Sink,
 		error::SinkError,
 		message::{Message, MessageId},
-		Sink,
 	},
-	source::{error::SourceError, Fetch},
+	source::{Fetch, error::SourceError},
 };
 
 #[cfg(not(target_os = "windows"))]
@@ -37,7 +37,7 @@ pub struct Exec {
 	pub cmd: String,
 }
 /// Errors that happened while executing a process
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum ExecError {
 	#[error("Bad command")]

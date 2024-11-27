@@ -52,7 +52,7 @@ pub struct Html {
 	pub img: Option<ElementDataQuery>,
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum HtmlError {
 	#[error(transparent)]
@@ -283,8 +283,11 @@ fn find_chain(html: &HtmlNode, elem_queries: &[ElementQuery]) -> Result<Vec<Html
 
 /// Find items matching the query in the provided HTML part
 // I'm pretty sure this shouldn't capture from elem_query, so this is probably a bug in Soup
-#[allow(clippy::needless_pass_by_value)]
-fn find(html: HtmlNode, elem_query: &ElementQuery) -> impl Iterator<Item = HtmlNode> + '_ {
+#[expect(
+	clippy::needless_pass_by_value,
+	reason = "HtmlNode is already just a pointer"
+)]
+fn find(html: HtmlNode, elem_query: &ElementQuery) -> impl Iterator<Item = HtmlNode> {
 	match &elem_query.kind {
 		ElementKind::Tag(val) => html.tag(val.as_str()).find_all(),
 		ElementKind::Class(val) => html.class(val.as_str()).find_all(),

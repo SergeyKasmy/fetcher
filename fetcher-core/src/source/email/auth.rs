@@ -8,6 +8,7 @@ use crate::auth::google::{Google as GoogleAuth, GoogleOAuth2Error as GoogleAuthE
 
 /// Authentication type for IMAP
 pub enum Auth {
+	#[expect(clippy::doc_markdown, reason = "false positive")]
 	/// Google OAuth2 with full access to Gmail
 	GmailOAuth2(GoogleAuth),
 	/// An insecure pure text password

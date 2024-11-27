@@ -37,7 +37,7 @@ pub trait ExternalSave: Debug + Send + Sync {
 	) -> Result<(), ExternalSaveError>;
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 #[error("Can't save externally{}{}", .path.is_some().then_some(": ").unwrap_or_default(), if let Some(path) = .path.as_ref() { path as &dyn Display } else { &"" })]
 pub struct ExternalSaveError {

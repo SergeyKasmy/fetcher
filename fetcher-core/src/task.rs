@@ -14,8 +14,8 @@ use crate::{
 	entry::{Entry, EntryId},
 	error::FetcherError,
 	sink::{
-		message::{Message, MessageId},
 		Sink,
+		message::{Message, MessageId},
 	},
 	source::Source,
 };
@@ -23,6 +23,7 @@ use crate::{
 use std::{borrow::Cow, collections::HashSet};
 
 /// A core primitive of [`fetcher`](`crate`).
+///
 /// Contains everything from a [`Source`] that allows to fetch some data, to a [`Sink`] that takes that data and sends it somewhere.
 /// It also contains any transformators
 #[derive(Debug)]

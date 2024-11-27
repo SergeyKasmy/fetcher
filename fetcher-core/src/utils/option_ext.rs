@@ -7,7 +7,10 @@
 //! This module contains the [`OptionExt`] trait
 
 /// Alternative failable methods on [`Option`]
-#[allow(clippy::missing_errors_doc)]
+#[expect(
+	clippy::missing_errors_doc,
+	reason = "function signature is self-explaining"
+)]
 pub trait OptionExt<T> {
 	/// [`Option::map()`] alternative that can return a result
 	fn try_map<U, E, F>(self, f: F) -> Result<Option<U>, E>

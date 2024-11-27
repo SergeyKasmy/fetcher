@@ -30,7 +30,7 @@ pub struct Http {
 	client: Client,
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum HttpError {
 	#[error("Missing URL in the entry {0} field")]

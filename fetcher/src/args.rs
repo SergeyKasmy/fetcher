@@ -6,8 +6,8 @@
 
 use crate::settings::{context::StaticContext, external_data_provider::ExternalDataFromDataDir};
 use fetcher_config::jobs::{
-	named::{JobName, JobWithTaskNames},
 	Job as ConfigJob,
+	named::{JobName, JobWithTaskNames},
 };
 
 use argh::FromArgs;
@@ -48,7 +48,6 @@ pub enum TopLvlSubcommand {
 }
 
 /// Run all jobs. Default if started with no command
-#[allow(clippy::struct_excessive_bools)]
 #[derive(FromArgs, Default, Debug)]
 #[argh(subcommand, name = "run")]
 pub struct Run {
@@ -124,7 +123,11 @@ impl FromStr for Setting {
 			"telegram" => Self::Telegram,
 			"discord" => Self::Discord,
 			"twitter" => Self::Twitter,
-			s => return Err(format!("{s:?} is not a valid setting. Available settings: google_oauth, email_password, telegram, twitter")),
+			s => {
+				return Err(format!(
+					"{s:?} is not a valid setting. Available settings: google_oauth, email_password, telegram, twitter"
+				));
+			}
 		})
 	}
 }

@@ -32,7 +32,7 @@ pub struct Reddit {
 	subreddit: Subreddit,
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum RedditError {
 	#[error(transparent)]
@@ -135,10 +135,11 @@ impl Reddit {
 					Err(e) => return Some(Err(e)),
 				};
 
-				#[allow(clippy::case_sensitive_file_extension_comparisons)]
+				// TODO: don't igonre the clippy lint. Use a case insensetive ASCII search
+				#[expect(clippy::case_sensitive_file_extension_comparisons)]
 				let is_picture = link.as_ref().is_some_and(|u| u.path().ends_with(".jpg"));
 
-				#[allow(clippy::case_sensitive_file_extension_comparisons)]
+				#[expect(clippy::case_sensitive_file_extension_comparisons)]
 				let is_video = link.as_ref().is_some_and(|u| {
 					let p = u.path();
 					p.ends_with(".mp4") || p.ends_with(".gif") || p.ends_with(".gifv")

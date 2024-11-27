@@ -8,7 +8,7 @@
 //!
 //! This module includes the [`Twitter`] struct that is a source that is able to parse a twitter feed via twitter API
 
-use super::{error::SourceError, Fetch};
+use super::{Fetch, error::SourceError};
 use crate::{
 	entry::Entry,
 	sink::message::{Media, Message},
@@ -16,10 +16,10 @@ use crate::{
 
 use async_trait::async_trait;
 use egg_mode::{
+	KeyPair, Token,
 	auth::bearer_token,
 	entities::MediaType,
-	tweet::{user_timeline, Timeline},
-	KeyPair, Token,
+	tweet::{Timeline, user_timeline},
 };
 
 /// A source that fetches from a Twitter feed using the Twitter API
@@ -35,7 +35,7 @@ enum Auth {
 	Authenticated(Token),
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum TwitterError {
 	#[error("Authentication failed")]
@@ -120,39 +120,41 @@ impl Twitter {
 
 		let messages = tweets
 			.iter()
-			.map(|tweet| {
-				Entry {
-					id: Some(tweet.id.to_string().into()),
-					reply_to: tweet.in_reply_to_status_id.map(|i| i.to_string().into()),
-					msg: Message {
-						body: Some(tweet.text.clone()),
-						link: Some(
-							format!(
-								"https://twitter.com/{handle}/status/{id}",
-								handle = self.handle,
-								id = tweet.id
-							)
-							.as_str()
-							.try_into()
-							.expect("The URL is hand crafted and should always be valid"),
-						),
-						media: tweet.entities.media.as_ref().and_then(|x| {
-							x.iter()
-								.map(|x| match x.media_type {
-									MediaType::Photo => {
-										Some(Media::Photo(x.media_url.as_str().try_into().expect("The tweet URL provided by the Tweeter API should always be a valid URL")))
-									}
-									MediaType::Video => {
-										Some(Media::Video(x.media_url.as_str().try_into().expect("The tweet URL provided by the Tweeter API should always be a valid URL")))
-									}
-									MediaType::Gif => None,
-								})
-								.collect::<Option<Vec<Media>>>()
-						}),
-						..Default::default()
-					},
+			.map(|tweet| Entry {
+				id: Some(tweet.id.to_string().into()),
+				reply_to: tweet.in_reply_to_status_id.map(|i| i.to_string().into()),
+				msg: Message {
+					body: Some(tweet.text.clone()),
+					link: Some(
+						format!(
+							"https://twitter.com/{handle}/status/{id}",
+							handle = self.handle,
+							id = tweet.id
+						)
+						.as_str()
+						.try_into()
+						.expect("The URL is hand crafted and should always be valid"),
+					),
+					media: tweet.entities.media.as_ref().and_then(|x| {
+						x.iter()
+							.map(|x| match x.media_type {
+								MediaType::Photo => {
+									Some(Media::Photo(x.media_url.as_str().try_into().expect(
+										"The tweet URL provided by the Tweeter API should always be a valid URL",
+									)))
+								}
+								MediaType::Video => {
+									Some(Media::Video(x.media_url.as_str().try_into().expect(
+										"The tweet URL provided by the Tweeter API should always be a valid URL",
+									)))
+								}
+								MediaType::Gif => None,
+							})
+							.collect::<Option<Vec<Media>>>()
+					}),
 					..Default::default()
-				}
+				},
+				..Default::default()
 			})
 			.collect::<Vec<_>>();
 

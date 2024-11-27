@@ -25,7 +25,7 @@ use async_trait::async_trait;
 use std::fmt::{self, Debug};
 use url::Url;
 
-use super::{result::TransformResult, Transform};
+use super::{Transform, result::TransformResult};
 use crate::{
 	action::transform::error::{TransformError, TransformErrorKind},
 	entry::Entry,
@@ -47,7 +47,9 @@ pub trait TransformField: Debug + Send + Sync {
 }
 
 // TODO: make a new name
-/// A wrapper around a [`TransformField`] that takes a value out of a [`Field`], passes it to the transformator,
+/// A wrapper around a [`TransformField`].
+///
+/// It takes a value out of a [`Field`], passes it to the transformator,
 /// and processes the result - updating, removing, or retaining the old value of the field as specified by the transformator
 #[derive(Debug)]
 pub struct TransformFieldWrapper<T>
