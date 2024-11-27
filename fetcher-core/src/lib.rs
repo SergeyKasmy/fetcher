@@ -5,6 +5,7 @@
  */
 
 #![doc = include_str!("../README.md")]
+#![feature(let_chains)]
 #![allow(clippy::missing_docs_in_private_items)] // TODO: enable later
 
 pub mod action;

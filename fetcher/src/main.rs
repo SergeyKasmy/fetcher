@@ -5,6 +5,7 @@
  */
 
 #![doc = include_str!("../README.md")]
+#![feature(let_chains)]
 #![allow(missing_docs)] // TODO: add more docs
 #![allow(clippy::missing_docs_in_private_items)] // TODO: enable later
 #![allow(clippy::missing_errors_doc)] // TODO: add more docs
@@ -18,8 +19,8 @@ pub mod settings;
 
 use crate::{
 	args::{Args, Setting},
-	error_handling::{ErrorHandling, PrevErrors, DEFAULT_MAX_ERROR_LIMIT},
-	extentions::{slice_display::job_display::JobDisplay, ErrorChainExt, SliceDisplayExt},
+	error_handling::{DEFAULT_MAX_ERROR_LIMIT, ErrorHandling, PrevErrors},
+	extentions::{ErrorChainExt, SliceDisplayExt, slice_display::job_display::JobDisplay},
 	settings::{
 		config::jobs::filter::JobFilter, context::Context as OwnedContext,
 		context::StaticContext as Context,
@@ -29,15 +30,15 @@ use fetcher_config::jobs::named::{JobName, JobWithTaskNames};
 use fetcher_core::{
 	action::Action,
 	error::FetcherError,
-	job::{timepoint::TimePoint, Job},
+	job::{Job, timepoint::TimePoint},
 	sink::{Sink, Stdout},
 };
 
 use color_eyre::{
-	eyre::{eyre, WrapErr},
 	Report, Result, Section,
+	eyre::{WrapErr, eyre},
 };
-use futures::{stream::FuturesUnordered, StreamExt};
+use futures::{StreamExt, stream::FuturesUnordered};
 use std::{collections::HashMap, fmt::Write, ops::ControlFlow, path::PathBuf, time::Duration};
 use tap::TapOptional;
 use tokio::{
@@ -58,7 +59,7 @@ fn main() -> Result<()> {
 fn set_up_logging() -> Result<()> {
 	use tracing::Level;
 	use tracing_subscriber::{
-		filter::LevelFilter, fmt::time::OffsetTime, layer::SubscriberExt, EnvFilter, Layer,
+		EnvFilter, Layer, filter::LevelFilter, fmt::time::OffsetTime, layer::SubscriberExt,
 	};
 
 	let env_filter =
@@ -286,10 +287,10 @@ async fn run_command(run_args: args::Run, cx: Context) -> Result<()> {
 				let new_actions = actions
 					.into_iter()
 					.filter(|act| {
-						if let Action::Filter(filter) = &act {
-							if filter.is_readfilter() {
-								return false;
-							}
+						if let Action::Filter(filter) = &act
+							&& filter.is_readfilter()
+						{
+							return false;
 						}
 
 						true
@@ -357,7 +358,9 @@ fn get_jobs(run_filter: Option<Vec<JobFilter>>, cx: Context) -> Result<Option<Jo
 					all_jobs.iter().map(JobDisplay).display()
 				);
 			} else {
-				tracing::warn!("Can't list all available jobs because some jobs have invalid format. Try running in \"verify\" mode and correcting them");
+				tracing::warn!(
+					"Can't list all available jobs because some jobs have invalid format. Try running in \"verify\" mode and correcting them"
+				);
 			}
 
 			return Ok(None);
@@ -652,10 +655,10 @@ async fn handle_errors_sleep(
 
 		// log and report all other errors (except for network errors up above)
 		for (i, err) in errors_without_net.enumerate() {
-			if let FetcherError::Transform(transform_err) = &err {
-				if let Err(e) = settings::log::log_transform_err(transform_err, job_name) {
-					tracing::error!("Error logging transform error: {e:?}");
-				}
+			if let FetcherError::Transform(transform_err) = &err
+				&& let Err(e) = settings::log::log_transform_err(transform_err, job_name)
+			{
+				tracing::error!("Error logging transform error: {e:?}");
 			}
 
 			_ = write!(
@@ -694,7 +697,7 @@ const fn exponential_backoff_duration(consecutive_err_count: u32) -> Duration {
 
 // TODO: move that to a tracing layer that sends all WARN and higher logs automatically
 async fn report_error(job_name: &str, err: &str, context: Context) -> Result<()> {
-	use fetcher_core::sink::{message::Message, telegram::LinkLocation, Telegram};
+	use fetcher_core::sink::{Telegram, message::Message, telegram::LinkLocation};
 
 	let admin_chat_id = std::env::var("FETCHER_TELEGRAM_ADMIN_CHAT_ID")
 		.wrap_err("FETCHER_TELEGRAM_ADMIN_CHAT_ID not set")?
