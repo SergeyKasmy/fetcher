@@ -30,10 +30,6 @@ pub enum ExternalDataResult<T, E = ExternalDataError> {
 pub trait ProvideExternalData {
 	type ReadFilter: CReadFilter + 'static;
 
-	fn twitter_token(&self) -> ExternalDataResult<(String, String)> {
-		ExternalDataResult::Unavailable
-	}
-
 	fn google_oauth2(&self) -> ExternalDataResult<c_auth::Google> {
 		ExternalDataResult::Unavailable
 	}

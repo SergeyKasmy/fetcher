@@ -11,9 +11,6 @@ pub enum FetcherConfigError {
 	#[error(transparent)]
 	ExternalError(#[from] crate::jobs::external_data::ExternalDataError),
 
-	#[error("Twitter API key isn't set up")]
-	TwitterApiKeysMissing,
-
 	#[error("Google OAuth2 token isn't set up")]
 	GoogleOAuth2TokenMissing,
 

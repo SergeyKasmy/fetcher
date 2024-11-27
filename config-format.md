@@ -22,9 +22,6 @@ tasks:
         - post: # send a POST request (instead of a GET request)
             url: <url>
             body: <string> # with its body set to <string>
-      twitter: # X
-        - <twitter_handle> # get the feed of a tweeter account
-        - <twitter_handle> # or several
       file: # X
         - <path> # get the contents of a file
         - <path> # or several

@@ -123,7 +123,7 @@ impl FromStr for Setting {
 			"discord" => Self::Discord,
 			s => {
 				return Err(format!(
-					"{s:?} is not a valid setting. Available settings: google_oauth, email_password, telegram, twitter"
+					"{s:?} is not a valid setting. Available settings: google_oauth, email_password, telegram"
 				));
 			}
 		})

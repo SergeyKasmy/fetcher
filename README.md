@@ -5,7 +5,7 @@ It fetches anything you choose (from a list of available sources); processes it 
 Think of it like IFTTT but locally hosted and if it only supported transferring text.
 
 I wrote fetcher for myself after IFTTT had become paid, not to mention that by that time I was already not satisfied with it. I want to receive news and notifications in one place without having to search for it.
-For example, imagine I wanted to read tweets by somebody but only if it contained a particular string. Before I had to receive _all_ notifications from that user on my phone via the Twitter app and read every one of them to find those relevant to me.
+For example, imagine I wanted to read tweets by somebody but only if it contained a particular string. Before I had to receive _all_ notifications from that user on my phone via the Twitter app and read every one of them to find those relevant to me (sadly, Twitter is no longer supported, at least for now).
 That honestly sucks. After looking for some locally hosted alternatives to IFTTT, I found none that were both lightweight and useful for me, so I decided to write my own.
 
 fetcher is both a binary, and a [library](https://docs.rs/fetcher-core/latest/fetcher_core) crate, so it can do programmatically everything it usually can.
@@ -41,13 +41,14 @@ tasks:
   news:
     read_filter_type: newer_than_read
     source:
-      twitter: '<your twitter handle>'
+      http: '<RSS URL>'
     process:
+      - feed
       - read_filter # leave out only entries newer than the last one read
       - contains:
-          body: '[Hh]ello'
+        body: '[Hh]ello'
       - set:
-         title: New tweet from somebody
+        title: 'New RSS article!'
       - shorten:
           body: 50
     sink:
@@ -56,10 +57,11 @@ tasks:
 ```
 
 This job is run every 30 minutes and has a single task named "news". This task:
-* gets the Twitter timeline of @<your twitter handle>
-* removes all tweets that have already been read (using the `newer_than_read` stradegy)
+* gets the RSS feed from the provided RSS feed URL
+* parses the feed
+* removes all feed entries that have already been read (using the `newer_than_read` stradegy)
 * retains only tweets that contains "Hello" or "hello" in them
-* sets the title to "New tweet from somebody"
+* sets the title to "New RSS article"
 * shortens the body to 50 characters if it is longer
 * and sends all tweets left via DMs to a Discord user `<your_user_id>`.
 
@@ -76,7 +78,6 @@ See `fetcher --help` for more details
 To set up login credentials, run fetcher in save mode (`fetcher save`), following by a service name which is either of these:
 
 * `google-oauth2`
-* `twitter`
 * `telegram`
 * `email-password`
 
