@@ -14,7 +14,7 @@ pub struct StringSource(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<Str
 
 impl StringSource {
 	#[must_use]
-	pub fn parse(self) -> Vec<String> {
+	pub fn decode_from_conf(self) -> Vec<String> {
 		self.0.into_iter().collect()
 	}
 }

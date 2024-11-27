@@ -23,9 +23,9 @@ pub struct Replace {
 }
 
 impl Replace {
-	pub fn parse(self) -> Result<impl CTransform, ConfigError> {
+	pub fn decode_from_conf(self) -> Result<impl CTransform, ConfigError> {
 		Ok(CTransformFieldWrapper {
-			field: self.in_field.parse(),
+			field: self.in_field.decode_from_conf(),
 			transformator: CReplace::new(&self.re, self.with)?,
 		})
 	}

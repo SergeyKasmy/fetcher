@@ -117,8 +117,8 @@ async fn async_main() -> Result<()> {
 	match args.subcommand {
 		Some(args::TopLvlSubcommand::Run(run_args)) => run_command(run_args, cx).await,
 		None => run_command(args::Run::default(), cx).await,
-		Some(args::TopLvlSubcommand::RunManual(args::RunManual { jobs })) => {
-			run_jobs(jobs.parse(cx)?, ErrorHandling::Forward, cx).await?;
+		Some(args::TopLvlSubcommand::RunManual(args::RunManual { job_config })) => {
+			run_jobs(job_config.decode(cx)?, ErrorHandling::Forward, cx).await?;
 
 			Ok(())
 		}

@@ -15,7 +15,7 @@ pub struct Twitter {
 
 impl Twitter {
 	#[must_use]
-	pub fn parse(self) -> (String, String) {
+	pub fn decode_from_conf(self) -> (String, String) {
 		let Self {
 			api_key,
 			api_secret,
@@ -25,7 +25,7 @@ impl Twitter {
 	}
 
 	#[must_use]
-	pub fn unparse(api_key: String, api_secret: String) -> Self {
+	pub fn encode_into_conf(api_key: String, api_secret: String) -> Self {
 		Self {
 			api_key,
 			api_secret,

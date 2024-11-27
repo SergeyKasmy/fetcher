@@ -27,7 +27,7 @@ pub struct RemoveHtml {
 }
 
 impl RemoveHtml {
-	pub fn parse(self) -> Result<Vec<CAction>, ConfigError> {
+	pub fn decode_from_conf(self) -> Result<Vec<CAction>, ConfigError> {
 		process_results(self.r#in.into_iter().map(remove_html_action_for), |i| {
 			i.flatten().collect()
 		})
@@ -39,12 +39,12 @@ fn remove_html_action_for(field: Field) -> Result<[CAction; 2], ConfigError> {
 	let remove_html = CReplace::new(HTML_TAG_RE, "".to_owned())?;
 
 	let remove_html = CAction::Transform(Box::new(CTransformFieldWrapper {
-		field: field.clone().parse(),
+		field: field.clone().decode_from_conf(),
 		transformator: remove_html,
 	}));
 
 	let trim = CAction::Transform(Box::new(CTransformFieldWrapper {
-		field: field.parse(),
+		field: field.decode_from_conf(),
 		transformator: CTrim,
 	}));
 

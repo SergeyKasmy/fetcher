@@ -6,7 +6,7 @@
 
 use crate::settings::{context::StaticContext, external_data_provider::ExternalDataFromDataDir};
 use fetcher_config::jobs::{
-	Job as ConfigJob,
+	Job as JobConfig,
 	named::{JobName, JobWithTaskNames},
 };
 
@@ -74,7 +74,7 @@ pub struct Run {
 pub struct RunManual {
 	/// run this job, formatted in JSON
 	#[argh(positional)]
-	pub jobs: JsonJobs,
+	pub job_config: JsonJobConfig,
 }
 
 /// Load all tasks from the config files and mark all old entries as read
@@ -134,9 +134,9 @@ impl FromStr for Setting {
 
 /// Wrapper around Job foreign struct to implement `FromStr` from valid job in JSON format
 #[derive(Debug)]
-pub struct JsonJobs(Vec<(JobName, ConfigJob)>);
+pub struct JsonJobConfig(Vec<(JobName, JobConfig)>);
 
-impl FromStr for JsonJobs {
+impl FromStr for JsonJobConfig {
 	type Err = Report;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -158,15 +158,15 @@ impl FromStr for JsonJobs {
 	}
 }
 
-impl JsonJobs {
-	pub fn parse(
+impl JsonJobConfig {
+	pub fn decode(
 		self,
 		cx: StaticContext,
 	) -> Result<impl Iterator<Item = (JobName, JobWithTaskNames)>> {
 		Ok(self
 			.0
 			.into_iter()
-			.map(|(name, config)| config.parse(name, &ExternalDataFromDataDir { cx }))
+			.map(|(name, config)| config.decode_from_conf(name, &ExternalDataFromDataDir { cx }))
 			.collect::<Result<Vec<_>, _>>()?
 			.into_iter())
 	}

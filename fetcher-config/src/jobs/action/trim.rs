@@ -20,9 +20,9 @@ pub struct Trim {
 
 impl Trim {
 	#[must_use]
-	pub fn parse(self) -> impl CTransform {
+	pub fn decode_from_conf(self) -> impl CTransform {
 		CTransformFieldWrapper {
-			field: self.field.parse(),
+			field: self.field.decode_from_conf(),
 			transformator: CTrim,
 		}
 	}

@@ -47,7 +47,7 @@ pub fn get(
 			let conf: EntryToMsgMapConf = serde_json::from_str(&map_raw).map_err(|e| (e, &path))?;
 
 			Ok(EntryToMsgMap::new_with_map(
-				conf.parse(),
+				conf.decode_from_conf(),
 				TruncatingFileWriter::new(path),
 			))
 		}

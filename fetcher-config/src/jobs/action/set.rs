@@ -21,12 +21,12 @@ pub struct Set(pub HashMap<Field, Option<Values>>);
 
 impl Set {
 	#[must_use]
-	pub fn parse(self) -> Vec<CAction> {
+	pub fn decode_from_conf(self) -> Vec<CAction> {
 		self.0
 			.into_iter()
 			.map(|(field, values)| {
 				CAction::Transform(Box::new(CTransformFieldWrapper {
-					field: field.parse(),
+					field: field.decode_from_conf(),
 					transformator: CSet(values.map(|x| x.0)),
 				}))
 			})

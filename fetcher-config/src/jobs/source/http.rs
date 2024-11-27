@@ -31,16 +31,16 @@ pub enum TaggedRequest {
 }
 
 impl Http {
-	pub fn parse(self) -> Result<Vec<CHttp>, CHttpError> {
+	pub fn decode_from_conf(self) -> Result<Vec<CHttp>, CHttpError> {
 		self.0
 			.into_iter()
-			.map(Request::parse)
+			.map(Request::decode_from_conf)
 			.collect::<Result<_, CHttpError>>()
 	}
 }
 
 impl Request {
-	pub fn parse(self) -> Result<CHttp, CHttpError> {
+	pub fn decode_from_conf(self) -> Result<CHttp, CHttpError> {
 		match self {
 			Self::Untagged(url) | Self::Tagged(TaggedRequest::Get(url)) => CHttp::new_get(url),
 			Self::Tagged(TaggedRequest::Post { url, body }) => CHttp::new_post(url, &body),

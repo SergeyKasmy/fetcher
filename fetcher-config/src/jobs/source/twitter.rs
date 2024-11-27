@@ -19,7 +19,7 @@ use serde_with::{OneOrMany, serde_as};
 pub struct Twitter(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<String>);
 
 impl Twitter {
-	pub fn parse<D>(self, external: &D) -> Result<Vec<CTwitter>, ConfigError>
+	pub fn decode_from_conf<D>(self, external: &D) -> Result<Vec<CTwitter>, ConfigError>
 	where
 		D: ProvideExternalData + ?Sized,
 	{

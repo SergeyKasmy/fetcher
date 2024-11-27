@@ -49,7 +49,7 @@ impl ExternalSave for TruncatingFileWriter {
 		read_filter: &dyn ReadFilter,
 	) -> Result<(), ExternalSaveError> {
 		if let Some(rf_conf) =
-			fetcher_config::jobs::read_filter::ReadFilter::unparse(read_filter).await
+			fetcher_config::jobs::read_filter::ReadFilter::encode_into_conf(read_filter).await
 		{
 			let s = serde_json::to_string(&rf_conf)
 				.expect("A ReadFilter should always be serializable");
@@ -70,7 +70,9 @@ impl ExternalSave for TruncatingFileWriter {
 		map: &HashMap<EntryId, MessageId>,
 	) -> Result<(), ExternalSaveError> {
 		let map_conf =
-			fetcher_config::jobs::task::entry_to_msg_map::EntryToMsgMap::unparse(map.clone());
+			fetcher_config::jobs::task::entry_to_msg_map::EntryToMsgMap::encode_into_conf(
+				map.clone(),
+			);
 		let s = serde_json::to_string(&map_conf)
 			.expect("An EntryToMsgMap should always be serializable");
 

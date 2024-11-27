@@ -54,7 +54,7 @@ pub fn get(
 				));
 			}
 
-			return Ok(conf.parse(TruncatingFileWriter::new(path)));
+			return Ok(conf.decode_from_conf(TruncatingFileWriter::new(path)));
 		}
 	}
 

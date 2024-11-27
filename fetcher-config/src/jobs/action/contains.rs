@@ -18,13 +18,13 @@ type RegEx = String;
 pub struct Contains(pub HashMap<Field, RegEx>);
 
 impl Contains {
-	pub fn parse(self) -> Result<Vec<CAction>, ConfigError> {
+	pub fn decode_from_conf(self) -> Result<Vec<CAction>, ConfigError> {
 		self.0
 			.into_iter()
 			.map(|(field, re)| {
 				Ok(CAction::Filter(Box::new(CContains::new(
 					&re,
-					field.parse(),
+					field.decode_from_conf(),
 				)?)))
 			})
 			.collect()

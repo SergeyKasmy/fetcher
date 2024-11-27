@@ -20,7 +20,7 @@ pub struct Import(pub String);
 
 impl Import {
 	#[allow(clippy::needless_pass_by_value)]
-	pub fn parse<RF, D>(
+	pub fn decode_from_conf<RF, D>(
 		self,
 		rf: Option<Arc<RwLock<RF>>>,
 		external: &D,
@@ -31,10 +31,13 @@ impl Import {
 	{
 		match external.import(&self.0) {
 			ExternalDataResult::Ok(x) => {
-				let v =
-					process_results(x.into_iter().map(|x| x.parse(rf.clone(), external)), |i| {
+				let v = process_results(
+					x.into_iter()
+						.map(|x| x.decode_from_conf(rf.clone(), external)),
+					|i| {
 						i.flatten(/* option */).flatten(/* inner vec */).collect::<Vec<_>>()
-					})?;
+					},
+				)?;
 
 				if v.is_empty() { Ok(None) } else { Ok(Some(v)) }
 			}

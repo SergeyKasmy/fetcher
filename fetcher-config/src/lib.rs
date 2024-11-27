@@ -4,8 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// TODO: mb rename .parse() into .into() or something of that sort? .into() is already used by From/Into traits though. Naming is hard, man... UPD: into_conf() and from_conf() are way better!
-
 #![doc = include_str!("../README.md")]
 #![allow(clippy::missing_docs_in_private_items)] // TODO: enable later
 #![allow(clippy::missing_errors_doc)] // TODO: add more docs

@@ -17,7 +17,7 @@ pub enum TimePoint {
 }
 
 impl TimePoint {
-	pub fn parse(self) -> Result<CTimePoint, FetcherConfigError> {
+	pub fn decode_from_conf(self) -> Result<CTimePoint, FetcherConfigError> {
 		Ok(match self {
 			TimePoint::Every(every) => CTimePoint::Duration(duration_str::parse_std(every)?),
 			TimePoint::At(at) => {

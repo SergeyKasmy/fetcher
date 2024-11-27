@@ -23,12 +23,12 @@ pub struct DecodeHtml {
 
 impl DecodeHtml {
 	#[must_use]
-	pub fn parse(self) -> Vec<CAction> {
+	pub fn decode_from_conf(self) -> Vec<CAction> {
 		self.r#in
 			.into_iter()
 			.map(|field| {
 				CAction::Transform(Box::new(CTransformFieldWrapper {
-					field: field.parse(),
+					field: field.decode_from_conf(),
 					transformator: CDecodeHtml,
 				}))
 			})

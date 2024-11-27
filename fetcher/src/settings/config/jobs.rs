@@ -168,7 +168,9 @@ pub fn get(path: &Path, name: JobName, cx: Context) -> Result<Option<(JobName, J
 
 	let job: ConfigJob = full_conf.extract()?;
 
-	Ok(Some(job.parse(name, &ExternalDataFromDataDir { cx })?))
+	Ok(Some(
+		job.decode_from_conf(name, &ExternalDataFromDataDir { cx })?,
+	))
 }
 
 /// Checks if the dir entry is a valid job config file

@@ -14,14 +14,14 @@ pub struct Discord {
 
 impl Discord {
 	#[must_use]
-	pub fn parse(self) -> String {
+	pub fn decode_from_conf(self) -> String {
 		let Self { token } = self;
 
 		token
 	}
 
 	#[must_use]
-	pub fn unparse(token: String) -> Self {
+	pub fn encode_into_conf(token: String) -> Self {
 		Self { token }
 	}
 }

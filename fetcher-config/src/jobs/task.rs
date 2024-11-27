@@ -37,7 +37,7 @@ pub struct Task {
 
 impl Task {
 	#[tracing::instrument(level = "debug", skip(self, external))]
-	pub fn parse<D>(
+	pub fn decode_from_conf<D>(
 		self,
 		job: &JobName,
 		task_name: Option<&TaskName>,
@@ -65,12 +65,12 @@ impl Task {
 		let actions = self.actions.try_map(|acts| {
 			let mut acts = itertools::process_results(
 				acts.into_iter()
-					.filter_map(|act| act.parse(rf.clone(), external).transpose()),
+					.filter_map(|act| act.decode_from_conf(rf.clone(), external).transpose()),
 				|i| i.flatten().collect::<Vec<_>>(),
 			)?;
 
 			if let Some(sink) = self.sink {
-				acts.push(CAction::Sink(sink.parse(external)?));
+				acts.push(CAction::Sink(sink.decode_from_conf(external)?));
 			}
 
 			Ok::<_, FetcherConfigError>(acts)
@@ -121,7 +121,10 @@ impl Task {
 
 		Ok(CTask {
 			tag,
-			source: self.source.map(|x| x.parse(rf, external)).transpose()?,
+			source: self
+				.source
+				.map(|x| x.decode_from_conf(rf, external))
+				.transpose()?,
 			actions,
 			entry_to_msg_map,
 		})

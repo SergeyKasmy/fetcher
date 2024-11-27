@@ -24,20 +24,23 @@ pub struct Html {
 }
 
 impl Html {
-	pub fn parse(self) -> Result<CHtml, FetcherConfigError> {
+	pub fn decode_from_conf(self) -> Result<CHtml, FetcherConfigError> {
 		Ok(CHtml {
-			item: self
-				.item
-				.map(|x| x.query.into_iter().map(ElementQuery::parse).collect()),
-			title: self.title.try_map(ElementDataQuery::parse)?,
+			item: self.item.map(|x| {
+				x.query
+					.into_iter()
+					.map(ElementQuery::decode_from_conf)
+					.collect()
+			}),
+			title: self.title.try_map(ElementDataQuery::decode_from_conf)?,
 			text: self.text.try_map(|v| {
 				v.into_iter()
-					.map(ElementDataQuery::parse)
+					.map(ElementDataQuery::decode_from_conf)
 					.collect::<Result<_, _>>()
 			})?,
-			id: self.id.try_map(ElementDataQuery::parse)?,
-			link: self.link.try_map(ElementDataQuery::parse)?,
-			img: self.img.try_map(ElementDataQuery::parse)?,
+			id: self.id.try_map(ElementDataQuery::decode_from_conf)?,
+			link: self.link.try_map(ElementDataQuery::decode_from_conf)?,
+			img: self.img.try_map(ElementDataQuery::decode_from_conf)?,
 		})
 	}
 }

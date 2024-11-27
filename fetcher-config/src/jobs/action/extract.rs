@@ -22,9 +22,9 @@ pub struct Extract {
 }
 
 impl Extract {
-	pub fn parse(self) -> Result<impl CTransform, ConfigError> {
+	pub fn decode_from_conf(self) -> Result<impl CTransform, ConfigError> {
 		Ok(CTransformFieldWrapper {
-			field: self.from_field.parse(),
+			field: self.from_field.decode_from_conf(),
 			transformator: CExtract::new(&self.re, self.passthrough_if_not_found)?,
 		})
 	}

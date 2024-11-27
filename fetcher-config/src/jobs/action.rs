@@ -84,7 +84,7 @@ pub enum Field {
 }
 
 impl Action {
-	pub fn parse<RF, D>(
+	pub fn decode_from_conf<RF, D>(
 		self,
 		rf: Option<Arc<RwLock<RF>>>,
 		external: &D,
@@ -117,15 +117,15 @@ impl Action {
 					return Ok(None);
 				}
 			}
-			Action::Take(x) => filter!(x.parse()),
-			Action::Contains(x) => x.parse()?,
+			Action::Take(x) => filter!(x.decode_from_conf()),
+			Action::Contains(x) => x.decode_from_conf()?,
 
 			// entry transforms
 			Action::Feed => transform!(CFeed),
-			Action::Html(x) => transform!(x.parse()?),
+			Action::Html(x) => transform!(x.decode_from_conf()?),
 			Action::Http => transform!(CHttp::new(CField::Link)?),
-			Action::Json(x) => transform!(x.parse()?),
-			Action::Use(x) => x.parse(),
+			Action::Json(x) => transform!(x.decode_from_conf()?),
+			Action::Use(x) => x.decode_from_conf(),
 
 			// field transforms
 			Action::Caps => transform!(CTransformFieldWrapper {
@@ -133,17 +133,17 @@ impl Action {
 				transformator: CCaps,
 			}),
 			Action::DebugPrint => transform!(CDebugPrint),
-			Action::Set(s) => s.parse(),
-			Action::Shorten(x) => x.parse(),
-			Action::Trim(x) => transform!(x.parse()),
-			Action::Replace(x) => transform!(x.parse()?),
-			Action::Extract(x) => transform!(x.parse()?),
-			Action::RemoveHtml(x) => x.parse()?,
-			Action::DecodeHtml(x) => x.parse(),
+			Action::Set(s) => s.decode_from_conf(),
+			Action::Shorten(x) => x.decode_from_conf(),
+			Action::Trim(x) => transform!(x.decode_from_conf()),
+			Action::Replace(x) => transform!(x.decode_from_conf()?),
+			Action::Extract(x) => transform!(x.decode_from_conf()?),
+			Action::RemoveHtml(x) => x.decode_from_conf()?,
+			Action::DecodeHtml(x) => x.decode_from_conf(),
 
 			// other
-			Action::Sink(x) => vec![CAction::Sink(x.parse(external)?)],
-			Action::Import(x) => match x.parse(rf, external) {
+			Action::Sink(x) => vec![CAction::Sink(x.decode_from_conf(external)?)],
+			Action::Import(x) => match x.decode_from_conf(rf, external) {
 				Ok(Some(v)) => v,
 				not_ok => return not_ok,
 			},
@@ -155,7 +155,7 @@ impl Action {
 
 impl Field {
 	#[must_use]
-	pub fn parse(self) -> CField {
+	pub fn decode_from_conf(self) -> CField {
 		match self {
 			Field::Title => CField::Title,
 			Field::Body => CField::Body,

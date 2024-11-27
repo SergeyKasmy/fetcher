@@ -17,7 +17,7 @@ pub enum ViewMode {
 }
 
 impl ViewMode {
-	pub fn parse(self) -> CViewMode {
+	pub fn decode_from_conf(self) -> CViewMode {
 		use ViewMode::{Delete, MarkAsRead, ReadOnly};
 
 		match self {

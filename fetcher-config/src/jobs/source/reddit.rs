@@ -42,24 +42,28 @@ pub enum TimePeriod {
 
 impl Reddit {
 	#[must_use]
-	pub fn parse(self) -> Vec<CReddit> {
+	pub fn decode_from_conf(self) -> Vec<CReddit> {
 		self.0
 			.into_iter()
-			.map(|(subreddit, inner)| inner.parse(&subreddit))
+			.map(|(subreddit, inner)| inner.decode_from_conf(&subreddit))
 			.collect()
 	}
 }
 
 impl Inner {
 	#[must_use]
-	pub fn parse(self, subreddit: &str) -> CReddit {
-		CReddit::new(subreddit, self.sort.parse(), self.score_threshold)
+	pub fn decode_from_conf(self, subreddit: &str) -> CReddit {
+		CReddit::new(
+			subreddit,
+			self.sort.decode_from_conf(),
+			self.score_threshold,
+		)
 	}
 }
 
 impl Sort {
 	#[must_use]
-	pub fn parse(self) -> CSort {
+	pub fn decode_from_conf(self) -> CSort {
 		match self {
 			Sort::Latest | Sort::New => CSort::Latest,
 			Sort::Rising => CSort::Rising,

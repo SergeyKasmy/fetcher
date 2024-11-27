@@ -45,7 +45,7 @@ pub enum Source {
 }
 
 impl Source {
-	pub fn parse<RF, D>(
+	pub fn decode_from_conf<RF, D>(
 		self,
 		rf: Option<RF>,
 		external: &D,
@@ -55,7 +55,7 @@ impl Source {
 		D: ProvideExternalData + ?Sized,
 	{
 		// make a dyn CSourceWithSharedRF out of a CFetch and the read filter parameter
-		macro_rules! WithSharedRF {
+		macro_rules! with_read_filter {
 			($source:expr) => {
 				Box::new(CSourceWithSharedRF {
 					source: $source,
@@ -66,15 +66,15 @@ impl Source {
 
 		Ok(match self {
 			// with shared read filter
-			Self::String(x) => WithSharedRF!(x.parse()),
-			Self::Http(x) => WithSharedRF!(x.parse()?),
-			Self::Twitter(x) => WithSharedRF!(x.parse(external)?),
-			Self::File(x) => WithSharedRF!(x.parse()),
-			Self::Reddit(x) => WithSharedRF!(x.parse()),
-			Self::Exec(x) => WithSharedRF!(x.parse()),
+			Self::String(x) => with_read_filter!(x.decode_from_conf()),
+			Self::Http(x) => with_read_filter!(x.decode_from_conf()?),
+			Self::Twitter(x) => with_read_filter!(x.decode_from_conf(external)?),
+			Self::File(x) => with_read_filter!(x.decode_from_conf()),
+			Self::Reddit(x) => with_read_filter!(x.decode_from_conf()),
+			Self::Exec(x) => with_read_filter!(x.decode_from_conf()),
 
 			// with custom read filter
-			Self::Email(x) => Box::new(x.parse(external)?),
+			Self::Email(x) => Box::new(x.decode_from_conf(external)?),
 			Self::AlwaysErrors => Box::new(CAlwaysErrors),
 		})
 	}

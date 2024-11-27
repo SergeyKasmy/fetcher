@@ -47,7 +47,7 @@ pub struct Job {
 }
 
 impl Job {
-	pub fn parse<D>(
+	pub fn decode_from_conf<D>(
 		mut self,
 		name: JobName,
 		external: &D,
@@ -56,7 +56,9 @@ impl Job {
 		D: ProvideExternalData + ?Sized,
 	{
 		match self.tasks.take() {
-			Some(tasks) if !tasks.is_empty() => self.parse_with_tasks_map(name, tasks, external),
+			Some(tasks) if !tasks.is_empty() => {
+				self.decode_from_code_with_task_map(name, tasks, external)
+			}
 			// tasks is not set
 			_ => {
 				// copy paste all values from the job to a dummy task, i.e. create a single task with all the values from the job
@@ -70,8 +72,8 @@ impl Job {
 				};
 
 				let job = CJob {
-					tasks: vec![task.parse(&name, None, external)?],
-					refresh_time: self.refresh.try_map(TimePoint::parse)?,
+					tasks: vec![task.decode_from_conf(&name, None, external)?],
+					refresh_time: self.refresh.try_map(TimePoint::decode_from_conf)?,
 				};
 
 				Ok((name, JobWithTaskNames {
@@ -83,7 +85,7 @@ impl Job {
 	}
 
 	/// ignores self.tasks and uses tasks parameter instead
-	fn parse_with_tasks_map<D>(
+	fn decode_from_code_with_task_map<D>(
 		self,
 		name: JobName,
 		mut tasks: HashMap<TaskName, Task>,
@@ -137,8 +139,11 @@ impl Job {
 				.into_iter()
 				.enumerate()
 				.map(|(id, (task_name, task))| {
-					let task =
-						task.parse(&name, single_task.not().then_some(&task_name), external)?;
+					let task = task.decode_from_conf(
+						&name,
+						single_task.not().then_some(&task_name),
+						external,
+					)?;
 
 					Ok::<_, FetcherConfigError>((task, (id, task_name)))
 				});
@@ -150,7 +155,7 @@ impl Job {
 
 		let job = CJob {
 			tasks,
-			refresh_time: self.refresh.try_map(TimePoint::parse)?,
+			refresh_time: self.refresh.try_map(TimePoint::decode_from_conf)?,
 		};
 
 		Ok((name, JobWithTaskNames {

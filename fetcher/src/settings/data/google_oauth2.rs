@@ -19,7 +19,7 @@ pub fn get(cx: Context) -> Result<fcore::auth::Google, ExternalDataError> {
 	let raw = fs::read_to_string(&path).map_err(|e| (e, &path))?;
 	let conf: Config = serde_json::from_str(&raw).map_err(|e| (e, &path))?;
 
-	Ok(conf.parse())
+	Ok(conf.decode_from_conf())
 }
 
 pub async fn prompt(cx: Context) -> Result<()> {
@@ -42,8 +42,11 @@ pub async fn prompt(cx: Context) -> Result<()> {
 		fs::create_dir_all(parent)?;
 	}
 
-	fs::write(&path, serde_json::to_string(&Config::unparse(gauth))?)
-		.wrap_err_with(|| path.to_string_lossy().into_owned())?;
+	fs::write(
+		&path,
+		serde_json::to_string(&Config::encode_into_conf(gauth))?,
+	)
+	.wrap_err_with(|| path.to_string_lossy().into_owned())?;
 
 	Ok(())
 }

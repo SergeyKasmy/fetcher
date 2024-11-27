@@ -18,7 +18,7 @@ pub fn get(cx: Context) -> Result<(String, String), ExternalDataError> {
 	let raw = fs::read_to_string(&path).map_err(|e| (e, &path))?;
 	let conf: Config = serde_json::from_str(&raw).map_err(|e| (e, &path))?;
 
-	Ok(conf.parse())
+	Ok(conf.decode_from_conf())
 }
 
 pub fn prompt(cx: Context) -> Result<()> {
@@ -32,7 +32,7 @@ pub fn prompt(cx: Context) -> Result<()> {
 
 	fs::write(
 		&path,
-		serde_json::to_string(&Config::unparse(api_key, api_secret))
+		serde_json::to_string(&Config::encode_into_conf(api_key, api_secret))
 			.expect("Config should always serialize to JSON without issues"),
 	)
 	.wrap_err_with(|| path.to_string_lossy().into_owned())?;
