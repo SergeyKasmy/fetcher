@@ -19,7 +19,9 @@ pub enum TimePoint {
 impl TimePoint {
 	pub fn decode_from_conf(self) -> Result<CTimePoint, FetcherConfigError> {
 		Ok(match self {
-			TimePoint::Every(every) => CTimePoint::Duration(duration_str::parse_std(every)?),
+			TimePoint::Every(every) => CTimePoint::Duration(
+				duration_str::parse_std(every).map_err(FetcherConfigError::BadDurationFormat)?,
+			),
 			TimePoint::At(at) => {
 				let time = chrono::NaiveTime::parse_from_str(&at, "%H:%M")?;
 				CTimePoint::Time(time)

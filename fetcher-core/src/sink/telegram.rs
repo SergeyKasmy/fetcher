@@ -23,14 +23,22 @@ use teloxide::{
 	payloads::{SendMediaGroupSetters, SendMessageSetters},
 	requests::{Request, Requester, RequesterExt},
 	types::{
-		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, Message as TelMessage,
-		MessageId as TelMessageId, ParseMode,
+		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, LinkPreviewOptions,
+		Message as TelMessage, MessageId as TelMessageId, ParseMode, ReplyParameters,
 	},
 };
 use tokio::time::sleep;
 
 const MAX_TEXT_MSG_LEN: usize = 4096;
 const MAX_MEDIA_MSG_LEN: usize = 1024;
+
+const LINK_PREVIEW_DISABLED: LinkPreviewOptions = LinkPreviewOptions {
+	is_disabled: true,
+	url: None,
+	prefer_small_media: false,
+	prefer_large_media: false,
+	show_above_text: false,
+};
 
 /// Telegram sink. Supports text and media messages and embeds text into media captions if present. Automatically splits the text into separate messages if it's too long
 pub struct Telegram {
@@ -153,10 +161,10 @@ impl Telegram {
 				.bot
 				.send_message(self.chat_id, message)
 				.parse_mode(ParseMode::Html)
-				.disable_web_page_preview(true);
+				.link_preview_options(LINK_PREVIEW_DISABLED);
 
 			let send_msg_cmd = if let Some(id) = reply_to {
-				send_msg_cmd.reply_to_message_id(id)
+				send_msg_cmd.reply_parameters(ReplyParameters::new(id))
 			} else {
 				send_msg_cmd
 			};
@@ -176,9 +184,9 @@ impl Telegram {
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tracing::error!(
 						"Exceeded rate limit while using Throttle Bot adapter, this shouldn't happen... Retrying in {}s",
-						retry_after.as_secs()
+						retry_after.seconds()
 					);
-					sleep(retry_after).await;
+					sleep(retry_after.duration()).await;
 				}
 				Err(e) => {
 					return Err(SinkError::Telegram {
@@ -246,7 +254,7 @@ impl Telegram {
 			let msg_cmd = self.bot.send_media_group(self.chat_id, media.clone());
 
 			let msg_cmd = if let Some(id) = reply_to {
-				msg_cmd.reply_to_message_id(id)
+				msg_cmd.reply_parameters(ReplyParameters::new(id))
 			} else {
 				msg_cmd
 			};
@@ -333,9 +341,9 @@ impl Telegram {
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tracing::error!(
 						"Exceeded rate limit while using Throttle Bot adapter, this shouldn't happen... Retrying in {}s",
-						retry_after.as_secs()
+						retry_after.seconds()
 					);
-					sleep(retry_after).await;
+					sleep(retry_after.duration()).await;
 				}
 				Err(e) => {
 					return Err(SinkError::Telegram {

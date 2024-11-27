@@ -36,7 +36,9 @@ pub enum FetcherConfigError {
 	GoogleOAuth2WrongToken(#[from] fetcher_core::auth::google::GoogleOAuth2Error),
 
 	#[error("refresh - every is not a valid duration format, e.g. 1m, 10h, 1d")]
-	BadDurationFormat(#[from] duration_str::DError),
+	// FIXME
+	//BadDurationFormat(#[from] duration_str::DError),
+	BadDurationFormat(String),
 
 	#[error("refresh - at is not a valid time format, e.g. 14:30")]
 	BadTimeFormat(#[from] chrono::ParseError),

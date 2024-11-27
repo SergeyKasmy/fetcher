@@ -8,10 +8,14 @@
 
 use std::error::Error;
 
-use vergen::EmitBuilder;
+use vergen_git2::{Emitter, Git2Builder};
 
 fn main() -> Result<(), Box<dyn Error>> {
-	EmitBuilder::builder().git_sha(true).git_branch().emit()?;
+	//EmitBuilder::builder().git_sha(true).git_branch().emit()?;
+
+	Emitter::default()
+		.add_instructions(&Git2Builder::default().sha(true).branch(true).build()?)?
+		.emit()?;
 
 	Ok(())
 }
