@@ -231,9 +231,13 @@ mod tests {
 
 		// remove msgs
 		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
-		assert_eq!(
-			&entries,
-			&[None, Some("4"), Some("3"), None, Some("6"), Some("8")]
-		);
+		assert_eq!(&entries, &[
+			None,
+			Some("4"),
+			Some("3"),
+			None,
+			Some("6"),
+			Some("8")
+		]);
 	}
 }

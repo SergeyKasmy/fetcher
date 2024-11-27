@@ -6,12 +6,12 @@
 
 use super::Field;
 use fetcher_core::action::{
+	Action as CAction, transform::field::TransformFieldWrapper as CTransformFieldWrapper,
 	transform::field::decode_html::DecodeHtml as CDecodeHtml,
-	transform::field::TransformFieldWrapper as CTransformFieldWrapper, Action as CAction,
 };
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, OneOrMany};
+use serde_with::{OneOrMany, serde_as};
 
 // Decode HTML escape codes
 #[serde_as]

@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 
 use self::{auth::Auth, filters::Filters, view_mode::ViewMode};
 use crate::{
-	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 	FetcherConfigError as ConfigError,
+	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 };
 use fetcher_core::source::Email as CEmail;
 

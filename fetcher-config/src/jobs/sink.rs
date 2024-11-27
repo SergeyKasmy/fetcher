@@ -9,7 +9,7 @@ mod exec;
 mod telegram;
 
 use self::{discord::Discord, exec::Exec, telegram::Telegram};
-use crate::{jobs::external_data::ProvideExternalData, FetcherConfigError};
+use crate::{FetcherConfigError, jobs::external_data::ProvideExternalData};
 use fetcher_core::sink::{Sink as CSink, Stdout as CStdout};
 
 use serde::{Deserialize, Serialize};

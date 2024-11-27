@@ -7,7 +7,7 @@
 use super::CONFIG_FILE_EXT;
 use crate::settings::context::StaticContext as Context;
 
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::{Result, eyre::eyre};
 use std::fs;
 use std::path::{Path, PathBuf};
 

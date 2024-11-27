@@ -74,13 +74,10 @@ impl Job {
 					refresh_time: self.refresh.try_map(TimePoint::parse)?,
 				};
 
-				Ok((
-					name,
-					JobWithTaskNames {
-						inner: job,
-						task_names: None,
-					},
-				))
+				Ok((name, JobWithTaskNames {
+					inner: job,
+					task_names: None,
+				}))
 			}
 		}
 	}
@@ -156,12 +153,9 @@ impl Job {
 			refresh_time: self.refresh.try_map(TimePoint::parse)?,
 		};
 
-		Ok((
-			name,
-			JobWithTaskNames {
-				inner: job,
-				task_names: Some(task_names),
-			},
-		))
+		Ok((name, JobWithTaskNames {
+			inner: job,
+			task_names: Some(task_names),
+		}))
 	}
 }

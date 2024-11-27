@@ -5,7 +5,7 @@
  */
 
 use super::Field;
-use fetcher_core::action::{transform::Use as CUse, Action as CAction};
+use fetcher_core::action::{Action as CAction, transform::Use as CUse};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

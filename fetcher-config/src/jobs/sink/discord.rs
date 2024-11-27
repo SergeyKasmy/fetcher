@@ -5,8 +5,8 @@
  */
 
 use crate::{
-	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 	FetcherConfigError as ConfigError,
+	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 };
 use fetcher_core::sink::discord::{Discord as CDiscord, Target as CTarget};
 

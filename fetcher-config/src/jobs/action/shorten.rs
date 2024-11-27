@@ -6,10 +6,10 @@
 
 use super::Field;
 use fetcher_core::action::{
-	transform::field::{
-		shorten::Shorten as CShorten, TransformFieldWrapper as CTransformFieldWrapper,
-	},
 	Action as CAction,
+	transform::field::{
+		TransformFieldWrapper as CTransformFieldWrapper, shorten::Shorten as CShorten,
+	},
 };
 
 use serde::{Deserialize, Serialize};

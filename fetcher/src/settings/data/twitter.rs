@@ -8,7 +8,7 @@ use super::prompt_user_for;
 use crate::settings::context::StaticContext as Context;
 use fetcher_config::{jobs::external_data::ExternalDataError, settings::Twitter as Config};
 
-use color_eyre::{eyre::WrapErr, Result};
+use color_eyre::{Result, eyre::WrapErr};
 use std::fs;
 
 const FILE_NAME: &str = "twitter.json";

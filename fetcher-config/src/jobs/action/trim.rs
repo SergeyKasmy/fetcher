@@ -6,8 +6,8 @@
 
 use super::Field;
 use fetcher_core::action::transform::{
-	field::{trim::Trim as CTrim, TransformFieldWrapper as CTransformFieldWrapper},
 	Transform as CTransform,
+	field::{TransformFieldWrapper as CTransformFieldWrapper, trim::Trim as CTrim},
 };
 
 use serde::{Deserialize, Serialize};

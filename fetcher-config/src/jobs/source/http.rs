@@ -4,10 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::source::{http::HttpError as CHttpError, Http as CHttp};
+use fetcher_core::source::{Http as CHttp, http::HttpError as CHttpError};
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, OneOrMany};
+use serde_with::{OneOrMany, serde_as};
 use url::Url;
 
 #[serde_as]

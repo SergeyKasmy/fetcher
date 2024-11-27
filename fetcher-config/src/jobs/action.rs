@@ -27,11 +27,11 @@ use super::{external_data::ProvideExternalData, sink::Sink};
 use crate::FetcherConfigError;
 use fetcher_core::{
 	action::{
-		transform::{
-			field::{Field as CField, TransformFieldWrapper as CTransformFieldWrapper},
-			Caps as CCaps, DebugPrint as CDebugPrint, Feed as CFeed, Http as CHttp,
-		},
 		Action as CAction,
+		transform::{
+			Caps as CCaps, DebugPrint as CDebugPrint, Feed as CFeed, Http as CHttp,
+			field::{Field as CField, TransformFieldWrapper as CTransformFieldWrapper},
+		},
 	},
 	read_filter::ReadFilter as CReadFilter,
 };
@@ -111,7 +111,9 @@ impl Action {
 				if let Some(rf) = rf {
 					vec![CAction::Filter(Box::new(rf))]
 				} else {
-					tracing::warn!("Can't filter read entries when no read filter type is set up for the task!");
+					tracing::warn!(
+						"Can't filter read entries when no read filter type is set up for the task!"
+					);
 					return Ok(None);
 				}
 			}

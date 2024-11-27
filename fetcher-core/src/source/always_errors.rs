@@ -8,7 +8,7 @@
 
 use async_trait::async_trait;
 
-use super::{error::SourceError, Fetch, Source};
+use super::{Fetch, Source, error::SourceError};
 use crate::{
 	entry::{Entry, EntryId},
 	error::FetcherError,

@@ -5,13 +5,13 @@
  */
 
 use crate::{
-	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 	FetcherConfigError as ConfigError,
+	jobs::external_data::{ExternalDataResult, ProvideExternalData},
 };
 use fetcher_core::source::Twitter as CTwitter;
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, OneOrMany};
+use serde_with::{OneOrMany, serde_as};
 
 #[serde_as]
 #[derive(Deserialize, Serialize, Clone, Debug)]

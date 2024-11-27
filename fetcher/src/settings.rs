@@ -10,7 +10,7 @@ pub mod data;
 pub mod external_data_provider;
 pub mod log;
 
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::{Result, eyre::eyre};
 use directories::ProjectDirs;
 use once_cell::sync::OnceCell;
 

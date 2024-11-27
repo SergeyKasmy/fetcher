@@ -36,11 +36,7 @@ impl Import {
 						i.flatten(/* option */).flatten(/* inner vec */).collect::<Vec<_>>()
 					})?;
 
-				if v.is_empty() {
-					Ok(None)
-				} else {
-					Ok(Some(v))
-				}
+				if v.is_empty() { Ok(None) } else { Ok(Some(v)) }
 			}
 			ExternalDataResult::Unavailable => Err(FetcherConfigError::ImportingUnavailable),
 			ExternalDataResult::Err(e) => Err(e.into()),

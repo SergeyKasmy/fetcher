@@ -16,12 +16,12 @@ use self::{
 	email::Email, exec::Exec, file::File, http::Http, reddit::Reddit, string::StringSource,
 	twitter::Twitter,
 };
-use crate::{jobs::external_data::ProvideExternalData, FetcherConfigError};
+use crate::{FetcherConfigError, jobs::external_data::ProvideExternalData};
 use fetcher_core::{
 	read_filter::ReadFilter as CReadFilter,
 	source::{
-		always_errors::AlwaysErrors as CAlwaysErrors, Source as CSource,
-		SourceWithSharedRF as CSourceWithSharedRF,
+		Source as CSource, SourceWithSharedRF as CSourceWithSharedRF,
+		always_errors::AlwaysErrors as CAlwaysErrors,
 	},
 };
 

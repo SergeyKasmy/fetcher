@@ -7,16 +7,16 @@
 use super::Field;
 use crate::FetcherConfigError as ConfigError;
 use fetcher_core::action::{
-	transform::field::{
-		replace::HTML_TAG_RE, Replace as CReplace, TransformFieldWrapper as CTransformFieldWrapper,
-		Trim as CTrim,
-	},
 	Action as CAction,
+	transform::field::{
+		Replace as CReplace, TransformFieldWrapper as CTransformFieldWrapper, Trim as CTrim,
+		replace::HTML_TAG_RE,
+	},
 };
 
 use itertools::process_results;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, OneOrMany};
+use serde_with::{OneOrMany, serde_as};
 
 // Remove HTML tags and trim any remaining whitespace
 #[serde_as]

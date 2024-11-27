@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use color_eyre::{eyre::eyre, Report};
+use color_eyre::{Report, eyre::eyre};
 use fetcher_config::jobs::named::{JobName, TaskName};
 use std::str::FromStr;
 

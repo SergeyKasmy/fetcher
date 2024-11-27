@@ -19,9 +19,9 @@ use serenity::{
 };
 
 use super::{
-	error::SinkError,
-	message::{length_limiter::MessageLengthLimiter, Media, Message, MessageId},
 	Sink,
+	error::SinkError,
+	message::{Media, Message, MessageId, length_limiter::MessageLengthLimiter},
 };
 use crate::utils::OptionExt;
 

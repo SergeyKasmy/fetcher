@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::source::{reddit::Sort as CSort, Reddit as CReddit};
+use fetcher_core::source::{Reddit as CReddit, reddit::Sort as CSort};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

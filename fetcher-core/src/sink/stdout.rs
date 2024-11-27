@@ -6,7 +6,7 @@
 
 //! This module contains the [`Stdout`] sink
 
-use crate::sink::{error::SinkError, Message, Sink};
+use crate::sink::{Message, Sink, error::SinkError};
 
 use async_trait::async_trait;
 use tokio::io::{self, AsyncWriteExt};

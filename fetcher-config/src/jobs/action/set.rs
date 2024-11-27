@@ -7,13 +7,13 @@
 use std::collections::HashMap;
 
 use super::Field;
-use fetcher_core::action::transform::{
-	field::set::Set as CSet, field::TransformFieldWrapper as CTransformFieldWrapper,
-};
 use fetcher_core::action::Action as CAction;
+use fetcher_core::action::transform::{
+	field::TransformFieldWrapper as CTransformFieldWrapper, field::set::Set as CSet,
+};
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, OneOrMany};
+use serde_with::{OneOrMany, serde_as};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(transparent)]

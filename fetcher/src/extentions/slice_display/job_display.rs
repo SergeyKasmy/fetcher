@@ -62,13 +62,13 @@ impl cmp::PartialOrd for JobDisplay<'_> {
 
 impl cmp::Ord for JobDisplay<'_> {
 	fn cmp(&self, other: &Self) -> cmp::Ordering {
-		self.0 .0.as_str().cmp(other.0 .0.as_str())
+		self.0.0.as_str().cmp(other.0.0.as_str())
 	}
 }
 
 impl cmp::PartialEq for JobDisplay<'_> {
 	fn eq(&self, other: &Self) -> bool {
-		self.0 .0 == other.0 .0
+		self.0.0 == other.0.0
 	}
 }
 

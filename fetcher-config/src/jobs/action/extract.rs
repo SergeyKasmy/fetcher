@@ -6,8 +6,8 @@
 
 use crate::error::FetcherConfigError as ConfigError;
 use fetcher_core::action::transform::{
-	field::{Extract as CExtract, TransformFieldWrapper as CTransformFieldWrapper},
 	Transform as CTransform,
+	field::{Extract as CExtract, TransformFieldWrapper as CTransformFieldWrapper},
 };
 
 use serde::{Deserialize, Serialize};

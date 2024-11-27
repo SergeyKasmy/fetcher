@@ -8,10 +8,10 @@ use super::CONFIG_FILE_EXT;
 use crate::settings::context::StaticContext as Context;
 use fetcher_config::jobs::action::Action as ActionConfig;
 
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::{Result, eyre::eyre};
 use figment::{
-	providers::{Format, Yaml},
 	Figment,
+	providers::{Format, Yaml},
 };
 use std::path::Path;
 

@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 use super::Field;
 use crate::error::FetcherConfigError as ConfigError;
-use fetcher_core::action::{filter::Contains as CContains, Action as CAction};
+use fetcher_core::action::{Action as CAction, filter::Contains as CContains};
 
 type RegEx = String;
 
