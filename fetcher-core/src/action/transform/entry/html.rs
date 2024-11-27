@@ -295,9 +295,9 @@ fn find(html: HtmlNode, elem_query: &ElementQuery) -> impl Iterator<Item = HtmlN
 			for i in ignore {
 				let should_be_ignored = match i {
 					ElementKind::Tag(tag) => found.name() == tag,
-					ElementKind::Class(class) => found.get("class").map_or(false, |c| &c == class),
+					ElementKind::Class(class) => found.get("class").is_some_and(|c| &c == class),
 					ElementKind::Attr { name, value } => {
-						found.get(name).map_or(false, |a| &a == value)
+						found.get(name).is_some_and(|a| &a == value)
 					}
 				};
 

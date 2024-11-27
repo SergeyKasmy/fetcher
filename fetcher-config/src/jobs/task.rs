@@ -86,7 +86,7 @@ impl Task {
 					b
 				);
 			})
-			.unwrap_or_else(|| self.source.as_ref().map_or(false, Source::supports_replies));
+			.unwrap_or_else(|| self.source.as_ref().is_some_and(Source::supports_replies));
 
 		let entry_to_msg_map = if entry_to_msg_map_enabled {
 			match external.entry_to_msg_map(job, task_name) {

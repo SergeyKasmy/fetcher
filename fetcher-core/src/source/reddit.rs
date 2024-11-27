@@ -17,8 +17,8 @@ use crate::{
 
 use async_trait::async_trait;
 use roux::{
-	util::{FeedOption, TimePeriod},
 	Subreddit,
+	util::{FeedOption, TimePeriod},
 };
 use std::fmt::Debug;
 use url::Url;
@@ -38,7 +38,9 @@ pub enum RedditError {
 	#[error(transparent)]
 	Reddit(#[from] roux::util::RouxError),
 
-	#[error("Reddit API returned an invalid URL to a post/post's contents, which really shouldn't happen...")]
+	#[error(
+		"Reddit API returned an invalid URL to a post/post's contents, which really shouldn't happen..."
+	)]
 	InvalidUrl(#[from] InvalidUrlError),
 }
 
@@ -134,10 +136,10 @@ impl Reddit {
 				};
 
 				#[allow(clippy::case_sensitive_file_extension_comparisons)]
-				let is_picture = link.as_ref().map_or(false, |u| u.path().ends_with(".jpg"));
+				let is_picture = link.as_ref().is_some_and(|u| u.path().ends_with(".jpg"));
 
 				#[allow(clippy::case_sensitive_file_extension_comparisons)]
-				let is_video = link.as_ref().map_or(false, |u| {
+				let is_video = link.as_ref().is_some_and(|u| {
 					let p = u.path();
 					p.ends_with(".mp4") || p.ends_with(".gif") || p.ends_with(".gifv")
 				});
