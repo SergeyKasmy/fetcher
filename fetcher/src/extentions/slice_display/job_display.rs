@@ -4,6 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#![expect(clippy::doc_link_with_quotes, reason = "false positive")]
 //! This module contains the adapter that implements `Display` for ([`JobName`], [`JobWithTaskNames`])
 //! intended to format jobs and tasks as "JOB NAME":["TASK1", "TASK2"]
 

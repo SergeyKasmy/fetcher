@@ -170,7 +170,7 @@ impl Html {
 fn extract_data<'a>(
 	html: &HtmlNode,
 	data_query: &'a ElementDataQuery,
-) -> Result<Option<impl Iterator<Item = String> + 'a>, HtmlError> {
+) -> Result<Option<impl Iterator<Item = String> + use<'a>>, HtmlError> {
 	let data = find_chain(html, &data_query.query).map(|nodes| {
 		nodes
 			.into_iter()
@@ -240,7 +240,7 @@ fn extract_id(html: &HtmlNode, data_query: &ElementDataQuery) -> Result<Option<S
 fn extract_url<'a>(
 	html: &HtmlNode,
 	query: &'a ElementDataQuery,
-) -> Result<Option<impl Iterator<Item = Result<Url, HtmlError>> + 'a>, HtmlError> {
+) -> Result<Option<impl Iterator<Item = Result<Url, HtmlError>> + use<'a>>, HtmlError> {
 	Ok(extract_data(html, query)?.map(|it| {
 		it.map(|url| Url::try_from(url.as_str()).map_err(|e| InvalidUrlError(e, url).into()))
 	}))

@@ -47,11 +47,11 @@ pub fn get_all(filter: Option<&[JobFilter]>, cx: Context) -> Result<Jobs> {
 		.collect()
 }
 
-pub fn get_all_from<'a>(
-	cfg_dir: &'a Path,
-	filter: Option<&'a [JobFilter]>,
+pub fn get_all_from(
+	cfg_dir: &Path,
+	filter: Option<&[JobFilter]>,
 	cx: Context,
-) -> impl Iterator<Item = Result<(JobName, JobWithTaskNames)>> + 'a {
+) -> impl Iterator<Item = Result<(JobName, JobWithTaskNames)>> {
 	let jobs_dir = cfg_dir.join(JOBS_DIR_NAME);
 	tracing::trace!("Searching for job configs in {jobs_dir:?}");
 
