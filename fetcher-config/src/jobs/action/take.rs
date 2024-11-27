@@ -26,16 +26,18 @@ pub enum TakeWhich {
 }
 
 impl Take {
-	pub fn parse(self) -> CTake {
+	#[must_use]
+	pub fn decode_from_conf(self) -> CTake {
 		CTake {
-			from: self.0.which.parse(),
+			from: self.0.which.decode_from_conf(),
 			num: self.0.num,
 		}
 	}
 }
 
 impl TakeWhich {
-	pub fn parse(self) -> CTakeFrom {
+	#[must_use]
+	pub fn decode_from_conf(self) -> CTakeFrom {
 		match self {
 			TakeWhich::FromNewest => CTakeFrom::Beginning,
 			TakeWhich::FromOldest => CTakeFrom::End,

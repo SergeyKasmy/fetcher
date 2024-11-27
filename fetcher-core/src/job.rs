@@ -12,7 +12,7 @@ use futures::future::join_all;
 use tokio::time::sleep;
 
 use self::timepoint::TimePoint;
-use crate::{error::Error, task::Task};
+use crate::{error::FetcherError, task::Task};
 
 /// A single job, containing a single or a couple [`tasks`](`Task`), possibly refetching every set amount of time
 #[derive(Debug)]
@@ -29,10 +29,10 @@ impl Job {
 	///
 	/// # Errors
 	/// if any of the inner tasks return an error, refer to [`Task`] documentation
-	pub async fn run(&mut self) -> Result<(), Vec<Error>> {
+	pub async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
 		loop {
-			let jobs = self.tasks.iter_mut().map(Task::run);
-			let results = join_all(jobs).await;
+			let tasks = self.tasks.iter_mut().map(Task::run);
+			let results = join_all(tasks).await;
 
 			let errors = results
 				.into_iter()

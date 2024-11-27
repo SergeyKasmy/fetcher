@@ -11,7 +11,7 @@ use super::{MarkAsRead, ReadFilter};
 use crate::{
 	action::filter::Filter,
 	entry::{Entry, EntryId},
-	error::Error,
+	error::FetcherError,
 };
 
 /// Read Filter that stores the id of the last read entry
@@ -24,13 +24,13 @@ pub struct Newer {
 impl Newer {
 	/// Creates a new empty [`Newer`] Read Filter
 	#[must_use]
-	pub fn new() -> Self {
+	pub const fn new() -> Self {
 		Self { last_read_id: None }
 	}
 
 	/// Returns the last read entry id, if any
 	#[must_use]
-	pub fn last_read(&self) -> Option<&EntryId> {
+	pub const fn last_read(&self) -> Option<&EntryId> {
 		self.last_read_id.as_ref()
 	}
 }
@@ -44,7 +44,7 @@ impl ReadFilter for Newer {
 
 #[async_trait]
 impl MarkAsRead for Newer {
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 		self.last_read_id = Some(id.clone());
 		Ok(())
 	}
@@ -86,6 +86,10 @@ impl Filter for Newer {
 				tracing::trace!("Unread entries remaining: {entries:#?}");
 			}
 		}
+	}
+
+	fn is_readfilter(&self) -> bool {
+		true
 	}
 }
 
@@ -182,10 +186,14 @@ mod tests {
 
 		// remove msgs
 		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
-		assert_eq!(
-			&entries,
-			&[None, Some("5"), Some("4"), None, Some("0"), Some("1")]
-		);
+		assert_eq!(&entries, &[
+			None,
+			Some("5"),
+			Some("4"),
+			None,
+			Some("0"),
+			Some("1")
+		]);
 	}
 
 	#[tokio::test]

@@ -7,7 +7,7 @@
 use fetcher_core::source::File as CFile;
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, OneOrMany};
+use serde_with::{OneOrMany, serde_as};
 use std::path::PathBuf;
 
 #[serde_as]
@@ -16,7 +16,8 @@ use std::path::PathBuf;
 pub struct File(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<PathBuf>);
 
 impl File {
-	pub fn parse(self) -> Vec<CFile> {
+	#[must_use]
+	pub fn decode_from_conf(self) -> Vec<CFile> {
 		self.0.into_iter().map(|path| CFile { path }).collect()
 	}
 }

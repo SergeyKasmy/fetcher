@@ -7,10 +7,10 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
+	FetcherConfigError as ConfigError,
 	jobs::external_data::{ExternalDataResult, ProvideExternalData},
-	Error as ConfigError,
 };
-use fetcher_core::sink::{telegram::LinkLocation as CLinkLocation, Telegram as CTelegram};
+use fetcher_core::sink::{Telegram as CTelegram, telegram::LinkLocation as CLinkLocation};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
@@ -28,7 +28,7 @@ pub enum LinkLocation {
 }
 
 impl Telegram {
-	pub fn parse<D>(self, external: &D) -> Result<CTelegram, ConfigError>
+	pub fn decode_from_conf<D>(self, external: &D) -> Result<CTelegram, ConfigError>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
@@ -42,13 +42,13 @@ impl Telegram {
 			token,
 			self.chat_id,
 			self.link_location
-				.map_or(CLinkLocation::PreferTitle, LinkLocation::parse),
+				.map_or(CLinkLocation::PreferTitle, LinkLocation::decode_from_conf),
 		))
 	}
 }
 
 impl LinkLocation {
-	pub fn parse(self) -> CLinkLocation {
+	pub fn decode_from_conf(self) -> CLinkLocation {
 		match self {
 			LinkLocation::PreferTitle => CLinkLocation::PreferTitle,
 			LinkLocation::Bottom => CLinkLocation::Bottom,

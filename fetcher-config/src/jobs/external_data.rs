@@ -4,13 +4,18 @@
  * file, you can obtain one at https://mozilla.org/mpl/2.0/.
  */
 
-use super::{read_filter::Kind as ReadFilterKind, JobName, TaskName};
+use super::{
+	action::Action,
+	named::{JobName, TaskName},
+	read_filter::Kind as ReadFilterKind,
+};
 use fetcher_core::{
-	self as fcore, read_filter::ReadFilter as CReadFilter, task::entry_to_msg_map::EntryToMsgMap,
+	auth as c_auth, read_filter::ReadFilter as CReadFilter, task::entry_to_msg_map::EntryToMsgMap,
 	utils::DisplayDebug,
 };
 
 use std::{
+	error::Error as StdError,
 	fmt::{Debug, Display},
 	io,
 	path::Path,
@@ -25,11 +30,7 @@ pub enum ExternalDataResult<T, E = ExternalDataError> {
 pub trait ProvideExternalData {
 	type ReadFilter: CReadFilter + 'static;
 
-	fn twitter_token(&self) -> ExternalDataResult<(String, String)> {
-		ExternalDataResult::Unavailable
-	}
-
-	fn google_oauth2(&self) -> ExternalDataResult<fcore::auth::Google> {
+	fn google_oauth2(&self) -> ExternalDataResult<c_auth::Google> {
 		ExternalDataResult::Unavailable
 	}
 	fn email_password(&self) -> ExternalDataResult<String> {
@@ -58,6 +59,11 @@ pub trait ProvideExternalData {
 	) -> ExternalDataResult<EntryToMsgMap> {
 		ExternalDataResult::Unavailable
 	}
+
+	/// import action `name`
+	fn import(&self, _name: &str) -> ExternalDataResult<Vec<Action>> {
+		ExternalDataResult::Unavailable
+	}
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -67,11 +73,21 @@ pub enum ExternalDataError {
 		source: io::Error,
 		payload: Option<Box<dyn DisplayDebug + Send + Sync>>,
 	},
+
 	#[error("Incompatible read filter types: in config: \"{expected}\" and found: \"{found}\"{}{}", .payload.is_some().then_some(": ").unwrap_or_default(), if let Some(p) = payload.as_ref() { p as &dyn Display } else { &"" })]
 	ReadFilterIncompatibleTypes {
 		expected: ReadFilterKind,
 		found: ReadFilterKind,
 		payload: Option<Box<dyn DisplayDebug + Send + Sync>>,
+	},
+
+	#[error("Action \"{0}\" not found")]
+	ActionNotFound(String),
+
+	#[error("Can't parse action \"{name}\": {err}")]
+	ActionParsingError {
+		name: String,
+		err: Box<dyn StdError + Send + Sync>,
 	},
 }
 
@@ -85,6 +101,7 @@ impl<T, E> From<Result<T, E>> for ExternalDataResult<T, E> {
 }
 
 impl ExternalDataError {
+	#[must_use]
 	pub fn new_io_with_path(io_err: io::Error, path: &Path) -> Self {
 		Self::Io {
 			source: io_err,
@@ -92,6 +109,7 @@ impl ExternalDataError {
 		}
 	}
 
+	#[must_use]
 	pub fn new_rf_incompat_with_path(
 		expected: ReadFilterKind,
 		found: ReadFilterKind,

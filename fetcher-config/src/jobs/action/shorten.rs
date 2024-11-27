@@ -6,10 +6,10 @@
 
 use super::Field;
 use fetcher_core::action::{
-	transform::field::{
-		shorten::Shorten as CShorten, TransformFieldWrapper as CTransformFieldWrapper,
-	},
 	Action as CAction,
+	transform::field::{
+		TransformFieldWrapper as CTransformFieldWrapper, shorten::Shorten as CShorten,
+	},
 };
 
 use serde::{Deserialize, Serialize};
@@ -20,12 +20,13 @@ use std::collections::HashMap;
 pub struct Shorten(pub HashMap<Field, usize>);
 
 impl Shorten {
-	pub fn parse(self) -> Vec<CAction> {
+	#[must_use]
+	pub fn decode_from_conf(self) -> Vec<CAction> {
 		self.0
 			.into_iter()
 			.map(|(field, len)| {
 				CAction::Transform(Box::new(CTransformFieldWrapper {
-					field: field.parse(),
+					field: field.decode_from_conf(),
 					transformator: CShorten { len },
 				}))
 			})

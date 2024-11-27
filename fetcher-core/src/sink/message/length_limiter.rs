@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub(crate) struct MessageLengthLimiter<'a> {
+pub struct MessageLengthLimiter<'a> {
 	pub head: Option<&'a str>,
 	pub body: Option<&'a str>,
 	pub tail: Option<&'a str>,
@@ -86,7 +86,9 @@ fn compose_long_message(
 
 	if let Some(body_str) = body.take() {
 		// find out how much space has remained for the body
-		let space_left_for_body = max_len.checked_sub(split_part.chars().count()).expect("only the head should've been pushed to the split and we asserted that it isn't longer than len");
+		let space_left_for_body = max_len.checked_sub(split_part.chars().count()).expect(
+			"only the head should've been pushed to the split and we asserted that it isn't longer than len",
+		);
 
 		// find the index at which point the body no longer fits into the split
 		let body_fits_till = body_str
@@ -147,8 +149,8 @@ fn compose_long_message(
 	{
 		let split_part_chars = split_part.chars().count();
 		assert!(
-				split_part_chars <= max_len,
-				"Returned a part with char len of {split_part_chars} when it should never be longer than {max_len}"
+			split_part_chars <= max_len,
+			"Returned a part with char len of {split_part_chars} when it should never be longer than {max_len}"
 		);
 	}
 

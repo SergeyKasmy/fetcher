@@ -13,13 +13,15 @@ pub struct EmailPassword {
 }
 
 impl EmailPassword {
-	pub fn parse(self) -> String {
+	#[must_use]
+	pub fn decode_from_conf(self) -> String {
 		let Self { password } = self;
 
 		password
 	}
 
-	pub fn unparse(password: String) -> Self {
+	#[must_use]
+	pub fn encode_into_conf(password: String) -> Self {
 		Self { password }
 	}
 }

@@ -43,7 +43,7 @@ pub enum Media {
 impl Message {
 	/// Check if the message is entirely empty. Even a single media attachment will mark this message as not empty
 	#[must_use]
-	pub fn is_empty(&self) -> bool {
+	pub const fn is_empty(&self) -> bool {
 		self.title.is_none() && self.body.is_none() && self.link.is_none() && self.media.is_none()
 	}
 }

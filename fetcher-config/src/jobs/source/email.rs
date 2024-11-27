@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 
 use self::{auth::Auth, filters::Filters, view_mode::ViewMode};
 use crate::{
+	FetcherConfigError as ConfigError,
 	jobs::external_data::{ExternalDataResult, ProvideExternalData},
-	Error as ConfigError,
 };
 use fetcher_core::source::Email as CEmail;
 
@@ -28,7 +28,7 @@ pub struct Email {
 }
 
 impl Email {
-	pub fn parse<D>(self, external: &D) -> Result<CEmail, ConfigError>
+	pub fn decode_from_conf<D>(self, external: &D) -> Result<CEmail, ConfigError>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
@@ -49,8 +49,8 @@ impl Email {
 				CEmail::new_gmail(
 					self.email,
 					oauth,
-					self.filters.parse(),
-					self.view_mode.parse(),
+					self.filters.decode_from_conf(),
+					self.view_mode.decode_from_conf(),
 				)
 			}
 			Auth::Password => {
@@ -66,8 +66,8 @@ impl Email {
 					self.imap.ok_or(ConfigError::EmailImapFieldMissing)?,
 					self.email,
 					passwd,
-					self.filters.parse(),
-					self.view_mode.parse(),
+					self.filters.decode_from_conf(),
+					self.view_mode.decode_from_conf(),
 				)
 			}
 		})

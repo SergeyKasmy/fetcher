@@ -5,7 +5,7 @@
  */
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, OneOrMany};
+use serde_with::{OneOrMany, serde_as};
 
 #[serde_as]
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -13,7 +13,8 @@ use serde_with::{serde_as, OneOrMany};
 pub struct StringSource(#[serde_as(deserialize_as = "OneOrMany<_>")] pub Vec<String>);
 
 impl StringSource {
-	pub fn parse(self) -> Vec<String> {
+	#[must_use]
+	pub fn decode_from_conf(self) -> Vec<String> {
 		self.0.into_iter().collect()
 	}
 }

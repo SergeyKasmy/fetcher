@@ -12,13 +12,12 @@ use super::{
 	email::{EmailError, ImapError},
 	http::HttpError,
 	reddit::RedditError,
-	twitter::TwitterError,
 };
 
 use roux::util::RouxError;
 use std::{error::Error as StdError, path::PathBuf};
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum SourceError {
 	#[error("Can't read file {}", .1.to_string_lossy())]
@@ -29,9 +28,6 @@ pub enum SourceError {
 
 	#[error("Email error")]
 	Email(#[from] Box<EmailError>),
-
-	#[error("Twitter error")]
-	Twitter(#[from] TwitterError),
 
 	#[error("Reddit error")]
 	Reddit(#[from] RedditError),
@@ -51,17 +47,13 @@ impl From<EmailError> for SourceError {
 
 impl SourceError {
 	pub(crate) fn is_connection_err(&self) -> Option<&(dyn StdError + Send + Sync)> {
-		#[allow(clippy::match_same_arms)]
+		#[expect(clippy::match_same_arms, reason = "clearer code")]
 		match self {
 			Self::Http(_) => Some(self),
 			Self::Email(email_err) => match &**email_err {
-				EmailError::Imap(ImapError::TlsInitFailed(_)) => Some(self),
+				EmailError::Imap(ImapError::ConnectionFailed(_)) => Some(self),
 				_ => None,
 			},
-			Self::Twitter(
-				TwitterError::Auth(egg_mode::error::Error::NetError(_))
-				| TwitterError::Other(egg_mode::error::Error::NetError(_)),
-			) => Some(self),
 			Self::Reddit(RedditError::Reddit(RouxError::Network(_))) => Some(self),
 			_ => None,
 		}

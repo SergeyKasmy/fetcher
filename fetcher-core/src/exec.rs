@@ -13,11 +13,11 @@ use tokio::{io::AsyncWriteExt, process::Command};
 use crate::{
 	entry::Entry,
 	sink::{
+		Sink,
 		error::SinkError,
 		message::{Message, MessageId},
-		Sink,
 	},
-	source::{error::SourceError, Fetch},
+	source::{Fetch, error::SourceError},
 };
 
 #[cfg(not(target_os = "windows"))]
@@ -26,7 +26,7 @@ const SHELL: &str = "sh";
 const SHELL: &str = "cmd";
 
 #[cfg(not(target_os = "windows"))]
-const SHELL_RUN_ARG: &str = r#"\C"#;
+const SHELL_RUN_ARG: &str = r"\C";
 #[cfg(target_os = "windows")]
 const SHELL: &str = "-c";
 
@@ -37,7 +37,7 @@ pub struct Exec {
 	pub cmd: String,
 }
 /// Errors that happened while executing a process
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum ExecError {
 	#[error("Bad command")]
@@ -84,11 +84,11 @@ impl Sink for Exec {
 	/// * if the data couldn't be passed to the stdin pipe of the process
 	async fn send(
 		&self,
-		message: Message,
+		message: &Message,
 		_reply_to: Option<&MessageId>,
 		_tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
-		let Some(body) = message.body else {
+		let Some(body) = &message.body else {
 			return Ok(None);
 		};
 

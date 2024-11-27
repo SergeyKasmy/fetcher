@@ -4,19 +4,14 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// TODO: mb rename .parse() into .into() or something of that sort? .into() is already used by From/Into traits though. Naming is hard, man... UPD: into_conf() and from_conf() are way better!
-
 #![doc = include_str!("../README.md")]
-#![warn(clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)]
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::missing_panics_doc)]
-#![allow(clippy::must_use_candidate)]
-#![warn(clippy::unwrap_used)]
+#![allow(clippy::missing_docs_in_private_items)] // TODO: enable later
+#![allow(clippy::missing_errors_doc)] // TODO: add more docs
+#![allow(missing_docs)] // TODO: add more docs
 
 pub mod error;
 pub mod jobs;
 mod serde_extentions;
 pub mod settings;
 
-pub use self::error::Error;
+pub use self::error::FetcherConfigError;

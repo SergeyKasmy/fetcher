@@ -12,7 +12,7 @@ use super::Filter;
 use crate::entry::Entry;
 
 /// Take only a set number of entries and discard all others
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Take {
 	/// Take from the Beginning or the end of the list?
 	pub from: TakeFrom,
@@ -20,8 +20,8 @@ pub struct Take {
 	pub num: usize,
 }
 
-#[allow(missing_docs)]
-#[derive(Debug)]
+#[expect(missing_docs, reason = "names are self-documenting")]
+#[derive(Clone, Debug)]
 pub enum TakeFrom {
 	Beginning,
 	End,

@@ -4,10 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::error::Error as ConfigError;
+use crate::error::FetcherConfigError as ConfigError;
 use fetcher_core::action::transform::{
-	field::{Replace as CReplace, TransformFieldWrapper as CTransformFieldWrapper},
 	Transform as CTransform,
+	field::{Replace as CReplace, TransformFieldWrapper as CTransformFieldWrapper},
 };
 
 use serde::{Deserialize, Serialize};
@@ -23,9 +23,9 @@ pub struct Replace {
 }
 
 impl Replace {
-	pub fn parse(self) -> Result<impl CTransform, ConfigError> {
+	pub fn decode_from_conf(self) -> Result<impl CTransform, ConfigError> {
 		Ok(CTransformFieldWrapper {
-			field: self.in_field.parse(),
+			field: self.in_field.decode_from_conf(),
 			transformator: CReplace::new(&self.re, self.with)?,
 		})
 	}

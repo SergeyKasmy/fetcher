@@ -30,14 +30,13 @@ pub struct Http {
 	client: Client,
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum HttpError {
-	// TODO: impl Display for Field
-	#[error("Missing URL in the entry {0:?} field")]
+	#[error("Missing URL in the entry {0} field")]
 	MissingUrl(Field),
 
-	#[error("Invalid URL in the entry {0:?} field")]
+	#[error("Invalid URL in the entry {0} field")]
 	InvalidUrl(Field, #[source] InvalidUrlError),
 
 	#[error(transparent)]
@@ -102,9 +101,9 @@ impl TransformEntry for Http {
 		let new_page = source::http::send_request(&self.client, &Request::Get, &url).await?;
 
 		Ok(vec![TransformedEntry {
-			raw_contents: TransformResult::New(Some(new_page)),
+			raw_contents: TransformResult::New(new_page),
 			msg: TransformedMessage {
-				link: TransformResult::New(Some(url)),
+				link: TransformResult::New(url),
 				..Default::default()
 			},
 			..Default::default()

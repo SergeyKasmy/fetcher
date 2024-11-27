@@ -4,8 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use color_eyre::{eyre::eyre, Report};
-use fetcher_config::jobs::{JobName, TaskName};
+use color_eyre::{Report, eyre::eyre};
+use fetcher_config::jobs::named::{JobName, TaskName};
 use std::str::FromStr;
 
 #[derive(Debug)]
@@ -14,20 +14,18 @@ pub struct JobFilter {
 	pub task: Option<TaskName>,
 }
 
-// TODO: compare in lower case
 impl JobFilter {
 	#[must_use]
 	pub fn job_matches(&self, job_name: &JobName) -> bool {
-		&self.job == job_name
+		self.job.to_ascii_lowercase() == job_name.to_ascii_lowercase()
 	}
 
 	#[must_use]
 	pub fn task_matches(&self, job_name: &JobName, task_name: &TaskName) -> bool {
 		&self.job == job_name
-			&& self
-				.task
-				.as_ref()
-				.map_or(true, |task_filter| task_filter == task_name)
+			&& self.task.as_ref().map_or(true, |task_filter| {
+				task_filter.to_ascii_lowercase() == task_name.to_ascii_lowercase()
+			})
 	}
 }
 
@@ -35,14 +33,13 @@ impl FromStr for JobFilter {
 	type Err = Report;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s.split(':').count() {
+		let mut splits = s.split(':');
+		match splits.clone().count() {
 			1 => Ok(Self {
 				job: s.to_owned().into(),
 				task: None,
 			}),
 			2 => {
-				let mut splits = s.split(':');
-
 				let job = splits
 					.next()
 					.expect("should always exist since split count is 2, i.e. before and after")

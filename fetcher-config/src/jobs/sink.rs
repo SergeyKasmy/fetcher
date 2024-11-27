@@ -9,7 +9,7 @@ mod exec;
 mod telegram;
 
 use self::{discord::Discord, exec::Exec, telegram::Telegram};
-use crate::{jobs::external_data::ProvideExternalData, Error};
+use crate::{FetcherConfigError, jobs::external_data::ProvideExternalData};
 use fetcher_core::sink::{Sink as CSink, Stdout as CStdout};
 
 use serde::{Deserialize, Serialize};
@@ -24,22 +24,15 @@ pub enum Sink {
 }
 
 impl Sink {
-	pub fn parse<D>(self, external: &D) -> Result<Box<dyn CSink>, Error>
+	pub fn decode_from_conf<D>(self, external: &D) -> Result<Box<dyn CSink>, FetcherConfigError>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
 		Ok(match self {
-			Self::Telegram(x) => Box::new(x.parse(external)?),
-			Self::Discord(x) => Box::new(x.parse(external)?),
-			Self::Exec(x) => Box::new(x.parse()),
+			Self::Telegram(x) => Box::new(x.decode_from_conf(external)?),
+			Self::Discord(x) => Box::new(x.decode_from_conf(external)?),
+			Self::Exec(x) => Box::new(x.decode_from_conf()),
 			Self::Stdout => Box::new(CStdout {}),
 		})
-	}
-
-	pub fn has_message_id_support(&self) -> bool {
-		match self {
-			Self::Telegram(_) => true,
-			Self::Discord(_) | Self::Exec(_) | Self::Stdout => false, // TODO: implement message id support for Discord
-		}
 	}
 }

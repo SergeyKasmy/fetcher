@@ -11,7 +11,7 @@ use crate::{
 	action::transform::{
 		error::RawContentsNotSetError,
 		field::Replace,
-		result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
 	error::InvalidUrlError,
@@ -71,7 +71,7 @@ pub struct Query {
 	pub optional: bool,
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum JsonError {
 	#[error(transparent)]
@@ -148,14 +148,23 @@ impl Json {
 				.collect::<Result<Vec<_>, _>>()
 		})?;
 
+		// make it none if it's empty
+		let img = if let Some(&[]) = img.as_deref() {
+			None
+		} else {
+			img
+		};
+
 		Ok(TransformedEntry {
-			id: TrRes::Old(id.map(Into::into)),
-			raw_contents: TrRes::Old(body.clone()),
+			id: id.map(Into::into).unwrap_or_prev(),
+			raw_contents: body.clone().unwrap_or_prev(),
 			msg: TransformedMessage {
-				title: TrRes::Old(title),
-				body: TrRes::Old(body),
-				link: TrRes::Old(link),
-				media: TrRes::Old(img.map(|v| v.into_iter().map(Media::Photo).collect())),
+				title: title.unwrap_or_prev(),
+				body: body.unwrap_or_prev(),
+				link: link.unwrap_or_prev(),
+				media: img
+					.map(|v| v.into_iter().map(Media::Photo).collect())
+					.unwrap_or_prev(),
 			},
 			..Default::default()
 		})
@@ -182,7 +191,7 @@ fn extract_data<'a>(json: &'a Value, query: &Query) -> Result<Option<&'a Value>,
 			return Err(JsonError::KeyNotFound {
 				num: key,
 				key_list: query.keys.clone(),
-			})
+			});
 		}
 	};
 

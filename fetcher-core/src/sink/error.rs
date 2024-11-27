@@ -10,7 +10,7 @@ pub use crate::exec::ExecError;
 
 use std::{error::Error as StdError, fmt::Debug, num::TryFromIntError};
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum SinkError {
 	#[error("Invalid message ID type. It has probably been copied from an incompatible sink type")]

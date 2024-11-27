@@ -10,7 +10,7 @@ use super::TransformEntry;
 use crate::{
 	action::transform::{
 		error::RawContentsNotSetError,
-		result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
 };
@@ -23,7 +23,7 @@ use url::Url;
 #[derive(Debug)]
 pub struct Feed;
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum FeedError {
 	#[error(transparent)]
@@ -73,12 +73,12 @@ impl TransformEntry for Feed {
 					.ok();
 
 				TransformedEntry {
-					id: TrRes::Old(id.map(Into::into)),
-					raw_contents: TrRes::Old(body.clone()),
+					id: id.map(Into::into).unwrap_or_prev(),
+					raw_contents: body.clone().unwrap_or_prev(),
 					msg: TransformedMessage {
-						title: TrRes::Old(title),
-						body: TrRes::Old(body),
-						link: TrRes::Old(link),
+						title: title.unwrap_or_prev(),
+						body: body.unwrap_or_prev(),
+						link: link.unwrap_or_prev(),
 						..Default::default()
 					},
 					..Default::default()

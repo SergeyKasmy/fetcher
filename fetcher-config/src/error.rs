@@ -4,13 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub type Result<T, E = FetcherConfigError> = std::result::Result<T, E>;
+
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum FetcherConfigError {
 	#[error(transparent)]
 	ExternalError(#[from] crate::jobs::external_data::ExternalDataError),
-
-	#[error("Twitter API key isn't set up")]
-	TwitterApiKeysMissing,
 
 	#[error("Google OAuth2 token isn't set up")]
 	GoogleOAuth2TokenMissing,
@@ -27,11 +26,16 @@ pub enum Error {
 	#[error("Discord bot token isn't set up")]
 	DiscordBotTokenMissing,
 
+	#[error("Importing is unavailable")]
+	ImportingUnavailable,
+
 	#[error("Wrong Google OAuth2 token")]
 	GoogleOAuth2WrongToken(#[from] fetcher_core::auth::google::GoogleOAuth2Error),
 
 	#[error("refresh - every is not a valid duration format, e.g. 1m, 10h, 1d")]
-	BadDurationFormat(#[from] duration_str::DError),
+	// FIXME
+	//BadDurationFormat(#[from] duration_str::DError),
+	BadDurationFormat(String),
 
 	#[error("refresh - at is not a valid time format, e.g. 14:30")]
 	BadTimeFormat(#[from] chrono::ParseError),

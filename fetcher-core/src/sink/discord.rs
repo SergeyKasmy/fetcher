@@ -10,6 +10,7 @@ use std::num::TryFromIntError;
 
 use async_trait::async_trait;
 use serenity::{
+	all::{CreateEmbed, CreateEmbedFooter},
 	builder::CreateMessage,
 	http::Http as Bot,
 	model::{
@@ -19,9 +20,9 @@ use serenity::{
 };
 
 use super::{
-	error::SinkError,
-	message::{length_limiter::MessageLengthLimiter, Media, Message, MessageId},
 	Sink,
+	error::SinkError,
+	message::{Media, Message, MessageId, length_limiter::MessageLengthLimiter},
 };
 use crate::utils::OptionExt;
 
@@ -70,7 +71,7 @@ impl Discord {
 impl Sink for Discord {
 	async fn send(
 		&self,
-		msg: Message,
+		msg: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
@@ -85,7 +86,7 @@ impl Sink for Discord {
 			body,
 			link,
 			media,
-		} = msg.clone(); // clone is to be able to include the message if an error happens. TODO: Maybe there's a better solution?
+		} = msg.clone(); // clone is to be able to include the message if an error happens
 
 		// if the body of the message won't fit into an embed, then just send as regular messages
 		if body.as_ref().map_or(0, |s| s.chars().count()) > MAX_EMBED_DESCIPTION_LEN {
@@ -127,7 +128,7 @@ impl Sink for Discord {
 			while let Some(text) = composed_msg.split_at(MAX_MSG_LEN) {
 				let msg = self
 					.target
-					.send_message(&self.bot, |msg| msg.content(&text))
+					.send_message(&self.bot, CreateMessage::new().content(&text))
 					.await
 					.map_err(|e| SinkError::Discord {
 						source: e,
@@ -139,63 +140,62 @@ impl Sink for Discord {
 		}
 		// send as an embed (much pretty, so wow!)
 		else {
+			let mut embed = CreateEmbed::new();
+
+			if let Some(title) = title {
+				embed = embed.title(title);
+			}
+
+			if let Some(body) = body {
+				embed = embed.description(body);
+			}
+
+			if let Some(link) = link {
+				embed = embed.url(link);
+			}
+
+			if let Some(tag) = tag {
+				embed = embed.footer(CreateEmbedFooter::new(tag));
+			}
+
+			if let Some(media) = media {
+				for media in media {
+					if let Media::Photo(image) = media {
+						embed = embed.image(image);
+					}
+				}
+			}
+
 			let msg = self
 				.target
-				.send_message(&self.bot, |msg| {
-					msg.embed(|embed| {
-						if let Some(title) = title {
-							embed.title(title);
-						}
-
-						if let Some(body) = body {
-							embed.description(body);
-						}
-
-						if let Some(link) = link {
-							embed.url(link);
-						}
-
-						if let Some(tag) = tag {
-							embed.footer(|footer| footer.text(tag));
-						}
-
-						if let Some(media) = media {
-							for media in media {
-								if let Media::Photo(image) = media {
-									embed.image(image);
-								}
-							}
-						}
-
-						embed
-					})
-				})
+				.send_message(&self.bot, CreateMessage::new().embed(embed))
 				.await
 				.map_err(|e| SinkError::Discord {
 					source: e,
-					msg: Box::new(msg),
+					msg: Box::new(msg.clone()),
 				})?;
 
 			last_message = Some(msg.id);
 		}
 
 		// If it does, we should crash and think of a new solution anyways
-		let msgid = last_message.map(|id| i64::try_from(id.0).expect("not sure if Discord will ever return an ID that doesn't fit into MessageId. It shouldn't do that, probably...").into());
+		let msgid = last_message.map(|id| i64::try_from(id.get()).expect("not sure if Discord will ever return an ID that doesn't fit into MessageId. It shouldn't do that, probably...").into());
 		Ok(msgid)
 	}
 }
 
 impl TargetInner {
-	async fn send_message<'a, F>(&self, bot: &Bot, f: F) -> Result<DcMessage, serenity::Error>
-	where
-		F: for<'b> FnOnce(&'b mut CreateMessage<'a>) -> &'b mut CreateMessage<'a>,
-	{
+	async fn send_message(
+		&self,
+		bot: &Bot,
+		message: CreateMessage,
+	) -> Result<DcMessage, serenity::Error> {
 		let msg = match self {
-			TargetInner::Channel(chan) => chan.send_message(bot, f).await?,
+			TargetInner::Channel(chan) => chan.send_message(bot, message).await?,
 			TargetInner::User(user) => {
 				user.create_dm_channel(bot)
 					.await?
-					.send_message(bot, f)
+					.send_message(bot, message)
 					.await?
 			}
 		};

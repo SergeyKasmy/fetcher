@@ -15,7 +15,7 @@ use super::TransformEntry;
 use crate::{
 	action::transform::{
 		error::RawContentsNotSetError,
-		result::{TransformResult as TrRes, TransformedEntry, TransformedMessage},
+		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
 	error::InvalidUrlError,
@@ -52,7 +52,7 @@ pub struct Html {
 	pub img: Option<ElementDataQuery>,
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum HtmlError {
 	#[error(transparent)]
@@ -153,13 +153,13 @@ impl Html {
 		let img = self.img.as_ref().try_and_then(|q| extract_imgs(html, q))?;
 
 		Ok(TransformedEntry {
-			id: TrRes::Old(id.map(Into::into)),
-			raw_contents: TrRes::Old(body.clone()),
+			id: id.map(Into::into).unwrap_or_prev(),
+			raw_contents: body.clone().unwrap_or_prev(),
 			msg: TransformedMessage {
-				title: TrRes::Old(title),
-				body: TrRes::Old(body),
-				link: TrRes::Old(link),
-				media: TrRes::Old(img),
+				title: title.unwrap_or_prev(),
+				body: body.unwrap_or_prev(),
+				link: link.unwrap_or_prev(),
+				media: img.unwrap_or_prev(),
 			},
 			..Default::default()
 		})
@@ -170,7 +170,7 @@ impl Html {
 fn extract_data<'a>(
 	html: &HtmlNode,
 	data_query: &'a ElementDataQuery,
-) -> Result<Option<impl Iterator<Item = String> + 'a>, HtmlError> {
+) -> Result<Option<impl Iterator<Item = String> + use<'a>>, HtmlError> {
 	let data = find_chain(html, &data_query.query).map(|nodes| {
 		nodes
 			.into_iter()
@@ -240,7 +240,7 @@ fn extract_id(html: &HtmlNode, data_query: &ElementDataQuery) -> Result<Option<S
 fn extract_url<'a>(
 	html: &HtmlNode,
 	query: &'a ElementDataQuery,
-) -> Result<Option<impl Iterator<Item = Result<Url, HtmlError>> + 'a>, HtmlError> {
+) -> Result<Option<impl Iterator<Item = Result<Url, HtmlError>> + use<'a>>, HtmlError> {
 	Ok(extract_data(html, query)?.map(|it| {
 		it.map(|url| Url::try_from(url.as_str()).map_err(|e| InvalidUrlError(e, url).into()))
 	}))
@@ -283,8 +283,11 @@ fn find_chain(html: &HtmlNode, elem_queries: &[ElementQuery]) -> Result<Vec<Html
 
 /// Find items matching the query in the provided HTML part
 // I'm pretty sure this shouldn't capture from elem_query, so this is probably a bug in Soup
-#[allow(clippy::needless_pass_by_value)]
-fn find(html: HtmlNode, elem_query: &ElementQuery) -> impl Iterator<Item = HtmlNode> + '_ {
+#[expect(
+	clippy::needless_pass_by_value,
+	reason = "HtmlNode is already just a pointer"
+)]
+fn find(html: HtmlNode, elem_query: &ElementQuery) -> impl Iterator<Item = HtmlNode> {
 	match &elem_query.kind {
 		ElementKind::Tag(val) => html.tag(val.as_str()).find_all(),
 		ElementKind::Class(val) => html.class(val.as_str()).find_all(),
@@ -292,12 +295,12 @@ fn find(html: HtmlNode, elem_query: &ElementQuery) -> impl Iterator<Item = HtmlN
 	}
 	.filter(move |found| {
 		if let Some(ignore) = &elem_query.ignore {
-			for i in ignore.iter() {
+			for i in ignore {
 				let should_be_ignored = match i {
 					ElementKind::Tag(tag) => found.name() == tag,
-					ElementKind::Class(class) => found.get("class").map_or(false, |c| &c == class),
+					ElementKind::Class(class) => found.get("class").is_some_and(|c| &c == class),
 					ElementKind::Attr { name, value } => {
-						found.get(name).map_or(false, |a| &a == value)
+						found.get(name).is_some_and(|a| &a == value)
 					}
 				};
 

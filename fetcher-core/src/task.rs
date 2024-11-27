@@ -8,18 +8,22 @@
 
 pub mod entry_to_msg_map;
 
-use std::collections::HashSet;
-
 use self::entry_to_msg_map::EntryToMsgMap;
 use crate::{
-	action::{transform::error::TransformError, Action},
-	entry::Entry,
-	error::Error,
-	sink::Sink,
+	action::Action,
+	entry::{Entry, EntryId},
+	error::FetcherError,
+	sink::{
+		Sink,
+		message::{Message, MessageId},
+	},
 	source::Source,
 };
 
+use std::{borrow::Cow, collections::HashSet};
+
 /// A core primitive of [`fetcher`](`crate`).
+///
 /// Contains everything from a [`Source`] that allows to fetch some data, to a [`Sink`] that takes that data and sends it somewhere.
 /// It also contains any transformators
 #[derive(Debug)]
@@ -33,9 +37,6 @@ pub struct Task {
 	/// A list of optional transformators which to run the data received from the source through
 	pub actions: Option<Vec<Action>>,
 
-	/// The sink where to send the data to
-	pub sink: Option<Box<dyn Sink>>,
-
 	/// Map of an entry to a message. Used when an entry is a reply to an older entry to be able to show that as a message, too
 	pub entry_to_msg_map: Option<EntryToMsgMap>,
 }
@@ -46,88 +47,76 @@ impl Task {
 	/// # Errors
 	/// If there was an error fetching the data, sending the data, or saving what data was successfully sent to an external location
 	#[tracing::instrument(skip(self))]
-	pub async fn run(&mut self) -> Result<(), Error> {
+	pub async fn run(&mut self) -> Result<(), FetcherError> {
 		tracing::trace!("Running task");
 
-		let entries = {
-			let raw = match &mut self.source {
-				Some(source) => source.fetch().await?,
-				None => vec![Entry::default()], // return just an empty entry if there is no source
-			};
-
-			tracing::debug!("Got {} raw entries from the sources", raw.len());
-			tracing::trace!("Raw entries: {raw:#?}");
-
-			let processed = match &self.actions {
-				Some(actions) => process_entries(raw, actions).await?,
-				None => raw,
-			};
-
-			let processed_len = processed.len();
-			tracing::debug!("{processed_len} entries remained after processing");
-			tracing::trace!("Entries after processing: {processed:#?}");
-
-			let deduped = remove_duplicates(processed);
-
-			if processed_len - deduped.len() > 0 {
-				tracing::info!(
-					"Removed {} duplicate entries",
-					processed_len - deduped.len()
-				);
-			}
-
-			deduped
+		let raw = match &mut self.source {
+			Some(source) => source.fetch().await?,
+			None => vec![Entry::default()], // return just an empty entry if there is no source
 		};
 
-		// entries should be sorted newest to oldest but we should send oldest first
-		for entry in entries.into_iter().rev() {
-			self.send_entry(entry).await?;
-		}
+		tracing::debug!("Got {} raw entries from the sources", raw.len());
+		tracing::trace!("Raw entries: {raw:#?}");
+
+		self.process_entries(raw).await?;
 
 		Ok(())
 	}
 
-	#[tracing::instrument(level = "trace", skip_all, fields(entry_id = ?entry.id))]
-	async fn send_entry(&mut self, entry: Entry) -> Result<(), Error> {
-		tracing::trace!("Sending and marking as read entry");
-
-		let msgid = match self.sink.as_ref() {
-			// send message if it isn't empty or raw_contents of they aren't
-			Some(sink) if !entry.msg.is_empty() || entry.raw_contents.is_some() => {
-				// use raw_contents as msg.body if the message is empty
-				let mut msg = entry.msg;
-
-				if msg.is_empty() {
-					msg.body = Some(
-						entry
-							.raw_contents
-							.expect("raw_contents should be some because of the match guard"),
-					);
+	// TODO: figure out a way to split into several functions to avoid 15 level nesting?
+	// It's a bit difficult because this function can't be a method because we are borrowing self.actions
+	// throughout the entire process
+	async fn process_entries(&mut self, mut entries: Vec<Entry>) -> Result<(), FetcherError> {
+		for act in self.actions.iter().flatten() {
+			match act {
+				Action::Filter(f) => {
+					f.filter(&mut entries).await;
 				}
+				Action::Transform(tr) => {
+					let mut fully_transformed = Vec::new();
 
-				let tag = self.tag.as_deref();
-				let reply_to = self
-					.entry_to_msg_map
-					.as_mut()
-					.and_then(|map| map.get_if_exists(entry.reply_to.as_ref()));
+					for entry in entries {
+						fully_transformed.extend(tr.transform(entry).await?);
+					}
 
-				tracing::debug!(
-					"Sending {msg:?} to a sink with tag {tag:?}, replying to {reply_to:?}"
-				);
-				sink.send(msg, reply_to, tag).await?
-			}
-			_ => None,
-		};
+					entries = fully_transformed;
+				}
+				Action::Sink(s) => {
+					let undeduped_len = entries.len();
+					tracing::trace!("Entries to send before dedup: {undeduped_len}");
 
-		if let Some(entry_id) = entry.id {
-			if let Some(source) = &mut self.source {
-				tracing::debug!("Marking {entry_id:?} as read");
-				source.mark_as_read(&entry_id).await?;
-			}
+					entries = remove_duplicates(entries);
 
-			if let Some((msgid, map)) = msgid.zip(self.entry_to_msg_map.as_mut()) {
-				tracing::debug!("Associating entry {entry_id:?} with message {msgid:?}");
-				map.insert(entry_id, msgid).await?;
+					if undeduped_len - entries.len() > 0 {
+						tracing::info!(
+							"Removed {} duplicate entries before sending",
+							undeduped_len - entries.len()
+						);
+					}
+
+					tracing::trace!("Sending entries: {entries:#?}");
+
+					// entries should be sorted newest to oldest but we should send oldest first
+					for entry in entries.iter().rev() {
+						let msg_id = send_entry(
+							&**s,
+							self.entry_to_msg_map.as_mut(),
+							self.tag.as_deref(),
+							entry,
+						)
+						.await?;
+
+						if let Some(entry_id) = entry.id.as_ref() {
+							mark_entry_as_read(
+								entry_id,
+								msg_id,
+								self.source.as_mut(),
+								self.entry_to_msg_map.as_mut(),
+							)
+							.await?;
+						}
+					}
+				}
 			}
 		}
 
@@ -135,15 +124,60 @@ impl Task {
 	}
 }
 
-async fn process_entries(
-	mut entries: Vec<Entry>,
-	actions: &[Action],
-) -> Result<Vec<Entry>, TransformError> {
-	for a in actions {
-		entries = a.process(entries).await?;
+#[tracing::instrument(level = "trace", skip_all, fields(entry_id = ?entry.id))]
+async fn send_entry(
+	sink: &dyn Sink,
+	mut entry_to_msg_map: Option<&mut EntryToMsgMap>,
+	tag: Option<&str>,
+	entry: &Entry,
+) -> Result<Option<MessageId>, FetcherError> {
+	tracing::trace!("Sending entry");
+
+	// send message if it isn't empty or raw_contents of they aren't
+	if entry.msg.is_empty() && entry.raw_contents.is_none() {
+		return Ok(None);
 	}
 
-	Ok(entries)
+	let msg = if entry.msg.is_empty() {
+		Cow::Owned(Message {
+			body: Some(
+				entry
+					.raw_contents
+					.clone()
+					.expect("raw_contents should be some because of the early return check"),
+			),
+			..entry.msg.clone()
+		})
+	} else {
+		Cow::Borrowed(&entry.msg)
+	};
+
+	let reply_to = entry_to_msg_map
+		.as_mut()
+		.and_then(|map| map.get_if_exists(entry.reply_to.as_ref()));
+
+	tracing::debug!("Sending {msg:?} to a sink with tag {tag:?}, replying to {reply_to:?}");
+	Ok(sink.send(&msg, reply_to, tag).await?)
+}
+
+async fn mark_entry_as_read(
+	entry_id: &EntryId,
+	msg_id: Option<MessageId>,
+	// source: Option<&mut dyn Source>, // TODO: this doesn't work. Why?
+	source: Option<&mut Box<dyn Source>>,
+	entry_to_msg_map: Option<&mut EntryToMsgMap>,
+) -> Result<(), FetcherError> {
+	if let Some(mar) = source {
+		tracing::debug!("Marking {entry_id:?} as read");
+		mar.mark_as_read(entry_id).await?;
+	}
+
+	if let Some((msgid, map)) = msg_id.zip(entry_to_msg_map) {
+		tracing::debug!("Associating entry {entry_id:?} with message {msgid:?}");
+		map.insert(entry_id.clone(), msgid).await?;
+	}
+
+	Ok(())
 }
 
 fn remove_duplicates(entries: Vec<Entry>) -> Vec<Entry> {

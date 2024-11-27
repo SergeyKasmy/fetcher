@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::source::{reddit::Sort as CSort, Reddit as CReddit};
+use fetcher_core::source::{Reddit as CReddit, reddit::Sort as CSort};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -41,22 +41,29 @@ pub enum TimePeriod {
 }
 
 impl Reddit {
-	pub fn parse(self) -> Vec<CReddit> {
+	#[must_use]
+	pub fn decode_from_conf(self) -> Vec<CReddit> {
 		self.0
 			.into_iter()
-			.map(|(subreddit, inner)| inner.parse(&subreddit))
+			.map(|(subreddit, inner)| inner.decode_from_conf(&subreddit))
 			.collect()
 	}
 }
 
 impl Inner {
-	pub fn parse(self, subreddit: &str) -> CReddit {
-		CReddit::new(subreddit, self.sort.parse(), self.score_threshold)
+	#[must_use]
+	pub fn decode_from_conf(self, subreddit: &str) -> CReddit {
+		CReddit::new(
+			subreddit,
+			self.sort.decode_from_conf(),
+			self.score_threshold,
+		)
 	}
 }
 
 impl Sort {
-	pub fn parse(self) -> CSort {
+	#[must_use]
+	pub fn decode_from_conf(self) -> CSort {
 		match self {
 			Sort::Latest | Sort::New => CSort::Latest,
 			Sort::Rising => CSort::Rising,

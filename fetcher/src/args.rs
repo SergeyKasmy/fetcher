@@ -4,14 +4,17 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::job::Job;
+use crate::settings::{context::StaticContext, external_data_provider::ExternalDataFromDataDir};
+use fetcher_config::jobs::{
+	Job as JobConfig,
+	named::{JobName, JobWithTaskNames},
+};
 
 use argh::FromArgs;
-use color_eyre::Report;
+use color_eyre::{Report, Result};
 use std::{path::PathBuf, str::FromStr};
 
-// TODO: add switch to ignore read filter save data
-/// Automatic news fetching and parsing
+/// Automation and scalping tool
 #[derive(FromArgs, Debug)]
 pub struct Args {
 	#[argh(subcommand)]
@@ -45,7 +48,6 @@ pub enum TopLvlSubcommand {
 }
 
 /// Run all jobs. Default if started with no command
-#[allow(clippy::struct_excessive_bools)]
 #[derive(FromArgs, Default, Debug)]
 #[argh(subcommand, name = "run")]
 pub struct Run {
@@ -53,11 +55,15 @@ pub struct Run {
 	#[argh(switch)]
 	pub once: bool,
 
+	/// don't filter out already read entries
+	#[argh(switch)]
+	pub no_skip_read: bool,
+
 	/// dry run, make no permanent changes to the system
 	#[argh(switch)]
 	pub dry_run: bool,
 
-	/// run only these jobs and tasks formatted as "job[:task]..."
+	/// run only these jobs and tasks formatted as "job\[:task\]..."
 	#[argh(positional)]
 	pub run_filter: Vec<String>,
 }
@@ -68,14 +74,14 @@ pub struct Run {
 pub struct RunManual {
 	/// run this job, formatted in JSON
 	#[argh(positional)]
-	pub job: JsonJob,
+	pub job_config: JsonJobConfig,
 }
 
 /// Load all tasks from the config files and mark all old entries as read
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "mark-old-as-read")]
 pub struct MarkOldAsRead {
-	/// mark only these jobs and tasks as read, formatted as "job[:task]..."
+	/// mark only these jobs and tasks as read, formatted as "job\[:task\]..."
 	#[argh(positional)]
 	pub run_filter: Vec<String>,
 }
@@ -104,7 +110,6 @@ pub enum Setting {
 	EmailPassword,
 	Telegram,
 	Discord,
-	Twitter,
 }
 
 impl FromStr for Setting {
@@ -116,34 +121,51 @@ impl FromStr for Setting {
 			"email_password" => Self::EmailPassword,
 			"telegram" => Self::Telegram,
 			"discord" => Self::Discord,
-			"twitter" => Self::Twitter,
-			s => return Err(format!("{s:?} is not a valid setting. Available settings: google_oauth, email_password, telegram, twitter")),
+			s => {
+				return Err(format!(
+					"{s:?} is not a valid setting. Available settings: google_oauth, email_password, telegram"
+				));
+			}
 		})
 	}
 }
 
-/// Wrapper around Job foreign struct to implement `FromStr` from valid job JSON
+/// Wrapper around Job foreign struct to implement `FromStr` from valid job in JSON format
 #[derive(Debug)]
-pub struct JsonJob(pub Job);
+pub struct JsonJobConfig(Vec<(JobName, JobConfig)>);
 
-impl FromStr for JsonJob {
+impl FromStr for JsonJobConfig {
 	type Err = Report;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		use fetcher_config::jobs::external_data::ProvideExternalData;
-		use fetcher_core::read_filter::ReadFilter;
+		// HACK: if the input is a JSON array
+		let config_jobs = if s.chars().next().expect("Manual job JSON is empty") == '[' {
+			let v: Vec<fetcher_config::jobs::Job> = serde_json::from_str(s)?;
+			v.into_iter()
+				.enumerate()
+				// use the index as the job name
+				.map(|(idx, job)| ((idx + 1).to_string().into(), job))
+				.collect()
+		} else {
+			let job: fetcher_config::jobs::Job = serde_json::from_str(s)?;
+			// just use "Manual" as the job name
+			vec![("Manual".to_owned().into(), job)]
+		};
 
-		struct EmptyExternalData;
+		Ok(Self(config_jobs))
+	}
+}
 
-		// TODO: add a way to provide external settings even in manual jobs
-		impl ProvideExternalData for EmptyExternalData {
-			// it's a lie but don't tell anybody...
-			type ReadFilter = Box<dyn ReadFilter>;
-		}
-
-		let config_job: fetcher_config::jobs::Job = serde_json::from_str(s)?;
-		let job = config_job.parse(&"Manual".to_owned().into(), &EmptyExternalData)?;
-
-		Ok(Self(job.0))
+impl JsonJobConfig {
+	pub fn decode(
+		self,
+		cx: StaticContext,
+	) -> Result<impl Iterator<Item = (JobName, JobWithTaskNames)>> {
+		Ok(self
+			.0
+			.into_iter()
+			.map(|(name, config)| config.decode_from_conf(name, &ExternalDataFromDataDir { cx }))
+			.collect::<Result<Vec<_>, _>>()?
+			.into_iter())
 	}
 }

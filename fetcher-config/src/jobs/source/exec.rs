@@ -7,7 +7,7 @@
 use fetcher_core::source::Exec as CExec;
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, OneOrMany};
+use serde_with::{OneOrMany, serde_as};
 
 #[serde_as]
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -18,7 +18,8 @@ pub struct Exec {
 }
 
 impl Exec {
-	pub fn parse(self) -> Vec<CExec> {
+	#[must_use]
+	pub fn decode_from_conf(self) -> Vec<CExec> {
 		self.cmd.into_iter().map(|cmd| CExec { cmd }).collect()
 	}
 }

@@ -13,9 +13,9 @@ use crate::{
 
 use std::error::Error as StdError;
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum FetcherError {
 	#[error("Can't fetch data")]
 	Source(#[from] SourceError),
 
@@ -32,35 +32,37 @@ pub enum Error {
 	ExternalSave(#[source] ExternalSaveError),
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 #[error("Invalid URL: {1}")]
 pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 #[error("Invalid regular expression")]
 pub struct BadRegexError(#[from] pub regex::Error);
 
-impl Error {
-	/// Check if the current error is somehow related to network connection and return it if it is
-	#[allow(clippy::match_same_arms)]
+impl FetcherError {
+	/// Checks if the current error is somehow related to network connection and return it if it is
 	#[must_use]
 	pub fn is_connection_error(&self) -> Option<&(dyn StdError + Send + Sync)> {
 		// I know it will match any future variants automatically but I actually want it to do that anyways
-		#[allow(clippy::match_wildcard_for_single_variants)]
+		#[expect(
+			clippy::match_wildcard_for_single_variants,
+			reason = "all other branches are ignored, no matter how many there are"
+		)]
 		match self {
-			Self::Source(source_err) => source_err.is_connection_err(),
-			Error::Transform(tr_err) => tr_err.is_connection_err(),
-			Error::Sink(sink_err) => sink_err.is_connection_err(),
-			Error::GoogleOAuth2(google_oauth2_err) => google_oauth2_err.is_connection_err(),
+			Self::Source(e) => e.is_connection_err(),
+			FetcherError::Transform(e) => e.is_connection_err(),
+			FetcherError::Sink(e) => e.is_connection_err(),
+			FetcherError::GoogleOAuth2(e) => e.is_connection_err(),
 			_ => None,
 		}
 	}
 }
 
-impl From<TransformError> for Error {
+impl From<TransformError> for FetcherError {
 	fn from(e: TransformError) -> Self {
-		Error::Transform(Box::new(e))
+		FetcherError::Transform(Box::new(e))
 	}
 }

@@ -1,18 +1,23 @@
 //! This test asserts that the message id passed to the sink is the correct
 //! message id that corresponds to the entry that the source asked to be replied to
 
+#![allow(clippy::missing_assert_message)]
+#![allow(clippy::tests_outside_test_module)]
+#![allow(clippy::unwrap_used)]
+
 use async_trait::async_trait;
 use fetcher_core::{
+	action::Action,
 	entry::{Entry, EntryId},
-	error::Error,
+	error::FetcherError,
 	read_filter::MarkAsRead,
 	sink::{
+		Sink,
 		error::SinkError,
 		message::{Message, MessageId},
-		Sink,
 	},
-	source::{error::SourceError, Fetch, Source},
-	task::{entry_to_msg_map::EntryToMsgMap, Task},
+	source::{Fetch, Source, error::SourceError},
+	task::{Task, entry_to_msg_map::EntryToMsgMap},
 };
 
 const ENTRY_ID: &str = "0";
@@ -36,7 +41,7 @@ impl Fetch for DummySource {
 
 #[async_trait]
 impl MarkAsRead for DummySource {
-	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), Error> {
+	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
 		Ok(())
 	}
 
@@ -49,7 +54,7 @@ impl Source for DummySource {}
 impl Sink for DummySink {
 	async fn send(
 		&self,
-		_message: Message,
+		_message: &Message,
 		reply_to: Option<&MessageId>,
 		_tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
@@ -70,8 +75,7 @@ async fn reply_to() {
 	let mut task = Task {
 		tag: None,
 		source: Some(Box::new(DummySource)),
-		actions: None,
-		sink: Some(Box::new(DummySink)),
+		actions: Some(vec![Action::Sink(Box::new(DummySink))]),
 		entry_to_msg_map: Some(entry_to_msg_map),
 	};
 

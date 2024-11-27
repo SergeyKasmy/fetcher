@@ -7,7 +7,7 @@
 use super::CONFIG_FILE_EXT;
 use crate::settings::context::StaticContext as Context;
 
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::{Result, eyre::eyre};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -49,6 +49,7 @@ pub fn find_in(templates_path: &Path, name: &str) -> Result<Option<Template>> {
 		return Ok(None);
 	}
 
+	// TODO: replace with .is_dir() because .is_file() doesn't cover unix special file types and windows symlinks
 	if !path.is_file() {
 		// tracing::trace!("{path:?} exists but is not a file");
 		return Err(eyre!(

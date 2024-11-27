@@ -15,7 +15,7 @@ pub mod use_as;
 
 use async_trait::async_trait;
 
-use super::{result::TransformedEntry, Transform};
+use super::{Transform, result::TransformedEntry};
 use crate::{
 	action::transform::error::{TransformError, TransformErrorKind},
 	entry::Entry,

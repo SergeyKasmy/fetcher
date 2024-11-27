@@ -9,8 +9,9 @@ use std::fs;
 use super::TruncatingFileWriter;
 use crate::settings::context::StaticContext;
 use fetcher_config::jobs::{
-	external_data::ExternalDataError, task::entry_to_msg_map::EntryToMsgMap as EntryToMsgMapConf,
-	JobName, TaskName,
+	external_data::ExternalDataError,
+	named::{JobName, TaskName},
+	task::entry_to_msg_map::EntryToMsgMap as EntryToMsgMapConf,
 };
 use fetcher_core::task::entry_to_msg_map::EntryToMsgMap;
 
@@ -46,7 +47,7 @@ pub fn get(
 			let conf: EntryToMsgMapConf = serde_json::from_str(&map_raw).map_err(|e| (e, &path))?;
 
 			Ok(EntryToMsgMap::new_with_map(
-				conf.parse(),
+				conf.decode_from_conf(),
 				TruncatingFileWriter::new(path),
 			))
 		}

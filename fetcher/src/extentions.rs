@@ -5,7 +5,10 @@
  */
 
 pub mod error_chain;
+pub mod report_std_error_wrapper;
 pub mod slice_display;
 
-pub use self::error_chain::ErrorChainExt;
-pub use self::slice_display::SliceDisplayExt;
+pub use self::{
+	error_chain::ErrorChainExt, report_std_error_wrapper::IntoStdErrorExt,
+	slice_display::SliceDisplayExt,
+};

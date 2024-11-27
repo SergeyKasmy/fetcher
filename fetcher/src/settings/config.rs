@@ -4,12 +4,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+pub mod actions;
 pub mod jobs;
 pub mod templates;
 
-use super::proj_dirs;
-#[allow(unused_imports)] // used only on linux
+#[cfg_attr(not(target_os = "linux"), expect(unused_imports))]
 use super::PREFIX;
+use super::proj_dirs;
 
 use color_eyre::Result;
 use std::path::PathBuf;

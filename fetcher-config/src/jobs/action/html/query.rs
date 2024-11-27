@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::Error;
+use crate::error::FetcherConfigError;
 use fetcher_core::{
 	action::{transform::entry::html::query as c_query, transform::field::Replace as CReplace},
 	utils::OptionExt,
@@ -63,7 +63,8 @@ pub struct HtmlQueryRegex {
 }
 
 impl ElementKind {
-	pub fn parse(self) -> c_query::ElementKind {
+	#[must_use]
+	pub fn decode_from_conf(self) -> c_query::ElementKind {
 		use ElementKind::{Attr, Class, Tag};
 
 		match self {
@@ -75,7 +76,8 @@ impl ElementKind {
 }
 
 impl DataLocation {
-	pub fn parse(self) -> c_query::DataLocation {
+	#[must_use]
+	pub fn decode_from_conf(self) -> c_query::DataLocation {
 		use DataLocation::{Attr, Text};
 
 		match self {
@@ -86,29 +88,36 @@ impl DataLocation {
 }
 
 impl ElementQuery {
-	pub fn parse(self) -> c_query::ElementQuery {
+	#[must_use]
+	pub fn decode_from_conf(self) -> c_query::ElementQuery {
 		c_query::ElementQuery {
-			kind: self.kind.parse(),
-			ignore: self
-				.ignore
-				.map(|v| v.into_iter().map(ElementKind::parse).collect::<Vec<_>>()),
+			kind: self.kind.decode_from_conf(),
+			ignore: self.ignore.map(|v| {
+				v.into_iter()
+					.map(ElementKind::decode_from_conf)
+					.collect::<Vec<_>>()
+			}),
 		}
 	}
 }
 
 impl ElementDataQuery {
-	pub fn parse(self) -> Result<c_query::ElementDataQuery, Error> {
+	pub fn decode_from_conf(self) -> Result<c_query::ElementDataQuery, FetcherConfigError> {
 		Ok(c_query::ElementDataQuery {
 			optional: self.optional.unwrap_or(false),
-			query: self.query.into_iter().map(ElementQuery::parse).collect(),
-			data_location: self.data_location.parse(),
-			regex: self.regex.try_map(HtmlQueryRegex::parse)?,
+			query: self
+				.query
+				.into_iter()
+				.map(ElementQuery::decode_from_conf)
+				.collect(),
+			data_location: self.data_location.decode_from_conf(),
+			regex: self.regex.try_map(HtmlQueryRegex::decode_from_conf)?,
 		})
 	}
 }
 
 impl HtmlQueryRegex {
-	pub fn parse(self) -> Result<CReplace, Error> {
+	pub fn decode_from_conf(self) -> Result<CReplace, FetcherConfigError> {
 		CReplace::new(&self.re, self.replace_with).map_err(Into::into)
 	}
 }

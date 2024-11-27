@@ -29,7 +29,7 @@ pub enum ReadFilter {
 	NotPresentInReadList(NotPresent),
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Kind {
 	NewerThanRead,
@@ -49,41 +49,43 @@ pub struct NotPresent {
 }
 
 impl EntryId {
-	pub fn parse(self) -> CEntryId {
+	#[must_use]
+	pub fn decode_from_conf(self) -> CEntryId {
 		CEntryId(self.0)
 	}
 
-	pub fn unparse(other: CEntryId) -> Self {
+	#[must_use]
+	pub fn encode_info_conf(other: CEntryId) -> Self {
 		Self(other.0)
 	}
 }
 
 impl ReadFilter {
-	pub fn parse<S>(self, external_save: S) -> Box<dyn CReadFilter>
+	pub fn decode_from_conf<S>(self, external_save: S) -> Box<dyn CReadFilter>
 	where
 		S: CExternalSave + 'static,
 	{
 		match self {
 			ReadFilter::NewerThanRead(rf) => Box::new(CExternalSaveRFWrapper {
-				rf: rf.parse(),
+				rf: rf.decode_from_conf(),
 				external_save: Some(external_save),
 			}),
 			ReadFilter::NotPresentInReadList(rf) => Box::new(CExternalSaveRFWrapper {
-				rf: rf.parse(),
+				rf: rf.decode_from_conf(),
 				external_save: Some(external_save),
 			}),
 		}
 	}
 
-	pub async fn unparse(read_filter: &dyn CReadFilter) -> Option<Self> {
+	pub async fn encode_into_conf(read_filter: &dyn CReadFilter) -> Option<Self> {
 		let any_rf = read_filter.as_any().await;
 
 		if let Some(c_newer) = any_rf.downcast_ref::<CNewer>() {
-			return Some(Self::NewerThanRead(Newer::unparse(c_newer)?));
+			return Some(Self::NewerThanRead(Newer::encode_into_conf(c_newer)?));
 		}
 
 		if let Some(c_not_present) = any_rf.downcast_ref::<CNotPresent>() {
-			return Some(Self::NotPresentInReadList(NotPresent::unparse(
+			return Some(Self::NotPresentInReadList(NotPresent::encode_into_conf(
 				c_not_present,
 			)?));
 		}
@@ -92,6 +94,7 @@ impl ReadFilter {
 		None
 	}
 
+	#[must_use]
 	pub fn to_kind(&self) -> Kind {
 		match self {
 			ReadFilter::NewerThanRead(_) => Kind::NewerThanRead,
@@ -119,28 +122,32 @@ impl Kind {
 }
 
 impl Newer {
-	pub fn parse(self) -> CNewer {
+	#[must_use]
+	pub fn decode_from_conf(self) -> CNewer {
 		CNewer {
-			last_read_id: Some(self.last_read_id.parse()),
+			last_read_id: Some(self.last_read_id.decode_from_conf()),
 		}
 	}
 
-	pub fn unparse(read_filter: &CNewer) -> Option<Self> {
+	#[must_use]
+	pub fn encode_into_conf(read_filter: &CNewer) -> Option<Self> {
 		read_filter.last_read_id.as_ref().map(|last_read_id| Self {
-			last_read_id: EntryId::unparse(last_read_id.clone()),
+			last_read_id: EntryId::encode_info_conf(last_read_id.clone()),
 		})
 	}
 }
 
 impl NotPresent {
-	pub fn parse(self) -> CNotPresent {
+	#[must_use]
+	pub fn decode_from_conf(self) -> CNotPresent {
 		self.read_list
 			.into_iter()
-			.map(|(id, time)| (id.parse(), time))
+			.map(|(id, time)| (id.decode_from_conf(), time))
 			.collect()
 	}
 
-	pub fn unparse(read_filter: &CNotPresent) -> Option<Self> {
+	#[must_use]
+	pub fn encode_into_conf(read_filter: &CNotPresent) -> Option<Self> {
 		if read_filter.is_empty() {
 			None
 		} else {
@@ -148,7 +155,7 @@ impl NotPresent {
 				read_list: read_filter
 					.iter()
 					.cloned()
-					.map(|(id, time)| (EntryId::unparse(id), time))
+					.map(|(id, time)| (EntryId::encode_info_conf(id), time))
 					.collect(),
 			})
 		}

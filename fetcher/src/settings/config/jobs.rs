@@ -9,22 +9,24 @@ pub mod filter;
 use self::filter::JobFilter;
 use super::CONFIG_FILE_EXT;
 use crate::{
+	Jobs,
 	settings::{
 		self, context::StaticContext as Context, external_data_provider::ExternalDataFromDataDir,
 	},
-	Jobs,
 };
-use fetcher_config::jobs::{Job as ConfigJob, JobName, TaskNameMap};
-use fetcher_core::job::Job;
+use fetcher_config::jobs::{
+	Job as ConfigJob,
+	named::{JobName, JobWithTaskNames},
+};
 
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::{Result, eyre::eyre};
 use figment::{
-	providers::{Format, Yaml},
 	Figment,
+	providers::{Format, Yaml},
 };
 use serde::Deserialize;
-use std::{io, path::Path};
-use walkdir::WalkDir;
+use std::{fmt::Write, io, path::Path};
+use walkdir::{DirEntry, WalkDir};
 
 const JOBS_DIR_NAME: &str = "jobs";
 
@@ -45,11 +47,11 @@ pub fn get_all(filter: Option<&[JobFilter]>, cx: Context) -> Result<Jobs> {
 		.collect()
 }
 
-pub fn get_all_from<'a>(
-	cfg_dir: &'a Path,
-	filter: Option<&'a [JobFilter]>,
+pub fn get_all_from(
+	cfg_dir: &Path,
+	filter: Option<&[JobFilter]>,
 	cx: Context,
-) -> impl Iterator<Item = Result<(JobName, Job)>> + 'a {
+) -> impl Iterator<Item = Result<(JobName, JobWithTaskNames)>> {
 	let jobs_dir = cfg_dir.join(JOBS_DIR_NAME);
 	tracing::trace!("Searching for job configs in {jobs_dir:?}");
 
@@ -57,41 +59,10 @@ pub fn get_all_from<'a>(
 		.follow_links(true)
 		.into_iter()
 		.filter_map(move |dir_entry| {
-			let file = match dir_entry {
-				Ok(dir_entry) => {
-					// filter out files with no extension
-					let Some(ext) = dir_entry.path().extension() else {
-						return None;
-					};
+			let job_config_path = dir_entry_is_job_config_file(&dir_entry)?;
+			let job_name = JobName::from_job_config_path(job_config_path, &jobs_dir);
 
-					// or if the extension isn't CONFIG_FILE_EXT
-					if ext != CONFIG_FILE_EXT {
-						return None;
-					}
-
-					dir_entry
-				}
-				Err(e) => {
-					match e.io_error().map(io::Error::kind) {
-						Some(io::ErrorKind::NotFound) => (),
-						_ => {
-							tracing::warn!("File or directory is inaccessible: {e}");
-						}
-					}
-					return None;
-				}
-			};
-
-			let job_name: JobName = file
-				.path()
-				.strip_prefix(&jobs_dir)
-				.expect("prefix should always be present because we just appended it")
-				.with_extension("")
-				.to_string_lossy()
-				.into_owned()
-				.into();
-
-			// filter out all jobs that don't match the job filter
+			// filter out all jobs that don't match the filter
 			if let Some(filter) = filter {
 				if !filter.iter().any(|filter| filter.job_matches(&job_name)) {
 					tracing::trace!("Filtering out job {job_name:?}");
@@ -99,54 +70,74 @@ pub fn get_all_from<'a>(
 				}
 			}
 
-			let job = get(file.path(), &job_name, cx)
-				.map_err(|e| e.wrap_err(format!("invalid config at: {}", file.path().display())))
-				.transpose()?;
+			// parse the job from the config located at the config path
+			let (job_name, mut job) = match get(job_config_path, job_name, cx).map_err(|e| {
+				e.wrap_err(format!("invalid config at: {}", job_config_path.display()))
+			}) {
+				Ok(Some(job)) => job,
+				Ok(None) => return None,
+				Err(e) => return Some(Err(e)),
+			};
 
-			job.map(|(mut job, task_name_map)| {
-				if let Some(filter) = filter {
-					if let Some(task_name_map) = &task_name_map {
-						job.tasks = job
-							.tasks
-							.into_iter()
-							.enumerate()
-							.filter_map(|(idx, task)| {
-								let task_name = task_name_map.get(&idx).expect(
-								"task name map should always contain all task indecies and names",
-							);
+			// when the job config doesn't contain any tasks, the global job settings are used to create a dummy task with no name
+			assert!(
+				!job.inner.tasks.is_empty(),
+				"Jobs should always contain at least one task"
+			);
 
-								if filter
-									.iter()
-									.any(|filter| filter.task_matches(&job_name, task_name))
-								{
-									Some(task)
-								} else {
-									tracing::trace!(
-										"Filtering out task {job_name:?}:{task_name:?}",
-									);
-									None
-								}
-							})
-							.collect();
+			// filter out all tasks that don't match the filter
+			if let Some(filter) = filter
+				&& let Some(task_names) = &job.task_names
+			{
+				job.inner.tasks = job
+					.inner
+					.tasks
+					.into_iter()
+					.enumerate()
+					.filter_map(|(idx, task)| {
+						let task_name = task_names.get(&idx).expect(
+							"task name map should always contain all task indecies and names",
+						);
 
-						if job.tasks.is_empty() {
-							// TODO: list task filter and all available tasks (from task_name_map)
-							tracing::warn!(
-								"Asked to run job {job_name} but no tasks matched the task filter"
-							);
-							return None;
+						if filter
+							.iter()
+							.any(|filter| filter.task_matches(&job_name, task_name))
+						{
+							Some(task)
+						} else {
+							tracing::trace!("Filtering out task {job_name:?}:{task_name:?}",);
+							None
 						}
-					}
-				}
+					})
+					.collect();
 
-				Some((job_name, job))
-			})
-			.transpose()
+				if job.inner.tasks.is_empty() {
+					let task_names_str = task_names.values().enumerate().fold(
+						String::new(),
+						|mut names_str, (idx, name)| {
+							if idx == 0 {
+								names_str.push_str(name);
+							} else {
+								_ = write!(names_str, ", {name}");
+							}
+
+							names_str
+						},
+					);
+
+					tracing::warn!(
+						"Asked to run job {job_name} but no tasks matched the task filter. Available tasks: {task_names_str}"
+					);
+					return None;
+				}
+			}
+
+			Some(Ok((job_name, job)))
 		})
 }
 
 #[tracing::instrument(skip(cx))]
-pub fn get(path: &Path, name: &JobName, cx: Context) -> Result<Option<(Job, Option<TaskNameMap>)>> {
+pub fn get(path: &Path, name: JobName, cx: Context) -> Result<Option<(JobName, JobWithTaskNames)>> {
 	tracing::trace!("Parsing a job from file");
 
 	let TemplatesField { templates } = Figment::new().merge(Yaml::file(path)).extract()?;
@@ -177,5 +168,38 @@ pub fn get(path: &Path, name: &JobName, cx: Context) -> Result<Option<(Job, Opti
 
 	let job: ConfigJob = full_conf.extract()?;
 
-	Ok(Some(job.parse(name, &ExternalDataFromDataDir { cx })?))
+	Ok(Some(
+		job.decode_from_conf(name, &ExternalDataFromDataDir { cx })?,
+	))
+}
+
+/// Checks if the dir entry is a valid job config file
+///
+/// # Returns
+/// The path of the job config file
+fn dir_entry_is_job_config_file(dir_entry: &Result<DirEntry, walkdir::Error>) -> Option<&Path> {
+	match dir_entry {
+		Ok(dir_entry) => {
+			// TODO: does this filter out directories?
+			// filter out files with no extension
+			let ext = dir_entry.path().extension()?;
+
+			// or if the extension isn't CONFIG_FILE_EXT
+			if ext != CONFIG_FILE_EXT {
+				return None;
+			}
+
+			Some(dir_entry.path())
+		}
+		Err(err) => {
+			match err.io_error().map(io::Error::kind) {
+				Some(io::ErrorKind::NotFound) => (),
+				_ => {
+					tracing::warn!("File or directory is inaccessible: {err}");
+				}
+			}
+
+			None
+		}
+	}
 }

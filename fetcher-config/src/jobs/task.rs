@@ -14,13 +14,13 @@ use tokio::sync::RwLock;
 use super::{
 	action::Action,
 	external_data::{ExternalDataResult, ProvideExternalData},
+	named::{JobName, TaskName},
 	read_filter,
 	sink::Sink,
 	source::Source,
-	JobName, TaskName,
 };
-use crate::Error;
-use fetcher_core::{task::Task as CTask, utils::OptionExt};
+use crate::FetcherConfigError;
+use fetcher_core::{action::Action as CAction, task::Task as CTask, utils::OptionExt};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -31,19 +31,18 @@ pub struct Task {
 	pub source: Option<Source>,
 	#[serde(rename = "process")]
 	pub actions: Option<Vec<Action>>,
-	// TODO: completely integrate into actions
-	pub sink: Option<Sink>,
 	pub entry_to_msg_map_enabled: Option<bool>,
+	pub sink: Option<Sink>,
 }
 
 impl Task {
 	#[tracing::instrument(level = "debug", skip(self, external))]
-	pub fn parse<D>(
+	pub fn decode_from_conf<D>(
 		self,
 		job: &JobName,
 		task_name: Option<&TaskName>,
 		external: &D,
-	) -> Result<CTask, Error>
+	) -> Result<CTask, FetcherConfigError>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
@@ -54,7 +53,7 @@ impl Task {
 				match external.read_filter(job, task_name, expected_rf_type) {
 					ExternalDataResult::Ok(rf) => Some(Arc::new(RwLock::new(rf))),
 					ExternalDataResult::Unavailable => {
-						tracing::warn!("Read filter is unavailable, skipping");
+						tracing::info!("Read filter is unavailable, skipping");
 						None
 					}
 					ExternalDataResult::Err(e) => return Err(e.into()),
@@ -64,37 +63,36 @@ impl Task {
 		};
 
 		let actions = self.actions.try_map(|acts| {
-			itertools::process_results(
+			let mut acts = itertools::process_results(
 				acts.into_iter()
-					.filter_map(|act| act.parse(rf.clone()).transpose()),
-				|i| i.flatten().collect(),
-			)
+					.filter_map(|act| act.decode_from_conf(rf.clone(), external).transpose()),
+				|i| i.flatten().collect::<Vec<_>>(),
+			)?;
+
+			if let Some(sink) = self.sink {
+				acts.push(CAction::Sink(sink.decode_from_conf(external)?));
+			}
+
+			Ok::<_, FetcherConfigError>(acts)
 		})?;
 
-		// TODO: replace with match like tag below
-		let entry_to_msg_map = if self
+		let entry_to_msg_map_enabled = self
 			.entry_to_msg_map_enabled
 			.tap_some(|b| {
-				if let Some(sink) = &self.sink {
-					// TODO: include task name
-					tracing::info!(
-						"Overriding entry_to_msg_map_enabled for {} from the default {} to {}",
-						job,
-						sink.has_message_id_support(),
-						b
-					);
-				}
+				// TODO: include task name
+				tracing::info!(
+					"Overriding entry_to_msg_map_enabled for {} from the default to {}",
+					job,
+					b
+				);
 			})
-			.unwrap_or_else(|| {
-				// replace with "source.supports_replies()". There's a point to keeping the map even if the sink doesn't support it, e.g. if it's changed from stdout to discord later on
-				self.sink
-					.as_ref()
-					.map_or(false, Sink::has_message_id_support)
-			}) {
+			.unwrap_or_else(|| self.source.as_ref().is_some_and(Source::supports_replies));
+
+		let entry_to_msg_map = if entry_to_msg_map_enabled {
 			match external.entry_to_msg_map(job, task_name) {
 				ExternalDataResult::Ok(v) => Some(v),
 				ExternalDataResult::Unavailable => {
-					tracing::warn!("Entry to message map is unavailable, skipping...");
+					tracing::info!("Entry to message map is unavailable, skipping...");
 					None
 				}
 				ExternalDataResult::Err(e) => return Err(e.into()),
@@ -116,16 +114,18 @@ impl Task {
 			}
 			(None, Some(task_name)) => {
 				tracing::trace!("Using task name as tag");
-				Some(task_name.to_string())
+				Some(task_name.as_str().to_owned())
 			}
 			(None, None) => None,
 		};
 
 		Ok(CTask {
 			tag,
-			source: self.source.map(|x| x.parse(rf, external)).transpose()?,
+			source: self
+				.source
+				.map(|x| x.decode_from_conf(rf, external))
+				.transpose()?,
 			actions,
-			sink: self.sink.try_map(|x| x.parse(external))?,
 			entry_to_msg_map,
 		})
 	}

@@ -4,11 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-pub(crate) mod tuple {
-	use serde::{de::Visitor, ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
+pub mod tuple {
+	use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Visitor, ser::SerializeMap};
 	use std::{fmt, marker::PhantomData};
 
-	pub(crate) fn serialize<'a, S, V, First, Second>(
+	pub fn serialize<'a, S, V, First, Second>(
 		tuple: &'a V,
 		serializer: S,
 	) -> Result<S::Ok, S::Error>
@@ -24,7 +24,7 @@ pub(crate) mod tuple {
 		map.end()
 	}
 
-	pub(crate) fn deserialize<'de, D, V, First, Second>(deserializer: D) -> Result<V, D::Error>
+	pub fn deserialize<'de, D, V, First, Second>(deserializer: D) -> Result<V, D::Error>
 	where
 		D: Deserializer<'de>,
 		V: From<(First, Second)>,

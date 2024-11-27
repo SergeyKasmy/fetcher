@@ -17,7 +17,7 @@ pub struct Filters {
 }
 
 impl Filters {
-	pub fn parse(self) -> CFilters {
+	pub fn decode_from_conf(self) -> CFilters {
 		CFilters {
 			sender: self.sender,
 			subjects: self.subjects,

@@ -14,7 +14,7 @@ pub struct Exec {
 }
 
 impl Exec {
-	pub fn parse(self) -> CExec {
+	pub fn decode_from_conf(self) -> CExec {
 		CExec { cmd: self.cmd }
 	}
 }

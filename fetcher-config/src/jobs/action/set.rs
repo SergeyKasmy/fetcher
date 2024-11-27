@@ -7,25 +7,26 @@
 use std::collections::HashMap;
 
 use super::Field;
-use fetcher_core::action::transform::{
-	field::set::Set as CSet, field::TransformFieldWrapper as CTransformFieldWrapper,
-};
 use fetcher_core::action::Action as CAction;
+use fetcher_core::action::transform::{
+	field::TransformFieldWrapper as CTransformFieldWrapper, field::set::Set as CSet,
+};
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, OneOrMany};
+use serde_with::{OneOrMany, serde_as};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct Set(pub HashMap<Field, Option<Values>>);
 
 impl Set {
-	pub fn parse(self) -> Vec<CAction> {
+	#[must_use]
+	pub fn decode_from_conf(self) -> Vec<CAction> {
 		self.0
 			.into_iter()
 			.map(|(field, values)| {
 				CAction::Transform(Box::new(CTransformFieldWrapper {
-					field: field.parse(),
+					field: field.decode_from_conf(),
 					transformator: CSet(values.map(|x| x.0)),
 				}))
 			})

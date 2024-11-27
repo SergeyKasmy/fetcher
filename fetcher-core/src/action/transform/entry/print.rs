@@ -39,7 +39,7 @@ impl TransformEntry for DebugPrint {
 		};
 
 		Stdout
-			.send(msg, None, Some("debug print"))
+			.send(&msg, None, Some("debug print"))
 			.await
 			.expect("stdout is unavailable");
 

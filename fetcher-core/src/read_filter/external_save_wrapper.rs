@@ -12,13 +12,14 @@ use std::{any::Any, fmt::Debug};
 use crate::{
 	action::filter::Filter,
 	entry::{Entry, EntryId},
-	error::Error,
+	error::FetcherError,
 	external_save::ExternalSave,
 	read_filter::{MarkAsRead, ReadFilter},
 };
 
-/// A wrapper that zips a [`ReadFilter`] and an [`ExternalSave`] together, implementing [`ExternalSave`] itself
-/// and calling [`ExternalSave::save_read_filter`] every time [`MarkAsRead::mark_as_read`] is used
+/// A wrapper that zips a [`ReadFilter`] and an [`ExternalSave`] together, implementing [`ExternalSave`] itself.
+///
+/// Calls [`ExternalSave::save_read_filter`] every time [`MarkAsRead::mark_as_read`] is used.
 #[derive(Debug)]
 pub struct ExternalSaveRFWrapper<RF, S> {
 	/// The [`ReadFilter`] that is being wrapped
@@ -44,14 +45,14 @@ where
 	RF: ReadFilter,
 	S: ExternalSave,
 {
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 		self.rf.mark_as_read(id).await?;
 
 		if let Some(ext_save) = &mut self.external_save {
 			ext_save
 				.save_read_filter(&self.rf)
 				.await
-				.map_err(Error::ExternalSave)?;
+				.map_err(FetcherError::ExternalSave)?;
 		}
 
 		Ok(())
@@ -70,5 +71,9 @@ where
 {
 	async fn filter(&self, entries: &mut Vec<Entry>) {
 		self.rf.filter(entries).await;
+	}
+
+	fn is_readfilter(&self) -> bool {
+		true
 	}
 }

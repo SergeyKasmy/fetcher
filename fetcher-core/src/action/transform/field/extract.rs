@@ -21,7 +21,7 @@ pub struct Extract {
 	passthrough_if_not_found: bool,
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum ExtractError {
 	#[error(transparent)]
@@ -37,7 +37,6 @@ impl Extract {
 	///
 	/// # Errors
 	/// * if the regex is invalid
-	/// * if the regex doesn't contains capture group <[`CAPTURE_GROUP_NAME`]>
 	pub fn new(re: &str, passthrough_if_not_found: bool) -> Result<Self, ExtractError> {
 		let re = Regex::new(re).map_err(BadRegexError)?;
 
@@ -53,7 +52,7 @@ impl TransformField for Extract {
 
 	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
 		let Some(field) = old_val else {
-			return Ok(TransformResult::Old(None));
+			return Ok(TransformResult::Previous);
 		};
 
 		let extracted = match extract_captures_from(&self.re, field) {
@@ -62,7 +61,7 @@ impl TransformField for Extract {
 			None => return Err(ExtractError::CaptureGroupNotFound),
 		};
 
-		Ok(TransformResult::New(Some(extracted)))
+		Ok(TransformResult::New(extracted))
 	}
 }
 

@@ -8,7 +8,7 @@ use super::prompt_user_for;
 use crate::settings::context::StaticContext as Context;
 use fetcher_config::{jobs::external_data::ExternalDataError, settings::EmailPassword as Config};
 
-use color_eyre::{eyre::WrapErr, Result};
+use color_eyre::{Result, eyre::WrapErr};
 use std::fs;
 
 const FILE_NAME: &str = "email_password.json";
@@ -19,7 +19,7 @@ pub fn get(cx: Context) -> Result<String, ExternalDataError> {
 	let raw = fs::read_to_string(&path).map_err(|e| (e, &path))?;
 	let conf: Config = serde_json::from_str(&raw).map_err(|e| (e, &path))?;
 
-	Ok(conf.parse())
+	Ok(conf.decode_from_conf())
 }
 
 pub fn prompt(cx: Context) -> Result<()> {
@@ -32,7 +32,7 @@ pub fn prompt(cx: Context) -> Result<()> {
 
 	fs::write(
 		&path,
-		serde_json::to_string(&Config::unparse(pass))
+		serde_json::to_string(&Config::encode_into_conf(pass))
 			.expect("Config should always serialize to JSON without issues"),
 	)
 	.wrap_err_with(|| path.to_string_lossy().into_owned())?;

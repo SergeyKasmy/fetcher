@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use std::path::PathBuf;
 use tokio::fs;
 
-use super::{error::SourceError, Fetch};
+use super::{Fetch, error::SourceError};
 use crate::entry::Entry;
 
 /// File source. Reads contents of a file and puts them into [`raw_contents`](`crate::entry::Entry::raw_contents`)

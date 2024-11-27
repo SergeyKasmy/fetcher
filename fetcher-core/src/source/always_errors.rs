@@ -4,12 +4,14 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module provides [`AlwaysErrors`] source that always returns an error. Used for debug purposes
+
 use async_trait::async_trait;
 
-use super::{error::SourceError, Fetch, Source};
+use super::{Fetch, Source, error::SourceError};
 use crate::{
 	entry::{Entry, EntryId},
-	error::Error,
+	error::FetcherError,
 	read_filter::MarkAsRead,
 };
 
@@ -26,7 +28,7 @@ impl Fetch for AlwaysErrors {
 
 #[async_trait]
 impl MarkAsRead for AlwaysErrors {
-	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), Error> {
+	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
 		Ok(())
 	}
 

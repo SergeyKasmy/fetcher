@@ -4,10 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::error::Error as ConfigError;
+use crate::error::FetcherConfigError as ConfigError;
 use fetcher_core::action::transform::{
-	field::{Extract as CExtract, TransformFieldWrapper as CTransformFieldWrapper},
 	Transform as CTransform,
+	field::{Extract as CExtract, TransformFieldWrapper as CTransformFieldWrapper},
 };
 
 use serde::{Deserialize, Serialize};
@@ -22,9 +22,9 @@ pub struct Extract {
 }
 
 impl Extract {
-	pub fn parse(self) -> Result<impl CTransform, ConfigError> {
+	pub fn decode_from_conf(self) -> Result<impl CTransform, ConfigError> {
 		Ok(CTransformFieldWrapper {
-			field: self.from_field.parse(),
+			field: self.from_field.decode_from_conf(),
 			transformator: CExtract::new(&self.re, self.passthrough_if_not_found)?,
 		})
 	}

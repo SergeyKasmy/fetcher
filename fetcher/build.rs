@@ -4,14 +4,18 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use vergen::{vergen, Config, SemverKind, ShaKind};
+//! Build script - fetch git branch and commit hash
 
-fn main() {
-	let mut conf = Config::default();
-	*conf.git_mut().sha_kind_mut() = ShaKind::Short;
-	*conf.git_mut().semver_kind_mut() = SemverKind::Lightweight;
-	*conf.git_mut().semver_dirty_mut() = Some("-dirty");
+use std::error::Error;
 
-	// no git repository found, probably installing via cargo install, just ignore and move on
-	_ = vergen(conf);
+use vergen_git2::{Emitter, Git2Builder};
+
+fn main() -> Result<(), Box<dyn Error>> {
+	//EmitBuilder::builder().git_sha(true).git_branch().emit()?;
+
+	Emitter::default()
+		.add_instructions(&Git2Builder::default().sha(true).branch(true).build()?)?
+		.emit()?;
+
+	Ok(())
 }

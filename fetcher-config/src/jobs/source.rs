@@ -10,18 +10,16 @@ pub mod file;
 pub mod http;
 pub mod reddit;
 pub mod string;
-pub mod twitter;
 
 use self::{
 	email::Email, exec::Exec, file::File, http::Http, reddit::Reddit, string::StringSource,
-	twitter::Twitter,
 };
-use crate::{jobs::external_data::ProvideExternalData, Error};
+use crate::{FetcherConfigError, jobs::external_data::ProvideExternalData};
 use fetcher_core::{
 	read_filter::ReadFilter as CReadFilter,
 	source::{
-		always_errors::AlwaysErrors as CAlwaysErrors, Source as CSource,
-		SourceWithSharedRF as CSourceWithSharedRF,
+		Source as CSource, SourceWithSharedRF as CSourceWithSharedRF,
+		always_errors::AlwaysErrors as CAlwaysErrors,
 	},
 };
 
@@ -34,7 +32,6 @@ pub enum Source {
 	// with shared read filter
 	String(StringSource),
 	Http(Http),
-	Twitter(Twitter),
 	File(File),
 	Reddit(Reddit),
 	Exec(Exec),
@@ -45,13 +42,17 @@ pub enum Source {
 }
 
 impl Source {
-	pub fn parse<RF, D>(self, rf: Option<RF>, external: &D) -> Result<Box<dyn CSource>, Error>
+	pub fn decode_from_conf<RF, D>(
+		self,
+		rf: Option<RF>,
+		external: &D,
+	) -> Result<Box<dyn CSource>, FetcherConfigError>
 	where
 		RF: CReadFilter + 'static,
 		D: ProvideExternalData + ?Sized,
 	{
 		// make a dyn CSourceWithSharedRF out of a CFetch and the read filter parameter
-		macro_rules! WithSharedRF {
+		macro_rules! with_read_filter {
 			($source:expr) => {
 				Box::new(CSourceWithSharedRF {
 					source: $source,
@@ -62,16 +63,27 @@ impl Source {
 
 		Ok(match self {
 			// with shared read filter
-			Self::String(x) => WithSharedRF!(x.parse()),
-			Self::Http(x) => WithSharedRF!(x.parse()?),
-			Self::Twitter(x) => WithSharedRF!(x.parse(external)?),
-			Self::File(x) => WithSharedRF!(x.parse()),
-			Self::Reddit(x) => WithSharedRF!(x.parse()),
-			Self::Exec(x) => WithSharedRF!(x.parse()),
+			Self::String(x) => with_read_filter!(x.decode_from_conf()),
+			Self::Http(x) => with_read_filter!(x.decode_from_conf()?),
+			Self::File(x) => with_read_filter!(x.decode_from_conf()),
+			Self::Reddit(x) => with_read_filter!(x.decode_from_conf()),
+			Self::Exec(x) => with_read_filter!(x.decode_from_conf()),
 
 			// with custom read filter
-			Self::Email(x) => Box::new(x.parse(external)?),
+			Self::Email(x) => Box::new(x.decode_from_conf(external)?),
 			Self::AlwaysErrors => Box::new(CAlwaysErrors),
 		})
+	}
+
+	#[must_use]
+	pub fn supports_replies(&self) -> bool {
+		// Source::Email will support replies in the future
+		#[expect(
+			clippy::match_single_binding,
+			reason = "will be easy to add new \"true\" arms in the future"
+		)]
+		match self {
+			_ => false,
+		}
 	}
 }

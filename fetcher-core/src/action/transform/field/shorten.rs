@@ -7,7 +7,7 @@
 //! This module contains the [`Shorten`] transform
 
 use super::TransformField;
-use crate::action::transform::result::TransformResult;
+use crate::action::transform::result::{OptionUnwrapTransformResultExt, TransformResult};
 
 use std::{convert::Infallible, iter::repeat};
 
@@ -43,6 +43,6 @@ impl TransformField for Shorten {
 			None
 		};
 
-		Ok(TransformResult::New(new_val))
+		Ok(new_val.unwrap_or_empty())
 	}
 }

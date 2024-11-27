@@ -10,10 +10,15 @@ use std::{collections::HashMap, ops::Not};
 
 use self::timepoint::TimePoint;
 use super::{
-	action::Action, external_data::ProvideExternalData, read_filter, sink::Sink, source::Source,
-	task::Task, JobName, TaskName,
+	action::Action,
+	external_data::ProvideExternalData,
+	named::{JobName, JobWithTaskNames, TaskName},
+	read_filter,
+	sink::Sink,
+	source::Source,
+	task::Task,
 };
-use crate::Error;
+use crate::FetcherConfigError;
 use fetcher_core::{job::Job as CJob, utils::OptionExt};
 
 use serde::{Deserialize, Serialize};
@@ -30,8 +35,8 @@ pub struct Job {
 	pub source: Option<Source>,
 	#[serde(rename = "process")]
 	pub actions: Option<Vec<Action>>,
-	pub sink: Option<Sink>,
 	pub entry_to_msg_map_enabled: Option<bool>,
+	pub sink: Option<Sink>,
 
 	pub tasks: Option<HashMap<TaskName, Task>>,
 	pub refresh: Option<TimePoint>,
@@ -42,16 +47,18 @@ pub struct Job {
 }
 
 impl Job {
-	pub fn parse<D>(
+	pub fn decode_from_conf<D>(
 		mut self,
-		job: &JobName,
+		name: JobName,
 		external: &D,
-	) -> Result<(CJob, Option<HashMap<usize, TaskName>>), Error>
+	) -> Result<(JobName, JobWithTaskNames), FetcherConfigError>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
 		match self.tasks.take() {
-			Some(tasks) if !tasks.is_empty() => self.parse_with_tasks_map(job, tasks, external),
+			Some(tasks) if !tasks.is_empty() => {
+				self.decode_from_code_with_task_map(name, tasks, external)
+			}
 			// tasks is not set
 			_ => {
 				// copy paste all values from the job to a dummy task, i.e. create a single task with all the values from the job
@@ -60,55 +67,57 @@ impl Job {
 					tag: self.tag,
 					source: self.source,
 					actions: self.actions,
-					sink: self.sink,
 					entry_to_msg_map_enabled: self.entry_to_msg_map_enabled,
+					sink: self.sink,
 				};
 
-				Ok((
-					CJob {
-						tasks: vec![task.parse(job, None, external)?],
-						refresh_time: self.refresh.try_map(TimePoint::parse)?,
-					},
-					None,
-				))
+				let job = CJob {
+					tasks: vec![task.decode_from_conf(&name, None, external)?],
+					refresh_time: self.refresh.try_map(TimePoint::decode_from_conf)?,
+				};
+
+				Ok((name, JobWithTaskNames {
+					inner: job,
+					task_names: None,
+				}))
 			}
 		}
 	}
 
 	/// ignores self.tasks and uses tasks parameter instead
-	fn parse_with_tasks_map<D>(
+	fn decode_from_code_with_task_map<D>(
 		self,
-		job: &JobName,
+		name: JobName,
 		mut tasks: HashMap<TaskName, Task>,
 		external: &D,
-	) -> Result<(CJob, Option<HashMap<usize, TaskName>>), Error>
+	) -> Result<(JobName, JobWithTaskNames), FetcherConfigError>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
-		tracing::trace!("Parsing job {job:?} with tasks {tasks:#?}");
+		tracing::trace!("Parsing job {name:?} with tasks {tasks:#?}");
 
 		// append values from the job if they are not present in the tasks
 		for task in tasks.values_mut() {
 			task.read_filter_kind = task.read_filter_kind.or(self.read_filter_kind);
 
 			if task.tag.is_none() {
-				task.tag = self.tag.clone();
+				task.tag.clone_from(&self.tag);
 			}
 
 			if task.source.is_none() {
-				task.source = self.source.clone();
+				task.source.clone_from(&self.source);
 			}
 
 			if task.actions.is_none() {
-				task.actions = self.actions.clone();
-			}
-
-			if task.sink.is_none() {
-				task.sink = self.sink.clone();
+				task.actions.clone_from(&self.actions);
 			}
 
 			if task.entry_to_msg_map_enabled.is_none() {
 				task.entry_to_msg_map_enabled = self.entry_to_msg_map_enabled;
+			}
+
+			if task.sink.is_none() {
+				task.sink.clone_from(&self.sink);
 			}
 		}
 
@@ -126,22 +135,32 @@ impl Job {
 		let single_task = false; // remove when above is fixed
 
 		let tasks_and_task_name_map_iter =
-			tasks.into_iter().enumerate().map(|(id, (name, task))| {
-				let task = task.parse(job, single_task.not().then_some(&name), external)?;
+			tasks
+				.into_iter()
+				.enumerate()
+				.map(|(id, (task_name, task))| {
+					let task = task.decode_from_conf(
+						&name,
+						single_task.not().then_some(&task_name),
+						external,
+					)?;
 
-				Ok::<_, Error>((task, (id, name)))
-			});
+					Ok::<_, FetcherConfigError>((task, (id, task_name)))
+				});
 
 		// clippy false positive for iter.unzip()
 		#[allow(clippy::redundant_closure_for_method_calls)]
-		let (tasks, task_name_map): (Vec<_>, HashMap<usize, TaskName>) =
+		let (tasks, task_names): (Vec<_>, HashMap<usize, TaskName>) =
 			itertools::process_results(tasks_and_task_name_map_iter, |iter| iter.unzip())?;
 
 		let job = CJob {
 			tasks,
-			refresh_time: self.refresh.try_map(TimePoint::parse)?,
+			refresh_time: self.refresh.try_map(TimePoint::decode_from_conf)?,
 		};
 
-		Ok((job, Some(task_name_map)))
+		Ok((name, JobWithTaskNames {
+			inner: job,
+			task_names: Some(task_names),
+		}))
 	}
 }

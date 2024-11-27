@@ -9,7 +9,7 @@ use crate::settings::context::StaticContext as Context;
 use fetcher_config::{jobs::external_data::ExternalDataError, settings::Google as Config};
 use fetcher_core as fcore;
 
-use color_eyre::{eyre::WrapErr, Result};
+use color_eyre::{Result, eyre::WrapErr};
 use std::fs;
 
 const FILE_NAME: &str = "google_oauth2.json";
@@ -19,7 +19,7 @@ pub fn get(cx: Context) -> Result<fcore::auth::Google, ExternalDataError> {
 	let raw = fs::read_to_string(&path).map_err(|e| (e, &path))?;
 	let conf: Config = serde_json::from_str(&raw).map_err(|e| (e, &path))?;
 
-	Ok(conf.parse())
+	Ok(conf.decode_from_conf())
 }
 
 pub async fn prompt(cx: Context) -> Result<()> {
@@ -27,7 +27,9 @@ pub async fn prompt(cx: Context) -> Result<()> {
 
 	let client_id = prompt_user_for("Google OAuth2 client id: ")?;
 	let client_secret = prompt_user_for("Google OAuth2 client secret: ")?;
-	let access_code = prompt_user_for(&format!("Open the link below and paste the access code:\nhttps://accounts.google.com/o/oauth2/auth?scope={SCOPE}&client_id={client_id}&response_type=code&redirect_uri=urn:ietf:wg:oauth:2.0:oob\nAccess code: "))?;
+	let access_code = prompt_user_for(&format!(
+		"Open the link below and paste the access code:\nhttps://accounts.google.com/o/oauth2/auth?scope={SCOPE}&client_id={client_id}&response_type=code&redirect_uri=urn:ietf:wg:oauth:2.0:oob\nAccess code: "
+	))?;
 	let refresh_token =
 		fcore::auth::google::generate_refresh_token(&client_id, &client_secret, &access_code)
 			.await?;
@@ -40,8 +42,11 @@ pub async fn prompt(cx: Context) -> Result<()> {
 		fs::create_dir_all(parent)?;
 	}
 
-	fs::write(&path, serde_json::to_string(&Config::unparse(gauth))?)
-		.wrap_err_with(|| path.to_string_lossy().into_owned())?;
+	fs::write(
+		&path,
+		serde_json::to_string(&Config::encode_into_conf(gauth))?,
+	)
+	.wrap_err_with(|| path.to_string_lossy().into_owned())?;
 
 	Ok(())
 }

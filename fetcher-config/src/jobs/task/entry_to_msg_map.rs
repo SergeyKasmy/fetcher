@@ -22,37 +22,48 @@ pub struct MessageId(pub i64);
 pub struct EntryToMsgMap(pub HashMap<EntryId, MessageId>);
 
 impl EntryId {
-	pub fn parse(self) -> CEntryId {
+	#[must_use]
+	pub fn decode_from_conf(self) -> CEntryId {
 		self.0.into()
 	}
 
-	pub fn unparse(eid: CEntryId) -> Self {
+	#[must_use]
+	pub fn encode_into_conf(eid: CEntryId) -> Self {
 		Self(eid.0)
 	}
 }
 
 impl MessageId {
-	pub fn parse(self) -> CMessageId {
+	#[must_use]
+	pub fn decode_from_conf(self) -> CMessageId {
 		self.0.into()
 	}
 
-	pub fn unparse(msgid: CMessageId) -> Self {
+	#[must_use]
+	pub fn encode_into_conf(msgid: CMessageId) -> Self {
 		Self(msgid.0)
 	}
 }
 
 impl EntryToMsgMap {
-	pub fn parse(self) -> HashMap<CEntryId, CMessageId> {
+	#[must_use]
+	pub fn decode_from_conf(self) -> HashMap<CEntryId, CMessageId> {
 		self.0
 			.into_iter()
-			.map(|(eid, msgid)| (eid.parse(), msgid.parse()))
+			.map(|(eid, msgid)| (eid.decode_from_conf(), msgid.decode_from_conf()))
 			.collect()
 	}
 
-	pub fn unparse(map: HashMap<CEntryId, CMessageId>) -> Self {
+	#[must_use]
+	pub fn encode_into_conf(map: HashMap<CEntryId, CMessageId>) -> Self {
 		Self(
 			map.into_iter()
-				.map(|(eid, msgid)| (EntryId::unparse(eid), MessageId::unparse(msgid)))
+				.map(|(eid, msgid)| {
+					(
+						EntryId::encode_into_conf(eid),
+						MessageId::encode_into_conf(msgid),
+					)
+				})
 				.collect(),
 		)
 	}

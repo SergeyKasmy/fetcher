@@ -6,7 +6,7 @@
 
 //! This module contains the [`Stdout`] sink
 
-use crate::sink::{error::SinkError, Message, Sink};
+use crate::sink::{Message, Sink, error::SinkError};
 
 use async_trait::async_trait;
 use tokio::io::{self, AsyncWriteExt};
@@ -25,7 +25,7 @@ impl Sink for Stdout {
 	/// if there was an error writing to stdout
 	async fn send(
 		&self,
-		msg: Message,
+		msg: &Message,
 		_reply_to: Option<&MessageId>,
 		tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
@@ -33,7 +33,7 @@ impl Sink for Stdout {
 			"------------------------------\nMessage:\nTitle: {title}\n\nBody:\n{body}\n\nLink: {link}\n\nMedia: {media:?}\n\nTag: {tag:?}\n------------------------------\n",
 			title = msg.title.as_deref().unwrap_or("None"),
 			body = msg.body.as_deref().unwrap_or("None"),
-			link = msg.link.map(|url| url.as_str().to_owned()).as_deref().unwrap_or("None"),
+			link = msg.link.as_ref().map(|url| url.as_str().to_owned()).as_deref().unwrap_or("None"),
 			media = msg.media,
 			tag = tag.unwrap_or("None")
 		).as_bytes()).await.map_err(SinkError::Stdout)?;

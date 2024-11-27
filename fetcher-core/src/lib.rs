@@ -5,16 +5,14 @@
  */
 
 #![doc = include_str!("../README.md")]
-#![warn(clippy::pedantic)]
-#![warn(missing_docs)]
-#![warn(clippy::unwrap_used)]
-#![allow(clippy::module_name_repetitions)]
+#![feature(let_chains)]
+#![allow(clippy::missing_docs_in_private_items)] // TODO: enable later
 
 pub mod action;
 pub mod auth;
 pub mod entry;
 pub mod error;
-mod exec;
+pub mod exec;
 pub mod external_save;
 pub mod job;
 pub mod read_filter;

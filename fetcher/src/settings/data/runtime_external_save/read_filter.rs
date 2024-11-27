@@ -8,8 +8,8 @@ use super::TruncatingFileWriter;
 use crate::settings::context::StaticContext as Context;
 use fetcher_config::jobs::{
 	external_data::ExternalDataError,
+	named::{JobName, TaskName},
 	read_filter::{Kind as ReadFilterKind, ReadFilter as ReadFilterConf},
-	JobName, TaskName,
 };
 use fetcher_core::read_filter::ReadFilter;
 
@@ -54,7 +54,7 @@ pub fn get(
 				));
 			}
 
-			return Ok(conf.parse(TruncatingFileWriter::new(path)));
+			return Ok(conf.decode_from_conf(TruncatingFileWriter::new(path)));
 		}
 	}
 

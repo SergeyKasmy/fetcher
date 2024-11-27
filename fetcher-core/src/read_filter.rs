@@ -7,17 +7,17 @@
 //! This module contains the [`ReadFilter`] that is used for keeping track of what Entry has been or not been read,
 //! including all of its stragedies
 
-// TODO: if I make it private, will the implementations still be public?
-pub mod external_implementations;
 mod external_save_wrapper;
 mod newer;
 mod not_present;
+
+mod external_implementations;
 
 pub use self::{
 	external_save_wrapper::ExternalSaveRFWrapper, newer::Newer, not_present::NotPresent,
 };
 
-use crate::{action::filter::Filter, entry::EntryId, error::Error};
+use crate::{action::filter::Filter, entry::EntryId, error::FetcherError};
 
 use async_trait::async_trait;
 use std::{any::Any, fmt::Debug};
@@ -27,7 +27,7 @@ use std::{any::Any, fmt::Debug};
 pub trait MarkAsRead: Debug + Send + Sync {
 	// TODO: remake into type Err and restrict trait ReadFilter to MarkAsRead::Err: ReadFilterErr and trait Source to MarkAsRead::Err: SourceError
 	/// Mark the entry with `id` as read
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error>;
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError>;
 
 	/// Set the current "mark as read"er to read only mode
 	async fn set_read_only(&mut self);

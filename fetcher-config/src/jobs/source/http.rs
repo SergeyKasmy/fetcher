@@ -4,13 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use fetcher_core::source::{http::HttpError as CHttpError, Http as CHttp};
+use fetcher_core::source::{Http as CHttp, http::HttpError as CHttpError};
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, OneOrMany};
+use serde_with::{OneOrMany, serde_as};
 use url::Url;
 
-// TODO: use a map
 #[serde_as]
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(transparent)]
@@ -32,16 +31,16 @@ pub enum TaggedRequest {
 }
 
 impl Http {
-	pub fn parse(self) -> Result<Vec<CHttp>, CHttpError> {
+	pub fn decode_from_conf(self) -> Result<Vec<CHttp>, CHttpError> {
 		self.0
 			.into_iter()
-			.map(Request::parse)
+			.map(Request::decode_from_conf)
 			.collect::<Result<_, CHttpError>>()
 	}
 }
 
 impl Request {
-	pub fn parse(self) -> Result<CHttp, CHttpError> {
+	pub fn decode_from_conf(self) -> Result<CHttp, CHttpError> {
 		match self {
 			Self::Untagged(url) | Self::Tagged(TaggedRequest::Get(url)) => CHttp::new_get(url),
 			Self::Tagged(TaggedRequest::Post { url, body }) => CHttp::new_post(url, &body),

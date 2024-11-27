@@ -8,7 +8,7 @@ use super::{MarkAsRead, ReadFilter};
 use crate::{
 	action::filter::Filter,
 	entry::{Entry, EntryId},
-	error::Error,
+	error::FetcherError,
 };
 
 use async_trait::async_trait;
@@ -65,7 +65,7 @@ impl ReadFilter for NotPresent {
 
 #[async_trait]
 impl MarkAsRead for NotPresent {
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 		self.read_list.push_back((id.clone(), chrono::Utc::now()));
 
 		while self.read_list.len() > MAX_LIST_LEN {
@@ -98,6 +98,10 @@ impl Filter for NotPresent {
 		let removed_elems = old_len - entries.len();
 		tracing::debug!("Removed {removed_elems} already read entries");
 		tracing::trace!("Unread entries remaining: {entries:#?}");
+	}
+
+	fn is_readfilter(&self) -> bool {
+		true
 	}
 }
 
@@ -227,9 +231,13 @@ mod tests {
 
 		// remove msgs
 		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
-		assert_eq!(
-			&entries,
-			&[None, Some("4"), Some("3"), None, Some("6"), Some("8")]
-		);
+		assert_eq!(&entries, &[
+			None,
+			Some("4"),
+			Some("3"),
+			None,
+			Some("6"),
+			Some("8")
+		]);
 	}
 }

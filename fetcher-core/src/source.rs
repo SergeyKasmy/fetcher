@@ -12,17 +12,16 @@ pub mod email;
 pub mod file;
 pub mod http;
 pub mod reddit;
-pub mod twitter;
 
 pub mod error;
 
-pub use self::{email::Email, file::File, http::Http, reddit::Reddit, twitter::Twitter};
+pub use self::{email::Email, file::File, http::Http, reddit::Reddit};
 pub use crate::exec::Exec;
 
 use self::error::SourceError;
 use crate::{
 	entry::{Entry, EntryId},
-	error::Error,
+	error::FetcherError,
 	read_filter::{MarkAsRead, ReadFilter},
 };
 
@@ -71,7 +70,7 @@ where
 	F: Fetch,
 	RF: ReadFilter,
 {
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 		if let Some(rf) = &mut self.rf {
 			rf.mark_as_read(id).await?;
 		}

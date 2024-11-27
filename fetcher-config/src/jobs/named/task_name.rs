@@ -18,6 +18,13 @@ pub struct TaskName(pub String);
 
 pub type TaskNameMap = HashMap<usize, TaskName>;
 
+impl TaskName {
+	#[must_use]
+	pub fn as_str(&self) -> &str {
+		self
+	}
+}
+
 impl From<String> for TaskName {
 	fn from(value: String) -> Self {
 		Self(value)

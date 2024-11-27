@@ -8,9 +8,9 @@
 
 use crate::{
 	sink::{
-		error::SinkError,
-		message::{length_limiter::MessageLengthLimiter, Media, Message, MessageId},
 		Sink,
+		error::SinkError,
+		message::{Media, Message, MessageId, length_limiter::MessageLengthLimiter},
 	},
 	utils::OptionExt,
 };
@@ -18,19 +18,27 @@ use crate::{
 use async_trait::async_trait;
 use std::{fmt::Debug, num::TryFromIntError, time::Duration};
 use teloxide::{
-	adaptors::{throttle::Limits, Throttle},
+	Bot, RequestError,
+	adaptors::{Throttle, throttle::Limits},
 	payloads::{SendMediaGroupSetters, SendMessageSetters},
 	requests::{Request, Requester, RequesterExt},
 	types::{
-		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, Message as TelMessage,
-		MessageId as TelMessageId, ParseMode,
+		ChatId, InputFile, InputMedia, InputMediaPhoto, InputMediaVideo, LinkPreviewOptions,
+		Message as TelMessage, MessageId as TelMessageId, ParseMode, ReplyParameters,
 	},
-	Bot, RequestError,
 };
 use tokio::time::sleep;
 
 const MAX_TEXT_MSG_LEN: usize = 4096;
 const MAX_MEDIA_MSG_LEN: usize = 1024;
+
+const LINK_PREVIEW_DISABLED: LinkPreviewOptions = LinkPreviewOptions {
+	is_disabled: true,
+	url: None,
+	prefer_small_media: false,
+	prefer_large_media: false,
+	show_above_text: false,
+};
 
 /// Telegram sink. Supports text and media messages and embeds text into media captions if present. Automatically splits the text into separate messages if it's too long
 pub struct Telegram {
@@ -72,7 +80,7 @@ impl Sink for Telegram {
 	#[tracing::instrument(level = "debug", skip(message))]
 	async fn send(
 		&self,
-		message: Message,
+		message: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
@@ -99,7 +107,7 @@ impl Telegram {
 	async fn send_processed(
 		&self,
 		mut msg: MessageLengthLimiter<'_>,
-		media: Option<Vec<Media>>,
+		media: Option<&[Media]>,
 		reply_to: Option<TelMessageId>,
 	) -> Result<Option<TelMessageId>, SinkError> {
 		let mut last_message = reply_to;
@@ -113,12 +121,12 @@ impl Telegram {
 					last_message = sent_msg.and_then(|v| v.first().map(|m| m.id));
 				}
 			} else {
-				let media_caption = msg
-						.split_at(MAX_MEDIA_MSG_LEN)
-						.expect("should always return a valid split at least once since msg char len is > max_char_limit");
+				let media_caption = msg.split_at(MAX_MEDIA_MSG_LEN).expect(
+					"should always return a valid split at least once since msg char len is > max_char_limit",
+				);
 
 				let sent_msg = self
-					.send_media(&media, Some(&media_caption), last_message)
+					.send_media(media, Some(&media_caption), last_message)
 					.await?;
 				last_message = sent_msg.and_then(|v| v.first().map(|m| m.id));
 			}
@@ -153,10 +161,10 @@ impl Telegram {
 				.bot
 				.send_message(self.chat_id, message)
 				.parse_mode(ParseMode::Html)
-				.disable_web_page_preview(true);
+				.link_preview_options(LINK_PREVIEW_DISABLED);
 
 			let send_msg_cmd = if let Some(id) = reply_to {
-				send_msg_cmd.reply_to_message_id(id)
+				send_msg_cmd.reply_parameters(ReplyParameters::new(id))
 			} else {
 				send_msg_cmd
 			};
@@ -168,15 +176,17 @@ impl Telegram {
 						.to_lowercase()
 						.contains("replied message not found") =>
 				{
-					tracing::warn!("Message that should be replied to doesn't exist. Resending just as a regular message");
+					tracing::warn!(
+						"Message that should be replied to doesn't exist. Resending just as a regular message"
+					);
 					reply_to = None;
 				}
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tracing::error!(
 						"Exceeded rate limit while using Throttle Bot adapter, this shouldn't happen... Retrying in {}s",
-						retry_after.as_secs()
+						retry_after.seconds()
 					);
-					sleep(retry_after).await;
+					sleep(retry_after.duration()).await;
 				}
 				Err(e) => {
 					return Err(SinkError::Telegram {
@@ -191,7 +201,6 @@ impl Telegram {
 	/// Returns None if Media couldn't be sent but it's Telegram's fault
 	/// # Panics
 	/// if media.len() is more than 10
-	#[allow(clippy::too_many_lines)]
 	#[tracing::instrument(level = "trace", skip(self))]
 	async fn send_media(
 		&self,
@@ -245,13 +254,13 @@ impl Telegram {
 			let msg_cmd = self.bot.send_media_group(self.chat_id, media.clone());
 
 			let msg_cmd = if let Some(id) = reply_to {
-				msg_cmd.reply_to_message_id(id)
+				msg_cmd.reply_parameters(ReplyParameters::new(id))
 			} else {
 				msg_cmd
 			};
 
 			// don't forget to return from a branch, dummy, otherwise you'll end up in an infinite loop
-			#[allow(clippy::redundant_else)] // improves control flow visualization
+			#[expect(clippy::redundant_else, reason = "improves control flow visualization")]
 			match msg_cmd.send().await {
 				Ok(messages) => return Ok(Some(messages)),
 				Err(e)
@@ -286,12 +295,16 @@ impl Telegram {
 				{
 					// TODO: reupload the image manually if this happens
 					if let Some(caption) = caption {
-						tracing::warn!("Telegram disliked the media URL (\"Wrong file identifier/HTTP URL specified\"), sending the message as pure text");
+						tracing::warn!(
+							"Telegram disliked the media URL (\"Wrong file identifier/HTTP URL specified\"), sending the message as pure text"
+						);
 						let msg = self.send_text(caption, reply_to).await?;
 
 						return Ok(Some(vec![msg]));
 					} else {
-						tracing::warn!("Telegram disliked the media URL (\"Wrong file identifier/HTTP URL specified\") but the caption was empty, skipping...");
+						tracing::warn!(
+							"Telegram disliked the media URL (\"Wrong file identifier/HTTP URL specified\") but the caption was empty, skipping..."
+						);
 						return Ok(None);
 					}
 				}
@@ -302,12 +315,16 @@ impl Telegram {
 				{
 					// TODO: reupload the image manually if this happens
 					if let Some(caption) = caption {
-						tracing::warn!("Telegram disliked the media URL (\"Wrong type of the web page content\"), sending the message as pure text");
+						tracing::warn!(
+							"Telegram disliked the media URL (\"Wrong type of the web page content\"), sending the message as pure text"
+						);
 						let msg = self.send_text(caption, reply_to).await?;
 
 						return Ok(Some(vec![msg]));
 					} else {
-						tracing::warn!("Telegram disliked the media URL (\"Wrong type of the web page content\") but the caption was empty, skipping...");
+						tracing::warn!(
+							"Telegram disliked the media URL (\"Wrong type of the web page content\") but the caption was empty, skipping..."
+						);
 						return Ok(None);
 					}
 				}
@@ -316,15 +333,17 @@ impl Telegram {
 						.to_lowercase()
 						.contains("replied message not found") =>
 				{
-					tracing::warn!("Message that should be replied to doesn't exist. Resending just as a regular message");
+					tracing::warn!(
+						"Message that should be replied to doesn't exist. Resending just as a regular message"
+					);
 					reply_to = None;
 				}
 				Err(RequestError::RetryAfter(retry_after)) => {
 					tracing::error!(
 						"Exceeded rate limit while using Throttle Bot adapter, this shouldn't happen... Retrying in {}s",
-						retry_after.as_secs()
+						retry_after.seconds()
 					);
-					sleep(retry_after).await;
+					sleep(retry_after.duration()).await;
 				}
 				Err(e) => {
 					return Err(SinkError::Telegram {
@@ -337,17 +356,19 @@ impl Telegram {
 	}
 }
 
+type HeadBodyTailMedia<'a> = (
+	Option<String>,
+	Option<String>,
+	Option<String>,
+	Option<&'a [Media]>,
+);
+
 // format and sanitize all message fields. Returns (head, body, tail, media)
-fn process_msg(
-	msg: Message,
+fn process_msg<'a>(
+	msg: &'a Message,
 	tag: Option<&str>,
 	link_location: LinkLocation,
-) -> (
-	Option<String>,
-	Option<String>,
-	Option<String>,
-	Option<Vec<Media>>,
-) {
+) -> HeadBodyTailMedia<'a> {
 	let Message {
 		title,
 		body,
@@ -356,8 +377,8 @@ fn process_msg(
 	} = msg;
 
 	// escape title and body
-	let title = title.map(|s| teloxide::utils::html::escape(&s));
-	let body = body.map(|s| teloxide::utils::html::escape(&s));
+	let title = title.as_deref().map(teloxide::utils::html::escape);
+	let body = body.as_deref().map(teloxide::utils::html::escape);
 
 	// put the link into the message
 	let (mut head, tail) = match (title, link) {
@@ -365,10 +386,10 @@ fn process_msg(
 		(Some(title), Some(link)) => match link_location {
 			// and the link should be in the title, then combine them
 			LinkLocation::PreferTitle => (Some(format!("<a href=\"{link}\">{title}</a>")), None),
-			// even it should be at the bottom, return both separately
+			// and it should be at the bottom, return both separately
 			LinkLocation::Bottom => (Some(title), Some(format!("<a href=\"{link}\">Link</a>"))),
 		},
-		// if only the title is presend, just print itself with an added newline
+		// if only the title is present, just return itself
 		(Some(title), None) => (Some(title), None),
 		// and if only the link is present, but it at the bottom of the message, even if it should try to be in the title
 		(None, Some(link)) => (None, Some(format!("<a href=\"{link}\">Link</a>"))),
@@ -400,7 +421,7 @@ fn process_msg(
 		});
 	}
 
-	(head, body, tail, media)
+	(head, body, tail, media.as_deref())
 }
 
 impl Debug for Telegram {

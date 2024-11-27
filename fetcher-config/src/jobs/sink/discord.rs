@@ -5,8 +5,8 @@
  */
 
 use crate::{
+	FetcherConfigError as ConfigError,
 	jobs::external_data::{ExternalDataResult, ProvideExternalData},
-	Error as ConfigError,
 };
 use fetcher_core::sink::discord::{Discord as CDiscord, Target as CTarget};
 
@@ -26,7 +26,7 @@ pub enum Target {
 }
 
 impl Discord {
-	pub fn parse<D>(self, external: &D) -> Result<CDiscord, ConfigError>
+	pub fn decode_from_conf<D>(self, external: &D) -> Result<CDiscord, ConfigError>
 	where
 		D: ProvideExternalData + ?Sized,
 	{
@@ -36,12 +36,12 @@ impl Discord {
 			ExternalDataResult::Err(e) => return Err(e.into()),
 		};
 
-		Ok(CDiscord::new(&token, self.target.parse()))
+		Ok(CDiscord::new(&token, self.target.decode_from_conf()))
 	}
 }
 
 impl Target {
-	pub fn parse(self) -> CTarget {
+	pub fn decode_from_conf(self) -> CTarget {
 		match self {
 			Target::User(i) => CTarget::User(i),
 			Target::Channel(i) => CTarget::Channel(i),

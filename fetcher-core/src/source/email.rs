@@ -14,15 +14,16 @@ mod view_mode;
 
 pub use auth::Auth;
 pub use filters::Filters;
+use imap::TlsKind;
 pub use view_mode::ViewMode;
 
 use self::auth::GoogleAuthExt;
 use super::{Fetch, MarkAsRead, Source};
 use crate::{
-	auth::google::GoogleOAuth2Error as GoogleAuthError,
 	auth::Google as GoogleAuth,
+	auth::google::GoogleOAuth2Error as GoogleAuthError,
 	entry::{Entry, EntryId},
-	error::Error,
+	error::FetcherError,
 	sink::message::Message,
 	source::error::SourceError,
 };
@@ -51,8 +52,8 @@ pub struct Email {
 	pub view_mode: ViewMode,
 }
 
-#[allow(missing_docs)] // error message is self-documenting
-#[allow(clippy::large_enum_variant)] // the entire enum is already boxed up above
+#[expect(missing_docs, reason = "error message is self-documenting")]
+//#[expect(clippy::large_enum_variant, reason = "the entire enum is already boxed one level above")]
 #[derive(thiserror::Error, Debug)]
 pub enum EmailError {
 	#[error("IMAP connection error")]
@@ -62,11 +63,11 @@ pub enum EmailError {
 	Parse(#[from] mailparse::MailParseError),
 }
 
-#[allow(missing_docs)] // error message is self-documenting
+#[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum ImapError {
-	#[error("Failed to init TLS")]
-	TlsInitFailed(#[source] imap::Error),
+	#[error("Failed to connect to the IMAP server")]
+	ConnectionFailed(#[source] imap::Error),
 
 	#[error(transparent)]
 	GoogleOAuth2(#[from] GoogleAuthError),
@@ -149,7 +150,7 @@ impl Email {
 
 	/// Creates an [`Email`] source that uses a password to authenticate via IMAP
 	#[must_use]
-	pub fn new_generic(
+	pub const fn new_generic(
 		imap: String,
 		email: String,
 		password: String,
@@ -178,10 +179,10 @@ impl Fetch for Email {
 
 #[async_trait]
 impl MarkAsRead for Email {
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Error> {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 		self.mark_as_read_impl(id)
 			.await
-			.map_err(|e| Error::from(SourceError::from(EmailError::from(e))))
+			.map_err(|e| FetcherError::from(SourceError::from(EmailError::from(e))))
 	}
 
 	async fn set_read_only(&mut self) {
@@ -195,15 +196,16 @@ impl Email {
 	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, EmailError> {
 		tracing::debug!("Fetching emails");
 		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT)
-			.rustls()
-			.map_err(ImapError::TlsInitFailed)?;
+			.tls_kind(TlsKind::Rust)
+			.connect()
+			.map_err(ImapError::ConnectionFailed)?;
 
 		let mut session = authenticate!(&self.email, &mut self.auth, client);
 
 		session.examine("INBOX").map_err(ImapError::Other)?;
 
 		let search_string = {
-			let mut tmp = "UNSEEN ".to_string();
+			let mut tmp = "UNSEEN ".to_owned();
 
 			if let Some(sender) = &self.filters.sender {
 				_ = write!(tmp, r#"FROM "{sender}" "#);
@@ -221,7 +223,7 @@ impl Email {
 				}
 			}
 
-			tmp.trim_end().to_string()
+			tmp.trim_end().to_owned()
 		};
 
 		let mail_ids = session
@@ -274,8 +276,10 @@ let uid =
 		}
 
 		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT)
-			.rustls()
-			.map_err(ImapError::TlsInitFailed)?;
+			.tls_kind(TlsKind::Rust)
+			.connect()
+			.map_err(ImapError::ConnectionFailed)?;
+
 		let mut session = authenticate!(&self.email, &mut self.auth, client);
 
 		session.select("INBOX")?;
@@ -335,13 +339,10 @@ impl Debug for Email {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Email")
 			.field("imap", &self.imap)
-			.field(
-				"auth_type",
-				match self.auth {
-					Auth::Password(_) => &"password",
-					Auth::GmailOAuth2(_) => &"gmail_oauth2",
-				},
-			)
+			.field("auth_type", match self.auth {
+				Auth::Password(_) => &"password",
+				Auth::GmailOAuth2(_) => &"gmail_oauth2",
+			})
 			.field("email", &self.email)
 			.field("filters", &self.filters)
 			.field("view_mode", &self.view_mode)

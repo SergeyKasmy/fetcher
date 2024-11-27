@@ -5,8 +5,10 @@
  */
 
 pub mod contains;
+pub mod decode_html;
 pub mod extract;
 pub mod html;
+pub mod import;
 pub mod json;
 pub mod remove_html;
 pub mod replace;
@@ -17,22 +19,26 @@ pub mod trim;
 pub mod use_as;
 
 use self::{
-	contains::Contains, extract::Extract, html::Html, json::Json, remove_html::RemoveHtml,
-	replace::Replace, set::Set, shorten::Shorten, take::Take, trim::Trim, use_as::Use,
+	contains::Contains, decode_html::DecodeHtml, extract::Extract, html::Html, import::Import,
+	json::Json, remove_html::RemoveHtml, replace::Replace, set::Set, shorten::Shorten, take::Take,
+	trim::Trim, use_as::Use,
 };
-use crate::Error;
+use super::{external_data::ProvideExternalData, sink::Sink};
+use crate::FetcherConfigError;
 use fetcher_core::{
 	action::{
-		transform::{
-			field::{Field as CField, TransformFieldWrapper as CTransformFieldWrapper},
-			Caps as CCaps, DebugPrint as CDebugPrint, Feed as CFeed, Http as CHttp,
-		},
 		Action as CAction,
+		transform::{
+			Caps as CCaps, DebugPrint as CDebugPrint, Feed as CFeed, Http as CHttp,
+			field::{Field as CField, TransformFieldWrapper as CTransformFieldWrapper},
+		},
 	},
 	read_filter::ReadFilter as CReadFilter,
 };
 
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
@@ -58,6 +64,11 @@ pub enum Action {
 	Replace(Replace),
 	Extract(Extract),
 	RemoveHtml(RemoveHtml),
+	DecodeHtml(DecodeHtml),
+
+	// other
+	Sink(Sink),
+	Import(Import),
 }
 
 // TODO: add media
@@ -73,9 +84,14 @@ pub enum Field {
 }
 
 impl Action {
-	pub fn parse<RF>(self, rf: Option<RF>) -> Result<Option<Vec<CAction>>, Error>
+	pub fn decode_from_conf<RF, D>(
+		self,
+		rf: Option<Arc<RwLock<RF>>>,
+		external: &D,
+	) -> Result<Option<Vec<CAction>>, FetcherConfigError>
 	where
 		RF: CReadFilter + 'static,
+		D: ProvideExternalData + ?Sized,
 	{
 		macro_rules! transform {
 			($tr:expr) => {
@@ -95,19 +111,21 @@ impl Action {
 				if let Some(rf) = rf {
 					vec![CAction::Filter(Box::new(rf))]
 				} else {
-					tracing::warn!("Can't filter read entries when no read filter type is set up for the task!");
+					tracing::warn!(
+						"Can't filter read entries when no read filter type is set up for the task!"
+					);
 					return Ok(None);
 				}
 			}
-			Action::Take(x) => filter!(x.parse()),
-			Action::Contains(x) => x.parse()?,
+			Action::Take(x) => filter!(x.decode_from_conf()),
+			Action::Contains(x) => x.decode_from_conf()?,
 
 			// entry transforms
 			Action::Feed => transform!(CFeed),
-			Action::Html(x) => transform!(x.parse()?),
+			Action::Html(x) => transform!(x.decode_from_conf()?),
 			Action::Http => transform!(CHttp::new(CField::Link)?),
-			Action::Json(x) => transform!(x.parse()?),
-			Action::Use(x) => x.parse(),
+			Action::Json(x) => transform!(x.decode_from_conf()?),
+			Action::Use(x) => x.decode_from_conf(),
 
 			// field transforms
 			Action::Caps => transform!(CTransformFieldWrapper {
@@ -115,12 +133,20 @@ impl Action {
 				transformator: CCaps,
 			}),
 			Action::DebugPrint => transform!(CDebugPrint),
-			Action::Set(s) => s.parse(),
-			Action::Shorten(x) => x.parse(),
-			Action::Trim(x) => transform!(x.parse()),
-			Action::Replace(x) => transform!(x.parse()?),
-			Action::Extract(x) => transform!(x.parse()?),
-			Action::RemoveHtml(x) => x.parse()?,
+			Action::Set(s) => s.decode_from_conf(),
+			Action::Shorten(x) => x.decode_from_conf(),
+			Action::Trim(x) => transform!(x.decode_from_conf()),
+			Action::Replace(x) => transform!(x.decode_from_conf()?),
+			Action::Extract(x) => transform!(x.decode_from_conf()?),
+			Action::RemoveHtml(x) => x.decode_from_conf()?,
+			Action::DecodeHtml(x) => x.decode_from_conf(),
+
+			// other
+			Action::Sink(x) => vec![CAction::Sink(x.decode_from_conf(external)?)],
+			Action::Import(x) => match x.decode_from_conf(rf, external) {
+				Ok(Some(v)) => v,
+				not_ok => return not_ok,
+			},
 		};
 
 		Ok(Some(act))
@@ -128,7 +154,8 @@ impl Action {
 }
 
 impl Field {
-	pub fn parse(self) -> CField {
+	#[must_use]
+	pub fn decode_from_conf(self) -> CField {
 		match self {
 			Field::Title => CField::Title,
 			Field::Body => CField::Body,
