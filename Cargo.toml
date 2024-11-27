@@ -9,6 +9,9 @@ resolver = "2"
 [profile.release]
 lto = "thin"
 
+[workspace.package]
+edition = "2024"
+
 [workspace.lints.rust]
 missing_docs = "warn"
 unsafe_code = "forbid"

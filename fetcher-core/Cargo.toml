@@ -4,7 +4,7 @@ description = "Core fetcher functionality"
 version = "0.13.1"
 license = "MPL-2.0"
 repository = "https://github.com/SergeyKasmy/fetcher"
-edition = "2021"
+edition.workspace = true
 
 [lints]
 workspace = true
