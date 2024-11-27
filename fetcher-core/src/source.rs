@@ -12,11 +12,10 @@ pub mod email;
 pub mod file;
 pub mod http;
 pub mod reddit;
-pub mod twitter;
 
 pub mod error;
 
-pub use self::{email::Email, file::File, http::Http, reddit::Reddit, twitter::Twitter};
+pub use self::{email::Email, file::File, http::Http, reddit::Reddit};
 pub use crate::exec::Exec;
 
 use self::error::SourceError;

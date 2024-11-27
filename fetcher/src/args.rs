@@ -110,7 +110,6 @@ pub enum Setting {
 	EmailPassword,
 	Telegram,
 	Discord,
-	Twitter,
 }
 
 impl FromStr for Setting {
@@ -122,7 +121,6 @@ impl FromStr for Setting {
 			"email_password" => Self::EmailPassword,
 			"telegram" => Self::Telegram,
 			"discord" => Self::Discord,
-			"twitter" => Self::Twitter,
 			s => {
 				return Err(format!(
 					"{s:?} is not a valid setting. Available settings: google_oauth, email_password, telegram, twitter"

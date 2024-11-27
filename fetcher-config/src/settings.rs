@@ -8,10 +8,8 @@ pub mod discord;
 pub mod email_password;
 pub mod google;
 pub mod telegram;
-pub mod twitter;
 
 pub use self::discord::Discord;
 pub use self::email_password::EmailPassword;
 pub use self::google::Google;
 pub use self::telegram::Telegram;
-pub use self::twitter::Twitter;

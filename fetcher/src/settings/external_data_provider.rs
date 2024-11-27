@@ -22,10 +22,6 @@ pub struct ExternalDataFromDataDir {
 impl ProvideExternalData for ExternalDataFromDataDir {
 	type ReadFilter = Box<dyn ReadFilter>;
 
-	fn twitter_token(&self) -> ExternalDataResult<(String, String)> {
-		data::twitter::get(self.cx).into()
-	}
-
 	fn google_oauth2(&self) -> ExternalDataResult<auth::Google> {
 		data::google_oauth2::get(self.cx).into()
 	}

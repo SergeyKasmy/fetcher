@@ -12,7 +12,6 @@ use super::{
 	email::{EmailError, ImapError},
 	http::HttpError,
 	reddit::RedditError,
-	twitter::TwitterError,
 };
 
 use roux::util::RouxError;
@@ -29,9 +28,6 @@ pub enum SourceError {
 
 	#[error("Email error")]
 	Email(#[from] Box<EmailError>),
-
-	#[error("Twitter error")]
-	Twitter(#[from] TwitterError),
 
 	#[error("Reddit error")]
 	Reddit(#[from] RedditError),
@@ -58,10 +54,6 @@ impl SourceError {
 				EmailError::Imap(ImapError::ConnectionFailed(_)) => Some(self),
 				_ => None,
 			},
-			Self::Twitter(
-				TwitterError::Auth(egg_mode::error::Error::NetError(_))
-				| TwitterError::Other(egg_mode::error::Error::NetError(_)),
-			) => Some(self),
 			Self::Reddit(RedditError::Reddit(RouxError::Network(_))) => Some(self),
 			_ => None,
 		}

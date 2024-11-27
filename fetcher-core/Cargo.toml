@@ -12,7 +12,6 @@ workspace = true
 [dependencies]
 async-trait = "0.1.81"
 chrono = "0.4.38"
-egg-mode = { version = "0.16.1", features = ["rustls"], default-features = false }
 either = "1.13.0"
 feed-rs = "1.5.3"
 futures = "0.3.30"

@@ -10,11 +10,9 @@ pub mod file;
 pub mod http;
 pub mod reddit;
 pub mod string;
-pub mod twitter;
 
 use self::{
 	email::Email, exec::Exec, file::File, http::Http, reddit::Reddit, string::StringSource,
-	twitter::Twitter,
 };
 use crate::{FetcherConfigError, jobs::external_data::ProvideExternalData};
 use fetcher_core::{
@@ -34,7 +32,6 @@ pub enum Source {
 	// with shared read filter
 	String(StringSource),
 	Http(Http),
-	Twitter(Twitter),
 	File(File),
 	Reddit(Reddit),
 	Exec(Exec),
@@ -68,7 +65,6 @@ impl Source {
 			// with shared read filter
 			Self::String(x) => with_read_filter!(x.decode_from_conf()),
 			Self::Http(x) => with_read_filter!(x.decode_from_conf()?),
-			Self::Twitter(x) => with_read_filter!(x.decode_from_conf(external)?),
 			Self::File(x) => with_read_filter!(x.decode_from_conf()),
 			Self::Reddit(x) => with_read_filter!(x.decode_from_conf()),
 			Self::Exec(x) => with_read_filter!(x.decode_from_conf()),
@@ -82,9 +78,11 @@ impl Source {
 	#[must_use]
 	pub fn supports_replies(&self) -> bool {
 		// Source::Email will support replies in the future
-		#[allow(clippy::match_like_matches_macro)]
+		#[expect(
+			clippy::match_single_binding,
+			reason = "will be easy to add new \"true\" arms in the future"
+		)]
 		match self {
-			Self::Twitter(_) => true,
 			_ => false,
 		}
 	}

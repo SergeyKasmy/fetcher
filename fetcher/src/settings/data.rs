@@ -9,7 +9,6 @@ pub mod email_password;
 pub mod google_oauth2;
 pub mod runtime_external_save;
 pub mod telegram;
-pub mod twitter;
 
 use super::proj_dirs;
 

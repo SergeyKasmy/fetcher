@@ -188,7 +188,6 @@ async fn async_main() -> Result<()> {
 				Setting::EmailPassword => settings::data::email_password::prompt(cx)?,
 				Setting::Telegram => settings::data::telegram::prompt(cx)?,
 				Setting::Discord => settings::data::discord::prompt(cx)?,
-				Setting::Twitter => settings::data::twitter::prompt(cx)?,
 			}
 
 			Ok(())
