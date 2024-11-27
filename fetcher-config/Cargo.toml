@@ -1,7 +1,7 @@
 [package]
 name = "fetcher-config"
 description = "fetcher config format and serialization/deserialization"
-version = "0.13.1"
+version = "0.14.0"
 license = "MPL-2.0"
 repository = "https://github.com/SergeyKasmy/fetcher"
 edition.workspace = true
@@ -10,7 +10,7 @@ edition.workspace = true
 workspace = true
 
 [dependencies]
-fetcher-core = { version = "0.13.1", path = "../fetcher-core" }
+fetcher-core = { version = "0.14.0", path = "../fetcher-core" }
 
 chrono = "0.4.38"
 serde = { version = "1.0.215", features = ["derive"] }

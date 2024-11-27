@@ -1,7 +1,7 @@
 [package]
 name = "fetcher"
 description = "Automation and scalping tool"
-version = "0.13.1"
+version = "0.14.0"
 license = "MPL-2.0"
 repository = "https://github.com/SergeyKasmy/fetcher"
 edition.workspace = true
@@ -10,8 +10,8 @@ edition.workspace = true
 workspace = true
 
 [dependencies]
-fetcher-core = { version = "0.13.1", path = "../fetcher-core" }
-fetcher-config = { version = "0.13.1", path = "../fetcher-config" }
+fetcher-core = { version = "0.14.0", path = "../fetcher-core" }
+fetcher-config = { version = "0.14.0", path = "../fetcher-config" }
 color-eyre = { version = "0.6.2", package = "color-eyre-attach-report" }
 figment = { version = "0.10.19", features = ["yaml"] }
 futures = "0.3.31"
