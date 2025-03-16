@@ -18,7 +18,13 @@ pub struct Extract {
 	re: Regex,
 
 	/// Passthrough the old value if the regex didn't match
-	passthrough_if_not_found: bool,
+	passthrough: Passthrough,
+}
+
+#[derive(Debug)]
+pub enum Passthrough {
+	Always,
+	IfRegexMatchedOnly,
 }
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
@@ -37,13 +43,10 @@ impl Extract {
 	///
 	/// # Errors
 	/// * if the regex is invalid
-	pub fn new(re: &str, passthrough_if_not_found: bool) -> Result<Self, ExtractError> {
+	pub fn new(re: &str, passthrough: Passthrough) -> Result<Self, ExtractError> {
 		let re = Regex::new(re).map_err(BadRegexError)?;
 
-		Ok(Self {
-			re,
-			passthrough_if_not_found,
-		})
+		Ok(Self { re, passthrough })
 	}
 }
 
@@ -57,7 +60,7 @@ impl TransformField for Extract {
 
 		let extracted = match extract_captures_from(&self.re, field) {
 			Some(v) => v,
-			None if self.passthrough_if_not_found => field.to_owned(),
+			None if matches!(self.passthrough, Passthrough::Always) => field.to_owned(),
 			None => return Err(ExtractError::CaptureGroupNotFound),
 		};
 
