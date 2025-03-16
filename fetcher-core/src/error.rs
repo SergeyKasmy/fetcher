@@ -66,3 +66,9 @@ impl From<TransformError> for FetcherError {
 		FetcherError::Transform(Box::new(e))
 	}
 }
+
+impl From<!> for FetcherError {
+	fn from(_: !) -> Self {
+		unreachable!()
+	}
+}

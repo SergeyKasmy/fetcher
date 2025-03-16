@@ -2,7 +2,6 @@
 members = [
 	"fetcher",
 	"fetcher-core",
-	"fetcher-config",
 ]
 resolver = "3"
 

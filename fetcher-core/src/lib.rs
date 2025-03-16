@@ -6,7 +6,12 @@
 
 #![doc = include_str!("../README.md")]
 #![feature(let_chains)]
+#![feature(never_type)]
 #![allow(clippy::missing_docs_in_private_items)] // TODO: enable later
+
+// TEMP
+#![allow(missing_docs)]
+#![allow(async_fn_in_trait)]
 
 pub mod action;
 pub mod auth;

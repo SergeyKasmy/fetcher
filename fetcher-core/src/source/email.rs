@@ -339,10 +339,13 @@ impl Debug for Email {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Email")
 			.field("imap", &self.imap)
-			.field("auth_type", match self.auth {
-				Auth::Password(_) => &"password",
-				Auth::GmailOAuth2(_) => &"gmail_oauth2",
-			})
+			.field(
+				"auth_type",
+				match self.auth {
+					Auth::Password(_) => &"password",
+					Auth::GmailOAuth2(_) => &"gmail_oauth2",
+				},
+			)
 			.field("email", &self.email)
 			.field("filters", &self.filters)
 			.field("view_mode", &self.view_mode)

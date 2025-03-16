@@ -29,7 +29,7 @@ use async_trait::async_trait;
 use std::fmt::Debug;
 
 /// A trait that defines a way to fetch entries as well as mark them as read afterwards
-pub trait Source: Fetch + MarkAsRead + Debug + Send + Sync {}
+pub trait Source: Fetch + MarkAsRead + Debug + Send + Sync + 'static {}
 
 /// A trait that defines a way to fetch (entries)[`Entry`]
 #[async_trait]
@@ -87,8 +87,8 @@ where
 
 impl<F, RF> Source for SourceWithSharedRF<F, RF>
 where
-	F: Fetch,
-	RF: ReadFilter,
+	F: Fetch + 'static,
+	RF: ReadFilter + 'static,
 {
 }
 

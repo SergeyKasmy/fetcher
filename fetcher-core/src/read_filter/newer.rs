@@ -186,14 +186,10 @@ mod tests {
 
 		// remove msgs
 		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
-		assert_eq!(&entries, &[
-			None,
-			Some("5"),
-			Some("4"),
-			None,
-			Some("0"),
-			Some("1")
-		]);
+		assert_eq!(
+			&entries,
+			&[None, Some("5"), Some("4"), None, Some("0"), Some("1")]
+		);
 	}
 
 	#[tokio::test]

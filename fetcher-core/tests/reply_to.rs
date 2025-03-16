@@ -7,7 +7,7 @@
 
 use async_trait::async_trait;
 use fetcher_core::{
-	action::Action,
+	action::ActionEnum,
 	entry::{Entry, EntryId},
 	error::FetcherError,
 	read_filter::MarkAsRead,
@@ -75,7 +75,7 @@ async fn reply_to() {
 	let mut task = Task {
 		tag: None,
 		source: Some(Box::new(DummySource)),
-		actions: Some(vec![Action::Sink(Box::new(DummySink))]),
+		action: Some(vec![ActionEnum::Sink(Box::new(DummySink))]),
 		entry_to_msg_map: Some(entry_to_msg_map),
 	};
 
