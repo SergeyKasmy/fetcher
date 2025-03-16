@@ -42,6 +42,9 @@ pub enum HttpError {
 
 	#[error("Can't send an HTTP request to {1:?}")]
 	BadRequest(#[source] reqwest::Error, String),
+
+	#[error("Not a valid URL")]
+	InvalidUrl(#[from] url::ParseError),
 }
 
 #[derive(Debug)]
@@ -55,16 +58,19 @@ impl Http {
 	///
 	/// # Errors
 	/// This method fails if TLS couldn't be initialized
-	pub fn new_get(url: Url) -> Result<Self, HttpError> {
-		Self::new(url, Request::Get)
+	pub fn new_get(url: impl TryInto<Url, Error = url::ParseError>) -> Result<Self, HttpError> {
+		Self::new(url.try_into()?, Request::Get)
 	}
 
 	/// Create a new HTTP client that sends POST requests
 	///
 	/// # Errors
 	/// This method fails if body isn't valid JSON or TLS couldn't be initialized
-	pub fn new_post(url: Url, body: &str) -> Result<Self, HttpError> {
-		Self::new(url, Request::Post(serde_json::from_str(body)?))
+	pub fn new_post(
+		url: impl TryInto<Url, Error = url::ParseError>,
+		body: &str,
+	) -> Result<Self, HttpError> {
+		Self::new(url.try_into()?, Request::Post(serde_json::from_str(body)?))
 	}
 }
 
