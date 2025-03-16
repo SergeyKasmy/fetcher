@@ -20,8 +20,8 @@ pub use view_mode::ViewMode;
 use self::auth::GoogleAuthExt;
 use super::{Fetch, MarkAsRead, Source};
 use crate::{
-	auth::Google as GoogleAuth,
-	auth::google::GoogleOAuth2Error as GoogleAuthError,
+	StaticStr,
+	auth::{Google as GoogleAuth, google::GoogleOAuth2Error as GoogleAuthError},
 	entry::{Entry, EntryId},
 	error::FetcherError,
 	sink::message::Message,
@@ -37,10 +37,10 @@ const IMAP_PORT: u16 = 993;
 /// Email source. Fetches an email's subject and body fields using IMAP
 pub struct Email {
 	/// IMAP server URL
-	pub imap: String,
+	pub imap: StaticStr,
 
 	/// Email address/IMAP login
-	pub email: String,
+	pub email: StaticStr,
 
 	/// Authentication type
 	pub auth: Auth,
@@ -129,31 +129,15 @@ macro_rules! authenticate {
 		}
 	}};
 }
-
+#[bon::bon]
 impl Email {
-	/// Creates an [`Email`] source for use with Gmail that uses [`Google OAuth2`](`crate::auth::Google`) to authenticate
-	#[must_use]
-	pub fn new_gmail(
-		email: String,
-		auth: GoogleAuth,
-		filters: Filters,
-		view_mode: ViewMode,
-	) -> Self {
-		Self {
-			imap: "imap.gmail.com".to_owned(),
-			email,
-			auth: Auth::GmailOAuth2(auth),
-			filters,
-			view_mode,
-		}
-	}
-
 	/// Creates an [`Email`] source that uses a password to authenticate via IMAP
+	#[builder]
 	#[must_use]
-	pub const fn new_generic(
-		imap: String,
-		email: String,
-		password: String,
+	pub fn new_generic(
+		#[builder(into)] imap: StaticStr,
+		#[builder(into)] email: StaticStr,
+		#[builder(into)] password: StaticStr,
 		filters: Filters,
 		view_mode: ViewMode,
 	) -> Self {
@@ -161,6 +145,24 @@ impl Email {
 			imap,
 			email,
 			auth: Auth::Password(password),
+			filters,
+			view_mode,
+		}
+	}
+
+	/// Creates an [`Email`] source for use with Gmail that uses [`Google OAuth2`](`crate::auth::Google`) to authenticate
+	#[builder]
+	#[must_use]
+	pub fn new_gmail(
+		#[builder(into)] email: StaticStr,
+		auth: GoogleAuth,
+		filters: Filters,
+		view_mode: ViewMode,
+	) -> Self {
+		Self {
+			imap: "imap.gmail.com".into(),
+			email,
+			auth: Auth::GmailOAuth2(auth),
 			filters,
 			view_mode,
 		}

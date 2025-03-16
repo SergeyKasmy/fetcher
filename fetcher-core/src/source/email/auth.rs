@@ -4,7 +4,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::auth::google::{Google as GoogleAuth, GoogleOAuth2Error as GoogleAuthError};
+use crate::{
+	StaticStr,
+	auth::google::{Google as GoogleAuth, GoogleOAuth2Error as GoogleAuthError},
+};
 
 /// Authentication type for IMAP
 pub enum Auth {
@@ -12,7 +15,7 @@ pub enum Auth {
 	/// Google OAuth2 with full access to Gmail
 	GmailOAuth2(GoogleAuth),
 	/// An insecure pure text password
-	Password(String),
+	Password(StaticStr),
 }
 
 pub(super) struct ImapOAuth2<'a> {

@@ -10,8 +10,11 @@
 use serde::Deserialize;
 use std::time::{Duration, Instant};
 
+use crate::static_str::StaticStr;
+
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
 
+// FIXME: does this type actually need to be public?
 #[expect(clippy::doc_markdown, reason = "false positive")]
 /// An OAuth2 access token. It can be used to actually access stuff via OAuth2
 #[derive(Clone, Debug)]
@@ -35,13 +38,13 @@ struct AccessTokenResponce {
 #[derive(Clone, Debug)]
 pub struct Google {
 	/// OAuth2 client id
-	pub client_id: String,
+	pub client_id: StaticStr,
 
 	/// OAuth2 client secret
-	pub client_secret: String,
+	pub client_secret: StaticStr,
 
 	/// OAuth2 refresh token. It doesn't expire and is used to get new shortlived access tokens
-	pub refresh_token: String,
+	pub refresh_token: StaticStr,
 
 	/// OAuth2 access token. It's used for the actual accessing of the data
 	access_token: Option<AccessToken>,
@@ -64,11 +67,15 @@ impl Google {
 	#[expect(clippy::doc_markdown, reason = "false positive")]
 	/// Creates a new Google OAuth2 authenticator
 	#[must_use]
-	pub const fn new(client_id: String, client_secret: String, refresh_token: String) -> Self {
+	pub fn new(
+		client_id: impl Into<StaticStr>,
+		client_secret: impl Into<StaticStr>,
+		refresh_token: impl Into<StaticStr>,
+	) -> Self {
 		Self {
-			client_id,
-			client_secret,
-			refresh_token,
+			client_id: client_id.into(),
+			client_secret: client_secret.into(),
+			refresh_token: refresh_token.into(),
 			access_token: None,
 		}
 	}
@@ -88,7 +95,7 @@ impl Google {
 		tracing::debug!("New access token expires in {expires_in}s");
 
 		self.access_token = Some(AccessToken {
-			token: access_token,
+			token: access_token.into(),
 			expires: Instant::now() + Duration::from_secs(expires_in),
 		});
 

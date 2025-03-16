@@ -23,5 +23,8 @@ pub mod job;
 pub mod read_filter;
 pub mod sink;
 pub mod source;
+mod static_str;
 pub mod task;
 pub mod utils;
+
+pub use crate::static_str::StaticStr;
