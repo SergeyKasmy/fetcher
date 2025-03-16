@@ -11,7 +11,7 @@ use regex::Regex;
 use std::borrow::Cow;
 
 use super::Filter;
-use crate::{action::transform::field::Field, entry::Entry, error::BadRegexError};
+use crate::{action::transforms::field::Field, entry::Entry, error::BadRegexError};
 
 /// Filter out all entries whose field doesn't match the regular expression
 #[derive(Clone, Debug)]

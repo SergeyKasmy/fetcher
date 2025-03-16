@@ -9,7 +9,7 @@
 use std::convert::Infallible;
 
 use super::TransformField;
-use crate::action::transform::result::{OptionUnwrapTransformResultExt, TransformResult};
+use crate::action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult};
 
 /// Make all text in a field UPPERCASE
 #[derive(Debug)]

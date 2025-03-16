@@ -7,7 +7,7 @@
 //! This module contains the [`Shorten`] transform
 
 use super::TransformField;
-use crate::action::transform::result::{OptionUnwrapTransformResultExt, TransformResult};
+use crate::action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult};
 
 use std::{convert::Infallible, iter::repeat};
 

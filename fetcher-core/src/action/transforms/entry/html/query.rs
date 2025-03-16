@@ -9,7 +9,7 @@
 
 use std::fmt::Display;
 
-use crate::action::transform::field::Replace;
+use crate::action::transforms::field::Replace;
 
 /// The type of item that should be queried
 #[derive(Clone, Debug)]

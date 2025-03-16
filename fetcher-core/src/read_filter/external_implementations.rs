@@ -8,12 +8,12 @@
 //! These should make passing your own [`ReadFilter`] types easier without having to make an newtype just to implement it yourself
 
 use async_trait::async_trait;
-use std::{any::Any, sync::Arc};
+use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use super::{MarkAsRead, ReadFilter};
 use crate::{
-	action::filter::Filter,
+	action::filters::Filter,
 	entry::{Entry, EntryId},
 	error::FetcherError,
 };
@@ -24,14 +24,7 @@ pub mod tokio_rwlock {
 	use super::*;
 
 	#[async_trait]
-	impl<RF> ReadFilter for Arc<RwLock<RF>>
-	where
-		RF: ReadFilter,
-	{
-		async fn as_any(&self) -> Box<dyn Any> {
-			self.read().await.as_any().await
-		}
-	}
+	impl<RF> ReadFilter for Arc<RwLock<RF>> where RF: ReadFilter {}
 
 	#[async_trait]
 	impl<RF> MarkAsRead for Arc<RwLock<RF>>
@@ -68,11 +61,7 @@ pub mod boks {
 	use super::*;
 
 	#[async_trait]
-	impl ReadFilter for Box<dyn ReadFilter> {
-		async fn as_any(&self) -> Box<dyn Any> {
-			(**self).as_any().await
-		}
-	}
+	impl ReadFilter for Box<dyn ReadFilter> {}
 
 	#[async_trait]
 	impl MarkAsRead for Box<dyn ReadFilter> {

@@ -10,7 +10,7 @@ use rand::seq::SliceRandom;
 use std::convert::Infallible;
 
 use super::TransformField;
-use crate::action::transform::result::{OptionUnwrapTransformResultExt, TransformResult as TrRes};
+use crate::action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult as TrRes};
 
 /// Set a field to a hardcoded value
 #[derive(Debug)]

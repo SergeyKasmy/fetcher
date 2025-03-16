@@ -11,7 +11,7 @@ use std::{borrow::Cow, convert::Infallible};
 
 use super::TransformField;
 use crate::{
-	action::transform::result::{OptionUnwrapTransformResultExt, TransformResult},
+	action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult},
 	error::BadRegexError,
 };
 

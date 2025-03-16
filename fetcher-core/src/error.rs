@@ -7,7 +7,7 @@
 //! This module contains all errors that [`fetcher`](`crate`) can emit
 
 use crate::{
-	action::transform::error::TransformError, auth::google::GoogleOAuth2Error,
+	action::transforms::error::TransformError, auth::google::GoogleOAuth2Error,
 	external_save::ExternalSaveError, sink::error::SinkError, source::error::SourceError,
 };
 

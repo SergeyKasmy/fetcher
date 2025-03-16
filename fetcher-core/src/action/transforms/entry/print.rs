@@ -11,7 +11,7 @@ use std::{convert::Infallible, fmt::Write};
 
 use super::TransformEntry;
 use crate::{
-	action::transform::result::TransformedEntry,
+	action::transforms::result::TransformedEntry,
 	entry::Entry,
 	sink::{Sink, Stdout},
 };

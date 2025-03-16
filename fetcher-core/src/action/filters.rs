@@ -16,6 +16,8 @@ use crate::entry::Entry;
 use async_trait::async_trait;
 use std::fmt::Debug;
 
+use super::{Action, ActionContext};
+
 /// Trait for all types that support filtering entries out of a list of [`Entry`]s
 #[async_trait]
 pub trait Filter: Debug + Send + Sync {
@@ -25,5 +27,32 @@ pub trait Filter: Debug + Send + Sync {
 	/// Returns true if this filter is a [`ReadFilter`](crate::read_filter::ReadFilter)
 	fn is_readfilter(&self) -> bool {
 		false
+	}
+}
+
+#[async_trait]
+impl Filter for ! {
+	/// Filter out some entries out of the `entries` vector
+	async fn filter(&self, _entries: &mut Vec<Entry>) {
+		unreachable!()
+	}
+}
+
+pub(crate) struct FilterWrapper<F>(pub F);
+
+impl<F> Action for FilterWrapper<F>
+where
+	F: Filter,
+{
+	type Error = !;
+
+	async fn apply<S, E>(
+		&mut self,
+		mut entries: Vec<Entry>,
+		_ctx: ActionContext<'_, S, E>,
+	) -> Result<Vec<Entry>, Self::Error> {
+		self.0.filter(&mut entries).await;
+
+		Ok(entries)
 	}
 }

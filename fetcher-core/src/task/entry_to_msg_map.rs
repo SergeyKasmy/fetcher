@@ -17,40 +17,51 @@ use crate::{
 /// [entry]: crate::entry::Entry
 /// [message]: crate::sink::message::Message
 #[derive(Default, Debug)]
-pub struct EntryToMsgMap {
+pub struct EntryToMsgMap<E> {
 	/// External save location for that map.
 	/// It's called every time on [`Self::insert()`]
-	pub external_save: Option<Box<dyn ExternalSave>>,
+	pub external_save: Option<E>,
 
 	map: HashMap<EntryId, MessageId>,
 }
 
-impl EntryToMsgMap {
+impl<E> EntryToMsgMap<E> {
 	/// Create a new empty map but with [`Self::external_save`] set to `external_save`.
 	/// Use [`EntryToMsgMap::default()`] if you don't want to set [`Self::external_save`]
 	#[must_use]
-	pub fn new<E>(external_save: E) -> Self
-	where
-		E: ExternalSave + 'static,
-	{
+	pub fn new(external_save: E) -> Self {
 		Self {
-			external_save: Some(Box::new(external_save)),
+			external_save: Some(external_save),
 			map: HashMap::new(),
 		}
 	}
 
 	/// Create a new [`EntryToMsgMap`] with the provided `map` and `external_save` parameters
 	#[must_use]
-	pub fn new_with_map<E>(map: HashMap<EntryId, MessageId>, external_save: E) -> Self
-	where
-		E: ExternalSave + 'static,
-	{
+	pub fn new_with_map(map: HashMap<EntryId, MessageId>, external_save: E) -> Self {
 		Self {
-			external_save: Some(Box::new(external_save)),
+			external_save: Some(external_save),
 			map,
 		}
 	}
 
+	/// Get the [`MessageId`] corresponding to the provided [`EntryId`]
+	#[must_use]
+	pub fn get(&self, eid: &EntryId) -> Option<&MessageId> {
+		self.map.get(eid)
+	}
+
+	/// Get the [`MessageId`] corresponding to the provided [`EntryId`] if it exists
+	#[must_use]
+	pub fn get_if_exists(&self, eid: Option<&EntryId>) -> Option<&MessageId> {
+		eid.and_then(|eid| self.map.get(eid))
+	}
+}
+
+impl<E> EntryToMsgMap<E>
+where
+	E: ExternalSave,
+{
 	/// Insert a mapping from [`EntryId`] `eid` to [`MessageId`] `msgid` and save that externally
 	///
 	/// # Errors
@@ -65,17 +76,5 @@ impl EntryToMsgMap {
 		}
 
 		Ok(())
-	}
-
-	/// Get the [`MessageId`] corresponding to the provided [`EntryId`]
-	#[must_use]
-	pub fn get(&self, eid: &EntryId) -> Option<&MessageId> {
-		self.map.get(eid)
-	}
-
-	/// Get the [`MessageId`] corresponding to the provided [`EntryId`] if it exists
-	#[must_use]
-	pub fn get_if_exists(&self, eid: Option<&EntryId>) -> Option<&MessageId> {
-		eid.and_then(|eid| self.map.get(eid))
 	}
 }

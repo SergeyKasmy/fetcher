@@ -13,7 +13,7 @@ use self::query::{
 };
 use super::TransformEntry;
 use crate::{
-	action::transform::{
+	action::transforms::{
 		error::RawContentsNotSetError,
 		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},

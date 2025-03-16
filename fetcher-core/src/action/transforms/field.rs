@@ -27,7 +27,7 @@ use url::Url;
 
 use super::{Transform, result::TransformResult};
 use crate::{
-	action::transform::error::{TransformError, TransformErrorKind},
+	action::transforms::error::{TransformError, TransformErrorKind},
 	entry::Entry,
 	error::InvalidUrlError,
 	sink::message::Message,

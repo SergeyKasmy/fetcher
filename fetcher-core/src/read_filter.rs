@@ -17,10 +17,10 @@ pub use self::{
 	external_save_wrapper::ExternalSaveRFWrapper, newer::Newer, not_present::NotPresent,
 };
 
-use crate::{action::filter::Filter, entry::EntryId, error::FetcherError};
+use crate::{action::filters::Filter, entry::EntryId, error::FetcherError};
 
 use async_trait::async_trait;
-use std::{any::Any, fmt::Debug};
+use std::fmt::Debug;
 
 /// A trait that defines a way to mark an entry as read
 #[async_trait]
@@ -39,8 +39,17 @@ pub trait MarkAsRead: Debug + Send + Sync {
 ///
 /// [Entry]: crate::entry::Entry
 #[async_trait]
-pub trait ReadFilter: MarkAsRead + Filter + Send + Sync {
-	/// Return itself as a trait object that implements [`Any`].
-	/// Used in downcasting, especially through an [`ExternalSave`](crate::external_save::ExternalSave)
-	async fn as_any(&self) -> Box<dyn Any>;
+pub trait ReadFilter: MarkAsRead + Filter + Send + Sync {}
+
+#[async_trait]
+impl MarkAsRead for ! {
+	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
+		unreachable!()
+	}
+
+	/// Set the current "mark as read"er to read only mode
+	async fn set_read_only(&mut self) {
+		unreachable!()
+	}
 }
+impl ReadFilter for ! {}

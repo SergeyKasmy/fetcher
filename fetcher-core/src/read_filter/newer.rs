@@ -5,11 +5,10 @@
  */
 
 use async_trait::async_trait;
-use std::any::Any;
 
 use super::{MarkAsRead, ReadFilter};
 use crate::{
-	action::filter::Filter,
+	action::filters::Filter,
 	entry::{Entry, EntryId},
 	error::FetcherError,
 };
@@ -36,11 +35,7 @@ impl Newer {
 }
 
 #[async_trait]
-impl ReadFilter for Newer {
-	async fn as_any(&self) -> Box<dyn Any> {
-		Box::new(self.clone())
-	}
-}
+impl ReadFilter for Newer {}
 
 #[async_trait]
 impl MarkAsRead for Newer {

@@ -8,7 +8,7 @@
 
 use super::TransformEntry;
 use crate::{
-	action::transform::{
+	action::transforms::{
 		error::RawContentsNotSetError,
 		field::Replace,
 		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},

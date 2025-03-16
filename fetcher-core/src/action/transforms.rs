@@ -18,10 +18,12 @@ pub use self::{
 };
 
 use self::error::TransformError;
-use crate::entry::Entry;
+use crate::{entry::Entry, external_save::ExternalSave, source::Source};
 
 use async_trait::async_trait;
 use std::fmt::Debug;
+
+use super::{Action, ActionContext};
 
 /// Transform an [`Entry`] into one or more new (entries)[`Entry`].
 ///
@@ -34,4 +36,31 @@ pub trait Transform: Debug + Send + Sync {
 	/// # Erorrs
 	/// Refer to implementators docs
 	async fn transform(&self, entry: Entry) -> Result<Vec<Entry>, TransformError>;
+}
+
+pub(crate) struct TransformWrapper<T>(pub T);
+
+impl<T> Action for TransformWrapper<T>
+where
+	T: Transform,
+{
+	type Error = TransformError;
+
+	async fn apply<S, E>(
+		&mut self,
+		entries: Vec<Entry>,
+		_ctx: ActionContext<'_, S, E>,
+	) -> Result<Vec<Entry>, Self::Error>
+	where
+		S: Source,
+		E: ExternalSave,
+	{
+		let mut transformed_entries = Vec::new();
+
+		for entry in entries {
+			transformed_entries.extend(self.0.transform(entry).await?);
+		}
+
+		Ok(transformed_entries)
+	}
 }

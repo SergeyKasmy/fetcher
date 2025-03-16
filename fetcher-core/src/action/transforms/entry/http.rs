@@ -12,7 +12,7 @@ use url::Url;
 
 use super::TransformEntry;
 use crate::{
-	action::transform::{
+	action::transforms::{
 		field::Field,
 		result::{TransformResult, TransformedEntry, TransformedMessage},
 	},

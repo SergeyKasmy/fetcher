@@ -17,7 +17,7 @@ use async_trait::async_trait;
 
 use super::{Transform, result::TransformedEntry};
 use crate::{
-	action::transform::error::{TransformError, TransformErrorKind},
+	action::transforms::error::{TransformError, TransformErrorKind},
 	entry::Entry,
 };
 

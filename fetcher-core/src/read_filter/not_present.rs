@@ -6,14 +6,14 @@
 
 use super::{MarkAsRead, ReadFilter};
 use crate::{
-	action::filter::Filter,
+	action::filters::Filter,
 	entry::{Entry, EntryId},
 	error::FetcherError,
 };
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use std::{any::Any, collections::VecDeque};
+use std::collections::VecDeque;
 
 const MAX_LIST_LEN: usize = 500;
 
@@ -57,11 +57,7 @@ impl NotPresent {
 }
 
 #[async_trait]
-impl ReadFilter for NotPresent {
-	async fn as_any(&self) -> Box<dyn Any> {
-		Box::new(self.clone())
-	}
-}
+impl ReadFilter for NotPresent {}
 
 #[async_trait]
 impl MarkAsRead for NotPresent {

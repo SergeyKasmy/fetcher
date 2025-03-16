@@ -7,10 +7,10 @@
 //! This module contains a [`ExternalSaveRFWrapper`] that wraps a [`ReadFilter`] with an [`ExternalSave`] and implements [`ReadFilter`] itself
 
 use async_trait::async_trait;
-use std::{any::Any, fmt::Debug};
+use std::fmt::Debug;
 
 use crate::{
-	action::filter::Filter,
+	action::filters::Filter,
 	entry::{Entry, EntryId},
 	error::FetcherError,
 	external_save::ExternalSave,
@@ -34,9 +34,6 @@ where
 	RF: ReadFilter,
 	S: ExternalSave,
 {
-	async fn as_any(&self) -> Box<dyn Any> {
-		self.rf.as_any().await
-	}
 }
 
 #[async_trait]

@@ -11,7 +11,9 @@ pub mod timepoint;
 use tokio::{join, time::sleep};
 
 use self::timepoint::TimePoint;
-use crate::{action::Action, error::FetcherError, source::Source, task::Task};
+use crate::{
+	action::Action, error::FetcherError, external_save::ExternalSave, source::Source, task::Task,
+};
 
 /// A single job, containing a single or a couple [`tasks`](`Task`), possibly refetching every set amount of time
 #[derive(Debug)]
@@ -71,10 +73,11 @@ pub trait RunTasks {
 	async fn run(&mut self) -> Vec<Result<(), FetcherError>>;
 }
 
-impl<S1, A1> RunTask for Task<S1, A1>
+impl<S, A, E> RunTask for Task<S, A, E>
 where
-	S1: Source,
-	A1: Action,
+	S: Source,
+	A: Action,
+	E: ExternalSave + 'static,
 {
 	async fn run(&mut self) -> Result<(), FetcherError> {
 		Task::run(self).await

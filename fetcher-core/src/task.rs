@@ -13,6 +13,7 @@ use crate::{
 	action::{Action, ActionContext},
 	entry::Entry,
 	error::FetcherError,
+	external_save::ExternalSave,
 	source::Source,
 };
 
@@ -21,7 +22,7 @@ use crate::{
 /// Contains everything from a [`Source`] that allows to fetch some data, to a [`Sink`] that takes that data and sends it somewhere.
 /// It also contains any transformators
 #[derive(Debug)]
-pub struct Task<S, A> {
+pub struct Task<S, A, E> {
 	/// An optional tag that may be put near a message body to differentiate this task from others that may be similar
 	pub tag: Option<String>,
 
@@ -32,13 +33,14 @@ pub struct Task<S, A> {
 	pub action: Option<A>,
 
 	/// Map of an entry to a message. Used when an entry is a reply to an older entry to be able to show that as a message, too
-	pub entry_to_msg_map: Option<EntryToMsgMap>,
+	pub entry_to_msg_map: Option<EntryToMsgMap<E>>,
 }
 
-impl<S, A> Task<S, A>
+impl<S, A, E> Task<S, A, E>
 where
 	S: Source,
 	A: Action,
+	E: ExternalSave + 'static,
 {
 	/// Run a task (both the source and the sink part) once to completion
 	///
@@ -59,7 +61,7 @@ where
 		// self.process_entries(raw).await?;
 		if let Some(action) = &mut self.action {
 			let ctx = ActionContext {
-				source: self.source.as_mut().map(|source| source as &mut dyn Source),
+				source: self.source.as_mut(),
 				entry_to_msg_map: self.entry_to_msg_map.as_mut(),
 				tag: self.tag.as_deref(),
 			};
