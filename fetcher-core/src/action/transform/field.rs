@@ -44,6 +44,23 @@ pub trait TransformField: Debug + Send + Sync {
 	/// # Errors
 	/// Refer to implementator's docs. Most of them never error but some do
 	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err>;
+
+	fn in_field(self, field: Field) -> TransformFieldWrapper<Self>
+	where
+		Self: Sized,
+	{
+		TransformFieldWrapper {
+			field,
+			transformator: self,
+		}
+	}
+
+	fn in_body(self) -> TransformFieldWrapper<Self>
+	where
+		Self: Sized,
+	{
+		self.in_field(Field::Body)
+	}
 }
 
 // TODO: make a new name
@@ -51,6 +68,7 @@ pub trait TransformField: Debug + Send + Sync {
 ///
 /// It takes a value out of a [`Field`], passes it to the transformator,
 /// and processes the result - updating, removing, or retaining the old value of the field as specified by the transformator
+#[doc(hidden)]
 #[derive(Debug)]
 pub struct TransformFieldWrapper<T>
 where
