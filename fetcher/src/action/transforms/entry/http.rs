@@ -17,7 +17,7 @@ use crate::{
 	},
 	entry::Entry,
 	error::InvalidUrlError,
-	source::{self, http::HttpError as SourceHttpError, http::Request},
+	sources::{self, http::HttpError as SourceHttpError, http::Request},
 	utils::OptionExt,
 };
 
@@ -39,7 +39,7 @@ pub enum HttpError {
 	InvalidUrl(Field, #[source] InvalidUrlError),
 
 	#[error(transparent)]
-	Other(#[from] crate::source::http::HttpError),
+	Other(#[from] crate::sources::http::HttpError),
 }
 
 impl Http {
@@ -48,7 +48,7 @@ impl Http {
 	/// # Errors
 	/// This method fails if TLS couldn't be initialized
 	pub fn new(from_field: Field) -> Result<Self, SourceHttpError> {
-		let client = source::http::CLIENT
+		let client = sources::http::CLIENT
 			.get_or_try_init(|| {
 				reqwest::ClientBuilder::new()
 					.timeout(std::time::Duration::from_secs(30))
@@ -96,7 +96,7 @@ impl TransformEntry for Http {
 
 		let url = url.ok_or_else(|| HttpError::MissingUrl(self.from_field))?;
 
-		let new_page = source::http::send_request(&self.client, &Request::Get, &url).await?;
+		let new_page = sources::http::send_request(&self.client, &Request::Get, &url).await?;
 
 		Ok(vec![TransformedEntry {
 			raw_contents: TransformResult::New(new_page),

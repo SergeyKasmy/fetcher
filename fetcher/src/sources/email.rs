@@ -24,8 +24,8 @@ use crate::{
 	auth::{Google as GoogleAuth, google::GoogleOAuth2Error as GoogleAuthError},
 	entry::{Entry, EntryId},
 	error::FetcherError,
-	sink::message::Message,
-	source::error::SourceError,
+	sinks::message::Message,
+	sources::error::SourceError,
 };
 
 use mailparse::ParsedMail;

@@ -22,7 +22,7 @@ use crate::{
 	entry::{Entry, EntryId},
 	error::FetcherError,
 	external_save::ExternalSave,
-	source::Source,
+	sources::Source,
 	task::entry_to_msg_map::EntryToMsgMap,
 };
 

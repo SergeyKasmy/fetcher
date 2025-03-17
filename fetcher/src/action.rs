@@ -13,9 +13,9 @@ use self::filters::{Filter, FilterWrapper};
 use self::transforms::Transform;
 use self::transforms::TransformWrapper;
 
-use crate::sink::{Sink, SinkWrapper};
+use crate::sinks::{Sink, SinkWrapper};
 use crate::{
-	entry::Entry, error::FetcherError, external_save::ExternalSave, source::Source,
+	entry::Entry, error::FetcherError, external_save::ExternalSave, sources::Source,
 	task::entry_to_msg_map::EntryToMsgMap,
 };
 

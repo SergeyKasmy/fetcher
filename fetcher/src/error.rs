@@ -8,7 +8,7 @@
 
 use crate::{
 	action::transforms::error::TransformError, auth::google::GoogleOAuth2Error,
-	external_save::ExternalSaveError, sink::error::SinkError, source::error::SourceError,
+	external_save::ExternalSaveError, sinks::error::SinkError, sources::error::SourceError,
 };
 
 use std::{convert::Infallible, error::Error as StdError};

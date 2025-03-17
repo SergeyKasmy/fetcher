@@ -12,12 +12,12 @@ use fetcher::{
 	entry::{Entry, EntryId},
 	error::FetcherError,
 	read_filter::MarkAsRead,
-	sink::{
+	sinks::{
 		Sink,
 		error::SinkError,
 		message::{Message, MessageId},
 	},
-	source::{Fetch, Source, error::SourceError},
+	sources::{Fetch, Source, error::SourceError},
 	task::{Task, entry_to_msg_map::EntryToMsgMap},
 };
 

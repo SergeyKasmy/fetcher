@@ -18,7 +18,7 @@ pub use self::{
 };
 
 use self::error::TransformError;
-use crate::{entry::Entry, external_save::ExternalSave, source::Source};
+use crate::{entry::Entry, external_save::ExternalSave, sources::Source};
 
 use std::fmt::Debug;
 

@@ -15,7 +15,7 @@ use crate::{
 	},
 	entry::Entry,
 	error::InvalidUrlError,
-	sink::message::Media,
+	sinks::message::Media,
 	utils::OptionExt,
 };
 

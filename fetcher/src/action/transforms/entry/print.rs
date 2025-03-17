@@ -12,7 +12,7 @@ use super::TransformEntry;
 use crate::{
 	action::transforms::result::TransformedEntry,
 	entry::Entry,
-	sink::{Sink, Stdout},
+	sinks::{Sink, Stdout},
 };
 
 /// A transform that print the contents of the [`Entry`] in a debug friendly way

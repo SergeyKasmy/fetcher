@@ -13,7 +13,7 @@ use std::{
 	io,
 };
 
-use crate::{entry::EntryId, sink::message::MessageId, utils::DisplayDebug};
+use crate::{entry::EntryId, sinks::message::MessageId, utils::DisplayDebug};
 
 /// This trait represent some kind of external save destination.
 /// A way to preserve the state of a read filter, i.e. what has and has not been read, across restarts.

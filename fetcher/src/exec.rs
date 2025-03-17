@@ -11,12 +11,12 @@ use tokio::{io::AsyncWriteExt, process::Command};
 
 use crate::{
 	entry::Entry,
-	sink::{
+	sinks::{
 		Sink,
 		error::SinkError,
 		message::{Message, MessageId},
 	},
-	source::{Fetch, error::SourceError},
+	sources::{Fetch, error::SourceError},
 };
 
 #[cfg(not(target_os = "windows"))]

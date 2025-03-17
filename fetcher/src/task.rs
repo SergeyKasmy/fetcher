@@ -21,7 +21,7 @@ use crate::{
 	entry::Entry,
 	error::FetcherError,
 	external_save::ExternalSave,
-	source::Source,
+	sources::Source,
 };
 
 /// A core primitive of [`fetcher`](`crate`).

@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 
 use crate::{
-	entry::EntryId, error::FetcherError, external_save::ExternalSave, sink::message::MessageId,
+	entry::EntryId, error::FetcherError, external_save::ExternalSave, sinks::message::MessageId,
 };
 
 /// Map [`entries`][entry] to [`messages`][message]

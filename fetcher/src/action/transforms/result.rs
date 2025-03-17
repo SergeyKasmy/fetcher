@@ -8,7 +8,7 @@
 
 use crate::{
 	entry::{Entry, EntryId},
-	sink::message::{Media, Message},
+	sinks::message::{Media, Message},
 };
 
 use url::Url;

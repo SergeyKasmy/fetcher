@@ -11,6 +11,8 @@
 #![allow(missing_docs)]
 #![allow(async_fn_in_trait)]
 
+mod static_str;
+
 pub mod action;
 pub mod auth;
 pub mod entry;
@@ -19,9 +21,8 @@ pub mod exec;
 pub mod external_save;
 pub mod job;
 pub mod read_filter;
-pub mod sink;
-pub mod source;
-mod static_str;
+pub mod sinks;
+pub mod sources;
 pub mod task;
 pub mod utils;
 

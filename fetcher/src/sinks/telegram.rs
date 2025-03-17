@@ -7,7 +7,7 @@
 //! This module contains the [`Telegram`] sink, as well as [`LinkLocation`] enum that specifies where to put a link in a telegram message
 
 use crate::{
-	sink::{
+	sinks::{
 		Sink,
 		error::SinkError,
 		message::{Media, Message, MessageId, length_limiter::MessageLengthLimiter},

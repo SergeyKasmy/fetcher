@@ -10,8 +10,8 @@ use super::Fetch;
 use crate::{
 	entry::Entry,
 	error::InvalidUrlError,
-	sink::message::{Media, Message},
-	source::error::SourceError,
+	sinks::message::{Media, Message},
+	sources::error::SourceError,
 	utils::OptionExt,
 };
 
