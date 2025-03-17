@@ -6,20 +6,22 @@
 
 //! This module contains the [`Job`] struct and the entryway to the library
 
-mod task_group;
+mod job_group;
 mod timepoint;
+
+pub use self::{job_group::JobGroup, timepoint::TimePoint};
 
 use std::convert::Infallible;
 
-pub use self::{task_group::TaskGroup, timepoint::TimePoint};
-
 use tokio::time::sleep;
 
-use crate::error::FetcherError;
+use crate::{StaticStr, error::FetcherError, task::TaskGroup};
 
 /// A single job, containing a single or a couple [`tasks`](`Task`), possibly refetching every set amount of time
 #[derive(Debug)]
 pub struct Job<T> {
+	pub name: StaticStr,
+
 	/// The tasks to run
 	pub tasks: T,
 
@@ -37,7 +39,7 @@ where
 	/// if any of the inner tasks return an error, refer to [`Task`] documentation
 	pub async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
 		loop {
-			let results = self.tasks.run().await;
+			let results = self.tasks.run_concurrently().await;
 
 			let errors = results
 				.into_iter()

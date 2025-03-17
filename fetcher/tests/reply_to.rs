@@ -5,8 +5,7 @@
 #![allow(clippy::tests_outside_test_module)]
 #![allow(clippy::unwrap_used)]
 
-use async_trait::async_trait;
-use fetcher_core::{
+use fetcher::{
 	action::ActionEnum,
 	entry::{Entry, EntryId},
 	error::FetcherError,
@@ -29,7 +28,6 @@ struct DummySource;
 #[derive(Debug)]
 struct DummySink;
 
-#[async_trait]
 impl Fetch for DummySource {
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
 		Ok(vec![Entry {
@@ -39,7 +37,6 @@ impl Fetch for DummySource {
 	}
 }
 
-#[async_trait]
 impl MarkAsRead for DummySource {
 	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
 		Ok(())
@@ -50,7 +47,6 @@ impl MarkAsRead for DummySource {
 
 impl Source for DummySource {}
 
-#[async_trait]
 impl Sink for DummySink {
 	async fn send(
 		&self,

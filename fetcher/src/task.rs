@@ -6,12 +6,17 @@
 
 //! This module contains the basic block of [`fetcher`](`crate`) that is a [`Task`]
 
+mod task_group;
+
 pub mod entry_to_msg_map;
+
+pub use self::task_group::TaskGroup;
 
 use std::convert::Infallible;
 
 use self::entry_to_msg_map::EntryToMsgMap;
 use crate::{
+	StaticStr,
 	action::{Action, ActionContext},
 	entry::Entry,
 	error::FetcherError,
@@ -25,6 +30,8 @@ use crate::{
 /// It also contains any transformators
 #[derive(Debug)]
 pub struct Task<S, A, E> {
+	pub name: StaticStr,
+
 	/// An optional tag that may be put near a message body to differentiate this task from others that may be similar
 	pub tag: Option<String>,
 
