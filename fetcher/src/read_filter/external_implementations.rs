@@ -17,7 +17,7 @@ use crate::{
 	error::FetcherError,
 };
 
-/// [`ReadFilter`] implementation for `Arc<tokio::RwLock<dyn Readfilter>>`
+/// [`ReadFilter`] implementation for `Arc<tokio::RwLock<impl ReadFilter>>`
 pub mod tokio_rwlock {
 	#[allow(clippy::wildcard_imports)]
 	use super::*;

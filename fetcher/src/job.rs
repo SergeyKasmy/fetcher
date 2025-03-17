@@ -8,6 +8,8 @@
 
 pub mod timepoint;
 
+use std::convert::Infallible;
+
 use tokio::{join, time::sleep};
 
 use self::timepoint::TimePoint;
@@ -84,7 +86,7 @@ where
 	}
 }
 
-impl RunTask for ! {
+impl RunTask for Infallible {
 	async fn run(&mut self) -> Result<(), FetcherError> {
 		unreachable!()
 	}

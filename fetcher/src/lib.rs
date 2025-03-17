@@ -5,8 +5,6 @@
  */
 
 #![doc = include_str!("../README.md")]
-#![feature(let_chains)]
-#![feature(never_type)]
 #![allow(clippy::missing_docs_in_private_items)] // TODO: enable later
 
 // TEMP

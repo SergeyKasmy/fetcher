@@ -8,6 +8,7 @@
 
 use std::{
 	collections::HashMap,
+	convert::Infallible,
 	fmt::{Debug, Display},
 	io,
 };
@@ -41,7 +42,7 @@ pub struct ExternalSaveError {
 	pub path: Option<Box<dyn DisplayDebug + Send + Sync>>,
 }
 
-impl ExternalSave for ! {
+impl ExternalSave for Infallible {
 	async fn save_read_filter<RF>(&mut self, _read_filter: &RF) -> Result<(), ExternalSaveError> {
 		unreachable!()
 	}

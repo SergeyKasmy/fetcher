@@ -11,7 +11,7 @@ use crate::{
 	external_save::ExternalSaveError, sink::error::SinkError, source::error::SourceError,
 };
 
-use std::error::Error as StdError;
+use std::{convert::Infallible, error::Error as StdError};
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
@@ -67,8 +67,8 @@ impl From<TransformError> for FetcherError {
 	}
 }
 
-impl From<!> for FetcherError {
-	fn from(_: !) -> Self {
+impl From<Infallible> for FetcherError {
+	fn from(_: Infallible) -> Self {
 		unreachable!()
 	}
 }

@@ -13,7 +13,7 @@ pub use self::{contains::Contains, take::Take};
 
 use crate::entry::Entry;
 
-use std::fmt::Debug;
+use std::{convert::Infallible, fmt::Debug};
 
 use super::{Action, ActionContext};
 
@@ -28,20 +28,13 @@ pub trait Filter: Debug + Send + Sync {
 	}
 }
 
-impl Filter for ! {
-	/// Filter out some entries out of the `entries` vector
-	async fn filter(&self, _entries: &mut Vec<Entry>) {
-		unreachable!()
-	}
-}
-
 pub(crate) struct FilterWrapper<F>(pub F);
 
 impl<F> Action for FilterWrapper<F>
 where
 	F: Filter,
 {
-	type Error = !;
+	type Error = Infallible;
 
 	async fn apply<S, E>(
 		&mut self,
@@ -51,5 +44,11 @@ where
 		self.0.filter(&mut entries).await;
 
 		Ok(entries)
+	}
+}
+
+impl Filter for Infallible {
+	async fn filter(&self, _entries: &mut Vec<Entry>) {
+		unreachable!()
 	}
 }
