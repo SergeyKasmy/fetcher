@@ -18,7 +18,6 @@ use crate::{
 	utils::OptionExt,
 };
 
-use async_trait::async_trait;
 use url::Url;
 
 /// Use the value of a field as the value of a different field
@@ -30,7 +29,6 @@ pub struct Use {
 	pub as_field: Field,
 }
 
-#[async_trait]
 impl TransformEntry for Use {
 	type Err = TransformErrorKind;
 

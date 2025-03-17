@@ -19,11 +19,9 @@ pub use self::{
 
 use crate::{action::filters::Filter, entry::EntryId, error::FetcherError};
 
-use async_trait::async_trait;
 use std::fmt::Debug;
 
 /// A trait that defines a way to mark an entry as read
-#[async_trait]
 pub trait MarkAsRead: Debug + Send + Sync {
 	// TODO: remake into type Err and restrict trait ReadFilter to MarkAsRead::Err: ReadFilterErr and trait Source to MarkAsRead::Err: SourceError
 	/// Mark the entry with `id` as read
@@ -38,10 +36,8 @@ pub trait MarkAsRead: Debug + Send + Sync {
 /// as well as marking an [Entry] as read
 ///
 /// [Entry]: crate::entry::Entry
-#[async_trait]
 pub trait ReadFilter: MarkAsRead + Filter + Send + Sync {}
 
-#[async_trait]
 impl MarkAsRead for ! {
 	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
 		unreachable!()

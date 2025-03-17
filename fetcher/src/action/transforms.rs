@@ -20,7 +20,6 @@ pub use self::{
 use self::error::TransformError;
 use crate::{entry::Entry, external_save::ExternalSave, source::Source};
 
-use async_trait::async_trait;
 use std::fmt::Debug;
 
 use super::{Action, ActionContext};
@@ -29,7 +28,6 @@ use super::{Action, ActionContext};
 ///
 /// For example, a [`Json`] transform parses the contents of the [`Entry`] as JSON and returns new entries from it,
 /// while the [`Caps`] field transform just makes a field uppercase
-#[async_trait]
 pub trait Transform: Debug + Send + Sync {
 	/// Transform an [`Entry`] to one or more entries
 	///

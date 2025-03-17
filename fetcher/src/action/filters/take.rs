@@ -6,8 +6,6 @@
 
 //! This module contains the [`Take`] filter and the [`TakeFrom`] enum that specifies where the [`Take`] filter should take the entries from
 
-use async_trait::async_trait;
-
 use super::Filter;
 use crate::entry::Entry;
 
@@ -27,7 +25,6 @@ pub enum TakeFrom {
 	End,
 }
 
-#[async_trait]
 impl Filter for Take {
 	async fn filter(&self, entries: &mut Vec<Entry>) {
 		match self.from {

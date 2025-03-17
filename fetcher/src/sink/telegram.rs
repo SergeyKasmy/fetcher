@@ -15,7 +15,6 @@ use crate::{
 	utils::OptionExt,
 };
 
-use async_trait::async_trait;
 use std::{fmt::Debug, num::TryFromIntError, time::Duration};
 use teloxide::{
 	Bot, RequestError,
@@ -70,7 +69,6 @@ impl Telegram {
 	}
 }
 
-#[async_trait]
 impl Sink for Telegram {
 	/// Sends a message to a Telegram chat
 	///

@@ -8,7 +8,6 @@
 
 use crate::sink::{Message, Sink, error::SinkError};
 
-use async_trait::async_trait;
 use tokio::io::{self, AsyncWriteExt};
 
 use super::MessageId;
@@ -17,7 +16,6 @@ use super::MessageId;
 #[derive(Debug)]
 pub struct Stdout;
 
-#[async_trait]
 impl Sink for Stdout {
 	/// Prints a message with an optional tag to stdout
 	///

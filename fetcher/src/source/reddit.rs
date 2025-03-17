@@ -15,7 +15,6 @@ use crate::{
 	utils::OptionExt,
 };
 
-use async_trait::async_trait;
 use roux::{
 	Subreddit,
 	util::{FeedOption, TimePeriod},
@@ -77,7 +76,6 @@ impl Reddit {
 	}
 }
 
-#[async_trait]
 impl Fetch for Reddit {
 	/// Fetches all posts from a subreddit
 	///

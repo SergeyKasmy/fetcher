@@ -8,7 +8,6 @@
 
 use std::num::TryFromIntError;
 
-use async_trait::async_trait;
 use serenity::{
 	all::{CreateEmbed, CreateEmbedFooter},
 	builder::CreateMessage,
@@ -67,7 +66,6 @@ impl Discord {
 	}
 }
 
-#[async_trait]
 impl Sink for Discord {
 	async fn send(
 		&self,

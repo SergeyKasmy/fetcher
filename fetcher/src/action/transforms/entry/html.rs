@@ -23,7 +23,6 @@ use crate::{
 	utils::OptionExt,
 };
 
-use async_trait::async_trait;
 use either::Either;
 use itertools::Itertools;
 use soup_kuchiki::{Handle as HtmlNode, NodeExt, QueryBuilderExt, Soup};
@@ -81,7 +80,6 @@ pub enum HtmlError {
 	InvalidUrl(#[from] InvalidUrlError),
 }
 
-#[async_trait]
 impl TransformEntry for Html {
 	type Err = HtmlError;
 

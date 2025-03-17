@@ -6,7 +6,6 @@
 
 //! This module contains [`Exec`] source and sink. It is re-exported in the [`crate::sink`] and [`crate::source`] modules
 
-use async_trait::async_trait;
 use std::{io, process::Stdio, string::FromUtf8Error};
 use tokio::{io::AsyncWriteExt, process::Command};
 
@@ -53,7 +52,6 @@ pub enum ExecError {
 	CantWriteStdin(#[source] io::Error),
 }
 
-#[async_trait]
 impl Fetch for Exec {
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
 		tracing::debug!("Spawning a shell with command {:?}", self.cmd);
@@ -75,7 +73,6 @@ impl Fetch for Exec {
 	}
 }
 
-#[async_trait]
 impl Sink for Exec {
 	/// Passes message's body to the stdin of the process. The tag parameter is ignored
 	///

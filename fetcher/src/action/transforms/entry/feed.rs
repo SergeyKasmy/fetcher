@@ -15,7 +15,6 @@ use crate::{
 	entry::Entry,
 };
 
-use async_trait::async_trait;
 use tap::{TapFallible, TapOptional};
 use url::Url;
 
@@ -33,7 +32,6 @@ pub enum FeedError {
 	Other(#[from] feed_rs::parser::ParseFeedError),
 }
 
-#[async_trait]
 impl TransformEntry for Feed {
 	type Err = FeedError;
 

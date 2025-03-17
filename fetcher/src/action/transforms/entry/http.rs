@@ -6,7 +6,6 @@
 
 //! This module contains the [`Http`] transform that fetches a web page from a link located in a field of the passed [`Entry`]
 
-use async_trait::async_trait;
 use reqwest::Client;
 use url::Url;
 
@@ -62,7 +61,6 @@ impl Http {
 	}
 }
 
-#[async_trait]
 impl TransformEntry for Http {
 	type Err = HttpError;
 

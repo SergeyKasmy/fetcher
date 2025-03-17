@@ -6,7 +6,6 @@
 
 //! This module contains the [`ExternalSave`] trait that implementors can use to add a way to save read filter data and entry to message map externally,
 
-use async_trait::async_trait;
 use std::{
 	collections::HashMap,
 	fmt::{Debug, Display},
@@ -17,7 +16,6 @@ use crate::{entry::EntryId, sink::message::MessageId, utils::DisplayDebug};
 
 /// This trait represent some kind of external save destination.
 /// A way to preserve the state of a read filter, i.e. what has and has not been read, across restarts.
-#[async_trait]
 pub trait ExternalSave: Debug + Send + Sync {
 	/// This function will be called every time something has been marked as read and should be saved externally
 	///
@@ -43,7 +41,6 @@ pub struct ExternalSaveError {
 	pub path: Option<Box<dyn DisplayDebug + Send + Sync>>,
 }
 
-#[async_trait]
 impl ExternalSave for ! {
 	async fn save_read_filter<RF>(&mut self, _read_filter: &RF) -> Result<(), ExternalSaveError> {
 		unreachable!()

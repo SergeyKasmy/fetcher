@@ -31,7 +31,6 @@ impl imap::Authenticator for ImapOAuth2<'_> {
 	}
 }
 
-#[async_trait::async_trait]
 pub(super) trait GoogleAuthExt {
 	async fn as_imap_oauth2<'a>(
 		&'a mut self,
@@ -39,7 +38,6 @@ pub(super) trait GoogleAuthExt {
 	) -> Result<ImapOAuth2<'a>, GoogleAuthError>;
 }
 
-#[async_trait::async_trait]
 impl GoogleAuthExt for GoogleAuth {
 	async fn as_imap_oauth2<'a>(
 		&'a mut self,

@@ -13,13 +13,11 @@ pub use self::{contains::Contains, take::Take};
 
 use crate::entry::Entry;
 
-use async_trait::async_trait;
 use std::fmt::Debug;
 
 use super::{Action, ActionContext};
 
 /// Trait for all types that support filtering entries out of a list of [`Entry`]s
-#[async_trait]
 pub trait Filter: Debug + Send + Sync {
 	/// Filter out some entries out of the `entries` vector
 	async fn filter(&self, entries: &mut Vec<Entry>);
@@ -30,7 +28,6 @@ pub trait Filter: Debug + Send + Sync {
 	}
 }
 
-#[async_trait]
 impl Filter for ! {
 	/// Filter out some entries out of the `entries` vector
 	async fn filter(&self, _entries: &mut Vec<Entry>) {

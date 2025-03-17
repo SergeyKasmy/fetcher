@@ -6,7 +6,6 @@
 
 //! This module contains [`DebugPrint`] transform that just prints the contents of the entry and passes it through
 
-use async_trait::async_trait;
 use std::{convert::Infallible, fmt::Write};
 
 use super::TransformEntry;
@@ -20,7 +19,6 @@ use crate::{
 #[derive(Debug)]
 pub struct DebugPrint;
 
-#[async_trait]
 impl TransformEntry for DebugPrint {
 	type Err = Infallible;
 

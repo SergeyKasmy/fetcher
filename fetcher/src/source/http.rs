@@ -10,7 +10,6 @@
 
 use crate::{entry::Entry, sink::message::Message, source::error::SourceError};
 
-use async_trait::async_trait;
 use once_cell::sync::OnceCell;
 use reqwest::Client;
 use std::{fmt::Debug, time::Duration};
@@ -74,7 +73,6 @@ impl Http {
 	}
 }
 
-#[async_trait]
 impl Fetch for Http {
 	/// Send a request to the [`URL`](`self.url`) and return the result in the [`Entry.raw_contents`] field
 	#[tracing::instrument(skip_all)]

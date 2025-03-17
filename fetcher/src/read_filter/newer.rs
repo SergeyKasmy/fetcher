@@ -4,8 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use async_trait::async_trait;
-
 use super::{MarkAsRead, ReadFilter};
 use crate::{
 	action::filters::Filter,
@@ -34,10 +32,8 @@ impl Newer {
 	}
 }
 
-#[async_trait]
 impl ReadFilter for Newer {}
 
-#[async_trait]
 impl MarkAsRead for Newer {
 	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 		self.last_read_id = Some(id.clone());
@@ -49,7 +45,6 @@ impl MarkAsRead for Newer {
 	}
 }
 
-#[async_trait]
 impl Filter for Newer {
 	/// Removes all entries that are in the `list` after the last one read, including itself, in order
 	/// Note: Make sure the list is sorted newest to oldest

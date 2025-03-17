@@ -7,7 +7,6 @@
 //! Implementations of [`ReadFilter`] on foreign types.
 //! These should make passing your own [`ReadFilter`] types easier without having to make an newtype just to implement it yourself
 
-use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -23,10 +22,8 @@ pub mod tokio_rwlock {
 	#[allow(clippy::wildcard_imports)]
 	use super::*;
 
-	#[async_trait]
 	impl<RF> ReadFilter for Arc<RwLock<RF>> where RF: ReadFilter {}
 
-	#[async_trait]
 	impl<RF> MarkAsRead for Arc<RwLock<RF>>
 	where
 		RF: ReadFilter,
@@ -40,7 +37,6 @@ pub mod tokio_rwlock {
 		}
 	}
 
-	#[async_trait]
 	impl<RF> Filter for Arc<RwLock<RF>>
 	where
 		RF: ReadFilter,
@@ -55,6 +51,7 @@ pub mod tokio_rwlock {
 	}
 }
 
+/*
 /// [`ReadFilter`] implementation for `Box<dyn ReadFilter>`
 pub mod boks {
 	#[allow(clippy::wildcard_imports)]
@@ -85,3 +82,4 @@ pub mod boks {
 		}
 	}
 }
+*/

@@ -6,7 +6,6 @@
 
 //! This module contains a [`ExternalSaveRFWrapper`] that wraps a [`ReadFilter`] with an [`ExternalSave`] and implements [`ReadFilter`] itself
 
-use async_trait::async_trait;
 use std::fmt::Debug;
 
 use crate::{
@@ -28,7 +27,6 @@ pub struct ExternalSaveRFWrapper<RF, S> {
 	pub external_save: Option<S>,
 }
 
-#[async_trait]
 impl<RF, S> ReadFilter for ExternalSaveRFWrapper<RF, S>
 where
 	RF: ReadFilter,
@@ -36,7 +34,6 @@ where
 {
 }
 
-#[async_trait]
 impl<RF, S> MarkAsRead for ExternalSaveRFWrapper<RF, S>
 where
 	RF: ReadFilter,
@@ -60,7 +57,6 @@ where
 	}
 }
 
-#[async_trait]
 impl<RF, S> Filter for ExternalSaveRFWrapper<RF, S>
 where
 	RF: ReadFilter,

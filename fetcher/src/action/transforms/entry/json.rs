@@ -19,7 +19,6 @@ use crate::{
 	utils::OptionExt,
 };
 
-use async_trait::async_trait;
 use either::Either;
 use serde_json::Value;
 use std::{borrow::Cow, ops::ControlFlow};
@@ -94,7 +93,6 @@ pub enum JsonError {
 	InvalidUrl(#[from] InvalidUrlError),
 }
 
-#[async_trait]
 impl TransformEntry for Json {
 	type Err = JsonError;
 

@@ -13,8 +13,6 @@ pub mod json;
 pub mod print;
 pub mod use_as;
 
-use async_trait::async_trait;
-
 use super::{Transform, result::TransformedEntry};
 use crate::{
 	action::transforms::error::{TransformError, TransformErrorKind},
@@ -25,7 +23,6 @@ use std::fmt::Debug;
 
 // TODO: combine with Transform trait?
 /// Transform an entry into one or more entries. This is the type transforms should implement as it includes easier error management
-#[async_trait]
 pub trait TransformEntry: Debug {
 	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
 	type Err: Into<TransformErrorKind>;
@@ -34,7 +31,6 @@ pub trait TransformEntry: Debug {
 	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err>;
 }
 
-#[async_trait]
 impl<T> Transform for T
 where
 	T: TransformEntry + Send + Sync,

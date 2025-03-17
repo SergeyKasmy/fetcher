@@ -6,7 +6,6 @@
 
 //! This module contains the [`Contains`] filter
 
-use async_trait::async_trait;
 use regex::Regex;
 use std::borrow::Cow;
 
@@ -36,7 +35,6 @@ impl Contains {
 	}
 }
 
-#[async_trait]
 impl Filter for Contains {
 	/// Filter out some entries out of the `entries` vector
 	async fn filter(&self, entries: &mut Vec<Entry>) {

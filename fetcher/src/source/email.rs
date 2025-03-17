@@ -28,7 +28,6 @@ use crate::{
 	source::error::SourceError,
 };
 
-use async_trait::async_trait;
 use mailparse::ParsedMail;
 use std::fmt::{Debug, Write as _};
 
@@ -169,7 +168,6 @@ impl Email {
 	}
 }
 
-#[async_trait]
 impl Fetch for Email {
 	/// Even though it's marked async, the fetching itself is not async yet
 	/// It should be used with spawn_blocking probs
@@ -179,7 +177,6 @@ impl Fetch for Email {
 	}
 }
 
-#[async_trait]
 impl MarkAsRead for Email {
 	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 		self.mark_as_read_impl(id)

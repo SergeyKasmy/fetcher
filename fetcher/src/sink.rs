@@ -31,11 +31,9 @@ use self::{
 	message::{Message, MessageId},
 };
 
-use async_trait::async_trait;
 use std::{borrow::Cow, collections::HashSet, fmt::Debug};
 
 /// An async function that sends a message somewhere
-#[async_trait]
 pub trait Sink: Debug + Send + Sync {
 	/// Send the message with an optional tag (usually represented as a hashtag)
 	async fn send(

@@ -11,7 +11,6 @@ use crate::{
 	error::FetcherError,
 };
 
-use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use std::collections::VecDeque;
 
@@ -56,10 +55,8 @@ impl NotPresent {
 	}
 }
 
-#[async_trait]
 impl ReadFilter for NotPresent {}
 
-#[async_trait]
 impl MarkAsRead for NotPresent {
 	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 		self.read_list.push_back((id.clone(), chrono::Utc::now()));
@@ -76,7 +73,6 @@ impl MarkAsRead for NotPresent {
 	}
 }
 
-#[async_trait]
 impl Filter for NotPresent {
 	#[tracing::instrument(level = "debug", name = "filter_read", skip_all)]
 	async fn filter(&self, entries: &mut Vec<Entry>) {

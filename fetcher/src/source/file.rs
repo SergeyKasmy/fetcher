@@ -8,7 +8,6 @@
 //!
 //! This module contains [`File`] source
 
-use async_trait::async_trait;
 use std::path::PathBuf;
 use tokio::fs;
 
@@ -22,7 +21,6 @@ pub struct File {
 	pub path: PathBuf,
 }
 
-#[async_trait]
 impl Fetch for File {
 	/// Read data from a file from the file system, returning its contents in the [`Entry.raw_contents`] field
 	// doesn't actually mutate itself

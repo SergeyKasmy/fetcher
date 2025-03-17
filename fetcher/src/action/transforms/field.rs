@@ -21,7 +21,6 @@ pub use self::{
 	caps::Caps, extract::Extract, replace::Replace, set::Set, shorten::Shorten, trim::Trim,
 };
 
-use async_trait::async_trait;
 use std::fmt::{self, Debug};
 use url::Url;
 
@@ -81,7 +80,6 @@ where
 	pub transformator: T,
 }
 
-#[async_trait]
 impl<T> Transform for TransformFieldWrapper<T>
 where
 	T: TransformField,

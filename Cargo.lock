@@ -631,7 +631,6 @@ name = "fetcher"
 version = "0.15.0-alpha.1"
 dependencies = [
  "assert_matches",
- "async-trait",
  "bon",
  "chrono",
  "either",

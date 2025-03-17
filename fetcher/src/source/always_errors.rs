@@ -6,8 +6,6 @@
 
 //! This module provides [`AlwaysErrors`] source that always returns an error. Used for debug purposes
 
-use async_trait::async_trait;
-
 use super::{Fetch, Source, error::SourceError};
 use crate::{
 	entry::{Entry, EntryId},
@@ -19,14 +17,12 @@ use crate::{
 #[derive(Debug)]
 pub struct AlwaysErrors;
 
-#[async_trait]
 impl Fetch for AlwaysErrors {
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
 		Err(SourceError::Debug)
 	}
 }
 
-#[async_trait]
 impl MarkAsRead for AlwaysErrors {
 	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
 		Ok(())

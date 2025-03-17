@@ -25,14 +25,12 @@ use crate::{
 	read_filter::{MarkAsRead, ReadFilter},
 };
 
-use async_trait::async_trait;
 use std::fmt::Debug;
 
 /// A trait that defines a way to fetch entries as well as mark them as read afterwards
 pub trait Source: Fetch + MarkAsRead + Debug + Send + Sync + 'static {}
 
 /// A trait that defines a way to fetch (entries)[`Entry`]
-#[async_trait]
 pub trait Fetch: Debug + Send + Sync {
 	/// Fetch all available entries from the source
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError>;
@@ -53,7 +51,6 @@ where
 	pub rf: Option<RF>,
 }
 
-#[async_trait]
 impl<F, RF> Fetch for SourceWithSharedRF<F, RF>
 where
 	F: Fetch,
@@ -64,7 +61,6 @@ where
 	}
 }
 
-#[async_trait]
 impl<F, RF> MarkAsRead for SourceWithSharedRF<F, RF>
 where
 	F: Fetch,
@@ -92,7 +88,6 @@ where
 {
 }
 
-#[async_trait]
 impl Fetch for String {
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
 		Ok(vec![Entry {
@@ -102,7 +97,6 @@ impl Fetch for String {
 	}
 }
 
-#[async_trait]
 impl<T> Fetch for Vec<T>
 where
 	T: Fetch,
