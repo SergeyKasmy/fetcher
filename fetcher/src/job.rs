@@ -18,8 +18,9 @@ use tokio::time::sleep;
 use crate::{StaticStr, error::FetcherError, task::TaskGroup};
 
 /// A single job, containing a single or a couple [`tasks`](`Task`), possibly refetching every set amount of time
-#[derive(Debug)]
+#[derive(bon::Builder, Debug)]
 pub struct Job<T> {
+	#[builder(start_fn, into)]
 	pub name: StaticStr,
 
 	/// The tasks to run

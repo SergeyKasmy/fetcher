@@ -28,21 +28,24 @@ use crate::{
 ///
 /// Contains everything from a [`Source`] that allows to fetch some data, to a [`Sink`] that takes that data and sends it somewhere.
 /// It also contains any transformators
-#[derive(Debug)]
+#[derive(bon::Builder, Debug)]
 pub struct Task<S, A, E> {
+	#[builder(start_fn, into)]
 	pub name: StaticStr,
 
+	/// Map of an entry to a message. Used when an entry is a reply to an older entry to be able to show that as a message, too
+	#[builder(field)]
+	pub entry_to_msg_map: Option<EntryToMsgMap<E>>,
+
 	/// An optional tag that may be put near a message body to differentiate this task from others that may be similar
-	pub tag: Option<String>,
+	#[builder(into)]
+	pub tag: Option<StaticStr>,
 
 	/// The source where to fetch some data from
 	pub source: Option<S>,
 
 	/// A list of optional transformators which to run the data received from the source through
 	pub action: Option<A>,
-
-	/// Map of an entry to a message. Used when an entry is a reply to an older entry to be able to show that as a message, too
-	pub entry_to_msg_map: Option<EntryToMsgMap<E>>,
 }
 
 impl<S, A, E> Task<S, A, E>
@@ -99,5 +102,16 @@ where
 impl OpaqueTask for Infallible {
 	async fn run(&mut self) -> Result<(), FetcherError> {
 		unreachable!()
+	}
+}
+
+impl<S, A, State: task_builder::State> TaskBuilder<S, A, Infallible, State> {
+	pub fn no_entry_to_msg_map(mut self) -> Self {
+		self.entry_to_msg_map = None;
+		self
+	}
+
+	pub fn build_without_replies(self) -> Task<S, A, Infallible> {
+		self.no_entry_to_msg_map().build()
 	}
 }
