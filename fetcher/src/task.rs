@@ -40,7 +40,7 @@ impl<S, A, E> Task<S, A, E>
 where
 	S: Source,
 	A: Action,
-	E: ExternalSave + 'static,
+	E: ExternalSave,
 {
 	/// Run a task (both the source and the sink part) once to completion
 	///
@@ -69,5 +69,20 @@ where
 		}
 
 		Ok(())
+	}
+}
+
+pub trait OpaqueTask {
+	async fn run(&mut self) -> Result<(), FetcherError>;
+}
+
+impl<S, A, E> OpaqueTask for Task<S, A, E>
+where
+	S: Source,
+	A: Action,
+	E: ExternalSave,
+{
+	async fn run(&mut self) -> Result<(), FetcherError> {
+		Task::run(self).await
 	}
 }

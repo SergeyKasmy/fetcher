@@ -28,7 +28,7 @@ use crate::{
 use std::fmt::Debug;
 
 /// A trait that defines a way to fetch entries as well as mark them as read afterwards
-pub trait Source: Fetch + MarkAsRead + Debug + Send + Sync + 'static {}
+pub trait Source: Fetch + MarkAsRead + Debug + Send + Sync {}
 
 /// A trait that defines a way to fetch (entries)[`Entry`]
 pub trait Fetch: Debug + Send + Sync {
@@ -83,8 +83,8 @@ where
 
 impl<F, RF> Source for SourceWithSharedRF<F, RF>
 where
-	F: Fetch + 'static,
-	RF: ReadFilter + 'static,
+	F: Fetch,
+	RF: ReadFilter,
 {
 }
 
