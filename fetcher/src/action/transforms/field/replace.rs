@@ -19,7 +19,7 @@ use crate::{
 pub const HTML_TAG_RE: &str = "<[^>]*>";
 
 /// Replace the first regular expression match with a string
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Replace {
 	/// The regular expression to match
 	pub re: Regex,

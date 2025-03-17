@@ -1,14 +1,24 @@
+mod combined_job_group;
+
 use tokio::join;
 
-use crate::error::FetcherError;
-
+use self::combined_job_group::CombinedJobGroup;
 use super::OpaqueJob;
+use crate::error::FetcherError;
 
 pub type JobRunResult = Result<(), Vec<FetcherError>>;
 
 pub trait JobGroup {
 	#[must_use = "this vec of results could contain errors"]
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult>;
+
+	fn and<G>(self, other: G) -> CombinedJobGroup<Self, G>
+	where
+		Self: Sized,
+		G: JobGroup,
+	{
+		CombinedJobGroup(self, other)
+	}
 }
 
 impl<J> JobGroup for J

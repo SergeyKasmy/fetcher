@@ -88,6 +88,19 @@ pub trait OpaqueTask {
 	async fn run(&mut self) -> Result<(), FetcherError>;
 }
 
+impl<T> OpaqueTask for Option<T>
+where
+	T: OpaqueTask,
+{
+	async fn run(&mut self) -> Result<(), FetcherError> {
+		let Some(task) = self else {
+			return Ok(());
+		};
+
+		task.run().await
+	}
+}
+
 impl<S, A, E> OpaqueTask for Task<S, A, E>
 where
 	S: Source,

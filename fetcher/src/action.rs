@@ -70,11 +70,11 @@ macro_rules! reborrow_ctx {
 	}};
 }
 
-impl<A1> Action for (A1,)
+impl<A> Action for Option<A>
 where
-	A1: Action,
+	A: Action,
 {
-	type Error = FetcherError;
+	type Error = A::Error;
 
 	async fn apply<'a, S, E>(
 		&mut self,
@@ -85,7 +85,31 @@ where
 		S: Source,
 		E: ExternalSave,
 	{
-		self.0.apply(entries, context).await.map_err(Into::into)
+		let Some(act) = self else {
+			// do nothing, just passthrough
+			return Ok(entries);
+		};
+
+		act.apply(entries, context).await
+	}
+}
+
+impl<A> Action for (A,)
+where
+	A: Action,
+{
+	type Error = A::Error;
+
+	async fn apply<'a, S, E>(
+		&mut self,
+		entries: Vec<Entry>,
+		context: ActionContext<'a, S, E>,
+	) -> Result<Vec<Entry>, Self::Error>
+	where
+		S: Source,
+		E: ExternalSave,
+	{
+		self.0.apply(entries, context).await
 	}
 }
 
@@ -110,6 +134,7 @@ where
 			.apply(entries, reborrow_ctx!(&mut ctx))
 			.await
 			.map_err(Into::into)?;
+
 		self.1.apply(entries, ctx).await.map_err(Into::into)
 	}
 }

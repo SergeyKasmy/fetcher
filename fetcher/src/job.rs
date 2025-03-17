@@ -91,3 +91,16 @@ impl OpaqueJob for () {
 		Ok(())
 	}
 }
+
+impl<J> OpaqueJob for Option<J>
+where
+	J: OpaqueJob,
+{
+	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+		let Some(job) = self else {
+			return Ok(());
+		};
+
+		job.run().await
+	}
+}

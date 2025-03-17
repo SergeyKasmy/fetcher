@@ -63,7 +63,7 @@ pub struct ElementQuery {
 /// </div>
 /// ```
 /// and return "hello, world!"
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ElementDataQuery {
 	/// Whether the query is optional. Ignore the fact it could've not been found if it is
 	pub optional: bool,
