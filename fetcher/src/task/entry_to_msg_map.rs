@@ -16,7 +16,7 @@ use crate::{
 ///
 /// [entry]: crate::entry::Entry
 /// [message]: crate::sink::message::Message
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct EntryToMsgMap<E> {
 	/// External save location for that map.
 	/// It's called every time on [`Self::insert()`]
@@ -76,5 +76,14 @@ where
 		}
 
 		Ok(())
+	}
+}
+
+impl<E> Default for EntryToMsgMap<E> {
+	fn default() -> Self {
+		Self {
+			external_save: None,
+			map: HashMap::default(),
+		}
 	}
 }

@@ -5,8 +5,10 @@
 #![allow(clippy::tests_outside_test_module)]
 #![allow(clippy::unwrap_used)]
 
+use std::convert::Infallible;
+
 use fetcher::{
-	action::ActionEnum,
+	action::sink,
 	entry::{Entry, EntryId},
 	error::FetcherError,
 	read_filter::MarkAsRead,
@@ -61,7 +63,7 @@ impl Sink for DummySink {
 
 #[tokio::test]
 async fn reply_to() {
-	let mut entry_to_msg_map = EntryToMsgMap::default();
+	let mut entry_to_msg_map = EntryToMsgMap::<Infallible>::default();
 
 	entry_to_msg_map
 		.insert(ENTRY_ID.to_owned().into(), MESSAGE_ID.into())
@@ -69,9 +71,10 @@ async fn reply_to() {
 		.unwrap();
 
 	let mut task = Task {
+		name: "reply_to_test".into(),
 		tag: None,
-		source: Some(Box::new(DummySource)),
-		action: Some(vec![ActionEnum::Sink(Box::new(DummySink))]),
+		source: Some(DummySource),
+		action: Some(sink(DummySink)),
 		entry_to_msg_map: Some(entry_to_msg_map),
 	};
 
