@@ -6,16 +6,16 @@
 
 //! This module contains the [`Job`] struct and the entryway to the library
 
-pub mod timepoint;
+mod task_group;
+mod timepoint;
 
 use std::convert::Infallible;
 
-use tokio::{join, time::sleep};
+pub use self::{task_group::TaskGroup, timepoint::TimePoint};
 
-use self::timepoint::TimePoint;
-use crate::{
-	action::Action, error::FetcherError, external_save::ExternalSave, source::Source, task::Task,
-};
+use tokio::time::sleep;
+
+use crate::error::FetcherError;
 
 /// A single job, containing a single or a couple [`tasks`](`Task`), possibly refetching every set amount of time
 #[derive(Debug)]
@@ -29,7 +29,7 @@ pub struct Job<T> {
 
 impl<T> Job<T>
 where
-	T: RunTasks,
+	T: TaskGroup,
 {
 	/// Run this job to completion or return early on an error
 	///
@@ -67,101 +67,24 @@ where
 	}
 }
 
-pub trait RunTask {
-	async fn run(&mut self) -> Result<(), FetcherError>;
+pub trait OpaqueJob {
+	async fn run(&mut self) -> Result<(), Vec<FetcherError>>;
 }
 
-pub trait RunTasks {
-	async fn run(&mut self) -> Vec<Result<(), FetcherError>>;
-}
-
-impl<S, A, E> RunTask for Task<S, A, E>
-where
-	S: Source,
-	A: Action,
-	E: ExternalSave + 'static,
-{
-	async fn run(&mut self) -> Result<(), FetcherError> {
-		Task::run(self).await
+impl<T: TaskGroup> OpaqueJob for Job<T> {
+	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+		Job::run(self).await
 	}
 }
 
-impl RunTask for Infallible {
-	async fn run(&mut self) -> Result<(), FetcherError> {
+impl OpaqueJob for Infallible {
+	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
 		unreachable!()
 	}
 }
 
-impl<T1> RunTasks for T1
-where
-	T1: RunTask,
-{
-	async fn run(&mut self) -> Vec<Result<(), FetcherError>> {
-		vec![RunTask::run(self).await]
-	}
-}
-
-impl<T1> RunTasks for (T1,)
-where
-	T1: RunTask,
-{
-	async fn run(&mut self) -> Vec<Result<(), FetcherError>> {
-		vec![self.0.run().await]
-	}
-}
-
-impl<T1, T2> RunTasks for (T1, T2)
-where
-	T1: RunTask,
-	T2: RunTask,
-{
-	async fn run(&mut self) -> Vec<Result<(), FetcherError>> {
-		let results = join!(self.0.run(), self.1.run());
-		vec![results.0, results.1]
-	}
-}
-
-impl<T1, T2, T3> RunTasks for (T1, T2, T3)
-where
-	T1: RunTask,
-	T2: RunTask,
-	T3: RunTask,
-{
-	async fn run(&mut self) -> Vec<Result<(), FetcherError>> {
-		let results = join!(self.0.run(), self.1.run(), self.2.run());
-		vec![results.0, results.1, results.2]
-	}
-}
-
-impl<T1, T2, T3, T4> RunTasks for (T1, T2, T3, T4)
-where
-	T1: RunTask,
-	T2: RunTask,
-	T3: RunTask,
-	T4: RunTask,
-{
-	async fn run(&mut self) -> Vec<Result<(), FetcherError>> {
-		let results = join!(self.0.run(), self.1.run(), self.2.run(), self.3.run());
-		vec![results.0, results.1, results.2, results.3]
-	}
-}
-
-impl<T1, T2, T3, T4, T5> RunTasks for (T1, T2, T3, T4, T5)
-where
-	T1: RunTask,
-	T2: RunTask,
-	T3: RunTask,
-	T4: RunTask,
-	T5: RunTask,
-{
-	async fn run(&mut self) -> Vec<Result<(), FetcherError>> {
-		let results = join!(
-			self.0.run(),
-			self.1.run(),
-			self.2.run(),
-			self.3.run(),
-			self.4.run()
-		);
-		vec![results.0, results.1, results.2, results.3, results.4]
+impl OpaqueJob for () {
+	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+		Ok(())
 	}
 }

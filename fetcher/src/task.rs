@@ -8,6 +8,8 @@
 
 pub mod entry_to_msg_map;
 
+use std::convert::Infallible;
+
 use self::entry_to_msg_map::EntryToMsgMap;
 use crate::{
 	action::{Action, ActionContext},
@@ -84,5 +86,11 @@ where
 {
 	async fn run(&mut self) -> Result<(), FetcherError> {
 		Task::run(self).await
+	}
+}
+
+impl OpaqueTask for Infallible {
+	async fn run(&mut self) -> Result<(), FetcherError> {
+		unreachable!()
 	}
 }
