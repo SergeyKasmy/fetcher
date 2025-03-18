@@ -19,7 +19,7 @@ pub use self::{
 
 use crate::{action::filters::Filter, entry::EntryId, error::FetcherError};
 
-use std::{convert::Infallible, fmt::Debug};
+use std::fmt::Debug;
 
 /// A trait that defines a way to mark an entry as read
 pub trait MarkAsRead: Debug + Send + Sync {
@@ -38,14 +38,12 @@ pub trait MarkAsRead: Debug + Send + Sync {
 /// [Entry]: crate::entry::Entry
 pub trait ReadFilter: MarkAsRead + Filter + Send + Sync {}
 
-impl MarkAsRead for Infallible {
+impl MarkAsRead for () {
 	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
-		unreachable!()
+		Ok(())
 	}
 
 	/// Set the current "mark as read"er to read only mode
-	async fn set_read_only(&mut self) {
-		unreachable!()
-	}
+	async fn set_read_only(&mut self) {}
 }
-impl ReadFilter for Infallible {}
+impl ReadFilter for () {}

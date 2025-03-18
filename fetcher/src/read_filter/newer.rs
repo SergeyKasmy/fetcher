@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use serde::{Deserialize, Serialize};
+
 use super::{MarkAsRead, ReadFilter};
 use crate::{
 	action::filters::Filter,
@@ -12,7 +14,7 @@ use crate::{
 };
 
 /// Read Filter that stores the id of the last read entry
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Newer {
 	/// the id of the last read entry. None means there haven't been any entries read and thus all entries run through [`filter()`](`Newer::filter()`) will be retained
 	pub last_read_id: Option<EntryId>,

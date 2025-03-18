@@ -12,12 +12,13 @@ use crate::{
 };
 
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
 const MAX_LIST_LEN: usize = 500;
 
 /// Read Filter that stores a list of all entries read
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NotPresent {
 	read_list: VecDeque<(EntryId, DateTime<Utc>)>,
 }

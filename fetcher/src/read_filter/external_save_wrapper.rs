@@ -8,6 +8,8 @@
 
 use std::fmt::Debug;
 
+use serde::Serialize;
+
 use crate::{
 	action::filters::Filter,
 	entry::{Entry, EntryId},
@@ -29,14 +31,14 @@ pub struct ExternalSaveRFWrapper<RF, S> {
 
 impl<RF, S> ReadFilter for ExternalSaveRFWrapper<RF, S>
 where
-	RF: ReadFilter,
+	RF: ReadFilter + Serialize,
 	S: ExternalSave,
 {
 }
 
 impl<RF, S> MarkAsRead for ExternalSaveRFWrapper<RF, S>
 where
-	RF: ReadFilter,
+	RF: ReadFilter + Serialize,
 	S: ExternalSave,
 {
 	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {

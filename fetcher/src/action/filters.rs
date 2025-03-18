@@ -47,8 +47,6 @@ where
 	}
 }
 
-impl Filter for Infallible {
-	async fn filter(&self, _entries: &mut Vec<Entry>) {
-		unreachable!()
-	}
+impl Filter for () {
+	async fn filter(&self, _entries: &mut Vec<Entry>) {}
 }

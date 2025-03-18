@@ -8,12 +8,15 @@
 
 use std::{
 	collections::HashMap,
-	convert::Infallible,
 	fmt::{Debug, Display},
 	io,
 };
 
-use crate::{entry::EntryId, sinks::message::MessageId, utils::DisplayDebug};
+use serde::Serialize;
+
+use crate::{
+	entry::EntryId, read_filter::ReadFilter, sinks::message::MessageId, utils::DisplayDebug,
+};
 
 /// This trait represent some kind of external save destination.
 /// A way to preserve the state of a read filter, i.e. what has and has not been read, across restarts.
@@ -22,7 +25,9 @@ pub trait ExternalSave: Debug + Send + Sync {
 	///
 	/// # Errors
 	/// It may return an error if there has been issues saving, e.g. writing to disk
-	async fn save_read_filter<RF>(&mut self, read_filter: &RF) -> Result<(), ExternalSaveError>;
+	async fn save_read_filter<RF>(&mut self, read_filter: &RF) -> Result<(), ExternalSaveError>
+	where
+		RF: ReadFilter + Serialize;
 
 	/// Save the entry id to message id map (see [`Task.entry_to_msg_map`]) enternally
 	async fn save_entry_to_msg_map(
@@ -42,9 +47,9 @@ pub struct ExternalSaveError {
 	pub path: Option<Box<dyn DisplayDebug + Send + Sync>>,
 }
 
-impl ExternalSave for Infallible {
+impl ExternalSave for () {
 	async fn save_read_filter<RF>(&mut self, _read_filter: &RF) -> Result<(), ExternalSaveError> {
-		unreachable!()
+		Ok(())
 	}
 
 	/// Save the entry id to message id map (see [`Task.entry_to_msg_map`]) enternally
@@ -52,6 +57,6 @@ impl ExternalSave for Infallible {
 		&mut self,
 		_map: &HashMap<EntryId, MessageId>,
 	) -> Result<(), ExternalSaveError> {
-		unreachable!()
+		Ok(())
 	}
 }

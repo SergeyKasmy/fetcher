@@ -12,8 +12,6 @@ pub mod entry_to_msg_map;
 
 pub use self::task_group::TaskGroup;
 
-use std::convert::Infallible;
-
 use self::entry_to_msg_map::EntryToMsgMap;
 use crate::{
 	StaticStr,
@@ -58,7 +56,7 @@ where
 	///
 	/// # Errors
 	/// If there was an error fetching the data, sending the data, or saving what data was successfully sent to an external location
-	#[tracing::instrument(skip(self))]
+	#[tracing::instrument(skip(self), fields(name = %self.name))]
 	pub async fn run(&mut self) -> Result<(), FetcherError> {
 		tracing::trace!("Running task");
 
@@ -112,19 +110,19 @@ where
 	}
 }
 
-impl OpaqueTask for Infallible {
+impl OpaqueTask for () {
 	async fn run(&mut self) -> Result<(), FetcherError> {
-		unreachable!()
+		Ok(())
 	}
 }
 
-impl<S, A, State: task_builder::State> TaskBuilder<S, A, Infallible, State> {
+impl<S, A, State: task_builder::State> TaskBuilder<S, A, (), State> {
 	pub fn no_entry_to_msg_map(mut self) -> Self {
 		self.entry_to_msg_map = None;
 		self
 	}
 
-	pub fn build_without_replies(self) -> Task<S, A, Infallible> {
+	pub fn build_without_replies(self) -> Task<S, A, ()> {
 		self.no_entry_to_msg_map().build()
 	}
 }
