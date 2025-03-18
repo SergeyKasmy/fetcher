@@ -31,7 +31,7 @@ use super::{
 use crate::{action::transforms::error::TransformErrorKind, entry::Entry, error::InvalidUrlError};
 
 /// Transform/change the value of a field of an [`Entry `]
-pub trait TransformField: Debug + Send + Sync {
+pub trait TransformField {
 	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
 	type Err: Into<TransformErrorKind>;
 
@@ -40,23 +40,6 @@ pub trait TransformField: Debug + Send + Sync {
 	/// # Errors
 	/// Refer to implementator's docs. Most of them never error but some do
 	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err>;
-
-	fn in_field(self, field: Field) -> TransformFieldWrapper<Self>
-	where
-		Self: Sized,
-	{
-		TransformFieldWrapper {
-			field,
-			transformator: self,
-		}
-	}
-
-	fn in_body(self) -> TransformFieldWrapper<Self>
-	where
-		Self: Sized,
-	{
-		self.in_field(Field::Body)
-	}
 }
 
 /// List of all available fields for transformations

@@ -9,6 +9,8 @@
 pub mod filters;
 pub mod transforms;
 
+use transforms::field::{Field, TransformField, TransformFieldWrapper};
+
 use self::filters::{Filter, FilterWrapper};
 use self::transforms::Transform;
 use self::transforms::TransformWrapper;
@@ -50,6 +52,23 @@ where
 	T: Transform,
 {
 	TransformWrapper(t)
+}
+
+pub fn transform_field<T>(field: Field, t: T) -> impl Action
+where
+	T: TransformField,
+{
+	transform(TransformFieldWrapper {
+		field,
+		transformator: t,
+	})
+}
+
+pub fn transform_body<T>(t: T) -> impl Action
+where
+	T: TransformField,
+{
+	transform_field(Field::Body, t)
 }
 
 pub fn sink<S>(s: S) -> impl Action
