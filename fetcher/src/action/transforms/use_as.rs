@@ -6,7 +6,7 @@
 
 //! This module contains the transform [`Use`] that allows using the content of a [`Field`] as the new value of a different [`Field`]
 
-use super::TransformEntry;
+use super::Transform;
 use crate::{
 	action::transforms::{
 		error::TransformErrorKind,
@@ -29,7 +29,7 @@ pub struct Use {
 	pub as_field: Field,
 }
 
-impl TransformEntry for Use {
+impl Transform for Use {
 	type Err = TransformErrorKind;
 
 	async fn transform_entry(&self, ent: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {

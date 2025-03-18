@@ -11,7 +11,7 @@ pub mod query;
 use self::query::{
 	DataLocation, ElementDataQuery, ElementKind, ElementQuery, ElementQuerySliceExt,
 };
-use super::TransformEntry;
+use super::Transform;
 use crate::{
 	action::transforms::{
 		error::RawContentsNotSetError,
@@ -80,7 +80,7 @@ pub enum HtmlError {
 	InvalidUrl(#[from] InvalidUrlError),
 }
 
-impl TransformEntry for Html {
+impl Transform for Html {
 	type Err = HtmlError;
 
 	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {

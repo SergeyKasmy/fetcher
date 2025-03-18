@@ -6,7 +6,7 @@
 
 //! This module contains the [`Feed`] transform that can parse RSS and Atom feeds
 
-use super::TransformEntry;
+use super::Transform;
 use crate::{
 	action::transforms::{
 		error::RawContentsNotSetError,
@@ -32,7 +32,7 @@ pub enum FeedError {
 	Other(#[from] feed_rs::parser::ParseFeedError),
 }
 
-impl TransformEntry for Feed {
+impl Transform for Feed {
 	type Err = FeedError;
 
 	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {

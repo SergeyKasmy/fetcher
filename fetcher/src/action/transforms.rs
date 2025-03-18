@@ -6,24 +6,38 @@
 
 //! This module contains [`TransformEntry`](`entry::TransformEntry`) and [`TransformField`](`field::TransformField`) traits as well as all types that implement it
 
-pub mod entry;
+pub mod feed;
+pub mod html;
+pub mod http;
+pub mod json;
+pub mod print;
+pub mod use_as;
+
 pub mod field;
 pub mod result;
 
 pub mod error;
 
 pub use self::{
-	entry::{feed::Feed, html::Html, http::Http, json::Json, print::DebugPrint, use_as::Use},
+	feed::Feed,
 	field::{caps::Caps, set::Set, shorten::Shorten, trim::Trim},
+	html::Html,
+	http::Http,
+	json::Json,
+	print::DebugPrint,
+	use_as::Use,
 };
 
 use self::error::TransformError;
+use self::error::TransformErrorKind;
+use self::result::TransformedEntry;
 use crate::{entry::Entry, external_save::ExternalSave, sources::Source};
 
 use std::fmt::Debug;
 
 use super::{Action, ActionContext};
 
+/*
 /// Transform an [`Entry`] into one or more new (entries)[`Entry`].
 ///
 /// For example, a [`Json`] transform parses the contents of the [`Entry`] as JSON and returns new entries from it,
@@ -34,6 +48,16 @@ pub trait Transform: Debug + Send + Sync {
 	/// # Erorrs
 	/// Refer to implementators docs
 	async fn transform(&self, entry: Entry) -> Result<Vec<Entry>, TransformError>;
+}
+*/
+
+/// Transform an entry into one or more entries. This is the type transforms should implement as it includes easier error management
+pub trait Transform: Debug {
+	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
+	type Err: Into<TransformErrorKind>;
+
+	/// Transform the `entry` into one or several separate entries
+	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err>;
 }
 
 pub(crate) struct TransformWrapper<T>(pub T);
@@ -56,9 +80,29 @@ where
 		let mut transformed_entries = Vec::new();
 
 		for entry in entries {
-			transformed_entries.extend(self.0.transform(entry).await?);
+			transformed_entries.extend(transform_old_entry_into_new_entries(&self.0, entry).await?);
 		}
 
 		Ok(transformed_entries)
 	}
+}
+
+async fn transform_old_entry_into_new_entries<T>(
+	this: &T,
+	old_entry: Entry,
+) -> Result<Vec<Entry>, TransformError>
+where
+	T: Transform,
+{
+	this.transform_entry(old_entry.clone())
+		.await
+		.map(|vec| {
+			vec.into_iter()
+				.map(|transformed_entry| transformed_entry.into_entry(&old_entry))
+				.collect()
+		})
+		.map_err(|kind| TransformError {
+			kind: kind.into(),
+			original_entry: old_entry,
+		})
 }

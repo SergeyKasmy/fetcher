@@ -24,14 +24,11 @@ pub use self::{
 use std::fmt::{self, Debug};
 use url::Url;
 
-use super::{Transform, result::TransformResult};
-use crate::{
-	action::transforms::error::{TransformError, TransformErrorKind},
-	entry::Entry,
-	error::InvalidUrlError,
-	sinks::message::Message,
-	utils::OptionExt,
+use super::{
+	Transform,
+	result::{TransformResult, TransformedEntry},
 };
+use crate::{action::transforms::error::TransformErrorKind, entry::Entry, error::InvalidUrlError};
 
 /// Transform/change the value of a field of an [`Entry `]
 pub trait TransformField: Debug + Send + Sync {
@@ -62,6 +59,23 @@ pub trait TransformField: Debug + Send + Sync {
 	}
 }
 
+/// List of all available fields for transformations
+#[derive(Clone, Copy, Debug)]
+pub enum Field {
+	/// [`Message::title`] field
+	Title,
+	/// [`Message::body`] field
+	Body,
+	/// [`Message::link`] field
+	Link,
+	/// [`Entry::id`] field
+	Id,
+	/// [`Entry::reply_to`] field
+	ReplyTo,
+	/// [`Entry::raw_contents`] field
+	RawContets,
+}
+
 // TODO: make a new name
 /// A wrapper around a [`TransformField`].
 ///
@@ -84,91 +98,61 @@ impl<T> Transform for TransformFieldWrapper<T>
 where
 	T: TransformField,
 {
-	async fn transform(&self, mut entry: Entry) -> Result<Vec<Entry>, TransformError> {
-		// old value of the field
-		let old_val = match self.field {
-			Field::Title => entry.msg.title.take(),
-			Field::Body => entry.msg.body.take(),
-			Field::Link => entry.msg.link.take().map(|u| u.to_string()),
-			Field::Id => entry.id.take().map(|id| id.0),
-			Field::ReplyTo => entry.reply_to.take().map(|id| id.0),
-			Field::RawContets => entry.raw_contents.take(),
-		};
+	type Err = TransformErrorKind;
 
-		let new_val = self
-			.transformator
-			.transform_field(old_val.as_deref())
-			.map_err(|kind| TransformError {
-				kind: kind.into(),
-				original_entry: entry.clone(),
-			})?;
+	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+		let mut new_entry = TransformedEntry::default();
 
-		// finalized value of the field. It's the new value that can get replaced with the old value if requested
-		let final_val = new_val.get(|| old_val);
-
-		let new_entry = match self.field {
-			Field::Title => Entry {
-				msg: Message {
-					title: final_val,
-					..entry.msg
-				},
-				..entry
-			},
-			Field::Body => Entry {
-				msg: Message {
-					body: final_val,
-					..entry.msg
-				},
-				..entry
-			},
-			Field::Link => {
-				let link = final_val.try_map(|s| {
-					Url::try_from(s.as_str()).map_err(|e| TransformError {
-						kind: TransformErrorKind::FieldLinkTransformInvalidUrl(InvalidUrlError(
-							e, s,
-						)),
-						original_entry: entry.clone(),
-					})
-				})?;
-
-				Entry {
-					msg: Message { link, ..entry.msg },
-					..entry
-				}
+		match self.field {
+			Field::Title => {
+				new_entry.msg.title = self
+					.transformator
+					.transform_field(entry.msg.title.as_deref())
+					.map_err(Into::into)?;
 			}
-			Field::Id => Entry {
-				id: final_val.map(Into::into),
-				..entry
-			},
-			Field::ReplyTo => Entry {
-				reply_to: final_val.map(Into::into),
-				..entry
-			},
-			Field::RawContets => Entry {
-				raw_contents: final_val,
-				..entry
-			},
-		};
+			Field::Body => {
+				new_entry.msg.body = self
+					.transformator
+					.transform_field(entry.msg.body.as_deref())
+					.map_err(Into::into)?;
+			}
+			Field::Link => {
+				let old_link = entry.msg.link.as_ref().map(|u| u.to_string());
+
+				new_entry.msg.link = self
+					.transformator
+					.transform_field(old_link.as_deref())
+					.map_err(Into::into)?
+					.try_map(|s| {
+						Url::try_from(s.as_str()).map_err(|e| {
+							TransformErrorKind::FieldLinkTransformInvalidUrl(InvalidUrlError(e, s))
+						})
+					})?;
+			}
+			Field::Id => {
+				new_entry.id = self
+					.transformator
+					.transform_field(entry.id.as_deref())
+					.map_err(Into::into)?
+					.map(Into::into);
+			}
+			Field::ReplyTo => {
+				new_entry.reply_to = self
+					.transformator
+					.transform_field(entry.reply_to.as_deref())
+					.map_err(Into::into)?
+					.map(Into::into);
+			}
+			Field::RawContets => {
+				new_entry.raw_contents = self
+					.transformator
+					.transform_field(entry.msg.body.as_deref())
+					.map_err(Into::into)?;
+			}
+		}
 
 		Ok(vec![new_entry])
 	}
-}
-
-/// List of all available fields for transformations
-#[derive(Clone, Copy, Debug)]
-pub enum Field {
-	/// [`Message::title`] field
-	Title,
-	/// [`Message::body`] field
-	Body,
-	/// [`Message::link`] field
-	Link,
-	/// [`Entry::id`] field
-	Id,
-	/// [`Entry::reply_to`] field
-	ReplyTo,
-	/// [`Entry::raw_contents`] field
-	RawContets,
 }
 
 impl fmt::Display for Field {

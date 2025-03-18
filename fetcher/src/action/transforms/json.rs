@@ -6,7 +6,7 @@
 
 //! This module contains the [`Json`] parser
 
-use super::TransformEntry;
+use super::Transform;
 use crate::{
 	action::transforms::{
 		error::RawContentsNotSetError,
@@ -93,7 +93,7 @@ pub enum JsonError {
 	InvalidUrl(#[from] InvalidUrlError),
 }
 
-impl TransformEntry for Json {
+impl Transform for Json {
 	type Err = JsonError;
 
 	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {

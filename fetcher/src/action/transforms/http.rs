@@ -9,7 +9,7 @@
 use reqwest::Client;
 use url::Url;
 
-use super::TransformEntry;
+use super::Transform;
 use crate::{
 	action::transforms::{
 		field::Field,
@@ -61,7 +61,7 @@ impl Http {
 	}
 }
 
-impl TransformEntry for Http {
+impl Transform for Http {
 	type Err = HttpError;
 
 	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {

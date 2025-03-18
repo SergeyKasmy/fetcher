@@ -8,7 +8,7 @@
 
 use std::{convert::Infallible, fmt::Write};
 
-use super::TransformEntry;
+use super::Transform;
 use crate::{
 	action::transforms::result::TransformedEntry,
 	entry::Entry,
@@ -19,7 +19,7 @@ use crate::{
 #[derive(Debug)]
 pub struct DebugPrint;
 
-impl TransformEntry for DebugPrint {
+impl Transform for DebugPrint {
 	type Err = Infallible;
 
 	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {

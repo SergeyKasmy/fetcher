@@ -8,8 +8,8 @@
 
 use crate::{
 	action::transforms::{
-		entry::{feed::FeedError, html::HtmlError, http::HttpError, json::JsonError},
-		field::extract::ExtractError,
+		feed::FeedError, field::extract::ExtractError, html::HtmlError, http::HttpError,
+		json::JsonError,
 	},
 	entry::Entry,
 	error::InvalidUrlError,

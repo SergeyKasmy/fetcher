@@ -101,6 +101,28 @@ impl<T> TransformResult<T> {
 			Self::New(val) => Some(val),
 		}
 	}
+
+	pub fn map<F, U>(self, f: F) -> TransformResult<U>
+	where
+		F: FnOnce(T) -> U,
+	{
+		match self {
+			TransformResult::Previous => TransformResult::Previous,
+			TransformResult::Empty => TransformResult::Empty,
+			TransformResult::New(t) => TransformResult::New(f(t)),
+		}
+	}
+
+	pub fn try_map<F, U, E>(self, f: F) -> Result<TransformResult<U>, E>
+	where
+		F: FnOnce(T) -> Result<U, E>,
+	{
+		Ok(match self {
+			TransformResult::Previous => TransformResult::Previous,
+			TransformResult::Empty => TransformResult::Empty,
+			TransformResult::New(t) => TransformResult::New(f(t)?),
+		})
+	}
 }
 
 impl<T> Default for TransformResult<T> {
