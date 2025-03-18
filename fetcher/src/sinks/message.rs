@@ -6,10 +6,11 @@
 
 //! This module contains [`Message`] and [`Media`]
 
+pub use url::Url;
+
 pub(crate) mod length_limiter;
 
 use std::fmt::Debug;
-use url::Url;
 
 /// The finalized and composed message meant to be sent to a sink
 #[derive(Clone, Default)]

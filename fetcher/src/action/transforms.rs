@@ -6,6 +6,7 @@
 
 //! This module contains [`TransformEntry`](`entry::TransformEntry`) and [`TransformField`](`field::TransformField`) traits as well as all types that implement it
 
+pub mod async_fn;
 pub mod feed;
 pub mod html;
 pub mod http;
@@ -33,8 +34,6 @@ use self::error::TransformErrorKind;
 use self::result::TransformedEntry;
 use crate::{entry::Entry, external_save::ExternalSave, sources::Source};
 
-use std::fmt::Debug;
-
 use super::{Action, ActionContext};
 
 /*
@@ -52,7 +51,7 @@ pub trait Transform: Debug + Send + Sync {
 */
 
 /// Transform an entry into one or more entries. This is the type transforms should implement as it includes easier error management
-pub trait Transform: Debug {
+pub trait Transform {
 	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
 	type Err: Into<TransformErrorKind>;
 
