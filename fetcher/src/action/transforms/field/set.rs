@@ -24,8 +24,19 @@ pub enum Set {
 }
 
 impl Set {
-	pub fn single(s: impl Into<StaticStr>) -> Self {
-		Self::Single(s.into())
+	pub fn single<S>(string: S) -> Self
+	where
+		S: Into<StaticStr>,
+	{
+		Self::Single(string.into())
+	}
+
+	pub fn random<I, S>(iter: I) -> Self
+	where
+		I: IntoIterator<Item = S>,
+		S: Into<StaticStr>,
+	{
+		Self::Random(iter.into_iter().map(Into::into).collect())
 	}
 }
 
