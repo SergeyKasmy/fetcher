@@ -70,8 +70,17 @@ where
 	}
 }
 
+pub struct DisabledJob<J>(J);
+
 pub trait OpaqueJob {
 	async fn run(&mut self) -> Result<(), Vec<FetcherError>>;
+
+	fn disable(self) -> DisabledJob<Self>
+	where
+		Self: Sized,
+	{
+		DisabledJob(self)
+	}
 }
 
 impl<T: TaskGroup> OpaqueJob for Job<T> {
@@ -87,6 +96,12 @@ impl OpaqueJob for Infallible {
 }
 
 impl OpaqueJob for () {
+	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+		Ok(())
+	}
+}
+
+impl<J> OpaqueJob for DisabledJob<J> {
 	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
 		Ok(())
 	}

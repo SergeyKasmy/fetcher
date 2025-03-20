@@ -82,8 +82,17 @@ where
 	}
 }
 
+pub struct DisabledTask<T>(T);
+
 pub trait OpaqueTask {
 	async fn run(&mut self) -> Result<(), FetcherError>;
+
+	fn disable(self) -> DisabledTask<Self>
+	where
+		Self: Sized,
+	{
+		DisabledTask(self)
+	}
 }
 
 impl<T> OpaqueTask for Option<T>
@@ -111,6 +120,12 @@ where
 }
 
 impl OpaqueTask for () {
+	async fn run(&mut self) -> Result<(), FetcherError> {
+		Ok(())
+	}
+}
+
+impl<T> OpaqueTask for DisabledTask<T> {
 	async fn run(&mut self) -> Result<(), FetcherError> {
 		Ok(())
 	}
