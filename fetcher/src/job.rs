@@ -30,15 +30,23 @@ pub struct Job<T> {
 	pub refresh_time: Option<TimePoint>,
 }
 
-impl<T> Job<T>
-where
-	T: TaskGroup,
-{
+pub trait OpaqueJob {
+	async fn run(&mut self) -> Result<(), Vec<FetcherError>>;
+
+	fn disable(self) -> DisabledJob<Self>
+	where
+		Self: Sized,
+	{
+		DisabledJob(self)
+	}
+}
+
+impl<T: TaskGroup> OpaqueJob for Job<T> {
 	/// Run this job to completion or return early on an error
 	///
 	/// # Errors
 	/// if any of the inner tasks return an error, refer to [`Task`] documentation
-	pub async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
 		loop {
 			let results = self.tasks.run_concurrently().await;
 
@@ -70,38 +78,7 @@ where
 	}
 }
 
-pub struct DisabledJob<J>(J);
-
-pub trait OpaqueJob {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>>;
-
-	fn disable(self) -> DisabledJob<Self>
-	where
-		Self: Sized,
-	{
-		DisabledJob(self)
-	}
-}
-
-impl<T: TaskGroup> OpaqueJob for Job<T> {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
-		Job::run(self).await
-	}
-}
-
-impl OpaqueJob for Infallible {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
-		unreachable!()
-	}
-}
-
 impl OpaqueJob for () {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
-		Ok(())
-	}
-}
-
-impl<J> OpaqueJob for DisabledJob<J> {
 	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
 		Ok(())
 	}
@@ -117,5 +94,19 @@ where
 		};
 
 		job.run().await
+	}
+}
+
+pub struct DisabledJob<J>(J);
+
+impl<J> OpaqueJob for DisabledJob<J> {
+	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+		Ok(())
+	}
+}
+
+impl OpaqueJob for Infallible {
+	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+		unreachable!()
 	}
 }

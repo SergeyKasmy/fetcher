@@ -46,7 +46,18 @@ pub struct Task<S, A, E> {
 	pub action: Option<A>,
 }
 
-impl<S, A, E> Task<S, A, E>
+pub trait OpaqueTask {
+	async fn run(&mut self) -> Result<(), FetcherError>;
+
+	fn disable(self) -> DisabledTask<Self>
+	where
+		Self: Sized,
+	{
+		DisabledTask(self)
+	}
+}
+
+impl<S, A, E> OpaqueTask for Task<S, A, E>
 where
 	S: Source,
 	A: Action,
@@ -57,7 +68,7 @@ where
 	/// # Errors
 	/// If there was an error fetching the data, sending the data, or saving what data was successfully sent to an external location
 	#[tracing::instrument(skip(self), fields(name = %self.name))]
-	pub async fn run(&mut self) -> Result<(), FetcherError> {
+	async fn run(&mut self) -> Result<(), FetcherError> {
 		tracing::trace!("Running task");
 
 		let raw = match &mut self.source {
@@ -82,16 +93,9 @@ where
 	}
 }
 
-pub struct DisabledTask<T>(T);
-
-pub trait OpaqueTask {
-	async fn run(&mut self) -> Result<(), FetcherError>;
-
-	fn disable(self) -> DisabledTask<Self>
-	where
-		Self: Sized,
-	{
-		DisabledTask(self)
+impl OpaqueTask for () {
+	async fn run(&mut self) -> Result<(), FetcherError> {
+		Ok(())
 	}
 }
 
@@ -108,22 +112,7 @@ where
 	}
 }
 
-impl<S, A, E> OpaqueTask for Task<S, A, E>
-where
-	S: Source,
-	A: Action,
-	E: ExternalSave,
-{
-	async fn run(&mut self) -> Result<(), FetcherError> {
-		Task::run(self).await
-	}
-}
-
-impl OpaqueTask for () {
-	async fn run(&mut self) -> Result<(), FetcherError> {
-		Ok(())
-	}
-}
+pub struct DisabledTask<T>(T);
 
 impl<T> OpaqueTask for DisabledTask<T> {
 	async fn run(&mut self) -> Result<(), FetcherError> {
