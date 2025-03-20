@@ -12,8 +12,6 @@ pub trait JobGroup {
 	#[must_use = "this vec of results could contain errors"]
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult>;
 
-	async fn make_dry(&mut self);
-
 	fn and<G>(self, other: G) -> CombinedJobGroup<Self, G>
 	where
 		Self: Sized,
@@ -30,10 +28,6 @@ where
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
 		vec![OpaqueJob::run(self).await]
 	}
-
-	async fn make_dry(&mut self) {
-		OpaqueJob::make_dry(self).await;
-	}
 }
 
 impl<J1> JobGroup for (J1,)
@@ -42,10 +36,6 @@ where
 {
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
 		vec![OpaqueJob::run(&mut self.0).await]
-	}
-
-	async fn make_dry(&mut self) {
-		OpaqueJob::make_dry(&mut self.0).await;
 	}
 }
 
@@ -68,13 +58,6 @@ macro_rules! impl_jobgroup_for_tuples {
 				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
 				let ($($type_name),+) = join!($($type_name.run()),+);
 				vec![$($type_name),+]
-			}
-
-			async fn make_dry(&mut self) {
-				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
-				let ($($type_name),+) = self;
-
-				$($type_name.make_dry().await;)+
 			}
 		}
 	}

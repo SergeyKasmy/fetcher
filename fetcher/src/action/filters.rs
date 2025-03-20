@@ -45,8 +45,6 @@ where
 
 		Ok(entries)
 	}
-
-	async fn make_dry(&mut self) {}
 }
 
 impl Filter for () {

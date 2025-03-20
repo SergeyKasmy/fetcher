@@ -55,8 +55,6 @@ pub trait OpaqueTask {
 	{
 		DisabledTask(self)
 	}
-
-	async fn make_dry(&mut self) {}
 }
 
 impl<S, A, E> OpaqueTask for Task<S, A, E>
@@ -92,12 +90,6 @@ where
 		}
 
 		Ok(())
-	}
-
-	async fn make_dry(&mut self) {
-		if let Some(source) = &mut self.source {
-			source.set_read_only().await;
-		}
 	}
 }
 

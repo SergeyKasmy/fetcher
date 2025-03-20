@@ -44,10 +44,7 @@ pub trait Sink: Debug + Send + Sync {
 	) -> Result<Option<MessageId>, SinkError>;
 }
 
-pub(crate) struct SinkWrapper<S> {
-	pub sink: S,
-	pub enabled: bool,
-}
+pub(crate) struct SinkWrapper<S>(pub S);
 
 impl<Si> Action for SinkWrapper<Si>
 where
@@ -64,10 +61,6 @@ where
 		So: Source,
 		E: ExternalSave,
 	{
-		if !self.enabled {
-			return Ok(entries);
-		}
-
 		let undeduped_len = entries.len();
 		tracing::trace!("Entries to send before dedup: {undeduped_len}");
 
@@ -85,7 +78,7 @@ where
 		// entries should be sorted newest to oldest but we should send oldest first
 		for entry in entries.iter().rev() {
 			let msg_id = send_entry(
-				&self.sink,
+				&self.0,
 				ctx.entry_to_msg_map.as_deref_mut(),
 				ctx.tag.as_deref(),
 				entry,
@@ -104,10 +97,6 @@ where
 		}
 
 		Ok(entries)
-	}
-
-	async fn make_dry(&mut self) {
-		self.enabled = false;
 	}
 }
 

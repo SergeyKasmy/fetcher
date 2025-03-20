@@ -39,8 +39,6 @@ pub trait OpaqueJob {
 	{
 		DisabledJob(self)
 	}
-
-	async fn make_dry(&mut self) {}
 }
 
 impl<T: TaskGroup> OpaqueJob for Job<T> {
@@ -78,10 +76,6 @@ impl<T: TaskGroup> OpaqueJob for Job<T> {
 			}
 		}
 	}
-
-	async fn make_dry(&mut self) {
-		self.tasks.make_dry().await;
-	}
 }
 
 impl OpaqueJob for () {
@@ -100,12 +94,6 @@ where
 		};
 
 		job.run().await
-	}
-
-	async fn make_dry(&mut self) {
-		if let Some(job) = self {
-			job.make_dry().await;
-		}
 	}
 }
 

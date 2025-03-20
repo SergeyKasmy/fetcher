@@ -9,8 +9,6 @@ pub trait TaskGroup {
 	type RunResult: RunResult;
 
 	async fn run_concurrently(&mut self) -> Self::RunResult;
-
-	async fn make_dry(&mut self);
 }
 
 impl<T> TaskGroup for T
@@ -22,10 +20,6 @@ where
 	async fn run_concurrently(&mut self) -> Self::RunResult {
 		std::iter::once(OpaqueTask::run(self).await)
 	}
-
-	async fn make_dry(&mut self) {
-		OpaqueTask::make_dry(self).await;
-	}
 }
 
 impl<T> TaskGroup for (T,)
@@ -36,10 +30,6 @@ where
 
 	async fn run_concurrently(&mut self) -> Self::RunResult {
 		self.0.run_concurrently().await
-	}
-
-	async fn make_dry(&mut self) {
-		self.0.make_dry().await;
 	}
 }
 
@@ -62,10 +52,6 @@ macro_rules! impl_taskgroup_for_tuples {
 
 				let results = join!($(self.$index.run()),+);
 				[$(results.$index),+]
-			}
-
-			async fn make_dry(&mut self) {
-				$(self.$index.make_dry().await;)+
 			}
 		}
 	}

@@ -32,8 +32,6 @@ pub trait Action {
 	where
 		S: Source,
 		E: ExternalSave;
-
-	async fn make_dry(&mut self);
 }
 
 pub struct ActionContext<'a, S, E> {
@@ -77,10 +75,7 @@ pub fn sink<S>(s: S) -> impl Action
 where
 	S: Sink,
 {
-	SinkWrapper {
-		sink: s,
-		enabled: true,
-	}
+	SinkWrapper(s)
 }
 
 // "&mut ActionContext" is not Copy.
@@ -113,10 +108,6 @@ where
 		E: ExternalSave,
 	{
 		self.0.apply(entries, context).await
-	}
-
-	async fn make_dry(&mut self) {
-		self.0.make_dry().await;
 	}
 }
 
@@ -151,16 +142,6 @@ macro_rules! impl_action_for_tuples {
 				$(let entries = $type_name.apply(entries, reborrow_ctx!(&mut ctx)).await.map_err(Into::into)?;)+
 
 				Ok(entries)
-			}
-
-			async fn make_dry(&mut self) {
-				// following code expands into something like this
-				//self.0.make_dry().await;
-				//self.1.make_dry().await;
-
-				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
-				let ($($type_name),+) = self;
-				$($type_name.make_dry().await;)+
 			}
 		}
 	}
@@ -207,11 +188,5 @@ where
 		};
 
 		act.apply(entries, context).await
-	}
-
-	async fn make_dry(&mut self) {
-		if let Some(act) = self {
-			act.make_dry().await;
-		}
 	}
 }

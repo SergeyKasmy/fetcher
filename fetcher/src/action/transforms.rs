@@ -84,8 +84,6 @@ where
 
 		Ok(transformed_entries)
 	}
-
-	async fn make_dry(&mut self) {}
 }
 
 async fn transform_old_entry_into_new_entries<T>(
