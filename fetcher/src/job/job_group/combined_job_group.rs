@@ -14,4 +14,9 @@ where
 
 		results.0.into_iter().chain(results.1.into_iter()).collect()
 	}
+
+	async fn make_dry(&mut self) {
+		self.0.make_dry().await;
+		self.1.make_dry().await;
+	}
 }

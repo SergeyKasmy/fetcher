@@ -32,6 +32,8 @@ pub trait Action {
 	where
 		S: Source,
 		E: ExternalSave;
+
+	async fn make_dry(&mut self);
 }
 
 pub struct ActionContext<'a, S, E> {
@@ -75,9 +77,15 @@ pub fn sink<S>(s: S) -> impl Action
 where
 	S: Sink,
 {
-	SinkWrapper(s)
+	SinkWrapper {
+		sink: s,
+		enabled: true,
+	}
 }
 
+// "&mut ActionContext" is not Copy.
+// This macro allows to pass a "copy" of the context to a function
+// and still be able to use the context when the function exits.
 macro_rules! reborrow_ctx {
 	($ctx:expr) => {{
 		let ctx = $ctx;
@@ -88,6 +96,95 @@ macro_rules! reborrow_ctx {
 		}
 	}};
 }
+
+impl<A> Action for (A,)
+where
+	A: Action,
+{
+	type Error = A::Error;
+
+	async fn apply<'a, S, E>(
+		&mut self,
+		entries: Vec<Entry>,
+		context: ActionContext<'a, S, E>,
+	) -> Result<Vec<Entry>, Self::Error>
+	where
+		S: Source,
+		E: ExternalSave,
+	{
+		self.0.apply(entries, context).await
+	}
+
+	async fn make_dry(&mut self) {
+		self.0.make_dry().await;
+	}
+}
+
+macro_rules! impl_action_for_tuples {
+	($($type_name:ident)+) => {
+		impl<$($type_name),+> Action for ($($type_name),+)
+		where
+			$($type_name: Action),+
+		{
+			type Error = FetcherError;
+
+			async fn apply<'a, S, E>(
+				&mut self,
+				entries: Vec<Entry>,
+				mut ctx: ActionContext<'a, S, E>,
+			) -> Result<Vec<Entry>, Self::Error>
+			where
+				S: Source,
+				E: ExternalSave,
+			{
+				// following code expands into something like this
+				//let entries = self
+				//	.0
+				//	.apply(entries, reborrow_ctx!(&mut ctx))
+				//	.await
+				//	.map_err(Into::into)?;
+				//let entries = self.1.apply(entries, ctx).await.map_err(Into::into)?;
+				//Ok(entries)
+
+				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
+				let ($($type_name),+) = self;
+				$(let entries = $type_name.apply(entries, reborrow_ctx!(&mut ctx)).await.map_err(Into::into)?;)+
+
+				Ok(entries)
+			}
+
+			async fn make_dry(&mut self) {
+				// following code expands into something like this
+				//self.0.make_dry().await;
+				//self.1.make_dry().await;
+
+				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
+				let ($($type_name),+) = self;
+				$($type_name.make_dry().await;)+
+			}
+		}
+	}
+}
+
+impl_action_for_tuples!(A1 A2);
+impl_action_for_tuples!(A1 A2 A3);
+impl_action_for_tuples!(A1 A2 A3 A4);
+impl_action_for_tuples!(A1 A2 A3 A4 A5);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18 A19);
+impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18 A19 A20);
 
 impl<A> Action for Option<A>
 where
@@ -111,284 +208,10 @@ where
 
 		act.apply(entries, context).await
 	}
-}
 
-impl<A> Action for (A,)
-where
-	A: Action,
-{
-	type Error = A::Error;
-
-	async fn apply<'a, S, E>(
-		&mut self,
-		entries: Vec<Entry>,
-		context: ActionContext<'a, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
-	where
-		S: Source,
-		E: ExternalSave,
-	{
-		self.0.apply(entries, context).await
-	}
-}
-
-impl<A1, A2> Action for (A1, A2)
-where
-	A1: Action,
-	A2: Action,
-{
-	type Error = FetcherError;
-
-	async fn apply<'a, S, E>(
-		&mut self,
-		entries: Vec<Entry>,
-		mut ctx: ActionContext<'a, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
-	where
-		S: Source,
-		E: ExternalSave,
-	{
-		let entries = self
-			.0
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		self.1.apply(entries, ctx).await.map_err(Into::into)
-	}
-}
-
-impl<A1, A2, A3> Action for (A1, A2, A3)
-where
-	A1: Action,
-	A2: Action,
-	A3: Action,
-{
-	type Error = FetcherError;
-
-	async fn apply<'a, S, E>(
-		&mut self,
-		entries: Vec<Entry>,
-		mut ctx: ActionContext<'a, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
-	where
-		S: Source,
-		E: ExternalSave,
-	{
-		let entries = self
-			.0
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.1
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		self.2.apply(entries, ctx).await.map_err(Into::into)
-	}
-}
-
-impl<A1, A2, A3, A4> Action for (A1, A2, A3, A4)
-where
-	A1: Action,
-	A2: Action,
-	A3: Action,
-	A4: Action,
-{
-	type Error = FetcherError;
-
-	async fn apply<'a, S, E>(
-		&mut self,
-		entries: Vec<Entry>,
-		mut ctx: ActionContext<'a, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
-	where
-		S: Source,
-		E: ExternalSave,
-	{
-		let entries = self
-			.0
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.1
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.2
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		self.3.apply(entries, ctx).await.map_err(Into::into)
-	}
-}
-
-impl<A1, A2, A3, A4, A5> Action for (A1, A2, A3, A4, A5)
-where
-	A1: Action,
-	A2: Action,
-	A3: Action,
-	A4: Action,
-	A5: Action,
-{
-	type Error = FetcherError;
-
-	async fn apply<'a, S, E>(
-		&mut self,
-		entries: Vec<Entry>,
-		mut ctx: ActionContext<'a, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
-	where
-		S: Source,
-		E: ExternalSave,
-	{
-		let entries = self
-			.0
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.1
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.2
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.3
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		self.4.apply(entries, ctx).await.map_err(Into::into)
-	}
-}
-
-impl<A1, A2, A3, A4, A5, A6> Action for (A1, A2, A3, A4, A5, A6)
-where
-	A1: Action,
-	A2: Action,
-	A3: Action,
-	A4: Action,
-	A5: Action,
-	A6: Action,
-{
-	type Error = FetcherError;
-
-	async fn apply<'a, S, E>(
-		&mut self,
-		entries: Vec<Entry>,
-		mut ctx: ActionContext<'a, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
-	where
-		S: Source,
-		E: ExternalSave,
-	{
-		let entries = self
-			.0
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.1
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.2
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.3
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.4
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		self.5.apply(entries, ctx).await.map_err(Into::into)
-	}
-}
-
-impl<A1, A2, A3, A4, A5, A6, A7> Action for (A1, A2, A3, A4, A5, A6, A7)
-where
-	A1: Action,
-	A2: Action,
-	A3: Action,
-	A4: Action,
-	A5: Action,
-	A6: Action,
-	A7: Action,
-{
-	type Error = FetcherError;
-
-	async fn apply<'a, S, E>(
-		&mut self,
-		entries: Vec<Entry>,
-		mut ctx: ActionContext<'a, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
-	where
-		S: Source,
-		E: ExternalSave,
-	{
-		let entries = self
-			.0
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.1
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.2
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.3
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.4
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		let entries = self
-			.5
-			.apply(entries, reborrow_ctx!(&mut ctx))
-			.await
-			.map_err(Into::into)?;
-
-		self.6.apply(entries, ctx).await.map_err(Into::into)
+	async fn make_dry(&mut self) {
+		if let Some(act) = self {
+			act.make_dry().await;
+		}
 	}
 }

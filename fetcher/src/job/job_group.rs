@@ -12,6 +12,8 @@ pub trait JobGroup {
 	#[must_use = "this vec of results could contain errors"]
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult>;
 
+	async fn make_dry(&mut self);
+
 	fn and<G>(self, other: G) -> CombinedJobGroup<Self, G>
 	where
 		Self: Sized,
@@ -28,6 +30,10 @@ where
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
 		vec![OpaqueJob::run(self).await]
 	}
+
+	async fn make_dry(&mut self) {
+		OpaqueJob::make_dry(self).await;
+	}
 }
 
 impl<J1> JobGroup for (J1,)
@@ -37,202 +43,59 @@ where
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
 		vec![OpaqueJob::run(&mut self.0).await]
 	}
-}
 
-impl<J1, J2> JobGroup for (J1, J2)
-where
-	J1: OpaqueJob,
-	J2: OpaqueJob,
-{
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
-		let results = join!(self.0.run(), self.1.run());
-		vec![results.0, results.1]
+	async fn make_dry(&mut self) {
+		OpaqueJob::make_dry(&mut self.0).await;
 	}
 }
 
-impl<J1, J2, J3> JobGroup for (J1, J2, J3)
-where
-	J1: OpaqueJob,
-	J2: OpaqueJob,
-	J3: OpaqueJob,
-{
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
-		let results = join!(self.0.run(), self.1.run(), self.2.run());
-		vec![results.0, results.1, results.2]
+macro_rules! impl_jobgroup_for_tuples {
+	($($type_name:ident)+) => {
+		impl<$($type_name),+> JobGroup for ($($type_name),+)
+		where
+			$($type_name: OpaqueJob),+
+		{
+			async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
+				// followind expand code does something like this
+				//let results = join!(self.0.run(), self.1.run());
+				//vec![results.0, results.1]
+
+				// first $type_name = specific job
+				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
+				let ($($type_name),+) = self;
+
+				// now $type_name = job run result
+				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
+				let ($($type_name),+) = join!($($type_name.run()),+);
+				vec![$($type_name),+]
+			}
+
+			async fn make_dry(&mut self) {
+				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
+				let ($($type_name),+) = self;
+
+				$($type_name.make_dry().await;)+
+			}
+		}
 	}
 }
 
-impl<J1, J2, J3, J4> JobGroup for (J1, J2, J3, J4)
-where
-	J1: OpaqueJob,
-	J2: OpaqueJob,
-	J3: OpaqueJob,
-	J4: OpaqueJob,
-{
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
-		let results = join!(self.0.run(), self.1.run(), self.2.run(), self.3.run());
-		vec![results.0, results.1, results.2, results.3]
-	}
-}
-
-impl<J1, J2, J3, J4, J5> JobGroup for (J1, J2, J3, J4, J5)
-where
-	J1: OpaqueJob,
-	J2: OpaqueJob,
-	J3: OpaqueJob,
-	J4: OpaqueJob,
-	J5: OpaqueJob,
-{
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
-		let results = join!(
-			self.0.run(),
-			self.1.run(),
-			self.2.run(),
-			self.3.run(),
-			self.4.run()
-		);
-		vec![results.0, results.1, results.2, results.3, results.4]
-	}
-}
-
-impl<J1, J2, J3, J4, J5, J6> JobGroup for (J1, J2, J3, J4, J5, J6)
-where
-	J1: OpaqueJob,
-	J2: OpaqueJob,
-	J3: OpaqueJob,
-	J4: OpaqueJob,
-	J5: OpaqueJob,
-	J6: OpaqueJob,
-{
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
-		let results = join!(
-			self.0.run(),
-			self.1.run(),
-			self.2.run(),
-			self.3.run(),
-			self.4.run(),
-			self.5.run()
-		);
-		vec![
-			results.0, results.1, results.2, results.3, results.4, results.5,
-		]
-	}
-}
-
-impl<J1, J2, J3, J4, J5, J6, J7> JobGroup for (J1, J2, J3, J4, J5, J6, J7)
-where
-	J1: OpaqueJob,
-	J2: OpaqueJob,
-	J3: OpaqueJob,
-	J4: OpaqueJob,
-	J5: OpaqueJob,
-	J6: OpaqueJob,
-	J7: OpaqueJob,
-{
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
-		let results = join!(
-			self.0.run(),
-			self.1.run(),
-			self.2.run(),
-			self.3.run(),
-			self.4.run(),
-			self.5.run(),
-			self.6.run()
-		);
-		vec![
-			results.0, results.1, results.2, results.3, results.4, results.5, results.6,
-		]
-	}
-}
-
-impl<J1, J2, J3, J4, J5, J6, J7, J8> JobGroup for (J1, J2, J3, J4, J5, J6, J7, J8)
-where
-	J1: OpaqueJob,
-	J2: OpaqueJob,
-	J3: OpaqueJob,
-	J4: OpaqueJob,
-	J5: OpaqueJob,
-	J6: OpaqueJob,
-	J7: OpaqueJob,
-	J8: OpaqueJob,
-{
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
-		let results = join!(
-			self.0.run(),
-			self.1.run(),
-			self.2.run(),
-			self.3.run(),
-			self.4.run(),
-			self.5.run(),
-			self.6.run(),
-			self.7.run()
-		);
-		vec![
-			results.0, results.1, results.2, results.3, results.4, results.5, results.6, results.7,
-		]
-	}
-}
-
-impl<J1, J2, J3, J4, J5, J6, J7, J8, J9> JobGroup for (J1, J2, J3, J4, J5, J6, J7, J8, J9)
-where
-	J1: OpaqueJob,
-	J2: OpaqueJob,
-	J3: OpaqueJob,
-	J4: OpaqueJob,
-	J5: OpaqueJob,
-	J6: OpaqueJob,
-	J7: OpaqueJob,
-	J8: OpaqueJob,
-	J9: OpaqueJob,
-{
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
-		let results = join!(
-			self.0.run(),
-			self.1.run(),
-			self.2.run(),
-			self.3.run(),
-			self.4.run(),
-			self.5.run(),
-			self.6.run(),
-			self.7.run(),
-			self.8.run()
-		);
-		vec![
-			results.0, results.1, results.2, results.3, results.4, results.5, results.6, results.7,
-			results.8,
-		]
-	}
-}
-
-impl<J1, J2, J3, J4, J5, J6, J7, J8, J9, J10> JobGroup for (J1, J2, J3, J4, J5, J6, J7, J8, J9, J10)
-where
-	J1: OpaqueJob,
-	J2: OpaqueJob,
-	J3: OpaqueJob,
-	J4: OpaqueJob,
-	J5: OpaqueJob,
-	J6: OpaqueJob,
-	J7: OpaqueJob,
-	J8: OpaqueJob,
-	J9: OpaqueJob,
-	J10: OpaqueJob,
-{
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
-		let results = join!(
-			self.0.run(),
-			self.1.run(),
-			self.2.run(),
-			self.3.run(),
-			self.4.run(),
-			self.5.run(),
-			self.6.run(),
-			self.7.run(),
-			self.8.run(),
-			self.9.run()
-		);
-		vec![
-			results.0, results.1, results.2, results.3, results.4, results.5, results.6, results.7,
-			results.8, results.9,
-		]
-	}
-}
+impl_jobgroup_for_tuples!(J1 J2);
+impl_jobgroup_for_tuples!(J1 J2 J3);
+impl_jobgroup_for_tuples!(J1 J2 J3 J4);
+impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5);
+impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6);
+impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7);
+impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8);
+impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9);
+impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10);
+// impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10 J11);
+// impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10 J11 J12);
+// impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10 J11 J12 J13);
+// impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10 J11 J12 J13 J14);
+// impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10 J11 J12 J13 J14 J15);
+// impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10 J11 J12 J13 J14 J15 J16);
+// impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10 J11 J12 J13 J14 J15 J16 J17);
+// impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10 J11 J12 J13 J14 J15 J16 J17 J18);
+// impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10 J11 J12 J13 J14 J15 J16 J17 J18 J19);
+// impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10 J11 J12 J13 J14 J15 J16 J17 J18 J19 J20);
