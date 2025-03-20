@@ -26,4 +26,7 @@ pub mod sources;
 pub mod task;
 pub mod utils;
 
+#[cfg(feature = "scaffold")]
+pub mod scaffold;
+
 pub use crate::static_str::StaticStr;
