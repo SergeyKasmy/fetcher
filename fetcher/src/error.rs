@@ -11,6 +11,7 @@ use crate::{
 	external_save::ExternalSaveError, sinks::error::SinkError, sources::error::SourceError,
 };
 
+use std::fmt::Display;
 use std::{convert::Infallible, error::Error as StdError};
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
@@ -70,5 +71,27 @@ impl From<TransformError> for FetcherError {
 impl From<Infallible> for FetcherError {
 	fn from(_: Infallible) -> Self {
 		unreachable!()
+	}
+}
+
+pub(crate) struct ErrorChainDisplay<'a>(pub &'a dyn StdError);
+
+impl Display for ErrorChainDisplay<'_> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let mut current_err = self.0;
+		let mut counter = 0;
+		write!(f, "{current_err}")?;
+
+		while let Some(source) = StdError::source(current_err) {
+			current_err = source;
+			counter += 1;
+			if counter == 1 {
+				write!(f, "\n\nCaused by:")?;
+			}
+
+			write!(f, "\n\t{counter}: {current_err}")?;
+		}
+
+		Ok(())
 	}
 }

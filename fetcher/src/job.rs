@@ -6,16 +6,24 @@
 
 //! This module contains the [`Job`] struct and the entryway to the library
 
+pub mod error_handling;
+pub mod opaque_job;
+
 mod job_group;
 mod timepoint;
 
-pub use self::{job_group::JobGroup, timepoint::TimePoint};
+pub use self::{
+	error_handling::ErrorHandling, job_group::JobGroup, opaque_job::OpaqueJob, timepoint::TimePoint,
+};
 
-use std::convert::Infallible;
+use std::ops::ControlFlow;
+use tokio::time::sleep;
 
-use tokio::{select, time::sleep};
-
-use crate::{StaticStr, ctrl_c_signal::CtrlCSignalChannel, error::FetcherError, task::TaskGroup};
+use crate::{
+	StaticStr,
+	error::{ErrorChainDisplay, FetcherError},
+	task::TaskGroup,
+};
 
 /// A single job, containing a single or a couple [`tasks`](`Task`), possibly refetching every set amount of time
 #[derive(bon::Builder, Debug)]
@@ -28,46 +36,18 @@ pub struct Job<T> {
 
 	/// Refresh/refetch/redo the job every "this" point of the day
 	pub refresh_time: Option<TimePoint>,
+
+	/// What to do incase an error occures?
+	#[builder(default)]
+	pub error_handling: ErrorHandling,
 }
 
-pub trait OpaqueJob {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>>;
-
-	fn disable(self) -> DisabledJob<Self>
-	where
-		Self: Sized,
-	{
-		DisabledJob(self)
-	}
-
-	fn name(&self) -> Option<&str> {
-		None
-	}
-
-	async fn run_interruptible(
-		&mut self,
-		mut ctrl_c_signal_channel: CtrlCSignalChannel,
-	) -> Result<(), Vec<FetcherError>> {
-		select! {
-			res = self.run() => {
-				res
-			}
-			_ = ctrl_c_signal_channel.signaled() => {
-				if let Some(name) = self.name() {
-					tracing::info!("Job {name} signaled to shutdown...");
-				}
-				Ok(())
-			}
-		}
-	}
-}
-
-impl<T: TaskGroup> OpaqueJob for Job<T> {
+impl<T: TaskGroup> Job<T> {
 	/// Run this job to completion or return early on an error
 	///
 	/// # Errors
 	/// if any of the inner tasks return an error, refer to [`Task`] documentation
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+	pub async fn run_without_error_handling(&mut self) -> Result<(), Vec<FetcherError>> {
 		loop {
 			let results = self.tasks.run_concurrently().await;
 
@@ -97,45 +77,29 @@ impl<T: TaskGroup> OpaqueJob for Job<T> {
 			}
 		}
 	}
+}
+
+impl<T: TaskGroup> OpaqueJob for Job<T> {
+	/// Run this job to completion or return early on an error
+	///
+	/// # Errors
+	/// if any of the inner tasks return an error, refer to [`Task`] documentation
+	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+		loop {
+			let job_result = self.run_without_error_handling().await;
+
+			match self
+				.error_handling
+				.handle_job_result(job_result, &self.name, self.refresh_time.as_ref())
+				.await
+			{
+				ControlFlow::Continue(()) => (),
+				ControlFlow::Break(res) => return res,
+			}
+		}
+	}
 
 	fn name(&self) -> Option<&str> {
 		Some(&self.name)
-	}
-}
-
-impl OpaqueJob for () {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
-		Ok(())
-	}
-}
-
-impl<J> OpaqueJob for Option<J>
-where
-	J: OpaqueJob,
-{
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
-		let Some(job) = self else {
-			return Ok(());
-		};
-
-		job.run().await
-	}
-
-	fn name(&self) -> Option<&str> {
-		self.as_ref().and_then(|x| x.name())
-	}
-}
-
-pub struct DisabledJob<J>(J);
-
-impl<J> OpaqueJob for DisabledJob<J> {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
-		Ok(())
-	}
-}
-
-impl OpaqueJob for Infallible {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
-		unreachable!()
 	}
 }
