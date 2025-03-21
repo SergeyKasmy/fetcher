@@ -31,3 +31,5 @@ pub mod utils;
 pub mod scaffold;
 
 pub use crate::static_str::StaticStr;
+
+pub use either;

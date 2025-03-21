@@ -9,6 +9,7 @@
 pub mod filters;
 pub mod transforms;
 
+use either::Either;
 use transforms::field::{Field, TransformField, TransformFieldWrapper};
 
 use self::filters::{Filter, FilterWrapper};
@@ -188,5 +189,28 @@ where
 		};
 
 		act.apply(entries, context).await
+	}
+}
+
+impl<A1, A2> Action for Either<A1, A2>
+where
+	A1: Action,
+	A2: Action,
+{
+	type Error = FetcherError;
+
+	async fn apply<'a, S, E>(
+		&mut self,
+		entries: Vec<Entry>,
+		context: ActionContext<'a, S, E>,
+	) -> Result<Vec<Entry>, Self::Error>
+	where
+		S: Source,
+		E: ExternalSave,
+	{
+		match self {
+			Either::Left(x) => x.apply(entries, context).await.map_err(Into::into),
+			Either::Right(x) => x.apply(entries, context).await.map_err(Into::into),
+		}
 	}
 }

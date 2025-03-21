@@ -40,6 +40,7 @@ pub trait ReadFilter: MarkAsRead + Filter + Send + Sync {}
 
 impl MarkAsRead for () {
 	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
+		tracing::debug!("Ignoring mark as read request on purpose");
 		Ok(())
 	}
 
