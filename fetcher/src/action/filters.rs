@@ -50,3 +50,11 @@ where
 impl Filter for () {
 	async fn filter(&self, _entries: &mut Vec<Entry>) {}
 }
+
+impl<F: Filter> Filter for Option<F> {
+	async fn filter(&self, entries: &mut Vec<Entry>) {
+		if let Some(f) = self {
+			f.filter(entries).await;
+		}
+	}
+}

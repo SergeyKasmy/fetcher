@@ -48,7 +48,7 @@ where
 	pub source: F,
 
 	/// The read filter that's used to mark entries as read
-	pub rf: Option<RF>,
+	pub rf: RF,
 }
 
 impl<F, RF> Fetch for SourceWithSharedRF<F, RF>
@@ -67,17 +67,11 @@ where
 	RF: ReadFilter,
 {
 	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
-		if let Some(rf) = &mut self.rf {
-			rf.mark_as_read(id).await?;
-		}
-
-		Ok(())
+		self.rf.mark_as_read(id).await
 	}
 
 	async fn set_read_only(&mut self) {
-		if let Some(rf) = &mut self.rf {
-			rf.set_read_only().await;
-		}
+		self.rf.set_read_only().await
 	}
 }
 

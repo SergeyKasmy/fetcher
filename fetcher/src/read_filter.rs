@@ -38,6 +38,31 @@ pub trait MarkAsRead: Debug + Send + Sync {
 /// [Entry]: crate::entry::Entry
 pub trait ReadFilter: MarkAsRead + Filter + Send + Sync {}
 
+impl<M: MarkAsRead> MarkAsRead for Option<M> {
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
+		match self {
+			Some(m) => m.mark_as_read(id).await?,
+			None => {
+				tracing::debug!("Ignoring mark as read request");
+			}
+		}
+
+		Ok(())
+	}
+
+	async fn set_read_only(&mut self) {
+		match self {
+			Some(m) => m.set_read_only().await,
+			None => {
+				tracing::debug!("Ignoring set read only request");
+			}
+		}
+	}
+}
+
+impl<RF: ReadFilter> ReadFilter for Option<RF> {}
+
+/*
 impl MarkAsRead for () {
 	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
 		tracing::debug!("Ignoring mark as read request on purpose");
@@ -47,4 +72,6 @@ impl MarkAsRead for () {
 	/// Set the current "mark as read"er to read only mode
 	async fn set_read_only(&mut self) {}
 }
+
 impl ReadFilter for () {}
+*/
