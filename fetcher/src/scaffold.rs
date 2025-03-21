@@ -1,5 +1,21 @@
-pub fn init() {
+use std::process;
+
+use tokio::sync::watch;
+
+use crate::ctrl_c_signal::CtrlCSignalChannel;
+
+pub struct InitResult {
+	pub ctrl_c_signal_channel: CtrlCSignalChannel,
+}
+
+#[must_use = "ctrl_c_signal_channel should probably be used. Ignore this type manually if you are sure you don't want it"]
+pub fn init() -> InitResult {
 	set_up_logging();
+	let ctrlc_chan = set_up_ctrl_c_handler();
+
+	InitResult {
+		ctrl_c_signal_channel: ctrlc_chan,
+	}
 }
 
 pub fn set_up_logging() {
@@ -41,4 +57,33 @@ pub fn set_up_logging() {
 
 	tracing::subscriber::set_global_default(subscriber)
 		.expect("tracing shouldn't already have been set up");
+}
+
+pub fn set_up_ctrl_c_handler() -> CtrlCSignalChannel {
+	let (shutdown_tx, shutdown_rx) = watch::channel(());
+
+	// signal handler
+	tokio::spawn(async move {
+		// graceful shutdown
+		tokio::signal::ctrl_c()
+			.await
+			.expect("failed to setup signal handler");
+
+		// shutdown signal recieved
+		shutdown_tx
+			.send(())
+			.expect("failed to broadcast shutdown signal to the jobs");
+
+		tracing::info!("Press Ctrl-C again to force close");
+
+		// force close
+		tokio::signal::ctrl_c()
+			.await
+			.expect("failed to setup signal handler");
+
+		tracing::info!("Force closing...");
+		process::exit(1);
+	});
+
+	CtrlCSignalChannel(shutdown_rx)
 }

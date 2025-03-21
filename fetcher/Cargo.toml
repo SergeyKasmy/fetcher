@@ -7,7 +7,7 @@ repository = "https://github.com/SergeyKasmy/fetcher"
 edition.workspace = true
 
 [features]
-scaffold = ["dep:tracing-journald", "dep:tracing-subscriber"]
+scaffold = ["dep:tracing-journald", "dep:tracing-subscriber", "tokio/signal"]
 
 [lints]
 workspace = true

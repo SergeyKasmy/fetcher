@@ -15,6 +15,7 @@ mod static_str;
 
 pub mod action;
 pub mod auth;
+pub mod ctrl_c_signal;
 pub mod entry;
 pub mod error;
 pub mod exec;

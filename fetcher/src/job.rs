@@ -13,9 +13,9 @@ pub use self::{job_group::JobGroup, timepoint::TimePoint};
 
 use std::convert::Infallible;
 
-use tokio::time::sleep;
+use tokio::{select, time::sleep};
 
-use crate::{StaticStr, error::FetcherError, task::TaskGroup};
+use crate::{StaticStr, ctrl_c_signal::CtrlCSignalChannel, error::FetcherError, task::TaskGroup};
 
 /// A single job, containing a single or a couple [`tasks`](`Task`), possibly refetching every set amount of time
 #[derive(bon::Builder, Debug)]
@@ -38,6 +38,27 @@ pub trait OpaqueJob {
 		Self: Sized,
 	{
 		DisabledJob(self)
+	}
+
+	fn name(&self) -> Option<&str> {
+		None
+	}
+
+	async fn run_interruptible(
+		&mut self,
+		mut ctrl_c_signal_channel: CtrlCSignalChannel,
+	) -> Result<(), Vec<FetcherError>> {
+		select! {
+			res = self.run() => {
+				res
+			}
+			_ = ctrl_c_signal_channel.signaled() => {
+				if let Some(name) = self.name() {
+					tracing::info!("Job {name} signaled to shutdown...");
+				}
+				Ok(())
+			}
+		}
 	}
 }
 
@@ -76,6 +97,10 @@ impl<T: TaskGroup> OpaqueJob for Job<T> {
 			}
 		}
 	}
+
+	fn name(&self) -> Option<&str> {
+		Some(&self.name)
+	}
 }
 
 impl OpaqueJob for () {
@@ -94,6 +119,10 @@ where
 		};
 
 		job.run().await
+	}
+
+	fn name(&self) -> Option<&str> {
+		self.as_ref().and_then(|x| x.name())
 	}
 }
 

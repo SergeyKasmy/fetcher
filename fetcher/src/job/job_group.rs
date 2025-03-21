@@ -4,13 +4,19 @@ use tokio::join;
 
 use self::combined_job_group::CombinedJobGroup;
 use super::OpaqueJob;
-use crate::error::FetcherError;
+use crate::{ctrl_c_signal::CtrlCSignalChannel, error::FetcherError};
 
 pub type JobRunResult = Result<(), Vec<FetcherError>>;
 
 pub trait JobGroup {
 	#[must_use = "this vec of results could contain errors"]
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult>;
+
+	#[must_use = "this vec of results could contain errors"]
+	async fn run_concurrently_interruptible(
+		&mut self,
+		ctrl_c_signal_channel: CtrlCSignalChannel,
+	) -> Vec<JobRunResult>;
 
 	fn and<G>(self, other: G) -> CombinedJobGroup<Self, G>
 	where
@@ -28,6 +34,13 @@ where
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
 		vec![OpaqueJob::run(self).await]
 	}
+
+	async fn run_concurrently_interruptible(
+		&mut self,
+		ctrl_c_signal_channel: CtrlCSignalChannel,
+	) -> Vec<JobRunResult> {
+		vec![OpaqueJob::run_interruptible(self, ctrl_c_signal_channel).await]
+	}
 }
 
 impl<J1> JobGroup for (J1,)
@@ -36,6 +49,13 @@ where
 {
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
 		vec![OpaqueJob::run(&mut self.0).await]
+	}
+
+	async fn run_concurrently_interruptible(
+		&mut self,
+		ctrl_c_signal_channel: CtrlCSignalChannel,
+	) -> Vec<JobRunResult> {
+		vec![OpaqueJob::run_interruptible(&mut self.0, ctrl_c_signal_channel).await]
 	}
 }
 
@@ -57,6 +77,17 @@ macro_rules! impl_jobgroup_for_tuples {
 				// now $type_name = job run result
 				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
 				let ($($type_name),+) = join!($($type_name.run()),+);
+				vec![$($type_name),+]
+			}
+
+			async fn run_concurrently_interruptible(&mut self, ctrl_c_signal_channel: CtrlCSignalChannel) -> Vec<JobRunResult> {
+				// first $type_name = specific job
+				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
+				let ($($type_name),+) = self;
+
+				// now $type_name = job run result
+				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
+				let ($($type_name),+) = join!($($type_name.run_interruptible(ctrl_c_signal_channel.clone())),+);
 				vec![$($type_name),+]
 			}
 		}
