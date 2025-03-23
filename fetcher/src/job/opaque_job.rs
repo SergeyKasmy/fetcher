@@ -7,13 +7,6 @@ use crate::{ctrl_c_signal::CtrlCSignalChannel, error::FetcherError};
 pub trait OpaqueJob {
 	async fn run(&mut self) -> Result<(), Vec<FetcherError>>;
 
-	fn disable(self) -> DisabledJob<Self>
-	where
-		Self: Sized,
-	{
-		DisabledJob(self)
-	}
-
 	fn name(&self) -> Option<&str> {
 		None
 	}
@@ -56,14 +49,6 @@ where
 
 	fn name(&self) -> Option<&str> {
 		self.as_ref().and_then(|x| x.name())
-	}
-}
-
-pub struct DisabledJob<J>(J);
-
-impl<J> OpaqueJob for DisabledJob<J> {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
-		Ok(())
 	}
 }
 

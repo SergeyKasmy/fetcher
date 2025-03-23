@@ -1,10 +1,13 @@
 mod combined_job_group;
+mod disabled_job_group;
 
 use tokio::join;
 
 use self::combined_job_group::CombinedJobGroup;
 use super::OpaqueJob;
 use crate::{ctrl_c_signal::CtrlCSignalChannel, error::FetcherError};
+
+pub use self::disabled_job_group::DisabledJobGroup;
 
 pub type JobRunResult = Result<(), Vec<FetcherError>>;
 
@@ -24,6 +27,13 @@ pub trait JobGroup {
 		G: JobGroup,
 	{
 		CombinedJobGroup(self, other)
+	}
+
+	fn disable(self) -> DisabledJobGroup<Self>
+	where
+		Self: Sized,
+	{
+		DisabledJobGroup(self)
 	}
 }
 
@@ -45,17 +55,19 @@ where
 
 impl<J1> JobGroup for (J1,)
 where
-	J1: OpaqueJob,
+	J1: JobGroup,
 {
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
-		vec![OpaqueJob::run(&mut self.0).await]
+		self.0.run_concurrently().await
 	}
 
 	async fn run_concurrently_interruptible(
 		&mut self,
 		ctrl_c_signal_channel: CtrlCSignalChannel,
 	) -> Vec<JobRunResult> {
-		vec![OpaqueJob::run_interruptible(&mut self.0, ctrl_c_signal_channel).await]
+		self.0
+			.run_concurrently_interruptible(ctrl_c_signal_channel)
+			.await
 	}
 }
 
@@ -63,21 +75,24 @@ macro_rules! impl_jobgroup_for_tuples {
 	($($type_name:ident)+) => {
 		impl<$($type_name),+> JobGroup for ($($type_name),+)
 		where
-			$($type_name: OpaqueJob),+
+			$($type_name: JobGroup),+
 		{
 			async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
-				// followind expand code does something like this
-				//let results = join!(self.0.run(), self.1.run());
-				//vec![results.0, results.1]
-
 				// first $type_name = specific job
 				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
 				let ($($type_name),+) = self;
 
 				// now $type_name = job run result
 				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
-				let ($($type_name),+) = join!($($type_name.run()),+);
-				vec![$($type_name),+]
+				let ($($type_name),+) = join!($($type_name.run_concurrently()),+);
+
+				let mut results = Vec::new();
+
+				$(
+					results.extend($type_name);
+				)+
+
+				results
 			}
 
 			async fn run_concurrently_interruptible(&mut self, ctrl_c_signal_channel: CtrlCSignalChannel) -> Vec<JobRunResult> {
@@ -87,8 +102,15 @@ macro_rules! impl_jobgroup_for_tuples {
 
 				// now $type_name = job run result
 				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
-				let ($($type_name),+) = join!($($type_name.run_interruptible(ctrl_c_signal_channel.clone())),+);
-				vec![$($type_name),+]
+				let ($($type_name),+) = join!($($type_name.run_concurrently_interruptible(ctrl_c_signal_channel.clone())),+);
+
+				let mut results = Vec::new();
+
+				$(
+					results.extend($type_name);
+				)+
+
+				results
 			}
 		}
 	}

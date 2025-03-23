@@ -84,7 +84,10 @@ impl<T: TaskGroup> OpaqueJob for Job<T> {
 	///
 	/// # Errors
 	/// if any of the inner tasks return an error, refer to [`Task`] documentation
+	#[tracing::instrument(skip(self), fields(name = %self.name))]
 	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+		tracing::info!("Running job {}", self.name);
+
 		loop {
 			let job_result = self.run_without_error_handling().await;
 

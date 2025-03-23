@@ -39,6 +39,7 @@ pub trait MarkAsRead: Debug + Send + Sync {
 pub trait ReadFilter: MarkAsRead + Filter + Send + Sync {}
 
 impl<M: MarkAsRead> MarkAsRead for Option<M> {
+	#[tracing::instrument]
 	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
 		match self {
 			Some(m) => m.mark_as_read(id).await?,
@@ -50,6 +51,7 @@ impl<M: MarkAsRead> MarkAsRead for Option<M> {
 		Ok(())
 	}
 
+	#[tracing::instrument]
 	async fn set_read_only(&mut self) {
 		match self {
 			Some(m) => m.set_read_only().await,

@@ -3,6 +3,12 @@ use std::{borrow::Cow, fmt::Display, ops::Deref};
 #[derive(Clone, Debug)]
 pub struct StaticStr(Cow<'static, str>);
 
+impl StaticStr {
+	pub const fn from_static_str(s: &'static str) -> Self {
+		Self(Cow::Borrowed(s))
+	}
+}
+
 impl Deref for StaticStr {
 	type Target = str;
 
@@ -32,5 +38,11 @@ impl Display for StaticStr {
 impl AsRef<str> for StaticStr {
 	fn as_ref(&self) -> &str {
 		self.0.as_ref()
+	}
+}
+
+impl From<StaticStr> for String {
+	fn from(value: StaticStr) -> Self {
+		value.0.into_owned()
 	}
 }
