@@ -17,10 +17,11 @@ pub use self::{
 };
 
 use std::ops::ControlFlow;
-use tokio::time::sleep;
+use tokio::{select, time::sleep};
 
 use crate::{
 	StaticStr,
+	ctrl_c_signal::CtrlCSignalChannel,
 	error::{ErrorChainDisplay, FetcherError},
 	task::TaskGroup,
 };
@@ -43,11 +44,20 @@ pub struct Job<T> {
 }
 
 impl<T: TaskGroup> Job<T> {
+	// TODO: instead of returning a vec of errors, return a single error type with a pretty Display implementation
+	// that contains a list of errors that can be retrieved manually if needed instead
 	/// Run this job to completion or return early on an error
 	///
 	/// # Errors
 	/// if any of the inner tasks return an error, refer to [`Task`] documentation
-	pub async fn run_without_error_handling(&mut self) -> Result<(), Vec<FetcherError>> {
+	#[tracing::instrument(skip_all, fields(name = %self.name))]
+	pub async fn run_until_error(
+		&mut self,
+		mut ctrl_c_signal_channel: Option<CtrlCSignalChannel>,
+	) -> Result<(), Vec<FetcherError>> {
+		tracing::info!("Running job {}", self.name);
+
+		// Job loop: break out of it only on errors or if the job doesn't have a refresh time/runs only once
 		loop {
 			let results = self.tasks.run_concurrently().await;
 
@@ -71,25 +81,31 @@ impl<T: TaskGroup> Job<T> {
 						"Putting job to sleep for {}m",
 						remaining_time.as_secs() / 60
 					);
-					sleep(remaining_time).await;
+
+					if let Some(ctrl_c_chan) = &mut ctrl_c_signal_channel {
+						select! {
+							() = sleep(remaining_time) => (),
+							() = ctrl_c_chan.signaled() => {
+								tracing::info!("Job {} is shutting down...", self.name);
+								return Ok(());
+							}
+						}
+					} else {
+						sleep(remaining_time).await;
+					}
 				}
 				None => return Ok(()),
 			}
 		}
 	}
-}
 
-impl<T: TaskGroup> OpaqueJob for Job<T> {
-	/// Run this job to completion or return early on an error
-	///
-	/// # Errors
-	/// if any of the inner tasks return an error, refer to [`Task`] documentation
-	#[tracing::instrument(skip(self), fields(name = %self.name))]
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
-		tracing::info!("Running job {}", self.name);
-
+	pub async fn run_with_error_handling(
+		&mut self,
+		ctrl_c_signal_channel: Option<CtrlCSignalChannel>,
+	) -> Result<(), Vec<FetcherError>> {
+		// Error handling loop: exit out of it only on a fatal error, otherwise run the job once more
 		loop {
-			let job_result = self.run_without_error_handling().await;
+			let job_result = self.run_until_error(ctrl_c_signal_channel.clone()).await;
 
 			match self
 				.error_handling
@@ -100,6 +116,20 @@ impl<T: TaskGroup> OpaqueJob for Job<T> {
 				ControlFlow::Break(res) => return res,
 			}
 		}
+	}
+}
+
+impl<T: TaskGroup> OpaqueJob for Job<T> {
+	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+		self.run_with_error_handling(None).await
+	}
+
+	async fn run_interruptible(
+		&mut self,
+		ctrl_c_signal_channel: CtrlCSignalChannel,
+	) -> Result<(), Vec<FetcherError>> {
+		self.run_with_error_handling(Some(ctrl_c_signal_channel))
+			.await
 	}
 
 	fn name(&self) -> Option<&str> {
