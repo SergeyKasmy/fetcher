@@ -74,28 +74,16 @@ impl<T: TaskGroup> Job<T> {
 				return Err(errors);
 			}
 
-			match &self.refresh_time {
-				Some(refresh_time) => {
-					let remaining_time = refresh_time.remaining_from_now();
+			let Some(refresh_time) = &self.refresh_time else {
+				return Ok(());
+			};
 
-					tracing::debug!(
-						"Putting job to sleep for {}m",
-						remaining_time.as_secs() / 60
-					);
-
-					if let Some(ctrl_c_chan) = &mut self.ctrlc_chan {
-						select! {
-							() = sleep(remaining_time) => (),
-							() = ctrl_c_chan.signaled() => {
-								tracing::info!("Job {} is shutting down...", self.name);
-								return Ok(());
-							}
-						}
-					} else {
-						sleep(remaining_time).await;
-					}
+			select! {
+				() = sleep_until_next_refresh(refresh_time) => (),
+				() = ctrlc_signaled(self.ctrlc_chan.as_mut()) => {
+					tracing::info!("Job {} is shutting down...", self.name);
+					return Ok(());
 				}
-				None => return Ok(()),
 			}
 		}
 	}
@@ -129,5 +117,25 @@ impl<T: TaskGroup> OpaqueJob for Job<T> {
 
 	fn name(&self) -> Option<&str> {
 		Some(&self.name)
+	}
+}
+
+async fn sleep_until_next_refresh(refresh_time: &TimePoint) {
+	let remaining_time = refresh_time.remaining_from_now();
+
+	tracing::debug!(
+		"Putting job to sleep for {}m",
+		remaining_time.as_secs() / 60
+	);
+
+	sleep(remaining_time).await;
+}
+
+/// Returns when the CtrlC channel signals that Ctrl-C has been pressed.
+/// If ctrlc_chan is None, then it never returns
+async fn ctrlc_signaled(ctrlc_chan: Option<&mut CtrlCSignalChannel>) {
+	match ctrlc_chan {
+		Some(ctrlc_chan) => ctrlc_chan.signaled().await,
+		None => std::future::pending().await,
 	}
 }
