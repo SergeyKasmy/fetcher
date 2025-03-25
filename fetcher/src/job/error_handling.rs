@@ -5,8 +5,10 @@ use std::{
 };
 
 use tap::TapOptional;
+use tokio::select;
 use tokio::time::sleep;
 
+use crate::ctrl_c_signal::CtrlCSignalChannel;
 use crate::{error::FetcherError, job::ErrorChainDisplay};
 
 use super::TimePoint;
@@ -32,6 +34,7 @@ impl ErrorHandling {
 		res: Result<(), Vec<FetcherError>>,
 		job_name: &str,
 		job_refresh_time: Option<&TimePoint>,
+		ctrlc_chan: Option<&mut CtrlCSignalChannel>,
 	) -> ControlFlow<Result<(), Vec<FetcherError>>> {
 		let Err(errors) = res else {
 			return ControlFlow::Break(Ok(()));
@@ -51,7 +54,7 @@ impl ErrorHandling {
 				ControlFlow::Continue(())
 			}
 			ErrorHandling::ExponentialBackoffSleep(state) => {
-				handle_errors_exp_backoff(&errors, state, job_name, job_refresh_time)
+				handle_errors_exp_backoff(&errors, state, job_name, job_refresh_time, ctrlc_chan)
 					.await
 					.map_break(|()| Err(errors))
 			}
@@ -67,17 +70,6 @@ impl Default for ErrorHandling {
 
 impl ExpBackoffSleepState {
 	const DEFAULT_MAX_RETRY_COUNT: u32 = 15;
-
-	pub fn new() -> Self {
-		Self::default()
-	}
-
-	pub fn new_with_max_retries(max_retries: u32) -> Self {
-		Self {
-			max_retries,
-			..Self::default()
-		}
-	}
 
 	/// Returns true if max limit is reached
 	fn add_error(&mut self) -> bool {
@@ -113,6 +105,7 @@ async fn handle_errors_exp_backoff(
 	state: &mut ExpBackoffSleepState,
 	job_name: &str,
 	job_refresh_time: Option<&TimePoint>,
+	mut ctrlc_chan: Option<&mut CtrlCSignalChannel>,
 ) -> ControlFlow<()> {
 	// if time since last error is 2 times longer than the refresh duration, then the error count can safely be reset
 	// since there hasn't been any errors for a little while
@@ -201,8 +194,18 @@ async fn handle_errors_exp_backoff(
 	}
 
 	let sleep_dur = exponential_backoff_duration(state.err_count);
+
 	tracing::info!("Pausing job {job_name} for {}m", sleep_dur.as_secs() / 60);
-	sleep(sleep_dur).await;
+	if let Some(ctrlc_chan) = &mut ctrlc_chan {
+		select! {
+			() = sleep(sleep_dur) => (),
+			() = ctrlc_chan.signaled() => {
+				return ControlFlow::Break(());
+			}
+		}
+	} else {
+		sleep(sleep_dur).await;
+	}
 
 	ControlFlow::Continue(())
 }

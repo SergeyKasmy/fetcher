@@ -5,8 +5,6 @@
 #![allow(clippy::tests_outside_test_module)]
 #![allow(clippy::unwrap_used)]
 
-use std::convert::Infallible;
-
 use fetcher::{
 	action::sink,
 	entry::{Entry, EntryId},
@@ -18,7 +16,7 @@ use fetcher::{
 		message::{Message, MessageId},
 	},
 	sources::{Fetch, Source, error::SourceError},
-	task::{Task, entry_to_msg_map::EntryToMsgMap},
+	task::{OpaqueTask, Task, entry_to_msg_map::EntryToMsgMap},
 };
 
 const ENTRY_ID: &str = "0";
@@ -63,7 +61,7 @@ impl Sink for DummySink {
 
 #[tokio::test]
 async fn reply_to() {
-	let mut entry_to_msg_map = EntryToMsgMap::<Infallible>::default();
+	let mut entry_to_msg_map = EntryToMsgMap::<()>::default();
 
 	entry_to_msg_map
 		.insert(ENTRY_ID.to_owned().into(), MESSAGE_ID.into())

@@ -258,13 +258,15 @@ impl Email {
 					.body()
 					.expect("Body should always be present because we explicitly requested it");
 
-let uid =
-					x.uid.expect("UIDs should always be present because we used uid_fetch(). The server probably doesn't support them which isn't something ~we~ support for now").to_string();
+				let uid = x
+					.uid
+					.expect(
+						"UIDs should always be present because we used uid_fetch().\
+						The server probably doesn't support them which isn't something ~we~ support for now",
+					)
+					.to_string();
 
-				parse(
-					&mailparse::parse_mail(body)?,
-					uid,
-				)
+				parse(&mailparse::parse_mail(body)?, uid)
 			})
 			.collect::<Result<Vec<Entry>, EmailError>>()
 	}

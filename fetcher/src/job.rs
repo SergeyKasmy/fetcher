@@ -41,6 +41,10 @@ pub struct Job<T> {
 	/// What to do incase an error occures?
 	#[builder(default)]
 	pub error_handling: ErrorHandling,
+
+	/// Gracefully stop the job on a Ctrl-C
+	#[builder(required)]
+	pub ctrlc_chan: Option<CtrlCSignalChannel>,
 }
 
 impl<T: TaskGroup> Job<T> {
@@ -51,10 +55,7 @@ impl<T: TaskGroup> Job<T> {
 	/// # Errors
 	/// if any of the inner tasks return an error, refer to [`Task`] documentation
 	#[tracing::instrument(skip_all, fields(name = %self.name))]
-	pub async fn run_until_error(
-		&mut self,
-		mut ctrl_c_signal_channel: Option<CtrlCSignalChannel>,
-	) -> Result<(), Vec<FetcherError>> {
+	pub async fn run_until_error(&mut self) -> Result<(), Vec<FetcherError>> {
 		tracing::info!("Running job {}", self.name);
 
 		// Job loop: break out of it only on errors or if the job doesn't have a refresh time/runs only once
@@ -82,7 +83,7 @@ impl<T: TaskGroup> Job<T> {
 						remaining_time.as_secs() / 60
 					);
 
-					if let Some(ctrl_c_chan) = &mut ctrl_c_signal_channel {
+					if let Some(ctrl_c_chan) = &mut self.ctrlc_chan {
 						select! {
 							() = sleep(remaining_time) => (),
 							() = ctrl_c_chan.signaled() => {
@@ -99,17 +100,19 @@ impl<T: TaskGroup> Job<T> {
 		}
 	}
 
-	pub async fn run_with_error_handling(
-		&mut self,
-		ctrl_c_signal_channel: Option<CtrlCSignalChannel>,
-	) -> Result<(), Vec<FetcherError>> {
+	pub async fn run_with_error_handling(&mut self) -> Result<(), Vec<FetcherError>> {
 		// Error handling loop: exit out of it only on a fatal error, otherwise run the job once more
 		loop {
-			let job_result = self.run_until_error(ctrl_c_signal_channel.clone()).await;
+			let job_result = self.run_until_error().await;
 
 			match self
 				.error_handling
-				.handle_job_result(job_result, &self.name, self.refresh_time.as_ref())
+				.handle_job_result(
+					job_result,
+					&self.name,
+					self.refresh_time.as_ref(),
+					self.ctrlc_chan.as_mut(),
+				)
 				.await
 			{
 				ControlFlow::Continue(()) => (),
@@ -121,15 +124,7 @@ impl<T: TaskGroup> Job<T> {
 
 impl<T: TaskGroup> OpaqueJob for Job<T> {
 	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
-		self.run_with_error_handling(None).await
-	}
-
-	async fn run_interruptible(
-		&mut self,
-		ctrl_c_signal_channel: CtrlCSignalChannel,
-	) -> Result<(), Vec<FetcherError>> {
-		self.run_with_error_handling(Some(ctrl_c_signal_channel))
-			.await
+		self.run_with_error_handling().await
 	}
 
 	fn name(&self) -> Option<&str> {
