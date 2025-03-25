@@ -6,6 +6,8 @@
 
 //! This module contains all errors that [`fetcher`](`crate`) can emit
 
+use either::Either;
+
 use crate::{
 	action::transforms::error::TransformError, auth::google::GoogleOAuth2Error,
 	external_save::ExternalSaveError, sinks::error::SinkError, sources::error::SourceError,
@@ -71,6 +73,19 @@ impl From<TransformError> for FetcherError {
 impl From<Infallible> for FetcherError {
 	fn from(_: Infallible) -> Self {
 		unreachable!()
+	}
+}
+
+impl<A, B> From<Either<A, B>> for FetcherError
+where
+	A: Into<FetcherError>,
+	B: Into<FetcherError>,
+{
+	fn from(value: Either<A, B>) -> Self {
+		match value {
+			Either::Left(a) => a.into(),
+			Either::Right(b) => b.into(),
+		}
 	}
 }
 
