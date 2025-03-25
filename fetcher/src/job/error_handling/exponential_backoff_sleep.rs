@@ -158,18 +158,6 @@ impl ExponentialBackoffSleep {
 
 		tracing::error!("{}", err_msg);
 
-		/*
-		// FIXME: doesn't and can't even work after the refactor
-
-		// TODO: make this a context switch
-		// production error reporting
-		if !cfg!(debug_assertions) {
-			if let Err(e) = report_error(job_name, &err_msg, cx).await {
-				tracing::error!("Unable to send error report to the admin: {e:?}",);
-			}
-		}
-		*/
-
 		ExpBackoffHandleErrorResult::ContinueTheJob
 	}
 

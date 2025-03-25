@@ -89,7 +89,7 @@ where
 	}
 }
 
-pub(crate) struct ErrorChainDisplay<'a>(pub &'a dyn StdError);
+pub struct ErrorChainDisplay<'a>(pub &'a dyn StdError);
 
 impl Display for ErrorChainDisplay<'_> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
