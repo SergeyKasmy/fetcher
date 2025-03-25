@@ -1,122 +1,162 @@
+use std::convert::Infallible;
 use std::fmt::Write;
-use std::{
-	ops::ControlFlow,
-	time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use tap::TapOptional;
 use tokio::select;
 use tokio::time::sleep;
 
 use crate::ctrl_c_signal::CtrlCSignalChannel;
+use crate::job::ctrlc_signaled;
 use crate::{error::FetcherError, job::ErrorChainDisplay};
 
 use super::TimePoint;
 
-#[derive(Clone, Debug)]
-pub enum ErrorHandling {
-	ExponentialBackoffSleep(ExpBackoffSleepState),
-	Forward,
-	LogAndIgnore,
+pub trait HandleError {
+	type Err: Into<FetcherError>;
+
+	async fn handle_errors(
+		&mut self,
+		errors: Vec<FetcherError>,
+		cx: HandleErrorContext<'_>,
+	) -> HandleErrorResult<Self::Err>;
 }
 
+pub struct HandleErrorContext<'a> {
+	pub job_name: &'a str,
+	pub job_refresh_time: Option<&'a TimePoint>,
+	pub ctrlc_chan: Option<&'a mut CtrlCSignalChannel>,
+}
+
+pub enum HandleErrorResult<E> {
+	ContinueJob,
+	StopAndReturnErrs(Vec<FetcherError>),
+	ErrWhileHandling {
+		err: E,
+		original_errors: Vec<FetcherError>,
+	},
+}
+
+pub struct Forward;
+pub struct LogAndIgnore;
+
 #[derive(Clone, Debug)]
-pub struct ExpBackoffSleepState {
+pub struct ExponentialBackoffSleep {
+	// TODO: make a const generic?
 	pub max_retries: u32,
 
 	err_count: u32,
 	last_error_time: Option<Instant>,
 }
 
-impl ErrorHandling {
-	pub(super) async fn handle_job_result(
+impl HandleError for Forward {
+	type Err = Infallible;
+
+	async fn handle_errors(
 		&mut self,
-		res: Result<(), Vec<FetcherError>>,
-		job_name: &str,
-		job_refresh_time: Option<&TimePoint>,
-		ctrlc_chan: Option<&mut CtrlCSignalChannel>,
-	) -> ControlFlow<Result<(), Vec<FetcherError>>> {
-		let Err(errors) = res else {
-			return ControlFlow::Break(Ok(()));
-		};
+		errors: Vec<FetcherError>,
+		_cx: HandleErrorContext<'_>,
+	) -> HandleErrorResult<Self::Err> {
+		tracing::trace!("Forwarding errors");
 
-		match self {
-			ErrorHandling::Forward => {
-				tracing::trace!("Forwarding errors");
+		HandleErrorResult::StopAndReturnErrs(errors)
+	}
+}
 
-				ControlFlow::Break(Err(errors))
-			}
-			ErrorHandling::LogAndIgnore => {
-				for error in &errors {
-					tracing::error!("{}", ErrorChainDisplay(error));
-				}
+impl HandleError for LogAndIgnore {
+	type Err = Infallible;
 
-				ControlFlow::Continue(())
-			}
-			ErrorHandling::ExponentialBackoffSleep(state) => {
-				handle_errors_exp_backoff(&errors, state, job_name, job_refresh_time, ctrlc_chan)
-					.await
-					.map_break(|()| Err(errors))
+	async fn handle_errors(
+		&mut self,
+		errors: Vec<FetcherError>,
+		_cx: HandleErrorContext<'_>,
+	) -> HandleErrorResult<Self::Err> {
+		for error in &errors {
+			tracing::error!("{}", ErrorChainDisplay(error));
+		}
+
+		HandleErrorResult::ContinueJob
+	}
+}
+
+impl HandleError for ExponentialBackoffSleep {
+	type Err = Infallible;
+
+	async fn handle_errors(
+		&mut self,
+		errors: Vec<FetcherError>,
+		cx: HandleErrorContext<'_>,
+	) -> HandleErrorResult<Self::Err> {
+		match self.should_continue(&errors, cx).await {
+			ExpBackoffHandleErrorResult::ContinueTheJob => HandleErrorResult::ContinueJob,
+			ExpBackoffHandleErrorResult::ReturnTheErrors => {
+				HandleErrorResult::StopAndReturnErrs(errors)
 			}
 		}
 	}
 }
 
-impl Default for ErrorHandling {
-	fn default() -> Self {
-		Self::ExponentialBackoffSleep(Default::default())
-	}
+enum ExpBackoffHandleErrorResult {
+	ContinueTheJob,
+	ReturnTheErrors,
 }
 
-impl ExpBackoffSleepState {
+impl ExponentialBackoffSleep {
 	const DEFAULT_MAX_RETRY_COUNT: u32 = 15;
 
-	/// Returns true if max limit is reached
-	fn add_error(&mut self) -> bool {
-		self.err_count += 1;
+	async fn should_continue(
+		&mut self,
+		errors: &[FetcherError],
+		cx: HandleErrorContext<'_>,
+	) -> ExpBackoffHandleErrorResult {
+		self.reset_error_count(cx.job_refresh_time);
 
-		if self.err_count >= self.max_retries {
-			return true;
+		let errors_without_net = errors.iter().filter(|e| {
+			e.is_connection_error()
+				.tap_some(|net_err| {
+					tracing::warn!("Network error: {}", ErrorChainDisplay(net_err));
+				})
+				.is_none()
+		});
+
+		match self.add_and_log_fatal_errors(errors_without_net, cx.job_name) {
+			ExpBackoffHandleErrorResult::ReturnTheErrors => {
+				return ExpBackoffHandleErrorResult::ReturnTheErrors;
+			}
+			// continue the job after the pause
+			ExpBackoffHandleErrorResult::ContinueTheJob => (),
 		}
 
-		self.last_error_time = Some(Instant::now());
+		let sleep_dur = exponential_backoff_duration(self.err_count);
+		tracing::info!(
+			"Pausing job {} for {}m",
+			cx.job_name,
+			sleep_dur.as_secs() / 60
+		);
 
-		false
-	}
-
-	fn reset(&mut self) {
-		self.err_count = 0;
-		self.last_error_time = None;
-	}
-}
-
-impl Default for ExpBackoffSleepState {
-	fn default() -> Self {
-		Self {
-			max_retries: Self::DEFAULT_MAX_RETRY_COUNT,
-			err_count: 0,
-			last_error_time: None,
+		select! {
+			() = sleep(sleep_dur) => {
+				ExpBackoffHandleErrorResult::ContinueTheJob
+			}
+			() = ctrlc_signaled(cx.ctrlc_chan) => {
+				ExpBackoffHandleErrorResult::ReturnTheErrors
+			}
 		}
 	}
-}
 
-async fn handle_errors_exp_backoff(
-	errors: &[FetcherError],
-	state: &mut ExpBackoffSleepState,
-	job_name: &str,
-	job_refresh_time: Option<&TimePoint>,
-	mut ctrlc_chan: Option<&mut CtrlCSignalChannel>,
-) -> ControlFlow<()> {
-	// if time since last error is 2 times longer than the refresh duration, then the error count can safely be reset
-	// since there hasn't been any errors for a little while
-	// TODO: maybe figure out a more optimal time interval than just 2 times longer than the refresh timer
-	if let Some((last_error, refresh_time)) = state.last_error_time.as_ref().zip(job_refresh_time) {
-		let last_error_sleep_dur = exponential_backoff_duration(state.err_count);
+	/// Resets the consecutive error counter if enough time has passed
+	fn reset_error_count(&mut self, job_refresh_time: Option<&TimePoint>) {
+		let Some((last_error, refresh_time)) = self.last_error_time.as_ref().zip(job_refresh_time)
+		else {
+			return;
+		};
+
+		let last_error_sleep_dur = exponential_backoff_duration(self.err_count);
 		match refresh_time {
 			TimePoint::Duration(dur) => {
 				let twice_refresh_dur = *dur * 2; // two times the refresh duration to make sure the job ran at least twice with no errors
 				if last_error.elapsed() > last_error_sleep_dur + twice_refresh_dur {
-					state.reset();
+					self.reset();
 				}
 			}
 			// once a day
@@ -126,40 +166,34 @@ async fn handle_errors_exp_backoff(
 				);
 
 				if last_error.elapsed() > last_error_sleep_dur + TWO_DAYS {
-					state.reset();
+					self.reset();
 				}
 			}
 		}
 	}
 
-	// log and filter out network connection errors.
-	// they shouldn't be counted against the max error limit because they are ~usually~ temporary and not critical
-	let errors_without_net = errors.iter().filter(|e| {
-		e.is_connection_error()
-			.tap_some(|net_err| {
-				tracing::warn!("Network error: {}", ErrorChainDisplay(net_err));
-			})
-			.is_none()
-	});
-
-	if errors_without_net.clone().count() > 0 {
+	fn add_and_log_fatal_errors<'a>(
+		&mut self,
+		fatal_errors: impl Iterator<Item = &'a FetcherError>,
+		job_name: &str,
+	) -> ExpBackoffHandleErrorResult {
 		// max error limit reached
-		if state.add_error() {
+		if self.add_error() {
 			tracing::warn!(
 				"Maximum error limit reached ({max} out of {max}) for job {job_name}. Stopping retrying...",
-				max = state.max_retries
+				max = self.max_retries,
 			);
-			return ControlFlow::Break(());
+			return ExpBackoffHandleErrorResult::ReturnTheErrors;
 		}
 
 		let mut err_msg = format!(
 			"Job {job_name} finished {job_err_count} times in an error (out of {max} max allowed)",
-			job_err_count = state.err_count,
-			max = state.max_retries,
+			job_err_count = self.err_count,
+			max = self.max_retries,
 		);
 
 		// log and report all other errors (except for network errors up above)
-		for (i, err) in errors_without_net.enumerate() {
+		for (i, err) in fatal_errors.enumerate() {
 			/*
 			// FIXME: doesn't and can't even work after the refactor
 
@@ -191,23 +225,37 @@ async fn handle_errors_exp_backoff(
 			}
 		}
 		*/
+
+		ExpBackoffHandleErrorResult::ContinueTheJob
 	}
 
-	let sleep_dur = exponential_backoff_duration(state.err_count);
+	/// Returns true if max limit is reached
+	fn add_error(&mut self) -> bool {
+		self.err_count += 1;
 
-	tracing::info!("Pausing job {job_name} for {}m", sleep_dur.as_secs() / 60);
-	if let Some(ctrlc_chan) = &mut ctrlc_chan {
-		select! {
-			() = sleep(sleep_dur) => (),
-			() = ctrlc_chan.signaled() => {
-				return ControlFlow::Break(());
-			}
+		if self.err_count >= self.max_retries {
+			return true;
 		}
-	} else {
-		sleep(sleep_dur).await;
+
+		self.last_error_time = Some(Instant::now());
+
+		false
 	}
 
-	ControlFlow::Continue(())
+	fn reset(&mut self) {
+		self.err_count = 0;
+		self.last_error_time = None;
+	}
+}
+
+impl Default for ExponentialBackoffSleep {
+	fn default() -> Self {
+		Self {
+			max_retries: Self::DEFAULT_MAX_RETRY_COUNT,
+			err_count: 0,
+			last_error_time: None,
+		}
+	}
 }
 
 /// Sleep in exponentially increasing amount of minutes, beginning with 2^0 = 1 minute.
