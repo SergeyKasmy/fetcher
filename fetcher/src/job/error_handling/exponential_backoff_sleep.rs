@@ -63,12 +63,14 @@ impl ExponentialBackoffSleep {
 				.is_none()
 		});
 
-		match self.add_and_log_fatal_errors(errors_without_net, cx.job_name) {
-			ExpBackoffHandleErrorResult::ReturnTheErrors => {
-				return ExpBackoffHandleErrorResult::ReturnTheErrors;
+		if errors_without_net.clone().count() > 0 {
+			match self.add_and_log_fatal_errors(errors_without_net, cx.job_name) {
+				ExpBackoffHandleErrorResult::ReturnTheErrors => {
+					return ExpBackoffHandleErrorResult::ReturnTheErrors;
+				}
+				// continue the job after the pause
+				ExpBackoffHandleErrorResult::ContinueTheJob => (),
 			}
-			// continue the job after the pause
-			ExpBackoffHandleErrorResult::ContinueTheJob => (),
 		}
 
 		let sleep_dur = exponential_backoff_duration(self.err_count);
