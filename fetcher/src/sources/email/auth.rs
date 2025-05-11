@@ -23,10 +23,10 @@ pub(super) struct ImapOAuth2<'a> {
 	token: &'a str,
 }
 
-impl imap::Authenticator for ImapOAuth2<'_> {
+impl async_imap::Authenticator for ImapOAuth2<'_> {
 	type Response = String;
 
-	fn process(&self, _challenge: &[u8]) -> Self::Response {
+	fn process(&mut self, _challenge: &[u8]) -> Self::Response {
 		format!("user={}\x01auth=Bearer {}\x01\x01", self.email, self.token)
 	}
 }

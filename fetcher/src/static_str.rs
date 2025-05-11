@@ -7,6 +7,10 @@ impl StaticStr {
 	pub const fn from_static_str(s: &'static str) -> Self {
 		Self(Cow::Borrowed(s))
 	}
+
+	pub fn as_str(&self) -> &str {
+		&self.0
+	}
 }
 
 impl Deref for StaticStr {
@@ -44,5 +48,11 @@ impl AsRef<str> for StaticStr {
 impl From<StaticStr> for String {
 	fn from(value: StaticStr) -> Self {
 		value.0.into_owned()
+	}
+}
+
+impl From<&StaticStr> for String {
+	fn from(value: &StaticStr) -> Self {
+		value.as_str().to_owned()
 	}
 }

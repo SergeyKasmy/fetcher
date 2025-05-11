@@ -12,10 +12,7 @@ mod auth;
 mod filters;
 mod view_mode;
 
-pub use auth::Auth;
-pub use filters::Filters;
-use imap::TlsKind;
-pub use view_mode::ViewMode;
+pub use self::{auth::Auth, filters::Filters, view_mode::ViewMode};
 
 use self::auth::GoogleAuthExt;
 use super::{Fetch, MarkAsRead, Source};
@@ -28,15 +25,46 @@ use crate::{
 	sources::error::SourceError,
 };
 
+use async_imap::Client;
+use futures::{StreamExt, TryStreamExt};
 use mailparse::ParsedMail;
-use std::fmt::{Debug, Write as _};
+use std::{
+	fmt::{Debug, Write as _},
+	io,
+	sync::{Arc, LazyLock},
+};
+use tokio::net::TcpStream;
+use tokio_rustls::{
+	TlsConnector,
+	client::TlsStream,
+	rustls::{ClientConfig, RootCertStore, crypto::aws_lc_rs, pki_types::ServerName},
+};
 
 const IMAP_PORT: u16 = 993;
 
+static TLS_CONNECTOR: LazyLock<TlsConnector> = LazyLock::new(|| {
+	// FIXME: rustls docs say default process-wide providers should never be set in libraries
+	// https://docs.rs/rustls/0.23.22/rustls/crypto/struct.CryptoProvider.html
+	// I guess we should try to get the default provider and use aws_lc otherwise jusr for this ClientConfig
+	aws_lc_rs::default_provider().install_default().unwrap();
+
+	let mut root_cert_store = RootCertStore::empty();
+	root_cert_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+
+	let config = ClientConfig::builder()
+		.with_root_certificates(root_cert_store)
+		.with_no_client_auth();
+
+	let connector = TlsConnector::from(Arc::new(config));
+
+	connector
+});
+
+// FIXME: blocks the runtime. Probably migrate to imap-async crate or wrap in spawn_blocking
 /// Email source. Fetches an email's subject and body fields using IMAP
 pub struct Email {
-	/// IMAP server URL
-	pub imap: StaticStr,
+	/// IMAP server address
+	pub imap_server: StaticStr,
 
 	/// Email address/IMAP login
 	pub email: StaticStr,
@@ -66,16 +94,16 @@ pub enum EmailError {
 #[derive(thiserror::Error, Debug)]
 pub enum ImapError {
 	#[error("Failed to connect to the IMAP server")]
-	ConnectionFailed(#[source] imap::Error),
+	ConnectionFailed(#[source] io::Error),
 
 	#[error(transparent)]
 	GoogleOAuth2(#[from] GoogleAuthError),
 
 	#[error("Authentication error")]
-	Auth(#[source] imap::Error),
+	Auth(#[source] async_imap::error::Error),
 
 	#[error(transparent)]
-	Other(#[from] imap::Error),
+	Other(#[from] async_imap::error::Error),
 }
 
 // I'd make that a function but the imap crate didn't want to agree with me
@@ -85,18 +113,29 @@ macro_rules! authenticate {
 
 		match auth {
 			Auth::GmailOAuth2(auth) => {
-				tracing::trace!("Logging in to IMAP with Google OAuth2");
+				tracing::trace!("Logging into IMAP with Google OAuth2");
 
-				let session = $client.authenticate(
-					"XOAUTH2",
-					&auth
-						.as_imap_oauth2($login)
-						.await
-						.map_err(ImapError::GoogleOAuth2)?,
-				);
+				// FIXME: don't crash
+				let _greeting = $client
+					.read_response()
+					.await
+					.expect("unexpected end of stream, expected greeting")
+					.expect("unexpected error, expected greeting");
+
+				let session = $client
+					.authenticate(
+						"XOAUTH2",
+						auth.as_imap_oauth2($login)
+							.await
+							.map_err(ImapError::GoogleOAuth2)?,
+					)
+					.await;
 
 				match session {
-					Ok(session) => session,
+					Ok(session) => {
+						tracing::trace!("Authenticated successfully");
+						session
+					}
 					// refresh access token and retry
 					Err((e, client)) => {
 						tracing::error!("Denied access to IMAP via OAuth2: {e}");
@@ -109,11 +148,11 @@ macro_rules! authenticate {
 						client
 							.authenticate(
 								"XOAUTH2",
-								&auth
-									.as_imap_oauth2($login)
+								auth.as_imap_oauth2($login)
 									.await
 									.map_err(ImapError::GoogleOAuth2)?,
 							)
+							.await
 							.map_err(|(e, _)| ImapError::Auth(e))?
 					}
 				}
@@ -123,6 +162,7 @@ macro_rules! authenticate {
 
 				$client
 					.login($login, password)
+					.await
 					.map_err(|(e, _)| ImapError::Auth(e))?
 			}
 		}
@@ -134,14 +174,14 @@ impl Email {
 	#[builder]
 	#[must_use]
 	pub fn new_generic(
-		#[builder(into)] imap: StaticStr,
+		#[builder(into)] imap_server: StaticStr,
 		#[builder(into)] email: StaticStr,
 		#[builder(into)] password: StaticStr,
 		filters: Filters,
 		view_mode: ViewMode,
 	) -> Self {
 		Self {
-			imap,
+			imap_server,
 			email,
 			auth: Auth::Password(password),
 			filters,
@@ -159,7 +199,7 @@ impl Email {
 		view_mode: ViewMode,
 	) -> Self {
 		Self {
-			imap: "imap.gmail.com".into(),
+			imap_server: "imap.gmail.com".into(),
 			email,
 			auth: Auth::GmailOAuth2(auth),
 			filters,
@@ -169,9 +209,6 @@ impl Email {
 }
 
 impl Fetch for Email {
-	/// Even though it's marked async, the fetching itself is not async yet
-	/// It should be used with spawn_blocking probs
-	/// TODO: make it async lol
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
 		self.fetch_impl().await.map_err(Into::into)
 	}
@@ -192,16 +229,27 @@ impl MarkAsRead for Email {
 impl Source for Email {}
 
 impl Email {
-	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, EmailError> {
-		tracing::debug!("Fetching emails");
-		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT)
-			.tls_kind(TlsKind::Rust)
-			.connect()
+	async fn client(&self) -> Result<Client<TlsStream<TcpStream>>, ImapError> {
+		tracing::trace!("Connecting to the IMAP server");
+
+		let tcp_stream = TcpStream::connect((self.imap_server.as_str(), IMAP_PORT))
+			.await
 			.map_err(ImapError::ConnectionFailed)?;
 
+		let domain: ServerName<'static> =
+			ServerName::try_from(String::from(&self.imap_server)).unwrap();
+		let tls_stream = TLS_CONNECTOR.connect(domain, tcp_stream).await.unwrap();
+
+		Ok(Client::new(tls_stream))
+	}
+
+	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, EmailError> {
+		tracing::debug!("Fetching emails");
+
+		let mut client = self.client().await?;
 		let mut session = authenticate!(&self.email, &mut self.auth, client);
 
-		session.examine("INBOX").map_err(ImapError::Other)?;
+		session.examine("INBOX").await.map_err(ImapError::Other)?;
 
 		let search_string = {
 			let mut tmp = "UNSEEN ".to_owned();
@@ -225,8 +273,13 @@ impl Email {
 			tmp.trim_end().to_owned()
 		};
 
+		tracing::debug!(
+			"Fetching all emails that match the search string: {:?}",
+			search_string,
+		);
 		let mail_ids = session
 			.uid_search(&search_string)
+			.await
 			.map_err(ImapError::Other)?
 			.into_iter()
 			.map(|x| x.to_string())
@@ -240,25 +293,24 @@ impl Email {
 			tracing::debug!(
 				"All email for the search query have already been read, none remaining to send"
 			);
-		}
-
-		if mail_ids.is_empty() {
 			return Ok(Vec::new());
 		}
 
+		tracing::trace!("Fetching all email bodies via the UIDs returned from the search");
 		let mails = session
 			.uid_fetch(&mail_ids, "BODY[]")
+			.await
 			.map_err(ImapError::Other)?;
-		session.logout().map_err(ImapError::Other)?;
 
-		mails
-			.iter()
-			.map(|x| {
-				let body = x
+		let entries = mails
+			.map(|mail| {
+				let mail = mail.map_err(ImapError::Other)?;
+
+				let body = mail
 					.body()
 					.expect("Body should always be present because we explicitly requested it");
 
-				let uid = x
+				let uid = mail
 					.uid
 					.expect(
 						"UIDs should always be present because we used uid_fetch().\
@@ -268,7 +320,13 @@ impl Email {
 
 				parse(&mailparse::parse_mail(body)?, uid)
 			})
-			.collect::<Result<Vec<Entry>, EmailError>>()
+			.try_collect::<Vec<Entry>>()
+			.await?;
+
+		// FIXME: doesn't logout if early returned with an error. I think it should...
+		session.logout().await.map_err(ImapError::Other)?;
+
+		Ok(entries)
 	}
 
 	async fn mark_as_read_impl(&mut self, id: &str) -> Result<(), ImapError> {
@@ -276,35 +334,46 @@ impl Email {
 			return Ok(());
 		}
 
-		let client = imap::ClientBuilder::new(&self.imap, IMAP_PORT)
-			.tls_kind(TlsKind::Rust)
-			.connect()
-			.map_err(ImapError::ConnectionFailed)?;
-
+		let mut client = self.client().await?;
 		let mut session = authenticate!(&self.email, &mut self.auth, client);
 
-		session.select("INBOX")?;
+		session.select("INBOX").await?;
 
 		match self.view_mode {
 			ViewMode::MarkAsRead => {
-				session.uid_store(id, "+FLAGS.SILENT (\\Seen)")?;
+				session
+					.uid_store(id, "+FLAGS.SILENT (\\Seen)")
+					.await?
+					.try_collect::<Vec<_>>()
+					.await?;
+
 				tracing::debug!("Marked email uid {id} as read");
 			}
 			ViewMode::Delete => {
-				session.uid_store(id, "+FLAGS.SILENT (\\Deleted)")?;
-				session.uid_expunge(id)?;
+				session
+					.uid_store(id, "+FLAGS.SILENT (\\Deleted)")
+					.await?
+					.try_collect::<Vec<_>>()
+					.await?;
+
+				session
+					.uid_expunge(id)
+					.await?
+					.try_collect::<Vec<_>>()
+					.await?;
 				tracing::debug!("Deleted email uid {id}");
 			}
 			ViewMode::ReadOnly => unreachable!(),
 		};
 
-		session.logout()?;
+		session.logout().await?;
 
 		Ok(())
 	}
 }
 
 fn parse(mail: &ParsedMail, id: String) -> Result<Entry, EmailError> {
+	tracing::trace!("Parsing the contents of an email with UID {id:?}");
 	let subject = mail.headers.iter().find_map(|x| {
 		if x.get_key_ref() == "Subject" {
 			Some(x.get_value())
@@ -339,7 +408,7 @@ fn parse(mail: &ParsedMail, id: String) -> Result<Entry, EmailError> {
 impl Debug for Email {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Email")
-			.field("imap", &self.imap)
+			.field("imap_server", &self.imap_server)
 			.field(
 				"auth_type",
 				match self.auth {
