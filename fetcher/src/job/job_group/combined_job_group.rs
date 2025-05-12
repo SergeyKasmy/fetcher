@@ -14,4 +14,8 @@ where
 
 		results.0.into_iter().chain(results.1.into_iter()).collect()
 	}
+
+	fn names(&self) -> impl Iterator<Item = Option<&str>> {
+		self.0.names().chain(self.1.names())
+	}
 }

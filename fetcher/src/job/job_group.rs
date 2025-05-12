@@ -2,6 +2,7 @@ mod combined_job_group;
 mod disabled_job_group;
 mod single_job_group;
 
+use std::iter;
 use tokio::join;
 
 use self::combined_job_group::CombinedJobGroup;
@@ -11,13 +12,25 @@ pub(crate) use self::single_job_group::SingleJobGroup;
 
 pub use self::disabled_job_group::DisabledJobGroup;
 
+use super::OpaqueJob;
+
 pub type JobRunResult = Result<(), Vec<FetcherError>>;
 
 pub trait JobGroup {
 	#[must_use = "this vec of results could contain errors"]
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult>;
 
-	fn and<G>(self, other: G) -> CombinedJobGroup<Self, G>
+	fn names(&self) -> impl Iterator<Item = Option<&str>>;
+
+	fn and<J>(self, other: J) -> CombinedJobGroup<Self, impl JobGroup>
+	where
+		Self: Sized,
+		J: OpaqueJob,
+	{
+		self.with(SingleJobGroup(other))
+	}
+
+	fn with<G>(self, other: G) -> CombinedJobGroup<Self, G>
 	where
 		Self: Sized,
 		G: JobGroup,
@@ -44,6 +57,10 @@ where
 
 		group.run_concurrently().await
 	}
+
+	fn names(&self) -> impl Iterator<Item = Option<&str>> {
+		self.iter().flat_map(|j| j.names())
+	}
 }
 
 impl<J1> JobGroup for (J1,)
@@ -52,6 +69,10 @@ where
 {
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
 		self.0.run_concurrently().await
+	}
+
+	fn names(&self) -> impl Iterator<Item = Option<&str>> {
+		self.0.names()
 	}
 }
 
@@ -77,6 +98,14 @@ macro_rules! impl_jobgroup_for_tuples {
 				)+
 
 				results
+			}
+
+			fn names(&self) -> impl Iterator<Item = Option<&str>> {
+				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
+				let ($($type_name),+) = self;
+
+				iter::empty()
+					$(.chain($type_name.names()))+
 			}
 		}
 	}

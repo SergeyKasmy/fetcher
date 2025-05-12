@@ -17,7 +17,7 @@ pub trait OpaqueJob {
 		Self: Sized,
 		J: OpaqueJob + Sized,
 	{
-		SingleJobGroup(self).and(SingleJobGroup(other))
+		SingleJobGroup(self).and(other)
 	}
 }
 

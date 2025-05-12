@@ -1,3 +1,5 @@
+use std::iter;
+
 use crate::job::OpaqueJob;
 
 use super::JobGroup;
@@ -10,5 +12,9 @@ where
 {
 	async fn run_concurrently(&mut self) -> Vec<super::JobRunResult> {
 		vec![OpaqueJob::run(&mut self.0).await]
+	}
+
+	fn names(&self) -> impl Iterator<Item = Option<&str>> {
+		iter::once(self.0.name())
 	}
 }
