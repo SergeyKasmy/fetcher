@@ -11,6 +11,7 @@ use std::{borrow::Cow, convert::Infallible};
 
 use super::TransformField;
 use crate::{
+	StaticStr,
 	action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult},
 	error::BadRegexError,
 };
@@ -25,7 +26,7 @@ pub struct Replace {
 	pub re: Regex,
 
 	/// The string to replace the matched part with
-	pub with: String,
+	pub with: StaticStr,
 }
 
 impl Replace {
@@ -33,10 +34,10 @@ impl Replace {
 	///
 	/// # Errors
 	/// if the regular expression `re` is invalid
-	pub fn new(re: &str, with: String) -> Result<Self, BadRegexError> {
+	pub fn new(re: &str, with: impl Into<StaticStr>) -> Result<Self, BadRegexError> {
 		Ok(Self {
 			re: Regex::new(re)?,
-			with,
+			with: with.into(),
 		})
 	}
 }
@@ -46,7 +47,7 @@ impl TransformField for Replace {
 
 	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
 		Ok(old_val
-			.map(|old| self.re.replace_all(old, &self.with).into_owned())
+			.map(|old| self.re.replace_all(old, self.with.as_str()).into_owned())
 			.unwrap_or_empty())
 	}
 }
@@ -55,6 +56,6 @@ impl Replace {
 	/// Replace `text` with the [`Replace::with`] if [`Replace::re`] matches
 	#[must_use]
 	pub fn replace<'a>(&self, text: &'a str) -> Cow<'a, str> {
-		self.re.replace_all(text, &self.with)
+		self.re.replace_all(text, self.with.as_str())
 	}
 }

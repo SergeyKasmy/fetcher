@@ -27,10 +27,10 @@ rand = "0.8.5"
 regex = "1.11.1"
 reqwest = { version = "0.12.12", features = ["rustls-tls", "gzip", "json"], default-features = false }
 roux = { version = "2.2.14", default-features = false, features = ["rustls"] }
+scraper = "0.23.1"
 serde_json = "1.0.135"
 serde = { version = "1.0.217", features = ["derive"] }
 serenity = "0.12.4"
-soup-kuchiki = "0.5.0"
 tap = "1.0.1"
 teloxide = { version = "0.13.0", features = ["rustls", "throttle"], default-features = false }
 thiserror = "2.0.11"
@@ -38,11 +38,11 @@ tokio-rustls = "0.26.2"
 tokio = { version = "1.43.0", features = ["fs", "io-std", "process"] }
 tracing = "0.1.41"
 url = "2.5.4"
+webpki-roots = "0.26.8"
 
 # feature = "scaffold"
 tracing-journald = { version = "0.3.1", optional = true }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "tracing-log", "time", "local-time"], optional = true }
-webpki-roots = "0.26.8"
 
 [dev-dependencies]
 assert_matches = "1.5"

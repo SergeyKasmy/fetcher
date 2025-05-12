@@ -19,6 +19,9 @@ pub struct Message {
 	pub title: Option<String>,
 	/// body of the message
 	pub body: Option<String>,
+
+	// TODO: don't restrict the user to always provide valid URLs. Instead validate them on send or something like that.
+	// This allows some transform to provide a partial value for e.g. link and finish it in a later transform
 	/// a url to the full contents or source of the message
 	pub link: Option<Url>,
 	/// a list of photos or videos included in the message. They are usually attached to the message itself if the sink supports it. Otherwise they may be left as links
