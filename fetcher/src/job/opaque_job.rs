@@ -2,11 +2,22 @@ use std::convert::Infallible;
 
 use crate::error::FetcherError;
 
+use super::JobGroup;
+use super::job_group::SingleJobGroup;
+
 pub trait OpaqueJob {
 	async fn run(&mut self) -> Result<(), Vec<FetcherError>>;
 
 	fn name(&self) -> Option<&str> {
 		None
+	}
+
+	fn group_with<J>(self, other: J) -> impl JobGroup
+	where
+		Self: Sized,
+		J: OpaqueJob + Sized,
+	{
+		SingleJobGroup(self).and(SingleJobGroup(other))
 	}
 }
 

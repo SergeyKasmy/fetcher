@@ -1,11 +1,13 @@
 mod combined_job_group;
 mod disabled_job_group;
+mod single_job_group;
 
 use tokio::join;
 
 use self::combined_job_group::CombinedJobGroup;
-use super::OpaqueJob;
 use crate::error::FetcherError;
+
+pub(crate) use self::single_job_group::SingleJobGroup;
 
 pub use self::disabled_job_group::DisabledJobGroup;
 
@@ -31,12 +33,16 @@ pub trait JobGroup {
 	}
 }
 
-impl<J> JobGroup for J
+impl<J> JobGroup for Option<J>
 where
-	J: OpaqueJob,
+	J: JobGroup,
 {
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
-		vec![OpaqueJob::run(self).await]
+		let Some(group) = self else {
+			return Vec::new();
+		};
+
+		group.run_concurrently().await
 	}
 }
 
