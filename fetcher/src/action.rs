@@ -9,6 +9,8 @@
 pub mod filters;
 pub mod transforms;
 
+use std::convert::Infallible;
+
 use either::Either;
 use transforms::field::{Field, TransformField, TransformFieldWrapper};
 
@@ -91,6 +93,22 @@ macro_rules! reborrow_ctx {
 			tag: ctx.tag.as_deref(),
 		}
 	}};
+}
+
+impl Action for () {
+	type Error = Infallible;
+
+	async fn apply<'a, S, E>(
+		&mut self,
+		entries: Vec<Entry>,
+		_context: ActionContext<'a, S, E>,
+	) -> Result<Vec<Entry>, Self::Error>
+	where
+		S: Source,
+		E: ExternalSave,
+	{
+		Ok(entries)
+	}
 }
 
 impl<A> Action for (A,)
