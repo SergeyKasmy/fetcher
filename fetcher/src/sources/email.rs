@@ -137,13 +137,20 @@ macro_rules! authenticate {
 						session
 					}
 					// refresh access token and retry
-					Err((e, client)) => {
+					Err((e, mut client)) => {
 						tracing::error!("Denied access to IMAP via OAuth2: {e}");
 						tracing::info!("Refreshing OAuth2 access token and trying again");
 
 						auth.get_new_access_token()
 							.await
 							.map_err(ImapError::GoogleOAuth2)?;
+
+						// FIXME: don't crash
+						let _greeting = client
+							.read_response()
+							.await
+							.expect("unexpected end of stream, expected greeting")
+							.expect("unexpected error, expected greeting");
 
 						client
 							.authenticate(
@@ -238,6 +245,8 @@ impl Email {
 
 		let domain: ServerName<'static> =
 			ServerName::try_from(String::from(&self.imap_server)).unwrap();
+
+		tracing::trace!("Establishing a TLS connection");
 		let tls_stream = TLS_CONNECTOR.connect(domain, tcp_stream).await.unwrap();
 
 		Ok(Client::new(tls_stream))
