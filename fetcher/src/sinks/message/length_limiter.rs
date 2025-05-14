@@ -44,7 +44,7 @@ impl MessageLengthLimiter<'_> {
 		};
 
 		assert!(
-			next.as_ref().map_or(true, |s| !s.is_empty()),
+			next.as_ref().is_none_or(|s| !s.is_empty()),
 			"We should've ensured the final composed message isn't empty but it is anyways"
 		);
 

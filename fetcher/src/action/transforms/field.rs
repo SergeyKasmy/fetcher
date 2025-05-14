@@ -55,7 +55,7 @@ pub enum Field {
 	/// [`Entry::reply_to`] field
 	ReplyTo,
 	/// [`Entry::raw_contents`] field
-	RawContets,
+	RawContents,
 }
 
 // TODO: make a new name
@@ -118,7 +118,7 @@ where
 					.map_err(Into::into)?
 					.map(Into::into);
 			}
-			Field::RawContets => {
+			Field::RawContents => {
 				new_entry.raw_contents = self
 					.transformator
 					.transform_field(entry.msg.body.as_deref())
@@ -138,7 +138,7 @@ impl fmt::Display for Field {
 			Self::Link => "Message::link",
 			Self::Id => "Entry::id",
 			Self::ReplyTo => "Entry::reply_to",
-			Self::RawContets => "Entry::raw_contents",
+			Self::RawContents => "Entry::raw_contents",
 		};
 
 		f.write_str(name)

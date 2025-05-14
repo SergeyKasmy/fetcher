@@ -35,7 +35,7 @@ impl Transform for Use {
 			Field::Link => ent.msg.link,
 			Field::Id => ent.id.map(|id| id.0),
 			Field::ReplyTo => ent.reply_to.map(|id| id.0),
-			Field::RawContets => ent.raw_contents,
+			Field::RawContents => ent.raw_contents,
 		};
 
 		let mut ent = TransformedEntry::default();
@@ -45,7 +45,7 @@ impl Transform for Use {
 			Field::Link => ent.msg.link = val.unwrap_or_empty(),
 			Field::Id => ent.id = val.map(Into::into).unwrap_or_empty(),
 			Field::ReplyTo => ent.reply_to = val.map(Into::into).unwrap_or_empty(),
-			Field::RawContets => ent.raw_contents = val.unwrap_or_empty(),
+			Field::RawContents => ent.raw_contents = val.unwrap_or_empty(),
 		}
 
 		Ok(vec![ent])

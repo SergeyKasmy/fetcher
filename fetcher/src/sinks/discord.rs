@@ -115,8 +115,6 @@ impl Sink for Discord {
 				});
 			}
 
-			let link = link.map(|s| s.to_string());
-
 			let mut composed_msg = MessageLengthLimiter {
 				head: head.as_deref(),
 				body: body.as_deref(),

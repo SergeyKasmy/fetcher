@@ -48,6 +48,9 @@ unwrap_used = "warn"
 # matches!() adds too much noise for little benefit
 equatable_if_let = "allow" 
 
+# sometimes useful
+explicit_deref_methods = "allow"
+
 # too much noise for little benefit (may change in the future)
 missing_const_for_fn = "allow"
 
@@ -56,6 +59,9 @@ module_name_repetitions = "allow"
 
 # "harder to read, false branch before true branch"
 option_if_let_else = "allow" 
+
+# sometimes makes the control flow harder to read, should be used at the developer's discretion
+redundant_else = "allow"
 
 # may be hard to understand what Self even is deep into a function's body
 use_self = "allow"

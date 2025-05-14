@@ -45,7 +45,7 @@ impl Filter for Contains {
 				Field::Link => ent.msg.link.as_ref().map(|s| Cow::Owned(s.to_string())),
 				Field::Id => ent.id.as_ref().map(|id| Cow::Borrowed(id.0.as_str())),
 				Field::ReplyTo => ent.reply_to.as_ref().map(|id| Cow::Borrowed(id.0.as_str())),
-				Field::RawContets => ent.raw_contents.as_deref().map(Cow::Borrowed),
+				Field::RawContents => ent.raw_contents.as_deref().map(Cow::Borrowed),
 			};
 
 			match field {

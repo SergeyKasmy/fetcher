@@ -43,13 +43,12 @@ impl Set {
 impl TransformField for Set {
 	type Err = Infallible;
 
-	// FIXME: remove .to_string(), change TransformField to at least return a StaticStr, hopefully a totally generic type
 	fn transform_field(&self, _old_field: Option<&str>) -> Result<TrRes<String>, Self::Err> {
 		Ok(match self {
 			Set::Single(x) => TrRes::New(x.to_string()),
 			Set::Random(vec) => vec
 				.choose(&mut rand::thread_rng())
-				.map(|x| x.to_string())
+				.map(ToString::to_string)
 				.unwrap_or_empty(),
 			Set::Empty => TrRes::Empty,
 		})

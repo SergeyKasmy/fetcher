@@ -55,12 +55,9 @@ static TLS_CONNECTOR: LazyLock<TlsConnector> = LazyLock::new(|| {
 		.with_root_certificates(root_cert_store)
 		.with_no_client_auth();
 
-	let connector = TlsConnector::from(Arc::new(config));
-
-	connector
+	TlsConnector::from(Arc::new(config))
 });
 
-// FIXME: blocks the runtime. Probably migrate to imap-async crate or wrap in spawn_blocking
 /// Email source. Fetches an email's subject and body fields using IMAP
 pub struct Email {
 	/// IMAP server address

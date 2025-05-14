@@ -27,10 +27,10 @@ use crate::{
 pub trait Action {
 	type Error: Into<FetcherError>;
 
-	async fn apply<'a, S, E>(
+	async fn apply<S, E>(
 		&mut self,
 		entries: Vec<Entry>,
-		context: ActionContext<'a, S, E>,
+		context: ActionContext<'_, S, E>,
 	) -> Result<Vec<Entry>, Self::Error>
 	where
 		S: Source,
@@ -98,10 +98,10 @@ macro_rules! reborrow_ctx {
 impl Action for () {
 	type Error = Infallible;
 
-	async fn apply<'a, S, E>(
+	async fn apply<S, E>(
 		&mut self,
 		entries: Vec<Entry>,
-		_context: ActionContext<'a, S, E>,
+		_context: ActionContext<'_, S, E>,
 	) -> Result<Vec<Entry>, Self::Error>
 	where
 		S: Source,
@@ -117,10 +117,10 @@ where
 {
 	type Error = A::Error;
 
-	async fn apply<'a, S, E>(
+	async fn apply<S, E>(
 		&mut self,
 		entries: Vec<Entry>,
-		context: ActionContext<'a, S, E>,
+		context: ActionContext<'_, S, E>,
 	) -> Result<Vec<Entry>, Self::Error>
 	where
 		S: Source,
@@ -138,10 +138,10 @@ macro_rules! impl_action_for_tuples {
 		{
 			type Error = FetcherError;
 
-			async fn apply<'a, S, E>(
+			async fn apply<S, E>(
 				&mut self,
 				entries: Vec<Entry>,
-				mut ctx: ActionContext<'a, S, E>,
+				mut ctx: ActionContext<'_, S, E>,
 			) -> Result<Vec<Entry>, Self::Error>
 			where
 				S: Source,
@@ -192,10 +192,10 @@ where
 {
 	type Error = A::Error;
 
-	async fn apply<'a, S, E>(
+	async fn apply<S, E>(
 		&mut self,
 		entries: Vec<Entry>,
-		context: ActionContext<'a, S, E>,
+		context: ActionContext<'_, S, E>,
 	) -> Result<Vec<Entry>, Self::Error>
 	where
 		S: Source,
@@ -217,10 +217,10 @@ where
 {
 	type Error = FetcherError;
 
-	async fn apply<'a, S, E>(
+	async fn apply<S, E>(
 		&mut self,
 		entries: Vec<Entry>,
-		context: ActionContext<'a, S, E>,
+		context: ActionContext<'_, S, E>,
 	) -> Result<Vec<Entry>, Self::Error>
 	where
 		S: Source,

@@ -91,7 +91,7 @@ impl Transform for Http {
 					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, id.0.clone()))
 				})
 			})?,
-			Field::RawContets => entry.raw_contents.as_deref().try_map(|s| {
+			Field::RawContents => entry.raw_contents.as_deref().try_map(|s| {
 				Url::try_from(s).map_err(|e| {
 					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, s.to_owned()))
 				})

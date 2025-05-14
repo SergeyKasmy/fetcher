@@ -51,7 +51,7 @@ macro_rules! impl_taskgroup_for_tuples {
 				//[results.0, results.1]
 
 				let results = join!($(self.$index.run()),+);
-				[$(results.$index),+]
+				results.into()
 			}
 		}
 	}

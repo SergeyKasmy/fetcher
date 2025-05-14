@@ -70,6 +70,10 @@ where
 		self.rf.mark_as_read(id).await
 	}
 
+	#[expect(
+		clippy::semicolon_if_nothing_returned,
+		reason = "just forwards the method call, should return the same value"
+	)]
 	async fn set_read_only(&mut self) {
 		self.rf.set_read_only().await
 	}

@@ -4,6 +4,7 @@ use tokio::sync::watch;
 pub struct CtrlCSignalChannel(pub watch::Receiver<()>);
 
 impl CtrlCSignalChannel {
+	#[expect(clippy::missing_panics_doc, reason = "never actually panics")]
 	pub async fn signaled(&mut self) {
 		self.0
 			.changed()

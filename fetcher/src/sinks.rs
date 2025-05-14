@@ -52,10 +52,10 @@ where
 {
 	type Error = FetcherError;
 
-	async fn apply<'a, So, E>(
+	async fn apply<So, E>(
 		&mut self,
 		entries: Vec<Entry>,
-		mut ctx: ActionContext<'a, So, E>,
+		mut ctx: ActionContext<'_, So, E>,
 	) -> Result<Vec<Entry>, Self::Error>
 	where
 		So: Source,
@@ -77,13 +77,8 @@ where
 
 		// entries should be sorted newest to oldest but we should send oldest first
 		for entry in entries.iter().rev() {
-			let msg_id = send_entry(
-				&self.0,
-				ctx.entry_to_msg_map.as_deref_mut(),
-				ctx.tag.as_deref(),
-				entry,
-			)
-			.await?;
+			let msg_id =
+				send_entry(&self.0, ctx.entry_to_msg_map.as_deref_mut(), ctx.tag, entry).await?;
 
 			if let Some(entry_id) = entry.id.as_ref() {
 				mark_entry_as_read(

@@ -8,7 +8,7 @@ use tokio::join;
 use self::combined_job_group::CombinedJobGroup;
 use crate::error::FetcherError;
 
-pub(crate) use self::single_job_group::SingleJobGroup;
+pub(super) use self::single_job_group::SingleJobGroup;
 
 pub use self::disabled_job_group::DisabledJobGroup;
 
@@ -59,7 +59,7 @@ where
 	}
 
 	fn names(&self) -> impl Iterator<Item = Option<&str>> {
-		self.iter().flat_map(|j| j.names())
+		self.iter().flat_map(JobGroup::names)
 	}
 }
 

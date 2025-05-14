@@ -4,12 +4,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#![doc = include_str!("../README.md")]
-#![allow(clippy::missing_docs_in_private_items)] // TODO: enable later
-
+#![cfg_attr(doc, doc = include_str!("../README.md"))]
 // TEMP
 #![allow(missing_docs)]
 #![allow(async_fn_in_trait)]
+// TODO: enable later
+#![allow(clippy::missing_docs_in_private_items)]
+#![allow(clippy::future_not_send)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::doc_markdown)]
 
 mod static_str;
 

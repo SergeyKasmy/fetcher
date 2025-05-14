@@ -95,7 +95,7 @@ impl Google {
 		tracing::debug!("New access token expires in {expires_in}s");
 
 		self.access_token = Some(AccessToken {
-			token: access_token.into(),
+			token: access_token,
 			expires: Instant::now() + Duration::from_secs(expires_in),
 		});
 

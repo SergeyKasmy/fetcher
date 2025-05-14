@@ -166,13 +166,12 @@ impl Html {
 }
 
 /// Extract data from the provided HTML tags
-fn extract_data<'a>(
-	html_fragment: ElementRef<'a>,
+fn extract_data(
+	html_fragment: ElementRef<'_>,
 	sel: &DataSelector,
 ) -> Result<Option<Vec<String>>, HtmlError> {
 	let data = html_fragment
 		.select(&sel.selector)
-		.into_iter()
 		.map(|elem| {
 			let extracted_text = match &sel.location {
 				DataLocation::Text => Some(Cow::Owned(elem.text().collect::<String>())),
@@ -245,8 +244,8 @@ fn extract_id(
 	Ok(extract_data(html_fragment, selector)?.map(|v| v.into_iter().collect::<String>())) // concat strings if several
 }
 
-fn extract_url<'a>(
-	html_fragment: ElementRef<'a>,
+fn extract_url(
+	html_fragment: ElementRef<'_>,
 	selector: &DataSelector,
 ) -> Result<Option<String>, HtmlError> {
 	Ok(extract_data(html_fragment, selector)?.map(|mut it| it.swap_remove(0)))
