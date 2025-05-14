@@ -9,6 +9,8 @@
 use chrono::{NaiveDateTime, NaiveTime, offset::Local as LocalTime};
 use std::time::Duration;
 
+pub use chrono;
+
 /// A point in time of a day
 #[derive(Debug)]
 pub enum TimePoint {

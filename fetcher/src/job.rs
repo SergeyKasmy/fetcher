@@ -8,9 +8,9 @@
 
 pub mod error_handling;
 pub mod opaque_job;
+pub mod timepoint;
 
 mod job_group;
-mod timepoint;
 
 pub use self::{
 	error_handling::HandleError, job_group::JobGroup, opaque_job::OpaqueJob, timepoint::TimePoint,
@@ -36,6 +36,7 @@ pub struct Job<T, H> {
 	pub tasks: T,
 
 	/// Refresh/refetch/redo the job every "this" point of the day
+	#[builder(required)]
 	pub refresh_time: Option<TimePoint>,
 
 	/// What to do incase an error occures?
