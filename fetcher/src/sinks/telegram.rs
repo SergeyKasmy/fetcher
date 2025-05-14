@@ -7,6 +7,7 @@
 //! This module contains the [`Telegram`] sink, as well as [`LinkLocation`] enum that specifies where to put a link in a telegram message
 
 use crate::{
+	error::InvalidUrlError,
 	sinks::{
 		Sink,
 		error::SinkError,
@@ -27,6 +28,7 @@ use teloxide::{
 	},
 };
 use tokio::time::sleep;
+use url::Url;
 
 const MAX_TEXT_MSG_LEN: usize = 4096;
 const MAX_MEDIA_MSG_LEN: usize = 1024;
@@ -232,8 +234,10 @@ impl Telegram {
 					// $type example: Photo
 					// $full_type example: InputMediaPhoto
 					($type:tt, $full_type:tt, $url:expr) => {{
-						let input_media = $full_type::new(InputFile::url($url.clone()))
-							.parse_mode(ParseMode::Html);
+						let url = Url::parse($url).map_err(|e| InvalidUrlError(e, $url.clone()))?;
+
+						let input_media =
+							$full_type::new(InputFile::url(url)).parse_mode(ParseMode::Html);
 
 						let input_media = if let Some(caption) = caption.take() {
 							input_media.caption(caption)
@@ -245,12 +249,14 @@ impl Telegram {
 					}};
 				}
 
-				match m {
+				let m = match &m {
 					Media::Photo(url) => input_media!(Photo, InputMediaPhoto, url),
 					Media::Video(url) => input_media!(Video, InputMediaVideo, url),
-				}
+				};
+
+				Ok(m)
 			})
-			.collect::<Vec<_>>();
+			.collect::<Result<Vec<_>, SinkError>>()?;
 
 		// number of "failed to get url content" error retried tries
 		let mut retry_counter = 0;

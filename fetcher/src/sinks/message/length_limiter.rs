@@ -338,4 +338,6 @@ mod tests {
 		// MSG_COUNT bodies + 1 head & 1 tail
 		assert_eq!(msg.count(), BODY_COUNT + 2);
 	}
+
+	// TODO: add test: .split_at shorter than minimum length (e.g. head length)
 }

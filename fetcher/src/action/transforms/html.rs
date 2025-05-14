@@ -12,7 +12,6 @@ use crate::{
 	StaticStr,
 	action::transforms::{
 		error::RawContentsNotSetError,
-		field::Replace,
 		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
@@ -25,7 +24,6 @@ use either::Either;
 use itertools::Itertools;
 use scraper::{ElementRef, Html as HtmlDom, error::SelectorErrorKind, selector::ToCss};
 use std::{borrow::Cow, iter};
-use url::Url;
 
 pub use scraper::Selector;
 
@@ -43,20 +41,20 @@ pub struct Html {
 	pub item: Option<Selector>,
 
 	/// Query to find the title of an item
-	#[builder(with = |sel: &str, loc: DataLocation| -> Result<_, SelectorErrorKind> { Ok(DataSelector{ selector: Selector::parse(sel)?, location: loc, post_op: None, optional: false })})]
+	#[builder(with = |sel: &str, loc: DataLocation| -> Result<_, SelectorErrorKind> { Ok(DataSelector{ selector: Selector::parse(sel)?, location: loc, optional: false })})]
 	pub title: Option<DataSelector>,
 
 	/// Query to find the id of an item
-	#[builder(with = |sel: &str, loc: DataLocation| -> Result<_, SelectorErrorKind> { Ok(DataSelector{ selector: Selector::parse(sel)?, location: loc, post_op: None, optional: false })})]
+	#[builder(with = |sel: &str, loc: DataLocation| -> Result<_, SelectorErrorKind> { Ok(DataSelector{ selector: Selector::parse(sel)?, location: loc, optional: false })})]
 	pub id: Option<DataSelector>,
 
 	/// Query to find the link to an item
 	// FIXME: make post-op optional
-	#[builder(with = |sel: &str, loc: DataLocation, post_op: Option<Replace> | -> Result<_, SelectorErrorKind> { Ok(DataSelector{ selector: Selector::parse(sel)?, location: loc, post_op, optional: false })})]
+	#[builder(with = |sel: &str, loc: DataLocation | -> Result<_, SelectorErrorKind> { Ok(DataSelector{ selector: Selector::parse(sel)?, location: loc, optional: false })})]
 	pub link: Option<DataSelector>,
 
 	/// Query to find the image of that item
-	#[builder(with = |sel: &str, loc: DataLocation| -> Result<_, SelectorErrorKind> { Ok(DataSelector{ selector: Selector::parse(sel)?, location: loc, post_op: None, optional: false })})]
+	#[builder(with = |sel: &str, loc: DataLocation| -> Result<_, SelectorErrorKind> { Ok(DataSelector{ selector: Selector::parse(sel)?, location: loc, optional: false })})]
 	pub img: Option<DataSelector>,
 }
 
@@ -64,7 +62,6 @@ pub struct Html {
 pub struct DataSelector {
 	pub selector: Selector,
 	pub location: DataLocation,
-	pub post_op: Option<Replace>,
 	pub optional: bool,
 }
 
@@ -148,11 +145,7 @@ impl Html {
 		let link = self
 			.link
 			.as_ref()
-			.try_and_then(|q| extract_url(html_fragment, q))?
-			.try_map(|mut x| {
-				x.next()
-					.expect("iterator shouldn't be empty, otherwise it would've been None before")
-			})?;
+			.try_and_then(|q| extract_url(html_fragment, q))?;
 
 		let img = self
 			.img
@@ -201,14 +194,7 @@ fn extract_data<'a>(
 		None => return Err(HtmlError::DataNotFoundInElement(sel.clone())),
 	};
 
-	Ok(Some(
-		data.into_iter()
-			.map(|s| match &sel.post_op {
-				Some(r) => r.replace(&s).into_owned(),
-				None => s,
-			})
-			.collect(),
-	))
+	Ok(Some(data))
 }
 
 fn extract_title(
@@ -242,21 +228,16 @@ fn extract_id(
 fn extract_url<'a>(
 	html_fragment: ElementRef<'a>,
 	selector: &DataSelector,
-) -> Result<Option<impl Iterator<Item = Result<Url, HtmlError>> + use<'a>>, HtmlError> {
-	Ok(extract_data(html_fragment, selector)?.map(|it| {
-		it.into_iter()
-			.map(|url| Url::try_from(url.as_str()).map_err(|e| InvalidUrlError(e, url).into()))
-	}))
+) -> Result<Option<String>, HtmlError> {
+	Ok(extract_data(html_fragment, selector)?.map(|mut it| it.swap_remove(0)))
 }
 
 fn extract_imgs(
 	html_fragment: ElementRef<'_>,
 	selector: &DataSelector,
 ) -> Result<Option<Vec<Media>>, HtmlError> {
-	extract_url(html_fragment, selector)?.try_map(|it| {
-		it.map(|url| url.map(Media::Photo))
-			.collect::<Result<Vec<_>, _>>()
-	})
+	Ok(extract_data(html_fragment, selector)?
+		.map(|it| it.into_iter().map(Media::Photo).collect::<Vec<_>>()))
 }
 
 impl<S: html_builder::State> HtmlBuilder<S> {
@@ -264,23 +245,6 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		self.text.get_or_insert_default().push(DataSelector {
 			selector: Selector::parse(sel)?,
 			location,
-			post_op: None,
-			optional: false,
-		});
-
-		Ok(self)
-	}
-
-	pub fn text_with_post_op(
-		mut self,
-		sel: &str,
-		location: DataLocation,
-		post_op: Replace,
-	) -> Result<Self, SelectorErrorKind> {
-		self.text.get_or_insert_default().push(DataSelector {
-			selector: Selector::parse(sel)?,
-			location,
-			post_op: Some(post_op),
 			optional: false,
 		});
 

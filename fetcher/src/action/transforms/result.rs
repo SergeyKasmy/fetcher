@@ -11,8 +11,6 @@ use crate::{
 	sinks::message::{Media, Message},
 };
 
-use url::Url;
-
 /// An [`Entry`] mirror that can be converted to [`Entry`] but whose fields can be chosen to inherit old entry's values on [`None`]
 /// Refer to [`Entry`] for more docs on itself and each field
 #[expect(
@@ -37,7 +35,7 @@ pub struct TransformedEntry {
 pub struct TransformedMessage {
 	pub title: TransformResult<String>,
 	pub body: TransformResult<String>,
-	pub link: TransformResult<Url>,
+	pub link: TransformResult<String>,
 	pub media: TransformResult<Vec<Media>>,
 }
 

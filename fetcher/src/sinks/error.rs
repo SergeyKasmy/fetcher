@@ -6,6 +6,7 @@
 
 //! An error that happened while sending to a sink
 
+use crate::error::InvalidUrlError;
 pub use crate::exec::ExecError;
 
 use std::{error::Error as StdError, fmt::Debug, num::TryFromIntError};
@@ -13,6 +14,9 @@ use std::{error::Error as StdError, fmt::Debug, num::TryFromIntError};
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum SinkError {
+	#[error(transparent)]
+	InvalidUrl(#[from] InvalidUrlError),
+
 	#[error("Invalid message ID type. It has probably been copied from an incompatible sink type")]
 	InvalidMessageIdType(#[from] TryFromIntError),
 

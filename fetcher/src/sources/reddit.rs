@@ -12,7 +12,6 @@ use crate::{
 	error::InvalidUrlError,
 	sinks::message::{Media, Message},
 	sources::error::SourceError,
-	utils::OptionExt,
 };
 
 use roux::{
@@ -20,7 +19,6 @@ use roux::{
 	util::{FeedOption, TimePeriod},
 };
 use std::fmt::Debug;
-use url::Url;
 
 /// Source that fetches posts from a subreddit using the Reddit API
 pub struct Reddit {
@@ -124,29 +122,21 @@ impl Reddit {
 					}
 				}
 
-				let link = match post
-					.url
-					.as_deref()
-					.try_map(|u| Url::try_from(u).map_err(|e| InvalidUrlError(e, u.to_owned())))
-				{
-					Ok(v) => v,
-					Err(e) => return Some(Err(e)),
-				};
+				let link = post.url;
 
 				// TODO: don't igonre the clippy lint. Use a case insensetive ASCII search
 				#[expect(clippy::case_sensitive_file_extension_comparisons)]
-				let is_picture = link.as_ref().is_some_and(|u| u.path().ends_with(".jpg"));
+				let is_picture = link.as_ref().is_some_and(|link| link.ends_with(".jpg"));
 
 				#[expect(clippy::case_sensitive_file_extension_comparisons)]
-				let is_video = link.as_ref().is_some_and(|u| {
-					let p = u.path();
-					p.ends_with(".mp4") || p.ends_with(".gif") || p.ends_with(".gifv")
+				let is_video = link.as_ref().is_some_and(|link| {
+					link.ends_with(".mp4") || link.ends_with(".gif") || link.ends_with(".gifv")
 				});
 
 				// post.url instead of link to avoid an unnecessary string -> url -> string conv
-				let mut body = match (post.is_self, is_picture, post.url) {
+				let mut body = match (post.is_self, is_picture, &link) {
 					(true, _, _) => post.selftext,
-					(_, false, Some(link)) => link,
+					(_, false, Some(link)) => link.clone(),
 					_ => String::new(),
 				};
 
@@ -168,16 +158,9 @@ impl Reddit {
 					None
 				};
 
-				let link = match format!("https://reddit.com/{}", post.permalink)
-					.as_str()
-					.try_into()
-					.map_err(|e| InvalidUrlError(e, post.permalink))
-				{
-					Ok(v) => v,
-					Err(e) => return Some(Err(e)),
-				};
+				let link = format!("https://reddit.com/{}", post.permalink);
 
-				Some(Ok(Entry {
+				Some(Entry {
 					id: Some(post.id.into()),
 					raw_contents: None,
 					msg: Message {
@@ -187,9 +170,9 @@ impl Reddit {
 						media,
 					},
 					..Default::default()
-				}))
+				})
 			})
-			.collect::<Result<_, _>>()?;
+			.collect::<_>();
 
 		Ok(entries)
 	}

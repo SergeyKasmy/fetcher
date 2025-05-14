@@ -14,11 +14,7 @@ use crate::{
 		result::{OptionUnwrapTransformResultExt, TransformedEntry},
 	},
 	entry::Entry,
-	error::InvalidUrlError,
-	utils::OptionExt,
 };
-
-use url::Url;
 
 /// Use the value of a field as the value of a different field
 #[derive(Debug)]
@@ -36,7 +32,7 @@ impl Transform for Use {
 		let val = match self.field {
 			Field::Title => ent.msg.title,
 			Field::Body => ent.msg.body,
-			Field::Link => ent.msg.link.map(|s| s.to_string()),
+			Field::Link => ent.msg.link,
 			Field::Id => ent.id.map(|id| id.0),
 			Field::ReplyTo => ent.reply_to.map(|id| id.0),
 			Field::RawContets => ent.raw_contents,
@@ -46,15 +42,7 @@ impl Transform for Use {
 		match self.as_field {
 			Field::Title => ent.msg.title = val.unwrap_or_empty(),
 			Field::Body => ent.msg.body = val.unwrap_or_empty(),
-			Field::Link => {
-				ent.msg.link = val
-					.try_map(|s| {
-						Url::try_from(s.as_str()).map_err(|e| {
-							TransformErrorKind::FieldLinkTransformInvalidUrl(InvalidUrlError(e, s))
-						})
-					})?
-					.unwrap_or_empty();
-			}
+			Field::Link => ent.msg.link = val.unwrap_or_empty(),
 			Field::Id => ent.id = val.map(Into::into).unwrap_or_empty(),
 			Field::ReplyTo => ent.reply_to = val.map(Into::into).unwrap_or_empty(),
 			Field::RawContets => ent.raw_contents = val.unwrap_or_empty(),

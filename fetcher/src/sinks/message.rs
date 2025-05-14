@@ -13,17 +13,15 @@ pub(crate) mod length_limiter;
 use std::fmt::Debug;
 
 /// The finalized and composed message meant to be sent to a sink
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct Message {
 	/// title of the message
 	pub title: Option<String>,
 	/// body of the message
 	pub body: Option<String>,
 
-	// TODO: don't restrict the user to always provide valid URLs. Instead validate them on send or something like that.
-	// This allows some transform to provide a partial value for e.g. link and finish it in a later transform
 	/// a url to the full contents or source of the message
-	pub link: Option<Url>,
+	pub link: Option<String>,
 	/// a list of photos or videos included in the message. They are usually attached to the message itself if the sink supports it. Otherwise they may be left as links
 	pub media: Option<Vec<Media>>,
 }
@@ -36,12 +34,12 @@ pub struct MessageId(pub i64);
 
 // TODO: rename photo to image mb?
 /// A link to some kind of external media
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Media {
 	/// A link to a photo
-	Photo(Url),
+	Photo(String),
 	/// A link to a video
-	Video(Url),
+	Video(String),
 }
 
 impl Message {
@@ -55,25 +53,5 @@ impl Message {
 impl From<i64> for MessageId {
 	fn from(value: i64) -> Self {
 		Self(value)
-	}
-}
-
-impl Debug for Message {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("Message")
-			.field("title", &self.title)
-			.field("body", &self.body)
-			.field("link", &self.link.as_ref().map(Url::as_str))
-			.field("media", &self.media)
-			.finish()
-	}
-}
-
-impl Debug for Media {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Photo(x) => f.debug_tuple("Photo").field(&x.as_str()).finish(),
-			Self::Video(x) => f.debug_tuple("Video").field(&x.as_str()).finish(),
-		}
 	}
 }

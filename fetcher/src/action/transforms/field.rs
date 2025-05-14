@@ -22,13 +22,12 @@ pub use self::{
 };
 
 use std::fmt::{self, Debug};
-use url::Url;
 
 use super::{
 	Transform,
 	result::{TransformResult, TransformedEntry},
 };
-use crate::{action::transforms::error::TransformErrorKind, entry::Entry, error::InvalidUrlError};
+use crate::{action::transforms::error::TransformErrorKind, entry::Entry};
 
 /// Transform/change the value of a field of an [`Entry `]
 pub trait TransformField {
@@ -100,17 +99,10 @@ where
 					.map_err(Into::into)?;
 			}
 			Field::Link => {
-				let old_link = entry.msg.link.as_ref().map(|u| u.to_string());
-
 				new_entry.msg.link = self
 					.transformator
-					.transform_field(old_link.as_deref())
-					.map_err(Into::into)?
-					.try_map(|s| {
-						Url::try_from(s.as_str()).map_err(|e| {
-							TransformErrorKind::FieldLinkTransformInvalidUrl(InvalidUrlError(e, s))
-						})
-					})?;
+					.transform_field(entry.msg.link.as_deref())
+					.map_err(Into::into)?;
 			}
 			Field::Id => {
 				new_entry.id = self

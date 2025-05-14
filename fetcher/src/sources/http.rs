@@ -109,7 +109,7 @@ impl Http {
 		Ok(Entry {
 			raw_contents: Some(page),
 			msg: Message {
-				link: Some(self.url.clone()),
+				link: Some(self.url.as_str().to_owned()),
 				..Default::default()
 			},
 			..Default::default()

@@ -15,8 +15,7 @@ use crate::{
 	entry::Entry,
 };
 
-use tap::{TapFallible, TapOptional};
-use url::Url;
+use tap::TapOptional;
 
 /// RSS or Atom feed parser
 #[derive(Debug)]
@@ -65,10 +64,7 @@ impl Transform for Feed {
 					.map(|x| x.content);
 
 				let id = Some(feed_entry.id);
-
-				let link = Url::try_from(feed_entry.links.remove(0).href.as_str())
-					.tap_err(|e| tracing::warn!("A feed entry's link is not a valid URL: {e:?}"))
-					.ok();
+				let link = Some(feed_entry.links.swap_remove(0).href);
 
 				TransformedEntry {
 					id: id.map(Into::into).unwrap_or_prev(),

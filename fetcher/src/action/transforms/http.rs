@@ -76,7 +76,11 @@ impl Transform for Http {
 					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, s.to_owned()))
 				})
 			})?,
-			Field::Link => entry.msg.link.clone(),
+			Field::Link => entry.msg.link.as_deref().try_map(|s| {
+				Url::try_from(s).map_err(|e| {
+					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, s.to_owned()))
+				})
+			})?,
 			Field::Id => entry.id.as_ref().try_map(|id| {
 				Url::try_from(id.0.as_str()).map_err(|e| {
 					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, id.0.clone()))
@@ -101,7 +105,7 @@ impl Transform for Http {
 		Ok(vec![TransformedEntry {
 			raw_contents: TransformResult::New(new_page),
 			msg: TransformedMessage {
-				link: TransformResult::New(url),
+				link: TransformResult::New(url.as_str().to_owned()),
 				..Default::default()
 			},
 			..Default::default()

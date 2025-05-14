@@ -22,7 +22,6 @@ use crate::{
 use either::Either;
 use serde_json::Value;
 use std::{borrow::Cow, ops::ControlFlow};
-use url::Url;
 
 /// JSON parser
 #[derive(Debug)]
@@ -138,11 +137,14 @@ impl Json {
 			.try_and_then(|q| extract_string(item, q))?;
 		let body = self.text.as_ref().try_and_then(|v| extract_body(item, v))?;
 		let id = self.id.as_ref().try_and_then(|q| extract_id(item, q))?;
-		let link = self.link.as_ref().try_and_then(|q| extract_url(item, q))?;
+		let link = self
+			.link
+			.as_ref()
+			.try_and_then(|q| extract_string(item, q))?;
 
 		let img = self.img.as_ref().try_map(|v| {
 			v.iter()
-				.filter_map(|q| extract_url(item, q).transpose())
+				.filter_map(|q| extract_string(item, q).transpose())
 				.collect::<Result<Vec<_>, _>>()
 		})?;
 
@@ -258,16 +260,4 @@ fn extract_id(item: &Value, query: &StringQuery) -> Result<Option<String>, JsonE
 	};
 
 	Ok(Some(id))
-}
-
-fn extract_url(item: &Value, query: &StringQuery) -> Result<Option<Url>, JsonError> {
-	let url_str = match extract_string(item, query) {
-		Ok(Some(v)) => v,
-		Ok(None) => return Ok(None),
-		Err(e) => return Err(e),
-	};
-
-	let url = Url::try_from(url_str.as_str()).map_err(|e| InvalidUrlError(e, url_str))?;
-
-	Ok(Some(url))
 }
