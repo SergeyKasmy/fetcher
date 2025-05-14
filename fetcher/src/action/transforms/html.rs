@@ -49,7 +49,6 @@ pub struct Html {
 	pub id: Option<DataSelector>,
 
 	/// Query to find the link to an item
-	// FIXME: make post-op optional
 	#[builder(with = |sel: &str, loc: DataLocation | -> Result<_, SelectorErrorKind> { Ok(DataSelector{ selector: Selector::parse(sel)?, location: loc, optional: false })})]
 	pub link: Option<DataSelector>,
 
@@ -184,14 +183,35 @@ fn extract_data<'a>(
 		})
 		.collect::<Option<Vec<_>>>();
 
+	// TODO: simplify this, e.g. replace Option with a more descriptive enum
 	let data = match data {
-		Some(v) if v.is_empty() => return Err(HtmlError::SelectorNotMatched(sel.selector.clone())),
-		Some(v) if v.iter().all(String::is_empty) => {
-			return Err(HtmlError::ElementEmpty(sel.clone()));
+		// selector didn't match
+		Some(v) if v.is_empty() => {
+			if sel.optional {
+				// TODO: add warn
+				return Ok(None);
+			} else {
+				return Err(HtmlError::SelectorNotMatched(sel.selector.clone()));
+			}
 		}
+		// selector matched an empty (or full of whitespace) element
+		Some(v) if v.iter().all(String::is_empty) => {
+			if sel.optional {
+				return Ok(None);
+			} else {
+				return Err(HtmlError::ElementEmpty(sel.clone()));
+			}
+		}
+		// selector matched an element with text
 		Some(v) => v,
-		None if sel.optional => return Ok(None),
-		None => return Err(HtmlError::DataNotFoundInElement(sel.clone())),
+		// selector matched an element that didn't have a required attribute
+		None => {
+			if sel.optional {
+				return Ok(None);
+			} else {
+				return Err(HtmlError::DataNotFoundInElement(sel.clone()));
+			}
+		}
 	};
 
 	Ok(Some(data))
