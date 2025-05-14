@@ -105,12 +105,13 @@ impl Sink for Discord {
 					let mut head = head
 						// add more padding between tag and title if both are present
 						.map(|mut s| {
-							s.insert(0, '\n');
+							s.into_heap_allocated().insert(0, '\n');
 							s
 						})
 						.unwrap_or_default();
 
-					head.insert_str(0, &format!("#{tag}\n"));
+					head.into_heap_allocated()
+						.insert_str(0, &format!("#{tag}\n"));
 					head
 				});
 			}

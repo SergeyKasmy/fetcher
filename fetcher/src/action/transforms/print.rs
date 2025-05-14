@@ -27,11 +27,12 @@ impl Transform for DebugPrint {
 
 		// append id and raw_contents entry fields to the body to help in debugging
 		msg.body = {
-			let mut body = msg.body.unwrap_or_else(|| "None".to_owned());
+			let mut body = msg.body.unwrap_or_else(|| "None".into());
 			_ = write!(
-				body,
+				body.into_heap_allocated(),
 				"\n\nid: {:?}\n\nraw_contents: {:?}",
-				entry.id, entry.raw_contents
+				entry.id,
+				entry.raw_contents
 			);
 			Some(body)
 		};

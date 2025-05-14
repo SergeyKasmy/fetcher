@@ -140,7 +140,7 @@ mod tests {
 		let mut v = Vec::with_capacity(MAX_LIST_LEN);
 
 		for i in 0..600 {
-			let id = EntryId(i.to_string());
+			let id = EntryId(i.to_string().into());
 			rf.mark_as_read(&id).await.unwrap();
 			v.push(id);
 		}

@@ -147,13 +147,13 @@ impl Reddit {
 						"should contain a valid picture url since we confirmed it with is_picture",
 					);
 
-					Some(vec![Media::Photo(url)])
+					Some(vec![Media::Photo(url.into())])
 				} else if is_video {
 					let url = link.expect(
 						"should contain a valid picture url since we confirmed it with is_video",
 					);
 
-					Some(vec![Media::Video(url)])
+					Some(vec![Media::Video(url.into())])
 				} else {
 					None
 				};
@@ -164,9 +164,9 @@ impl Reddit {
 					id: Some(post.id.into()),
 					raw_contents: None,
 					msg: Message {
-						title: Some(post.title),
-						body: Some(body),
-						link: Some(link),
+						title: Some(post.title.into()),
+						body: Some(body.into()),
+						link: Some(link.into()),
 						media,
 					},
 					..Default::default()

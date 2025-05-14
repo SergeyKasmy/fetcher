@@ -8,6 +8,7 @@
 
 use either::Either;
 
+use crate::StaticStr;
 use crate::{
 	action::transforms::error::TransformError, auth::google::GoogleOAuth2Error,
 	external_save::ExternalSaveError, sinks::error::SinkError, sources::error::SourceError,
@@ -38,7 +39,7 @@ pub enum FetcherError {
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 #[error("Invalid URL: {1}")]
-pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
+pub struct InvalidUrlError(#[source] pub url::ParseError, pub StaticStr);
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]

@@ -10,7 +10,10 @@ use itertools::Itertools;
 use std::convert::Infallible;
 
 use super::TransformField;
-use crate::action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult};
+use crate::{
+	StaticStr,
+	action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult},
+};
 
 /// Trim whitespace from a field
 #[derive(Debug)]
@@ -19,7 +22,10 @@ pub struct Trim;
 impl TransformField for Trim {
 	type Err = Infallible;
 
-	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
+	fn transform_field(
+		&self,
+		old_val: Option<&str>,
+	) -> Result<TransformResult<StaticStr>, Self::Err> {
 		Ok(old_val.map(trim).unwrap_or_empty())
 	}
 }

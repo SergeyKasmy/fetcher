@@ -68,17 +68,17 @@ impl Transform for Http {
 		let url: Option<Url> = match self.from_field {
 			Field::Title => entry.msg.title.as_deref().try_map(|s| {
 				Url::try_from(s).map_err(|e| {
-					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, s.to_owned()))
+					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, s.to_owned().into()))
 				})
 			})?,
 			Field::Body => entry.msg.body.as_deref().try_map(|s| {
 				Url::try_from(s).map_err(|e| {
-					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, s.to_owned()))
+					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, s.to_owned().into()))
 				})
 			})?,
 			Field::Link => entry.msg.link.as_deref().try_map(|s| {
 				Url::try_from(s).map_err(|e| {
-					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, s.to_owned()))
+					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, s.to_owned().into()))
 				})
 			})?,
 			Field::Id => entry.id.as_ref().try_map(|id| {
@@ -93,7 +93,7 @@ impl Transform for Http {
 			})?,
 			Field::RawContets => entry.raw_contents.as_deref().try_map(|s| {
 				Url::try_from(s).map_err(|e| {
-					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, s.to_owned()))
+					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, s.to_owned().into()))
 				})
 			})?,
 		};
@@ -103,9 +103,9 @@ impl Transform for Http {
 		let new_page = sources::http::send_request(&self.client, &Request::Get, &url).await?;
 
 		Ok(vec![TransformedEntry {
-			raw_contents: TransformResult::New(new_page),
+			raw_contents: TransformResult::New(new_page.into()),
 			msg: TransformedMessage {
-				link: TransformResult::New(url.as_str().to_owned()),
+				link: TransformResult::New(url.as_str().to_owned().into()),
 				..Default::default()
 			},
 			..Default::default()

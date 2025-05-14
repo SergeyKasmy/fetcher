@@ -63,7 +63,7 @@ impl Fetch for Exec {
 			.map_err(ExecError::BadCommand)?
 			.stdout;
 
-		let out = String::from_utf8(out).map_err(ExecError::BadUtf8)?;
+		let out = String::from_utf8(out).map_err(ExecError::BadUtf8)?.into();
 		tracing::debug!("Got {out:?} from the command");
 
 		Ok(vec![Entry {

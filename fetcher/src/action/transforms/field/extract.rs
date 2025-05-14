@@ -9,7 +9,7 @@
 use regex::Regex;
 
 use super::TransformField;
-use crate::{action::transforms::result::TransformResult, error::BadRegexError};
+use crate::{StaticStr, action::transforms::result::TransformResult, error::BadRegexError};
 
 /// Extract the contents of capture groups using a regular expression and concat them
 #[derive(Debug)]
@@ -53,7 +53,10 @@ impl Extract {
 impl TransformField for Extract {
 	type Err = ExtractError;
 
-	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
+	fn transform_field(
+		&self,
+		old_val: Option<&str>,
+	) -> Result<TransformResult<StaticStr>, Self::Err> {
 		let Some(field) = old_val else {
 			return Ok(TransformResult::Previous);
 		};
@@ -64,7 +67,7 @@ impl TransformField for Extract {
 			None => return Err(ExtractError::CaptureGroupNotFound),
 		};
 
-		Ok(TransformResult::New(extracted))
+		Ok(TransformResult::New(extracted.into()))
 	}
 }
 

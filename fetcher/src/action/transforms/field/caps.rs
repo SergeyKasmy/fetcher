@@ -9,7 +9,10 @@
 use std::convert::Infallible;
 
 use super::TransformField;
-use crate::action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult};
+use crate::{
+	StaticStr,
+	action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult},
+};
 
 /// Make all text in a field UPPERCASE
 #[derive(Debug)]
@@ -19,7 +22,10 @@ impl TransformField for Caps {
 	type Err = Infallible;
 
 	// Infallible
-	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
+	fn transform_field(
+		&self,
+		field: Option<&str>,
+	) -> Result<TransformResult<StaticStr>, Self::Err> {
 		Ok(field.map(str::to_uppercase).unwrap_or_empty())
 	}
 }

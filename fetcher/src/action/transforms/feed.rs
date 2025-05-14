@@ -67,7 +67,7 @@ impl Transform for Feed {
 				let link = Some(feed_entry.links.swap_remove(0).href);
 
 				TransformedEntry {
-					id: id.map(Into::into).unwrap_or_prev(),
+					id: id.unwrap_or_prev(),
 					raw_contents: body.clone().unwrap_or_prev(),
 					msg: TransformedMessage {
 						title: title.unwrap_or_prev(),

@@ -7,7 +7,10 @@
 //! This module contains the [`Shorten`] transform
 
 use super::TransformField;
-use crate::action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult};
+use crate::{
+	StaticStr,
+	action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult},
+};
 
 use std::{convert::Infallible, iter::repeat};
 
@@ -21,7 +24,10 @@ pub struct Shorten {
 impl TransformField for Shorten {
 	type Err = Infallible;
 
-	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
+	fn transform_field(
+		&self,
+		field: Option<&str>,
+	) -> Result<TransformResult<StaticStr>, Self::Err> {
 		// len == 0 means we should unset the field. Same effect as Set with value: None here
 		let new_val = if self.len == 0 {
 			None

@@ -7,7 +7,7 @@
 //! This module contains the basic building blog of [`fetcher`](`crate`) - [`Entry`]
 //! that is passed throughout the program and that all modules either create, modify, or consume
 
-use crate::sinks::message::Message;
+use crate::{StaticStr, sinks::message::Message};
 
 use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, ops::Deref};
@@ -15,7 +15,7 @@ use std::{fmt::Debug, ops::Deref};
 // TODO: make generic over String/i64/other types of id
 /// An ID that can identify and entry to differentiate it from another one
 #[derive(PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Debug)]
-pub struct EntryId(pub String);
+pub struct EntryId(pub StaticStr);
 
 /// A [`fetcher`](`crate`) primitive that contains a message and an id returned from a source that can be send to a sink
 #[derive(Clone, Default)]
@@ -32,7 +32,7 @@ pub struct Entry {
 	/// Raw contents gotten from a [`Source`](`crate::source::Source`)
 	///
 	/// It's used to compose a message using [`transformators`](`crate::action::transform::Transform`).
-	pub raw_contents: Option<String>,
+	pub raw_contents: Option<StaticStr>,
 
 	/// The message itself
 	pub msg: Message,
@@ -46,15 +46,21 @@ impl Deref for EntryId {
 	}
 }
 
-impl From<String> for EntryId {
-	fn from(value: String) -> Self {
+impl From<StaticStr> for EntryId {
+	fn from(value: StaticStr) -> Self {
 		Self(value)
 	}
 }
 
-impl From<&str> for EntryId {
-	fn from(value: &str) -> Self {
-		Self(value.to_owned())
+impl From<String> for EntryId {
+	fn from(value: String) -> Self {
+		Self(value.into())
+	}
+}
+
+impl From<&'static str> for EntryId {
+	fn from(value: &'static str) -> Self {
+		Self(value.into())
 	}
 }
 

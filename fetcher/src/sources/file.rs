@@ -31,7 +31,7 @@ impl Fetch for File {
 			.map_err(|e| SourceError::File(e, self.path.clone()))?;
 
 		Ok(vec![Entry {
-			raw_contents: Some(text),
+			raw_contents: Some(text.into()),
 			..Default::default()
 		}])
 	}

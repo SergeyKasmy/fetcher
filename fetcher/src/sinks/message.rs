@@ -12,16 +12,18 @@ pub(crate) mod length_limiter;
 
 use std::fmt::Debug;
 
+use crate::StaticStr;
+
 /// The finalized and composed message meant to be sent to a sink
 #[derive(Clone, Default, Debug)]
 pub struct Message {
 	/// title of the message
-	pub title: Option<String>,
+	pub title: Option<StaticStr>,
 	/// body of the message
-	pub body: Option<String>,
+	pub body: Option<StaticStr>,
 
 	/// a url to the full contents or source of the message
-	pub link: Option<String>,
+	pub link: Option<StaticStr>,
 	/// a list of photos or videos included in the message. They are usually attached to the message itself if the sink supports it. Otherwise they may be left as links
 	pub media: Option<Vec<Media>>,
 }
@@ -37,9 +39,9 @@ pub struct MessageId(pub i64);
 #[derive(Clone, Debug)]
 pub enum Media {
 	/// A link to a photo
-	Photo(String),
+	Photo(StaticStr),
 	/// A link to a video
-	Video(String),
+	Video(StaticStr),
 }
 
 impl Message {

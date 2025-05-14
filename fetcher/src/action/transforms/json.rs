@@ -156,14 +156,18 @@ impl Json {
 		};
 
 		Ok(TransformedEntry {
-			id: id.map(Into::into).unwrap_or_prev(),
+			id: id.unwrap_or_prev(),
 			raw_contents: body.clone().unwrap_or_prev(),
 			msg: TransformedMessage {
 				title: title.unwrap_or_prev(),
 				body: body.unwrap_or_prev(),
 				link: link.unwrap_or_prev(),
 				media: img
-					.map(|v| v.into_iter().map(Media::Photo).collect())
+					.map(|v| {
+						v.into_iter()
+							.map(|url| Media::Photo(url.into()))
+							.collect::<Vec<_>>()
+					})
 					.unwrap_or_prev(),
 			},
 			..Default::default()

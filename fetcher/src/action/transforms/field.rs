@@ -27,7 +27,7 @@ use super::{
 	Transform,
 	result::{TransformResult, TransformedEntry},
 };
-use crate::{action::transforms::error::TransformErrorKind, entry::Entry};
+use crate::{StaticStr, action::transforms::error::TransformErrorKind, entry::Entry};
 
 /// Transform/change the value of a field of an [`Entry `]
 pub trait TransformField {
@@ -38,7 +38,10 @@ pub trait TransformField {
 	///
 	/// # Errors
 	/// Refer to implementator's docs. Most of them never error but some do
-	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err>;
+	fn transform_field(
+		&self,
+		old_val: Option<&str>,
+	) -> Result<TransformResult<StaticStr>, Self::Err>;
 }
 
 /// List of all available fields for transformations

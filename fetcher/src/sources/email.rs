@@ -60,7 +60,6 @@ static TLS_CONNECTOR: LazyLock<TlsConnector> = LazyLock::new(|| {
 	connector
 });
 
-// FIXME: blocks the runtime. Probably migrate to imap-async crate or wrap in spawn_blocking
 /// Email source. Fetches an email's subject and body fields using IMAP
 pub struct Email {
 	/// IMAP server address
@@ -406,8 +405,8 @@ fn parse(mail: &ParsedMail, id: String) -> Result<Entry, EmailError> {
 	Ok(Entry {
 		id: Some(id.into()),
 		msg: Message {
-			title: subject,
-			body: Some(body),
+			title: subject.map(Into::into),
+			body: Some(body.into()),
 			..Default::default()
 		},
 		..Default::default()

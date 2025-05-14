@@ -7,6 +7,7 @@
 //! This module contains everything needed to contruct a new [`Entry`] (via [`TransformedEntry`]) and [`Message`] (via [`TransformedMessage`]) after parsing, optionally using previous [`Entry's`](`Entry`) data if requested
 
 use crate::{
+	StaticStr,
 	entry::{Entry, EntryId},
 	sinks::message::{Media, Message},
 };
@@ -21,7 +22,7 @@ use crate::{
 pub struct TransformedEntry {
 	pub id: TransformResult<EntryId>,
 	pub reply_to: TransformResult<EntryId>,
-	pub raw_contents: TransformResult<String>,
+	pub raw_contents: TransformResult<StaticStr>,
 	pub msg: TransformedMessage,
 }
 
@@ -33,9 +34,9 @@ pub struct TransformedEntry {
 )]
 #[derive(Default, Debug)]
 pub struct TransformedMessage {
-	pub title: TransformResult<String>,
-	pub body: TransformResult<String>,
-	pub link: TransformResult<String>,
+	pub title: TransformResult<StaticStr>,
+	pub body: TransformResult<StaticStr>,
+	pub link: TransformResult<StaticStr>,
 	pub media: TransformResult<Vec<Media>>,
 }
 
@@ -129,12 +130,21 @@ impl<T> Default for TransformResult<T> {
 	}
 }
 
-impl<T> OptionUnwrapTransformResultExt<T> for Option<T> {
-	fn unwrap_or_prev(self) -> TransformResult<T> {
-		self.map_or_else(|| TransformResult::Previous, TransformResult::New)
+impl<T, U> OptionUnwrapTransformResultExt<U> for Option<T>
+where
+	T: Into<U>,
+{
+	fn unwrap_or_prev(self) -> TransformResult<U> {
+		self.map_or_else(
+			|| TransformResult::Previous,
+			|t| TransformResult::New(t.into()),
+		)
 	}
 
-	fn unwrap_or_empty(self) -> TransformResult<T> {
-		self.map_or_else(|| TransformResult::Empty, TransformResult::New)
+	fn unwrap_or_empty(self) -> TransformResult<U> {
+		self.map_or_else(
+			|| TransformResult::Empty,
+			|t| TransformResult::New(t.into()),
+		)
 	}
 }

@@ -85,7 +85,7 @@ where
 impl Fetch for String {
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
 		Ok(vec![Entry {
-			raw_contents: Some(self.clone()),
+			raw_contents: Some(self.clone().into()),
 			..Default::default()
 		}])
 	}

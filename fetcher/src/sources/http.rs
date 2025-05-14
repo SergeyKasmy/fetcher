@@ -104,12 +104,10 @@ impl Http {
 
 		let page = send_request(&self.client, &self.request, &self.url).await?;
 
-		// tracing::trace!("Done. Body: ----------------------------------------\n{page:?}\n----------------------------------------\n");
-
 		Ok(Entry {
-			raw_contents: Some(page),
+			raw_contents: Some(page.into()),
 			msg: Message {
-				link: Some(self.url.as_str().to_owned()),
+				link: Some(self.url.as_str().to_owned().into()),
 				..Default::default()
 			},
 			..Default::default()

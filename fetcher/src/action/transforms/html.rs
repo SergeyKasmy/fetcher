@@ -152,7 +152,7 @@ impl Html {
 			.try_and_then(|q| extract_imgs(html_fragment, q))?;
 
 		Ok(TransformedEntry {
-			id: id.map(Into::into).unwrap_or_prev(),
+			id: id.unwrap_or_prev(),
 			raw_contents: body.clone().unwrap_or_prev(),
 			msg: TransformedMessage {
 				title: title.unwrap_or_prev(),
@@ -169,7 +169,7 @@ impl Html {
 fn extract_data<'a>(
 	html_fragment: ElementRef<'a>,
 	sel: &DataSelector,
-) -> Result<Option<Vec<String>>, HtmlError> {
+) -> Result<Option<Vec<StaticStr>>, HtmlError> {
 	let data = html_fragment
 		.select(&sel.selector)
 		.into_iter()
@@ -179,9 +179,9 @@ fn extract_data<'a>(
 				DataLocation::Attribute(attr) => elem.attr(attr).map(Cow::Borrowed),
 			};
 
-			extracted_text.map(|s| s.trim().to_owned())
+			extracted_text.map(|s| s.trim().to_owned().into())
 		})
-		.collect::<Option<Vec<_>>>();
+		.collect::<Option<Vec<StaticStr>>>();
 
 	// TODO: simplify this, e.g. replace Option with a more descriptive enum
 	let data = match data {
@@ -195,7 +195,7 @@ fn extract_data<'a>(
 			}
 		}
 		// selector matched an empty (or full of whitespace) element
-		Some(v) if v.iter().all(String::is_empty) => {
+		Some(v) if v.iter().all(StaticStr::is_empty) => {
 			if sel.optional {
 				return Ok(None);
 			} else {
@@ -241,14 +241,14 @@ fn extract_body(
 fn extract_id(
 	html_fragment: ElementRef<'_>,
 	selector: &DataSelector,
-) -> Result<Option<String>, HtmlError> {
-	Ok(extract_data(html_fragment, selector)?.map(|v| v.into_iter().collect::<String>())) // concat strings if several
+) -> Result<Option<StaticStr>, HtmlError> {
+	Ok(extract_data(html_fragment, selector)?.map(|v| v.into_iter().collect::<StaticStr>())) // concat strings if several
 }
 
 fn extract_url<'a>(
 	html_fragment: ElementRef<'a>,
 	selector: &DataSelector,
-) -> Result<Option<String>, HtmlError> {
+) -> Result<Option<StaticStr>, HtmlError> {
 	Ok(extract_data(html_fragment, selector)?.map(|mut it| it.swap_remove(0)))
 }
 
