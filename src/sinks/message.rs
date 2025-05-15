@@ -15,6 +15,8 @@ use std::fmt::Debug;
 pub struct Message {
 	/// title of the message
 	pub title: Option<String>,
+
+	// TODO: add support for rich text. If the sink doesn't support it, it can just be stripped
 	/// body of the message
 	pub body: Option<String>,
 

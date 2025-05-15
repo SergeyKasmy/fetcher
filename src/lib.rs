@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#![cfg_attr(doc, doc = include_str!("../README.md"))]
+// #![cfg_attr(doc, doc = include_str!("../README.md"))]
 // TEMP
 #![allow(missing_docs)]
 #![allow(async_fn_in_trait)]

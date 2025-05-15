@@ -65,6 +65,7 @@ fn compose_long_message(
 	// make sure the entire head or tail can fit into the requested split
 	// since they can't be split into parts
 	let head_len = head.map_or(0, count_chars);
+	// TODO: don't panic
 	assert!(
 		max_len >= head_len,
 		"head has more characters: {head_len}, than can be fit in a msg part of max len: {max_len}"
@@ -339,5 +340,23 @@ mod tests {
 		assert_eq!(msg.count(), BODY_COUNT + 2);
 	}
 
-	// TODO: add test: .split_at shorter than minimum length (e.g. head length)
+	#[test]
+	#[should_panic]
+	fn split_at_shorter_than_head() {
+		const HEAD_LEN: usize = 128;
+
+		let mut head = String::new();
+		for _ in 0..HEAD_LEN {
+			head.push('h');
+		}
+
+		let mut msg = MessageLengthLimiter {
+			head: Some(&head),
+			body: None,
+			tail: None,
+		};
+
+		// panics! Head can't be split, only body
+		_ = msg.split_at(HEAD_LEN - 1);
+	}
 }
