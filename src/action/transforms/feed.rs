@@ -56,12 +56,37 @@ impl Transform for Feed {
 					.tap_none(|| tracing::error!("Feed entry doesn't contain a title"))
 					.map(|x| x.content);
 
-				let body = feed_entry
-					.summary
-					.tap_none(|| {
-						tracing::error!("Feed entry doesn't contain a summary/description/body");
-					})
-					.map(|x| x.content);
+				let summary = feed_entry.summary.map(|text| text.content);
+
+				let body = match summary {
+					Some(summary) => {
+						tracing::trace!(
+							"Using the summary as the body of the message: {:?}{}",
+							&summary[..100],
+							if summary.len() > 100 { "..." } else { "" },
+						);
+						Some(summary)
+					}
+					None => {
+						let content = feed_entry.content.and_then(|content| content.body);
+						match content {
+							Some(content) => {
+								tracing::trace!(
+									r#"Summary missing, falling back to "content": {:?}{}"#,
+									&content[..100],
+									if content.len() > 100 { "..." } else { "" },
+								);
+								Some(content)
+							}
+							None => {
+								tracing::error!(
+									"Feed entry doesn't contain a summary and doesn't have any contents"
+								);
+								None
+							}
+						}
+					}
+				};
 
 				let id = Some(feed_entry.id);
 				let link = Some(feed_entry.links.swap_remove(0).href);
