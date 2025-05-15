@@ -8,11 +8,13 @@
 //!
 //! This module contains the [`Http`] struct, that is a source as well as a transform
 
+pub use reqwest;
+
 use crate::{entry::Entry, sinks::message::Message, sources::error::SourceError};
 
 use once_cell::sync::OnceCell;
 use reqwest::Client;
-use std::{fmt::Debug, time::Duration};
+use std::{convert::identity, fmt::Debug, time::Duration};
 use url::Url;
 
 use super::Fetch;
@@ -21,6 +23,8 @@ const USER_AGENT: &str =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:96.0) Gecko/20100101 Firefox/96.0";
 
 pub(crate) static CLIENT: OnceCell<reqwest::Client> = OnceCell::new();
+
+pub use serde_json::Value as Json;
 
 /// A source that fetches from the [`URL`](`url`)
 pub struct Http {
@@ -47,9 +51,9 @@ pub enum HttpError {
 }
 
 #[derive(Debug)]
-pub(crate) enum Request {
+pub enum Request {
 	Get,
-	Post(serde_json::Value),
+	Post(Json),
 }
 
 impl Http {
@@ -58,7 +62,7 @@ impl Http {
 	/// # Errors
 	/// This method fails if TLS couldn't be initialized
 	pub fn new_get(url: impl TryInto<Url, Error = url::ParseError>) -> Result<Self, HttpError> {
-		Self::new(url.try_into()?, Request::Get)
+		Self::new_with_client_config(url.try_into()?, Request::Get, identity)
 	}
 
 	/// Create a new HTTP client that sends POST requests
@@ -69,7 +73,11 @@ impl Http {
 		url: impl TryInto<Url, Error = url::ParseError>,
 		body: &str,
 	) -> Result<Self, HttpError> {
-		Self::new(url.try_into()?, Request::Post(serde_json::from_str(body)?))
+		Self::new_with_client_config(
+			url.try_into()?,
+			Request::Post(serde_json::from_str(body)?),
+			identity,
+		)
 	}
 }
 
@@ -82,11 +90,19 @@ impl Fetch for Http {
 }
 
 impl Http {
-	fn new(url: Url, request: Request) -> Result<Self, HttpError> {
+	pub fn new_with_client_config<F>(
+		url: Url,
+		request: Request,
+		builder_config: F,
+	) -> Result<Self, HttpError>
+	where
+		F: FnOnce(reqwest::ClientBuilder) -> reqwest::ClientBuilder,
+	{
 		let client = CLIENT
 			.get_or_try_init(|| {
-				reqwest::ClientBuilder::new()
-					.timeout(Duration::from_secs(30))
+				let builder = reqwest::ClientBuilder::new().timeout(Duration::from_secs(30));
+
+				builder_config(builder)
 					.build()
 					.map_err(HttpError::TlsInitFailed)
 			})?
@@ -140,6 +156,7 @@ pub(crate) async fn send_request(
 	};
 
 	let response = request
+		// TODO: move this to builder config and allow the user to override it. There's ClientBuilder::user_agent() I believe
 		.header(reqwest::header::USER_AGENT, USER_AGENT)
 		.send()
 		.await

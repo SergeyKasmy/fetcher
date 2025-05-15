@@ -6,8 +6,6 @@
 
 //! This module contains [`Message`] and [`Media`]
 
-pub use url::Url;
-
 pub(crate) mod length_limiter;
 
 use std::fmt::Debug;

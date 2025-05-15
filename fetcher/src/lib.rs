@@ -36,3 +36,4 @@ pub mod scaffold;
 pub use crate::static_str::StaticStr;
 
 pub use either;
+pub use url;

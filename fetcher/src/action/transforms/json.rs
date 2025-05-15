@@ -23,6 +23,7 @@ use either::Either;
 use serde_json::Value;
 use std::{borrow::Cow, ops::ControlFlow};
 
+// TODO: migrate to serde_json::Value::pointer() API instead
 /// JSON parser
 #[derive(Debug)]
 pub struct Json {
