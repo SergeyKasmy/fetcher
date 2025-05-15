@@ -46,6 +46,9 @@ pub enum TransformErrorKind {
 
 	#[error("Extraction error")]
 	Extract(#[from] ExtractError),
+
+	#[error("Other error")]
+	Other(#[from] Box<dyn StdError + Send + Sync>),
 }
 
 #[expect(missing_docs, reason = "error message is self-documenting")]

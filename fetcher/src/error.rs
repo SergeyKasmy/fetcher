@@ -33,6 +33,9 @@ pub enum FetcherError {
 
 	#[error("Error writing to the external save location")]
 	ExternalSave(#[source] ExternalSaveError),
+
+	#[error("Other error")]
+	Other(#[from] Box<dyn StdError + Send + Sync>),
 }
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
@@ -56,9 +59,9 @@ impl FetcherError {
 		)]
 		match self {
 			Self::Source(e) => e.is_connection_err(),
-			FetcherError::Transform(e) => e.is_connection_err(),
-			FetcherError::Sink(e) => e.is_connection_err(),
-			FetcherError::GoogleOAuth2(e) => e.is_connection_err(),
+			Self::Transform(e) => e.is_connection_err(),
+			Self::Sink(e) => e.is_connection_err(),
+			Self::GoogleOAuth2(e) => e.is_connection_err(),
 			_ => None,
 		}
 	}
