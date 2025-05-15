@@ -1,3 +1,5 @@
+# OUTDATED DOCUMENTATION. FIXME!
+
 # fetcher
 
 fetcher makes it easier to automate any information gathering, like news or articles from blogs, into a place most comfortable to you.
