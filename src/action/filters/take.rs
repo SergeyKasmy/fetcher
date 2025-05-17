@@ -6,6 +6,8 @@
 
 //! This module contains the [`Take`] filter and the [`TakeFrom`] enum that specifies where the [`Take`] filter should take the entries from
 
+use std::convert::Infallible;
+
 use super::Filter;
 use crate::entry::Entry;
 
@@ -26,7 +28,9 @@ pub enum TakeFrom {
 }
 
 impl Filter for Take {
-	async fn filter(&self, entries: &mut Vec<Entry>) {
+	type Error = Infallible;
+
+	async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 		match self.from {
 			TakeFrom::Beginning => {
 				entries.truncate(self.num);
@@ -36,6 +40,8 @@ impl Filter for Take {
 				entries.drain(..first);
 			}
 		}
+
+		Ok(())
 	}
 }
 
@@ -62,7 +68,7 @@ mod tests {
 			num: 2,
 		};
 
-		take.filter(&mut entries).await;
+		take.filter(&mut entries).await.unwrap();
 
 		assert_eq!(
 			entries
@@ -90,7 +96,7 @@ mod tests {
 			num: 2,
 		};
 
-		take.filter(&mut entries).await;
+		take.filter(&mut entries).await.unwrap();
 
 		assert_eq!(
 			entries

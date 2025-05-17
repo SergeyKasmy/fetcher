@@ -7,7 +7,7 @@
 //! This module contains the [`Contains`] filter
 
 use regex::Regex;
-use std::borrow::Cow;
+use std::{borrow::Cow, convert::Infallible};
 
 use super::Filter;
 use crate::{action::transforms::field::Field, entry::Entry, error::BadRegexError};
@@ -36,8 +36,10 @@ impl Contains {
 }
 
 impl Filter for Contains {
+	type Error = Infallible;
+
 	/// Filter out some entries out of the `entries` vector
-	async fn filter(&self, entries: &mut Vec<Entry>) {
+	async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 		entries.retain(|ent| {
 			let field = match self.field {
 				Field::Title => ent.msg.title.as_deref().map(Cow::Borrowed),
@@ -50,6 +52,8 @@ impl Filter for Contains {
 
 			field.is_some_and(|field| self.re.is_match(&field))
 		});
+
+		Ok(())
 	}
 }
 
@@ -85,7 +89,7 @@ mod tests {
 
 		let contains = Contains::new("World", Field::Body).unwrap();
 
-		contains.filter(&mut entries).await;
+		contains.filter(&mut entries).await.unwrap();
 
 		assert_eq!(
 			entries

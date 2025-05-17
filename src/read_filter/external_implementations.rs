@@ -41,8 +41,10 @@ pub mod tokio_rwlock {
 	where
 		RF: ReadFilter,
 	{
-		async fn filter(&self, entries: &mut Vec<Entry>) {
-			self.read().await.filter(entries).await;
+		type Error = RF::Error;
+
+		async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+			self.read().await.filter(entries).await
 		}
 
 		fn is_readfilter(&self) -> bool {

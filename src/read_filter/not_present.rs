@@ -13,7 +13,7 @@ use crate::{
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
+use std::{collections::VecDeque, convert::Infallible};
 
 const MAX_LIST_LEN: usize = 500;
 
@@ -75,8 +75,10 @@ impl MarkAsRead for NotPresent {
 }
 
 impl Filter for NotPresent {
+	type Error = Infallible;
+
 	#[tracing::instrument(level = "debug", name = "filter_read", skip_all)]
-	async fn filter(&self, entries: &mut Vec<Entry>) {
+	async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 		let old_len = entries.len();
 		entries.retain(|elem| {
 			// retain elements with no id
@@ -91,6 +93,8 @@ impl Filter for NotPresent {
 		let removed_elems = old_len - entries.len();
 		tracing::debug!("Removed {removed_elems} already read entries");
 		tracing::trace!("Unread entries remaining: {entries:#?}");
+
+		Ok(())
 	}
 
 	fn is_readfilter(&self) -> bool {
@@ -220,7 +224,7 @@ mod tests {
 			},
 		];
 
-		rf.filter(&mut entries).await;
+		rf.filter(&mut entries).await.unwrap();
 
 		// remove msgs
 		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();

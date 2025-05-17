@@ -8,6 +8,7 @@
 
 use either::Either;
 
+use crate::action::filters::error::FilterError;
 use crate::{
 	action::transforms::error::TransformError, auth::google::GoogleOAuth2Error,
 	external_save::ExternalSaveError, sinks::error::SinkError, sources::error::SourceError,
@@ -22,10 +23,13 @@ pub enum FetcherError {
 	#[error("Can't fetch data")]
 	Source(#[from] SourceError),
 
-	#[error("Can't transform data")]
+	#[error("Can't transform entries")]
 	Transform(#[from] Box<TransformError>),
 
-	#[error("Can't send data")]
+	#[error("Can't filter entries")]
+	Filter(#[from] FilterError),
+
+	#[error("Can't send messages")]
 	Sink(#[from] SinkError),
 
 	#[error("Google authentication error")]

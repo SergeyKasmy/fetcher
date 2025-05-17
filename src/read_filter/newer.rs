@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use std::convert::Infallible;
+
 use serde::{Deserialize, Serialize};
 
 use super::{MarkAsRead, ReadFilter};
@@ -48,6 +50,8 @@ impl MarkAsRead for Newer {
 }
 
 impl Filter for Newer {
+	type Error = Infallible;
+
 	/// Removes all entries that are in the `list` after the last one read, including itself, in order
 	/// Note: Make sure the list is sorted newest to oldest
 	///
@@ -66,7 +70,7 @@ impl Filter for Newer {
 	/// * id 8
 	/// * id 3
 	#[tracing::instrument(level = "debug", name = "filter_read", skip_all)]
-	async fn filter(&self, entries: &mut Vec<Entry>) {
+	async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 		if let Some(last_read_id) = &self.last_read_id {
 			if let Some(last_read_id_pos) = entries.iter().position(|x| {
 				let Some(id) = &x.id else { return false };
@@ -78,6 +82,8 @@ impl Filter for Newer {
 				tracing::trace!("Unread entries remaining: {entries:#?}");
 			}
 		}
+
+		Ok(())
 	}
 
 	fn is_readfilter(&self) -> bool {
@@ -174,7 +180,7 @@ mod tests {
 			},
 		];
 
-		rf.filter(&mut entries).await;
+		rf.filter(&mut entries).await.unwrap();
 
 		// remove msgs
 		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
@@ -194,7 +200,7 @@ mod tests {
 			..Default::default()
 		}];
 
-		rf.filter(&mut entries).await;
+		rf.filter(&mut entries).await.unwrap();
 
 		// remove msgs
 		let entries_ids = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
@@ -210,7 +216,7 @@ mod tests {
 			id: Some("1".into()),
 			..Default::default()
 		}];
-		rf.filter(&mut entries).await;
+		rf.filter(&mut entries).await.unwrap();
 
 		let entries_ids = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
 		assert_eq!(&entries_ids, &[]);
