@@ -48,10 +48,51 @@ impl Filter for Contains {
 				Field::RawContents => ent.raw_contents.as_deref().map(Cow::Borrowed),
 			};
 
-			match field {
-				Some(field) => self.re.is_match(&field),
-				None => false,
-			}
+			field.is_some_and(|field| self.re.is_match(&field))
 		});
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::{
+		action::{filters::Filter, transforms::field::Field},
+		entry::Entry,
+		sinks::message::Message,
+	};
+
+	use super::Contains;
+
+	#[tokio::test]
+	async fn contains() {
+		let bodies = [
+			"Hello, World!",
+			"Hello, Earth!",
+			"Bye, World!",
+			"Bye, Earth!",
+		];
+
+		let mut entries = bodies
+			.into_iter()
+			.map(|body| Entry {
+				msg: Message {
+					body: Some(body.to_owned()),
+					..Default::default()
+				},
+				..Default::default()
+			})
+			.collect::<Vec<_>>();
+
+		let contains = Contains::new("World", Field::Body).unwrap();
+
+		contains.filter(&mut entries).await;
+
+		assert_eq!(
+			entries
+				.iter()
+				.map(|ent| ent.msg.body.as_ref().unwrap().as_str())
+				.collect::<Vec<_>>(),
+			["Hello, World!", "Bye, World!"]
+		);
 	}
 }

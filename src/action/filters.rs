@@ -17,6 +17,8 @@ use std::{convert::Infallible, fmt::Debug};
 
 use super::{Action, ActionContext};
 
+// TODO: add error assoc type.
+// Right now no built-in provided filters can error but a user-implemented one might
 /// Trait for all types that support filtering entries out of a list of [`Entry`]s
 pub trait Filter: Debug + Send + Sync {
 	/// Filter out some entries out of the `entries` vector

@@ -38,3 +38,66 @@ impl Filter for Take {
 		}
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use crate::{action::filters::Filter, entry::Entry, sinks::message::Message};
+
+	use super::{Take, TakeFrom};
+
+	#[tokio::test]
+	async fn beginning() {
+		let mut entries = (0..5)
+			.map(|idx| Entry {
+				msg: Message {
+					body: Some(idx.to_string()),
+					..Default::default()
+				},
+				..Default::default()
+			})
+			.collect::<Vec<_>>();
+
+		let take = Take {
+			from: TakeFrom::Beginning,
+			num: 2,
+		};
+
+		take.filter(&mut entries).await;
+
+		assert_eq!(
+			entries
+				.iter()
+				.map(|ent| ent.msg.body.as_ref().unwrap().as_str())
+				.collect::<Vec<_>>(),
+			["0", "1"]
+		);
+	}
+
+	#[tokio::test]
+	async fn end() {
+		let mut entries = (0..5)
+			.map(|idx| Entry {
+				msg: Message {
+					body: Some(idx.to_string()),
+					..Default::default()
+				},
+				..Default::default()
+			})
+			.collect::<Vec<_>>();
+
+		let take = Take {
+			from: TakeFrom::End,
+			num: 2,
+		};
+
+		take.filter(&mut entries).await;
+
+		assert_eq!(
+			entries
+				.iter()
+				.map(|ent| ent.msg.body.as_ref().unwrap().as_str())
+				.collect::<Vec<_>>(),
+			["3", "4"]
+		);
+	}
+}
