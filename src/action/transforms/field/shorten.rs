@@ -9,7 +9,7 @@
 use super::TransformField;
 use crate::action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult};
 
-use std::{convert::Infallible, iter::repeat};
+use std::{convert::Infallible, iter};
 
 /// Shorten a field to [`len`](`Shorten::len`). Makes the field completely empty if [`len`](`Shorten::len`) is 0, or trims the field to [`len`](`Shorten::len`) and adds "..." to the end
 #[derive(Debug)]
@@ -35,7 +35,7 @@ impl TransformField for Shorten {
 					field
 						.chars()
 						.take(self.len)
-						.chain(repeat('.').take(3))
+						.chain(iter::repeat_n('.', 3))
 						.collect::<String>(),
 				)
 			}

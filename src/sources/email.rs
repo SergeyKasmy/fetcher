@@ -370,7 +370,7 @@ impl Email {
 				tracing::debug!("Deleted email uid {id}");
 			}
 			ViewMode::ReadOnly => unreachable!(),
-		};
+		}
 
 		session.logout().await?;
 

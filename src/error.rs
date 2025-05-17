@@ -57,10 +57,6 @@ impl FetcherError {
 	#[must_use]
 	pub fn is_connection_error(&self) -> Option<&(dyn StdError + Send + Sync)> {
 		// I know it will match any future variants automatically but I actually want it to do that anyways
-		#[expect(
-			clippy::match_wildcard_for_single_variants,
-			reason = "all other branches are ignored, no matter how many there are"
-		)]
 		match self {
 			Self::Source(e) => e.is_connection_err(),
 			Self::Transform(e) => e.is_connection_err(),

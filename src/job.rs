@@ -62,6 +62,7 @@ impl<T: TaskGroup, H> Job<T, H> {
 		loop {
 			let results = self.tasks.run_concurrently().await;
 
+			#[expect(clippy::manual_ok_err, reason = "false positive")]
 			let errors = results
 				.into_iter()
 				.filter_map(|r| match r {

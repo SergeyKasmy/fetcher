@@ -10,9 +10,11 @@
 #![allow(async_fn_in_trait)]
 // TODO: enable later
 #![allow(clippy::missing_docs_in_private_items)]
+// TODO: add a "send" feature that makes all futures send
 #![allow(clippy::future_not_send)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::doc_markdown)]
+#![cfg_attr(test, allow(clippy::unwrap_used))]
 
 mod static_str;
 

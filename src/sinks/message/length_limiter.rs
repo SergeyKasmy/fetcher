@@ -341,7 +341,7 @@ mod tests {
 	}
 
 	#[test]
-	#[should_panic]
+	#[should_panic = "head has more characters: 128, than can be fit in a msg part of max len: 127"]
 	fn split_at_shorter_than_head() {
 		const HEAD_LEN: usize = 128;
 
