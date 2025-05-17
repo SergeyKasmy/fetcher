@@ -117,3 +117,17 @@ impl Display for ErrorChainDisplay<'_> {
 		Ok(())
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::FetcherError;
+
+	fn takes_send<T: Send>() {}
+	fn takes_sync<T: Sync>() {}
+
+	#[test]
+	fn assert_error_is_send_sync() {
+		takes_send::<FetcherError>();
+		takes_sync::<FetcherError>();
+	}
+}
