@@ -44,26 +44,50 @@ pub struct Html {
 	pub item: Option<Selector>,
 
 	/// Query to find the title of an item
-	#[builder(with = |sel: &str, loc: DataLocation| -> Result<_, SelectorErrorKind> { Ok(DataSelector{ selector: Selector::parse(sel)?, location: loc, optional: false })})]
+	#[builder(with = |sel: &str, locs: impl IntoIterator<Item = DataLocation>| -> Result<_, SelectorErrorKind> {
+		Ok(DataSelector{
+			selector: Selector::parse(sel)?,
+			locations: locs.into_iter().collect(),
+			optional: false
+		})
+	})]
 	pub title: Option<DataSelector>,
 
 	/// Query to find the id of an item
-	#[builder(with = |sel: &str, loc: DataLocation| -> Result<_, SelectorErrorKind> { Ok(DataSelector{ selector: Selector::parse(sel)?, location: loc, optional: false })})]
+	#[builder(with = |sel: &str, locs: impl IntoIterator<Item = DataLocation>| -> Result<_, SelectorErrorKind> {
+		Ok(DataSelector{
+			selector: Selector::parse(sel)?,
+			locations: locs.into_iter().collect(),
+			optional: false
+		})
+	})]
 	pub id: Option<DataSelector>,
 
 	/// Query to find the link to an item
-	#[builder(with = |sel: &str, loc: DataLocation | -> Result<_, SelectorErrorKind> { Ok(DataSelector{ selector: Selector::parse(sel)?, location: loc, optional: false })})]
+	#[builder(with = |sel: &str, locs: impl IntoIterator<Item = DataLocation>| -> Result<_, SelectorErrorKind> {
+		Ok(DataSelector{
+			selector: Selector::parse(sel)?,
+			locations: locs.into_iter().collect(),
+			optional: false
+		})
+	})]
 	pub link: Option<DataSelector>,
 
 	/// Query to find the image of that item
-	#[builder(with = |sel: &str, loc: DataLocation| -> Result<_, SelectorErrorKind> { Ok(DataSelector{ selector: Selector::parse(sel)?, location: loc, optional: false })})]
+	#[builder(with = |sel: &str, locs: impl IntoIterator<Item = DataLocation>| -> Result<_, SelectorErrorKind> {
+		Ok(DataSelector{
+			selector: Selector::parse(sel)?,
+			locations: locs.into_iter().collect(),
+			optional: false
+		})
+	})]
 	pub img: Option<DataSelector>,
 }
 
 #[derive(Clone, Debug)]
 pub struct DataSelector {
 	pub selector: Selector,
-	pub location: DataLocation,
+	pub locations: Vec<DataLocation>,
 	pub optional: bool,
 }
 
@@ -174,50 +198,48 @@ fn extract_data(
 	html_fragment: ElementRef<'_>,
 	sel: &DataSelector,
 ) -> Result<Option<Vec<String>>, HtmlErrorInner> {
-	let data = html_fragment
-		.select(&sel.selector)
-		.map(|elem| {
-			let extracted_text = match &sel.location {
+	let matched_elements = html_fragment.select(&sel.selector).collect::<Vec<_>>();
+
+	if matched_elements.is_empty() {
+		if sel.optional {
+			// TODO: add warn
+			return Ok(None);
+		} else {
+			return Err(HtmlErrorInner::SelectorNotMatched(sel.selector.clone()));
+		}
+	}
+
+	let extracted_data = matched_elements
+		.iter()
+		.cartesian_product(sel.locations.iter())
+		.flat_map(|(elem, location)| {
+			let extracted_text = match location {
 				DataLocation::Text => Some(Cow::Owned(elem.text().collect::<String>())),
 				DataLocation::Attribute(attr) => elem.attr(attr).map(Cow::Borrowed),
 			};
 
 			extracted_text.map(|s| s.trim().to_owned())
 		})
-		.collect::<Option<Vec<_>>>();
+		.collect::<Vec<_>>();
 
-	// TODO: simplify this, e.g. replace Option with a more descriptive enum
-	let data = match data {
-		// selector didn't match
-		Some(v) if v.is_empty() => {
-			if sel.optional {
-				// TODO: add warn
-				return Ok(None);
-			} else {
-				return Err(HtmlErrorInner::SelectorNotMatched(sel.selector.clone()));
-			}
+	// selector matched an element that didn't have a required attribute
+	if extracted_data.is_empty() {
+		if sel.optional {
+			return Ok(None);
+		} else {
+			return Err(HtmlErrorInner::DataNotFoundInElement(sel.clone()));
 		}
-		// selector matched an empty (or full of whitespace) element
-		Some(v) if v.iter().all(String::is_empty) => {
-			if sel.optional {
-				return Ok(None);
-			} else {
-				return Err(HtmlErrorInner::ElementEmpty(sel.clone()));
-			}
+	}
+	// selector matched an empty (or full of whitespace) element
+	else if extracted_data.iter().all(String::is_empty) {
+		if sel.optional {
+			return Ok(None);
+		} else {
+			return Err(HtmlErrorInner::ElementEmpty(sel.clone()));
 		}
-		// selector matched an element with text
-		Some(v) => v,
-		// selector matched an element that didn't have a required attribute
-		None => {
-			if sel.optional {
-				return Ok(None);
-			} else {
-				return Err(HtmlErrorInner::DataNotFoundInElement(sel.clone()));
-			}
-		}
-	};
+	}
 
-	Ok(Some(data))
+	Ok(Some(extracted_data))
 }
 
 fn extract_title(
@@ -269,10 +291,14 @@ fn extract_imgs(
 }
 
 impl<S: html_builder::State> HtmlBuilder<S> {
-	pub fn text(mut self, sel: &str, location: DataLocation) -> Result<Self, SelectorErrorKind> {
+	pub fn text(
+		mut self,
+		sel: &str,
+		locations: impl IntoIterator<Item = DataLocation>,
+	) -> Result<Self, SelectorErrorKind> {
 		self.text.get_or_insert_default().push(DataSelector {
 			selector: Selector::parse(sel)?,
-			location,
+			locations: locations.into_iter().collect(),
 			optional: false,
 		});
 

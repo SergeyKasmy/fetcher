@@ -79,7 +79,6 @@ where
 		tracing::debug!("Got {} raw entries from the sources", raw.len());
 		tracing::trace!("Raw entries: {raw:#?}");
 
-		// self.process_entries(raw).await?;
 		if let Some(action) = &mut self.action {
 			let ctx = ActionContext {
 				source: self.source.as_mut(),

@@ -26,10 +26,10 @@ pub enum HtmlErrorInner {
 	#[error("Selector {} didn't match anything", .0.to_css_string())]
 	SelectorNotMatched(Selector),
 
-	#[error("Data not found in element selected by {} in {:?}", .0.selector.to_css_string(), .0.location)]
+	#[error("Data not found in element selected by {} in {:?}", .0.selector.to_css_string(), .0.locations)]
 	DataNotFoundInElement(DataSelector),
 
-	#[error("HTML element at {} ({:?}) is empty", .0.selector.to_css_string(), .0.location)]
+	#[error("HTML element at {} ({:?}) is empty", .0.selector.to_css_string(), .0.locations)]
 	ElementEmpty(DataSelector),
 }
 
