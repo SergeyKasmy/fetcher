@@ -7,6 +7,9 @@
 //! This module contains the [`Html`] parser as well as a way to query an HTML tag via [`ElementQuery`]
 // TODO: cleanup and update docs
 
+pub mod error;
+
+use self::error::{ErrorLocation, HtmlErrorInner};
 use super::Transform;
 use crate::{
 	StaticStr,
@@ -15,16 +18,16 @@ use crate::{
 		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
-	error::InvalidUrlError,
 	sinks::message::Media,
 	utils::OptionExt,
 };
 
 use either::Either;
 use itertools::Itertools;
-use scraper::{ElementRef, Html as HtmlDom, error::SelectorErrorKind, selector::ToCss};
+use scraper::{ElementRef, Html as HtmlDom, error::SelectorErrorKind};
 use std::{borrow::Cow, iter};
 
+pub use self::error::HtmlError;
 pub use scraper::Selector;
 
 // TODO: update doc
@@ -70,25 +73,6 @@ pub enum DataLocation {
 	Attribute(StaticStr),
 }
 
-#[expect(missing_docs, reason = "error message is self-documenting")]
-#[derive(thiserror::Error, Debug)]
-pub enum HtmlError {
-	#[error(transparent)]
-	RawContentsNotSet(#[from] RawContentsNotSetError),
-
-	#[error("Selector {} didn't match anything", .0.to_css_string())]
-	SelectorNotMatched(Selector),
-
-	#[error("Data not found in element selected by {} in {:?}", .0.selector.to_css_string(), .0.location)]
-	DataNotFoundInElement(DataSelector),
-
-	#[error("HTML element at {} ({:?}) is empty", .0.selector.to_css_string(), .0.location)]
-	ElementEmpty(DataSelector),
-
-	#[error(transparent)]
-	InvalidUrl(#[from] InvalidUrlError),
-}
-
 impl Transform for Html {
 	type Err = HtmlError;
 
@@ -129,27 +113,47 @@ impl Html {
 		let title = self
 			.title
 			.as_ref()
-			.try_and_then(|q| extract_title(html_fragment, q))?;
+			.try_and_then(|q| extract_title(html_fragment, q))
+			.map_err(|error| HtmlError::Inner {
+				r#where: ErrorLocation::Title,
+				error,
+			})?;
 
 		let body = self
 			.text
 			.as_ref()
-			.try_map(|q| extract_body(html_fragment, q))?;
+			.try_map(|q| extract_body(html_fragment, q))
+			.map_err(|(error, index)| HtmlError::Inner {
+				r#where: ErrorLocation::Text { index },
+				error,
+			})?;
 
 		let id = self
 			.id
 			.as_ref()
-			.try_and_then(|q| extract_id(html_fragment, q))?;
+			.try_and_then(|q| extract_id(html_fragment, q))
+			.map_err(|error| HtmlError::Inner {
+				r#where: ErrorLocation::Id,
+				error,
+			})?;
 
 		let link = self
 			.link
 			.as_ref()
-			.try_and_then(|q| extract_url(html_fragment, q))?;
+			.try_and_then(|q| extract_link(html_fragment, q))
+			.map_err(|error| HtmlError::Inner {
+				r#where: ErrorLocation::Link,
+				error,
+			})?;
 
 		let img = self
 			.img
 			.as_ref()
-			.try_and_then(|q| extract_imgs(html_fragment, q))?;
+			.try_and_then(|q| extract_imgs(html_fragment, q))
+			.map_err(|error| HtmlError::Inner {
+				r#where: ErrorLocation::Img,
+				error,
+			})?;
 
 		Ok(TransformedEntry {
 			id: id.map(Into::into).unwrap_or_prev(),
@@ -169,7 +173,7 @@ impl Html {
 fn extract_data(
 	html_fragment: ElementRef<'_>,
 	sel: &DataSelector,
-) -> Result<Option<Vec<String>>, HtmlError> {
+) -> Result<Option<Vec<String>>, HtmlErrorInner> {
 	let data = html_fragment
 		.select(&sel.selector)
 		.map(|elem| {
@@ -190,7 +194,7 @@ fn extract_data(
 				// TODO: add warn
 				return Ok(None);
 			} else {
-				return Err(HtmlError::SelectorNotMatched(sel.selector.clone()));
+				return Err(HtmlErrorInner::SelectorNotMatched(sel.selector.clone()));
 			}
 		}
 		// selector matched an empty (or full of whitespace) element
@@ -198,7 +202,7 @@ fn extract_data(
 			if sel.optional {
 				return Ok(None);
 			} else {
-				return Err(HtmlError::ElementEmpty(sel.clone()));
+				return Err(HtmlErrorInner::ElementEmpty(sel.clone()));
 			}
 		}
 		// selector matched an element with text
@@ -208,7 +212,7 @@ fn extract_data(
 			if sel.optional {
 				return Ok(None);
 			} else {
-				return Err(HtmlError::DataNotFoundInElement(sel.clone()));
+				return Err(HtmlErrorInner::DataNotFoundInElement(sel.clone()));
 			}
 		}
 	};
@@ -219,17 +223,20 @@ fn extract_data(
 fn extract_title(
 	html_fragment: ElementRef<'_>,
 	selector: &DataSelector,
-) -> Result<Option<String>, HtmlError> {
+) -> Result<Option<String>, HtmlErrorInner> {
 	Ok(extract_data(html_fragment, selector)?.map(|it| it.join("\n\n"))) // concat string with "\n\n" as sep
 }
 
 fn extract_body(
 	html_fragment: ElementRef<'_>,
 	selectors: &[DataSelector],
-) -> Result<String, HtmlError> {
+) -> Result<String, (HtmlErrorInner, usize)> {
 	Ok(selectors
 		.iter()
-		.map(|query| extract_data(html_fragment, query))
+		.enumerate()
+		.map(|(sel_idx, selector)| {
+			extract_data(html_fragment, selector).map_err(|error| (error, sel_idx))
+		})
 		.collect::<Result<Vec<_>, _>>()?
 		.into_iter()
 		.flatten() // flatten options, ignore none's
@@ -240,21 +247,23 @@ fn extract_body(
 fn extract_id(
 	html_fragment: ElementRef<'_>,
 	selector: &DataSelector,
-) -> Result<Option<String>, HtmlError> {
+) -> Result<Option<String>, HtmlErrorInner> {
 	Ok(extract_data(html_fragment, selector)?.map(|v| v.into_iter().collect::<String>())) // concat strings if several
 }
 
-fn extract_url(
+fn extract_link(
 	html_fragment: ElementRef<'_>,
 	selector: &DataSelector,
-) -> Result<Option<String>, HtmlError> {
-	Ok(extract_data(html_fragment, selector)?.map(|mut it| it.swap_remove(0)))
+) -> Result<Option<String>, HtmlErrorInner> {
+	let urls = extract_data(html_fragment, selector)?;
+
+	Ok(urls.map(|mut it| it.swap_remove(0)))
 }
 
 fn extract_imgs(
 	html_fragment: ElementRef<'_>,
 	selector: &DataSelector,
-) -> Result<Option<Vec<Media>>, HtmlError> {
+) -> Result<Option<Vec<Media>>, HtmlErrorInner> {
 	Ok(extract_data(html_fragment, selector)?
 		.map(|it| it.into_iter().map(Media::Photo).collect::<Vec<_>>()))
 }
