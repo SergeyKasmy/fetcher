@@ -24,8 +24,9 @@ pub fn set_up_logging() {
 		EnvFilter, Layer, filter::LevelFilter, fmt::time::OffsetTime, layer::SubscriberExt,
 	};
 
-	let env_filter =
-		EnvFilter::try_from_env("FETCHER_LOG").unwrap_or_else(|_| EnvFilter::from("info"));
+	let env_filter = EnvFilter::builder()
+		.with_default_directive(LevelFilter::INFO.into())
+		.from_env_lossy();
 
 	let is_debug_log_level = env_filter
 		.max_level_hint()
