@@ -35,21 +35,27 @@ pub trait Source: Fetch + MarkAsRead + Debug + MaybeSendSync {}
 pub trait Fetch: Debug + MaybeSendSync {
 	/// Fetch all available entries from the source
 	fn fetch(&mut self) -> impl Future<Output = Result<Vec<Entry>, SourceError>> + MaybeSend;
-}
 
-/// A wrapper around a [`Fetch`] that uses an external way to filter read entries,
-/// as well as a (read filter)[`ReadFilter`]
-#[derive(Debug)]
-pub struct SourceWithSharedRF<F, RF>
-where
-	F: Fetch,
-	RF: ReadFilter,
-{
-	/// The source to fetch data from
-	pub source: F,
+	fn into_source_with_read_filter<RF>(self, read_filter: RF) -> SourceWithSharedRF<Self, RF>
+	where
+		Self: Sized,
+		RF: ReadFilter,
+	{
+		SourceWithSharedRF {
+			source: self,
+			rf: read_filter,
+		}
+	}
 
-	/// The read filter that's used to mark entries as read
-	pub rf: RF,
+	fn into_source_without_read_filter(self) -> SourceWithSharedRF<Self, ()>
+	where
+		Self: Sized,
+	{
+		SourceWithSharedRF {
+			source: self,
+			rf: (),
+		}
+	}
 }
 
 impl<F, RF> Fetch for SourceWithSharedRF<F, RF>
@@ -109,4 +115,19 @@ where
 
 		Ok(entries)
 	}
+}
+
+/// A wrapper around a [`Fetch`] that uses an external way to filter read entries,
+/// as well as a (read filter)[`ReadFilter`]
+#[derive(Debug)]
+pub struct SourceWithSharedRF<F, RF>
+where
+	F: Fetch,
+	RF: ReadFilter,
+{
+	/// The source to fetch data from
+	pub source: F,
+
+	/// The read filter that's used to mark entries as read
+	pub rf: RF,
 }
