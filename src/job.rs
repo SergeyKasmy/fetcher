@@ -7,10 +7,9 @@
 //! This module contains the [`Job`] struct and the entryway to the library
 
 pub mod error_handling;
+pub mod job_group;
 pub mod opaque_job;
 pub mod timepoint;
-
-mod job_group;
 
 pub use self::{
 	error_handling::HandleError, job_group::JobGroup, opaque_job::OpaqueJob, timepoint::TimePoint,

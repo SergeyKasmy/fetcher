@@ -5,20 +5,21 @@ use std::convert::Infallible;
 use either::Either;
 
 use crate::ctrl_c_signal::CtrlCSignalChannel;
+use crate::maybe_send::{MaybeSend, MaybeSendSync};
 use crate::{error::FetcherError, job::ErrorChainDisplay};
 
 use super::TimePoint;
 
 pub use self::exponential_backoff_sleep::ExponentialBackoffSleep;
 
-pub trait HandleError {
+pub trait HandleError: MaybeSendSync {
 	type Err: Into<FetcherError>;
 
-	async fn handle_errors(
+	fn handle_errors(
 		&mut self,
 		errors: Vec<FetcherError>,
 		cx: HandleErrorContext<'_>,
-	) -> HandleErrorResult<Self::Err>;
+	) -> impl Future<Output = HandleErrorResult<Self::Err>> + MaybeSend;
 }
 
 pub struct HandleErrorContext<'a> {

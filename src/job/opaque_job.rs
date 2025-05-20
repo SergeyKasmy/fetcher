@@ -1,12 +1,13 @@
 use std::convert::Infallible;
 
 use crate::error::FetcherError;
+use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
 use super::JobGroup;
 use super::job_group::SingleJobGroup;
 
-pub trait OpaqueJob {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>>;
+pub trait OpaqueJob: MaybeSendSync {
+	fn run(&mut self) -> impl Future<Output = Result<(), Vec<FetcherError>>> + MaybeSend;
 
 	fn name(&self) -> Option<&str> {
 		None

@@ -22,6 +22,7 @@ use crate::{
 	entry::{Entry, EntryId},
 	error::FetcherError,
 	external_save::ExternalSave,
+	maybe_send::{MaybeSend, MaybeSendSync},
 	sources::Source,
 	task::entry_to_msg_map::EntryToMsgMap,
 };
@@ -34,14 +35,14 @@ use self::{
 use std::{borrow::Cow, collections::HashSet, fmt::Debug};
 
 /// An async function that sends a message somewhere
-pub trait Sink: Debug + Send + Sync {
+pub trait Sink: Debug + MaybeSendSync {
 	/// Send the message with an optional tag (usually represented as a hashtag)
-	async fn send(
+	fn send(
 		&self,
 		message: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
-	) -> Result<Option<MessageId>, SinkError>;
+	) -> impl Future<Output = Result<Option<MessageId>, SinkError>> + MaybeSend;
 }
 
 pub(crate) struct SinkWrapper<S>(pub S);

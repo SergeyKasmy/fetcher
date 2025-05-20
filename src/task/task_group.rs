@@ -3,12 +3,16 @@ mod run_result;
 pub use run_result::RunResult;
 use tokio::join;
 
-use crate::{error::FetcherError, task::OpaqueTask};
+use crate::{
+	error::FetcherError,
+	maybe_send::{MaybeSend, MaybeSendSync},
+	task::OpaqueTask,
+};
 
-pub trait TaskGroup {
+pub trait TaskGroup: MaybeSendSync {
 	type RunResult: RunResult;
 
-	async fn run_concurrently(&mut self) -> Self::RunResult;
+	fn run_concurrently(&mut self) -> impl Future<Output = Self::RunResult> + MaybeSend;
 }
 
 impl<T> TaskGroup for T

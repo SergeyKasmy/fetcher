@@ -14,7 +14,10 @@ use error::FilterError;
 
 pub use self::{contains::Contains, take::Take};
 
-use crate::entry::Entry;
+use crate::{
+	entry::Entry,
+	maybe_send::{MaybeSend, MaybeSendSync},
+};
 
 use std::{convert::Infallible, fmt::Debug};
 
@@ -23,11 +26,14 @@ use super::{Action, ActionContext};
 // TODO: add error assoc type.
 // Right now no built-in provided filters can error but a user-implemented one might
 /// Trait for all types that support filtering entries out of a list of [`Entry`]s
-pub trait Filter: Debug + Send + Sync {
+pub trait Filter: Debug + MaybeSendSync {
 	type Error: Into<FilterError>;
 
 	/// Filter out some entries out of the `entries` vector
-	async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error>;
+	fn filter(
+		&self,
+		entries: &mut Vec<Entry>,
+	) -> impl Future<Output = Result<(), Self::Error>> + MaybeSend;
 
 	/// Returns true if this filter is a [`ReadFilter`](crate::read_filter::ReadFilter)
 	fn is_readfilter(&self) -> bool {

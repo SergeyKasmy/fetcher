@@ -5,13 +5,12 @@
  */
 
 // #![cfg_attr(doc, doc = include_str!("../README.md"))]
+#![cfg_attr(not(feature = "send"), expect(clippy::future_not_send))]
 // TEMP
 #![allow(missing_docs)]
 #![allow(async_fn_in_trait)]
 // TODO: enable later
 #![allow(clippy::missing_docs_in_private_items)]
-// TODO: add a "send" feature that makes all futures send
-#![allow(clippy::future_not_send)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::doc_markdown)]
 #![cfg_attr(test, allow(clippy::unwrap_used))]
@@ -26,6 +25,7 @@ pub mod error;
 pub mod exec;
 pub mod external_save;
 pub mod job;
+pub mod maybe_send;
 pub mod read_filter;
 pub mod sinks;
 pub mod sources;

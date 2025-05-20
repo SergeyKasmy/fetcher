@@ -17,18 +17,26 @@ pub use self::{
 	external_save_wrapper::ExternalSaveRFWrapper, newer::Newer, not_present::NotPresent,
 };
 
-use crate::{action::filters::Filter, entry::EntryId, error::FetcherError};
+use crate::{
+	action::filters::Filter,
+	entry::EntryId,
+	error::FetcherError,
+	maybe_send::{MaybeSend, MaybeSendSync},
+};
 
 use std::fmt::Debug;
 
 /// A trait that defines a way to mark an entry as read
-pub trait MarkAsRead: Debug + Send + Sync {
+pub trait MarkAsRead: Debug + MaybeSendSync {
 	// TODO: remake into type Err and restrict trait ReadFilter to MarkAsRead::Err: ReadFilterErr and trait Source to MarkAsRead::Err: SourceError
 	/// Mark the entry with `id` as read
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError>;
+	fn mark_as_read(
+		&mut self,
+		id: &EntryId,
+	) -> impl Future<Output = Result<(), FetcherError>> + MaybeSend;
 
 	/// Set the current "mark as read"er to read only mode
-	async fn set_read_only(&mut self);
+	fn set_read_only(&mut self) -> impl Future<Output = ()> + MaybeSend;
 }
 
 /// The trait that marks a type as a "read filter",
@@ -36,7 +44,7 @@ pub trait MarkAsRead: Debug + Send + Sync {
 /// as well as marking an [Entry] as read
 ///
 /// [Entry]: crate::entry::Entry
-pub trait ReadFilter: MarkAsRead + Filter + Send + Sync {}
+pub trait ReadFilter: MarkAsRead + Filter + MaybeSendSync {}
 
 impl<M: MarkAsRead> MarkAsRead for Option<M> {
 	#[tracing::instrument]

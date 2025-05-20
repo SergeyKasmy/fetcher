@@ -27,10 +27,12 @@ use super::{
 	Transform,
 	result::{TransformResult, TransformedEntry},
 };
-use crate::{action::transforms::error::TransformErrorKind, entry::Entry};
+use crate::{
+	action::transforms::error::TransformErrorKind, entry::Entry, maybe_send::MaybeSendSync,
+};
 
 /// Transform/change the value of a field of an [`Entry `]
-pub trait TransformField {
+pub trait TransformField: MaybeSendSync {
 	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
 	type Err: Into<TransformErrorKind>;
 

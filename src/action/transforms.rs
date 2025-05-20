@@ -32,7 +32,12 @@ pub use self::{
 use self::error::TransformError;
 use self::error::TransformErrorKind;
 use self::result::TransformedEntry;
-use crate::{entry::Entry, external_save::ExternalSave, sources::Source};
+use crate::{
+	entry::Entry,
+	external_save::ExternalSave,
+	maybe_send::{MaybeSend, MaybeSendSync},
+	sources::Source,
+};
 
 use super::{Action, ActionContext};
 
@@ -51,12 +56,15 @@ pub trait Transform: Debug + Send + Sync {
 */
 
 /// Transform an entry into one or more entries. This is the type transforms should implement as it includes easier error management
-pub trait Transform {
+pub trait Transform: MaybeSendSync {
 	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
 	type Err: Into<TransformErrorKind>;
 
 	/// Transform the `entry` into one or several separate entries
-	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err>;
+	fn transform_entry(
+		&self,
+		entry: Entry,
+	) -> impl Future<Output = Result<Vec<TransformedEntry>, Self::Err>> + MaybeSend;
 }
 
 pub(crate) struct TransformWrapper<T>(pub T);

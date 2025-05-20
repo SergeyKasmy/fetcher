@@ -19,6 +19,7 @@ use crate::{
 	entry::Entry,
 	error::FetcherError,
 	external_save::ExternalSave,
+	maybe_send::{MaybeSend, MaybeSendSync},
 	sources::Source,
 };
 
@@ -46,8 +47,8 @@ pub struct Task<S, A, E> {
 	pub action: Option<A>,
 }
 
-pub trait OpaqueTask {
-	async fn run(&mut self) -> Result<(), FetcherError>;
+pub trait OpaqueTask: MaybeSendSync {
+	fn run(&mut self) -> impl Future<Output = Result<(), FetcherError>> + MaybeSend;
 
 	fn disable(self) -> DisabledTask<Self>
 	where
@@ -113,7 +114,7 @@ where
 
 pub struct DisabledTask<T>(T);
 
-impl<T> OpaqueTask for DisabledTask<T> {
+impl<T: MaybeSendSync> OpaqueTask for DisabledTask<T> {
 	async fn run(&mut self) -> Result<(), FetcherError> {
 		Ok(())
 	}

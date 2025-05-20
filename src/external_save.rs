@@ -15,25 +15,32 @@ use std::{
 use serde::Serialize;
 
 use crate::{
-	entry::EntryId, read_filter::ReadFilter, sinks::message::MessageId, utils::DisplayDebug,
+	entry::EntryId,
+	maybe_send::{MaybeSend, MaybeSendSync, MaybeSync},
+	read_filter::ReadFilter,
+	sinks::message::MessageId,
+	utils::DisplayDebug,
 };
 
 /// This trait represent some kind of external save destination.
 /// A way to preserve the state of a read filter, i.e. what has and has not been read, across restarts.
-pub trait ExternalSave: Debug + Send + Sync {
+pub trait ExternalSave: Debug + MaybeSendSync {
 	/// This function will be called every time something has been marked as read and should be saved externally
 	///
 	/// # Errors
 	/// It may return an error if there has been issues saving, e.g. writing to disk
-	async fn save_read_filter<RF>(&mut self, read_filter: &RF) -> Result<(), ExternalSaveError>
+	fn save_read_filter<RF>(
+		&mut self,
+		read_filter: &RF,
+	) -> impl Future<Output = Result<(), ExternalSaveError>> + MaybeSend
 	where
 		RF: ReadFilter + Serialize;
 
 	/// Save the entry id to message id map (see [`Task.entry_to_msg_map`]) enternally
-	async fn save_entry_to_msg_map(
+	fn save_entry_to_msg_map(
 		&mut self,
 		map: &HashMap<EntryId, MessageId>,
-	) -> Result<(), ExternalSaveError>;
+	) -> impl Future<Output = Result<(), ExternalSaveError>> + MaybeSend;
 }
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
@@ -48,7 +55,10 @@ pub struct ExternalSaveError {
 }
 
 impl ExternalSave for () {
-	async fn save_read_filter<RF>(&mut self, _read_filter: &RF) -> Result<(), ExternalSaveError> {
+	async fn save_read_filter<RF: MaybeSync>(
+		&mut self,
+		_read_filter: &RF,
+	) -> Result<(), ExternalSaveError> {
 		Ok(())
 	}
 

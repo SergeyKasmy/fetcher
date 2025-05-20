@@ -22,18 +22,19 @@ use self::error::SourceError;
 use crate::{
 	entry::{Entry, EntryId},
 	error::FetcherError,
+	maybe_send::{MaybeSend, MaybeSendSync},
 	read_filter::{MarkAsRead, ReadFilter},
 };
 
 use std::fmt::Debug;
 
 /// A trait that defines a way to fetch entries as well as mark them as read afterwards
-pub trait Source: Fetch + MarkAsRead + Debug + Send + Sync {}
+pub trait Source: Fetch + MarkAsRead + Debug + MaybeSendSync {}
 
 /// A trait that defines a way to fetch (entries)[`Entry`]
-pub trait Fetch: Debug + Send + Sync {
+pub trait Fetch: Debug + MaybeSendSync {
 	/// Fetch all available entries from the source
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError>;
+	fn fetch(&mut self) -> impl Future<Output = Result<Vec<Entry>, SourceError>> + MaybeSend;
 }
 
 /// A wrapper around a [`Fetch`] that uses an external way to filter read entries,

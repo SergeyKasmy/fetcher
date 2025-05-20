@@ -7,18 +7,18 @@ use tokio::join;
 
 use self::combined_job_group::CombinedJobGroup;
 use crate::error::FetcherError;
-
-pub(super) use self::single_job_group::SingleJobGroup;
+use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
 pub use self::disabled_job_group::DisabledJobGroup;
+pub use self::single_job_group::SingleJobGroup;
 
 use super::OpaqueJob;
 
 pub type JobRunResult = Result<(), Vec<FetcherError>>;
 
-pub trait JobGroup {
+pub trait JobGroup: MaybeSendSync {
 	#[must_use = "this vec of results could contain errors"]
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult>;
+	fn run_concurrently(&mut self) -> impl Future<Output = Vec<JobRunResult>> + MaybeSend;
 
 	fn names(&self) -> impl Iterator<Item = Option<&str>>;
 
@@ -50,12 +50,14 @@ impl<J> JobGroup for Option<J>
 where
 	J: JobGroup,
 {
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
-		let Some(group) = self else {
-			return Vec::new();
-		};
+	fn run_concurrently(&mut self) -> impl Future<Output = Vec<JobRunResult>> + MaybeSend {
+		async move {
+			let Some(group) = self else {
+				return Vec::new();
+			};
 
-		group.run_concurrently().await
+			group.run_concurrently().await
+		}
 	}
 
 	fn names(&self) -> impl Iterator<Item = Option<&str>> {

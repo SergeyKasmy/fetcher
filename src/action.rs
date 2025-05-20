@@ -18,20 +18,21 @@ use self::filters::{Filter, FilterWrapper};
 use self::transforms::Transform;
 use self::transforms::TransformWrapper;
 
+use crate::maybe_send::{MaybeSend, MaybeSendSync};
 use crate::sinks::{Sink, SinkWrapper};
 use crate::{
 	entry::Entry, error::FetcherError, external_save::ExternalSave, sources::Source,
 	task::entry_to_msg_map::EntryToMsgMap,
 };
 
-pub trait Action {
+pub trait Action: MaybeSendSync {
 	type Error: Into<FetcherError>;
 
-	async fn apply<S, E>(
+	fn apply<S, E>(
 		&mut self,
 		entries: Vec<Entry>,
 		context: ActionContext<'_, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
+	) -> impl Future<Output = Result<Vec<Entry>, Self::Error>> + MaybeSend
 	where
 		S: Source,
 		E: ExternalSave;

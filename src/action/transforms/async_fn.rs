@@ -3,13 +3,15 @@ use std::{convert::Infallible, iter};
 use crate::{
 	action::transforms::result::{OptionUnwrapTransformResultExt, TransformedMessage},
 	entry::Entry,
+	maybe_send::{MaybeSend, MaybeSendSync},
 };
 
 use super::{Transform, error::TransformErrorKind, result::TransformedEntry};
 
-impl<F, T> Transform for F
+impl<F, T, Fut> Transform for F
 where
-	F: AsyncFn(Entry) -> T,
+	F: Fn(Entry) -> Fut + MaybeSendSync,
+	Fut: Future<Output = T> + MaybeSend,
 	T: IntoTransformedEntries,
 {
 	type Err = T::Err;
