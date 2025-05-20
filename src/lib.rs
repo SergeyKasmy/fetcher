@@ -4,8 +4,54 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// #![cfg_attr(doc, doc = include_str!("../README.md"))]
+//! fetcher is a flexible async framework designed to make it easy to create robust applications for building data pipelines to extract, transform, and deliver data from various sources to diverse destinations.
+//! In easier words, it makes it easy to create an app that periodically checks a source, for example a website, for some data, makes it pretty, and sends it to the users.
+//!
+//! fetcher is made to be easily extensible to support as many use-cases as possible while providing tools to support most of the common ones out of the box.
+//!
+//! # Architecture
+//!
+//! At the heart of fetcher is the [`Task`]. It represents a specific instance of a data pipeline which consists of 3 main stages:
+//!
+//! * [`Source`]: Fetches data from an external source (e.g. HTTP endpoint, email inbox).
+//! * [`Action`]: Applies transformations (filters, modifications, parsing) to the fetched data.
+//! * [`Sink`]: Sends the transformed data to a destinations (e.g. Discord channel, Telegram bot, another program's stdin).
+//!
+//! An [`Entry`] is the unit of data flowing through the pipeline. It contains:
+//!
+//! * [`id`](`Entry::id`): A unique identifier for the entry, used for tracking read/unread status and replies.
+//! * [`raw_contents`](`Entry::raw_contents`): The raw, untransformed data fetched from the source.
+//! * [`msg`](`Entry::msg`): A [`Message`] that contains the formated and structured data, like title, body, link, that will end up sent to a sink.
+//!
+//! A [`Job`] is a collections of tasks that are executed together, potentially on a schedule.
+//! Jobs can also be run either concurrently or in parallel as a part of a [`JobGroup`].
+//!
+//! # Getting started
+//!
+//! To use fetcher, you need to add it as a dependency to your `Cargo.toml` file:
+//!
+//! ```toml
+//! [dependencies]
+//! fetcher = "0.15"
+//! tokio = { version = "1", features = ["full"] }
+//! ```
+//!
+//! For the smallest example on how to use fetcher, please see `examples/simple.rs`.
+//!
+//! More complete examples can be found in the `examples/` directory. They demonstrate how to:
+//!
+//! * Fetch data from various sources.
+//! * Transform and filter data using regular expressions, HTML parsing, JSON parsing.
+//! * Send data to sinks like Telegram and Discord
+//! * Implement custom sources, actions, sinks
+//! * Persist the read filter state in an external storage system
+//!
+//! # Contributing
+//!
+//! Contributions are very welcome! Please feel free to submit a pull request or open issues for any bugs, feature requests, or general feedback.
+
 #![cfg_attr(not(feature = "send"), expect(clippy::future_not_send))]
+#![cfg_attr(test, allow(clippy::unwrap_used))]
 // TEMP
 #![allow(missing_docs)]
 #![allow(async_fn_in_trait)]
@@ -13,7 +59,6 @@
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::doc_markdown)]
-#![cfg_attr(test, allow(clippy::unwrap_used))]
 
 mod static_str;
 

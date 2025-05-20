@@ -72,6 +72,16 @@ impl<M: MarkAsRead> MarkAsRead for Option<M> {
 
 impl<RF: ReadFilter> ReadFilter for Option<RF> {}
 
+impl MarkAsRead for () {
+	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
+		Ok(())
+	}
+
+	async fn set_read_only(&mut self) {}
+}
+
+impl ReadFilter for () {}
+
 /*
 impl MarkAsRead for () {
 	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
