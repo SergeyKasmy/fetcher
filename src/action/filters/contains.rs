@@ -44,7 +44,7 @@ impl Filter for Contains {
 			let field = match self.field {
 				Field::Title => ent.msg.title.as_deref().map(Cow::Borrowed),
 				Field::Body => ent.msg.body.as_deref().map(Cow::Borrowed),
-				Field::Link => ent.msg.link.as_ref().map(|s| Cow::Owned(s.to_string())),
+				Field::Link => ent.msg.link.as_ref().map(|s| Cow::Owned(s.clone())),
 				Field::Id => ent.id.as_ref().map(|id| Cow::Borrowed(id.0.as_str())),
 				Field::ReplyTo => ent.reply_to.as_ref().map(|id| Cow::Borrowed(id.0.as_str())),
 				Field::RawContents => ent.raw_contents.as_deref().map(Cow::Borrowed),

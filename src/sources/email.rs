@@ -37,7 +37,10 @@ use tokio::net::TcpStream;
 use tokio_rustls::{
 	TlsConnector,
 	client::TlsStream,
-	rustls::{ClientConfig, RootCertStore, pki_types::ServerName},
+	rustls::{
+		ClientConfig, RootCertStore,
+		pki_types::{InvalidDnsNameError, ServerName},
+	},
 };
 
 const IMAP_PORT: u16 = 993;
@@ -87,6 +90,9 @@ pub enum EmailError {
 pub enum ImapError {
 	#[error("Failed to connect to the IMAP server")]
 	ConnectionFailed(#[source] io::Error),
+
+	#[error("Failed to get the domain name of the IMAP server")]
+	InvalidImapServerAddress(#[from] InvalidDnsNameError),
 
 	#[error(transparent)]
 	GoogleOAuth2(#[from] GoogleAuthError),
@@ -235,11 +241,14 @@ impl Email {
 			.await
 			.map_err(ImapError::ConnectionFailed)?;
 
-		let domain: ServerName<'static> =
-			ServerName::try_from(String::from(&self.imap_server)).unwrap();
+		// let domain: ServerName<'static> =
+		let domain = ServerName::try_from(String::from(&self.imap_server))?;
 
 		tracing::trace!("Establishing a TLS connection");
-		let tls_stream = TLS_CONNECTOR.connect(domain, tcp_stream).await.unwrap();
+		let tls_stream = TLS_CONNECTOR
+			.connect(domain, tcp_stream)
+			.await
+			.map_err(ImapError::ConnectionFailed)?;
 
 		Ok(Client::new(tls_stream))
 	}

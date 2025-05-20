@@ -212,7 +212,7 @@ fn extract_data(
 	let extracted_data = matched_elements
 		.iter()
 		.cartesian_product(sel.locations.iter())
-		.flat_map(|(elem, location)| {
+		.filter_map(|(elem, location)| {
 			let extracted_text = match location {
 				DataLocation::Text => Some(Cow::Owned(elem.text().collect::<String>())),
 				DataLocation::Attribute(attr) => elem.attr(attr).map(Cow::Borrowed),
