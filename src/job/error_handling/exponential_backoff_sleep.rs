@@ -196,6 +196,7 @@ impl Default for ExponentialBackoffSleep {
 const fn exponential_backoff_duration(consecutive_err_count: u32) -> Duration {
 	// subtract 1 because prev_errors.count() is already set to 1 (because the first error has already happened)
 	// but we want to sleep beginning with ^0, not ^1
-	let sleep_dur = 2u64.saturating_pow(consecutive_err_count.saturating_sub(1));
-	Duration::from_secs(sleep_dur * 60 /* secs in a min */)
+	// FIXME: add random jitter. Maybe move to a battle-tested implementation instead? (e.g. backoff crate)
+	let dur = 2u64.saturating_pow(consecutive_err_count.saturating_sub(1));
+	Duration::from_secs(dur * 60 /* secs in a min */)
 }

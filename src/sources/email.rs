@@ -37,17 +37,12 @@ use tokio::net::TcpStream;
 use tokio_rustls::{
 	TlsConnector,
 	client::TlsStream,
-	rustls::{ClientConfig, RootCertStore, crypto::aws_lc_rs, pki_types::ServerName},
+	rustls::{ClientConfig, RootCertStore, pki_types::ServerName},
 };
 
 const IMAP_PORT: u16 = 993;
 
 static TLS_CONNECTOR: LazyLock<TlsConnector> = LazyLock::new(|| {
-	// FIXME: rustls docs say default process-wide providers should never be set in libraries
-	// https://docs.rs/rustls/0.23.22/rustls/crypto/struct.CryptoProvider.html
-	// I guess we should try to get the default provider and use aws_lc otherwise jusr for this ClientConfig
-	aws_lc_rs::default_provider().install_default().unwrap();
-
 	let mut root_cert_store = RootCertStore::empty();
 	root_cert_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
 
