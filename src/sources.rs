@@ -58,6 +58,53 @@ pub trait Fetch: Debug + MaybeSendSync {
 	}
 }
 
+impl Source for () {}
+
+impl Fetch for String {
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		Ok(vec![Entry {
+			raw_contents: Some(self.clone()),
+			..Default::default()
+		}])
+	}
+}
+
+impl<T> Fetch for Vec<T>
+where
+	T: Fetch,
+{
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		let mut entries = Vec::new();
+
+		for fetch in self {
+			entries.extend(fetch.fetch().await?);
+		}
+
+		Ok(entries)
+	}
+}
+
+impl Fetch for () {
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		Ok(Vec::new())
+	}
+}
+
+/// A wrapper around a [`Fetch`] that uses an external way to filter read entries,
+/// as well as a (read filter)[`ReadFilter`]
+#[derive(Debug)]
+pub struct SourceWithSharedRF<F, RF>
+where
+	F: Fetch,
+	RF: ReadFilter,
+{
+	/// The source to fetch data from
+	pub source: F,
+
+	/// The read filter that's used to mark entries as read
+	pub rf: RF,
+}
+
 impl<F, RF> Fetch for SourceWithSharedRF<F, RF>
 where
 	F: Fetch,
@@ -91,43 +138,4 @@ where
 	F: Fetch,
 	RF: ReadFilter,
 {
-}
-
-impl Fetch for String {
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
-		Ok(vec![Entry {
-			raw_contents: Some(self.clone()),
-			..Default::default()
-		}])
-	}
-}
-
-impl<T> Fetch for Vec<T>
-where
-	T: Fetch,
-{
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
-		let mut entries = Vec::new();
-
-		for fetch in self {
-			entries.extend(fetch.fetch().await?);
-		}
-
-		Ok(entries)
-	}
-}
-
-/// A wrapper around a [`Fetch`] that uses an external way to filter read entries,
-/// as well as a (read filter)[`ReadFilter`]
-#[derive(Debug)]
-pub struct SourceWithSharedRF<F, RF>
-where
-	F: Fetch,
-	RF: ReadFilter,
-{
-	/// The source to fetch data from
-	pub source: F,
-
-	/// The read filter that's used to mark entries as read
-	pub rf: RF,
 }

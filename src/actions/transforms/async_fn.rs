@@ -8,6 +8,7 @@ use crate::{
 
 use super::{Transform, error::TransformErrorKind, result::TransformedEntry};
 
+/// Use [`transform_fn`](`super::transform_fn`) to improve type inference
 impl<F, T, Fut> Transform for F
 where
 	F: Fn(Entry) -> Fut + MaybeSendSync,

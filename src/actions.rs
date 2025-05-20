@@ -12,6 +12,7 @@ pub mod transforms;
 use std::convert::Infallible;
 
 use either::Either;
+use transforms::async_fn::IntoTransformedEntries;
 use transforms::field::{Field, TransformField, TransformFieldWrapper};
 
 use self::filters::{Filter, FilterWrapper};
@@ -38,6 +39,7 @@ pub trait Action: MaybeSendSync {
 		E: ExternalSave;
 }
 
+#[derive(Debug)]
 pub struct ActionContext<'a, S, E> {
 	pub source: Option<&'a mut S>,
 	pub entry_to_msg_map: Option<&'a mut EntryToMsgMap<E>>,
@@ -73,6 +75,16 @@ where
 	T: TransformField,
 {
 	transform_field(Field::Body, t)
+}
+
+/// Allows using an async function as a transform without type annotations
+pub fn transform_fn<F, Fut, T>(f: F) -> impl Action
+where
+	F: Fn(Entry) -> Fut + MaybeSendSync,
+	Fut: Future<Output = T> + MaybeSend,
+	T: IntoTransformedEntries,
+{
+	transform(f)
 }
 
 pub fn sink<S>(s: S) -> impl Action
@@ -230,6 +242,16 @@ where
 		match self {
 			Either::Left(x) => x.apply(entries, context).await.map_err(Into::into),
 			Either::Right(x) => x.apply(entries, context).await.map_err(Into::into),
+		}
+	}
+}
+
+impl Default for ActionContext<'_, (), ()> {
+	fn default() -> Self {
+		Self {
+			source: None,
+			entry_to_msg_map: None,
+			tag: None,
 		}
 	}
 }
