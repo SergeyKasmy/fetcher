@@ -11,6 +11,11 @@ pub struct InitResult {
 #[must_use = "ctrl_c_signal_channel should probably be used. Ignore this type manually if you are sure you don't want it"]
 pub fn init() -> InitResult {
 	set_up_logging();
+
+	if let Err(_) = tokio_rustls::rustls::crypto::aws_lc_rs::default_provider().install_default() {
+		tracing::debug!("Unable to set up aws_lc as the default crypto provider for rustls");
+	};
+
 	let ctrlc_chan = set_up_ctrl_c_handler();
 
 	InitResult {
