@@ -9,7 +9,7 @@
 use regex::Regex;
 
 use super::TransformField;
-use crate::{action::transforms::result::TransformResult, error::BadRegexError};
+use crate::{actions::transforms::result::TransformResult, error::BadRegexError};
 
 /// Extract the contents of capture groups using a regular expression and concat them
 #[derive(Debug)]

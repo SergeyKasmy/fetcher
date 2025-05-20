@@ -8,9 +8,9 @@
 
 use either::Either;
 
-use crate::action::filters::error::FilterError;
+use crate::actions::filters::error::FilterError;
 use crate::{
-	action::transforms::error::TransformError, auth::google::GoogleOAuth2Error,
+	actions::transforms::error::TransformError, auth::google::GoogleOAuth2Error,
 	external_save::ExternalSaveError, sinks::error::SinkError, sources::error::SourceError,
 };
 

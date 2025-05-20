@@ -47,7 +47,7 @@ impl Filter for Take {
 
 #[cfg(test)]
 mod tests {
-	use crate::{action::filters::Filter, entry::Entry, sinks::message::Message};
+	use crate::{actions::filters::Filter, entry::Entry, sinks::message::Message};
 
 	use super::{Take, TakeFrom};
 

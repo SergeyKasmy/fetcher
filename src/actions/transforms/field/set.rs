@@ -12,7 +12,7 @@ use std::convert::Infallible;
 use super::TransformField;
 use crate::{
 	StaticStr,
-	action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult as TrRes},
+	actions::transforms::result::{OptionUnwrapTransformResultExt, TransformResult as TrRes},
 };
 
 /// Set a field to a hardcoded value

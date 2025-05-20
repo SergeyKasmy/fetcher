@@ -6,7 +6,7 @@
 #![allow(clippy::unwrap_used)]
 
 use fetcher::{
-	action::sink,
+	actions::sink,
 	entry::{Entry, EntryId},
 	error::FetcherError,
 	read_filter::MarkAsRead,

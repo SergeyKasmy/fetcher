@@ -10,7 +10,7 @@ use regex::Regex;
 use std::{borrow::Cow, convert::Infallible};
 
 use super::Filter;
-use crate::{action::transforms::field::Field, entry::Entry, error::BadRegexError};
+use crate::{actions::transforms::field::Field, entry::Entry, error::BadRegexError};
 
 /// Filter out all entries whose field doesn't match the regular expression
 #[derive(Clone, Debug)]
@@ -60,7 +60,7 @@ impl Filter for Contains {
 #[cfg(test)]
 mod tests {
 	use crate::{
-		action::{filters::Filter, transforms::field::Field},
+		actions::{filters::Filter, transforms::field::Field},
 		entry::Entry,
 		sinks::message::Message,
 	};

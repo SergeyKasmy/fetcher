@@ -11,20 +11,20 @@
 //!
 //! # Architecture
 //!
-//! At the heart of fetcher is the [`Task`]. It represents a specific instance of a data pipeline which consists of 3 main stages:
+//! At the heart of fetcher is the [`Task`](`crate::task::Task`). It represents a specific instance of a data pipeline which consists of 3 main stages:
 //!
-//! * [`Source`]: Fetches data from an external source (e.g. HTTP endpoint, email inbox).
-//! * [`Action`]: Applies transformations (filters, modifications, parsing) to the fetched data.
-//! * [`Sink`]: Sends the transformed data to a destinations (e.g. Discord channel, Telegram bot, another program's stdin).
+//! * [`Source`](`crate::sources::Source`): Fetches data from an external source (e.g. HTTP endpoint, email inbox).
+//! * [`Action`](`crate::actions::Action`): Applies transformations (filters, modifications, parsing) to the fetched data.
+//! * [`Sink`](`crate::sinks::Sink`): Sends the transformed data to a destinations (e.g. Discord channel, Telegram bot, another program's stdin).
 //!
-//! An [`Entry`] is the unit of data flowing through the pipeline. It contains:
+//! An [`Entry`](`crate::entry::Entry`) is the unit of data flowing through the pipeline. It contains:
 //!
-//! * [`id`](`Entry::id`): A unique identifier for the entry, used for tracking read/unread status and replies.
-//! * [`raw_contents`](`Entry::raw_contents`): The raw, untransformed data fetched from the source.
-//! * [`msg`](`Entry::msg`): A [`Message`] that contains the formated and structured data, like title, body, link, that will end up sent to a sink.
+//! * [`id`](`crate::entry::Entry::id`): A unique identifier for the entry, used for tracking read/unread status and replies.
+//! * [`raw_contents`](`crate::entry::Entry::raw_contents`): The raw, untransformed data fetched from the source.
+//! * [`msg`](`crate::entry::Entry::msg`): A [`Message`](`crate::sinks::message::Message`) that contains the formated and structured data, like title, body, link, that will end up sent to a sink.
 //!
-//! A [`Job`] is a collections of tasks that are executed together, potentially on a schedule.
-//! Jobs can also be run either concurrently or in parallel as a part of a [`JobGroup`].
+//! A [`Job`](`crate::job::Job`) is a collections of tasks that are executed together, potentially on a schedule.
+//! Jobs can also be run either concurrently or in parallel as a part of a [`JobGroup`](`crate::job::JobGroup`).
 //!
 //! # Getting started
 //!
@@ -62,7 +62,7 @@
 
 mod static_str;
 
-pub mod action;
+pub mod actions;
 pub mod auth;
 pub mod ctrl_c_signal;
 pub mod entry;

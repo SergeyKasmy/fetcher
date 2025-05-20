@@ -29,9 +29,9 @@ pub struct Entry {
 	/// An entry this entry is replying to/quoting
 	pub reply_to: Option<EntryId>,
 
-	/// Raw contents gotten from a [`Source`](`crate::source::Source`)
+	/// Raw contents gotten from a [`Source`](`crate::sources::Source`)
 	///
-	/// It's used to compose a message using [`transformators`](`crate::action::transform::Transform`).
+	/// It's used to compose a message using [`transformators`](`crate::actions::transforms::Transform`).
 	pub raw_contents: Option<String>,
 
 	/// The message itself

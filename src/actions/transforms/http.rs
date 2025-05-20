@@ -11,7 +11,7 @@ use url::Url;
 
 use super::Transform;
 use crate::{
-	action::transforms::{
+	actions::transforms::{
 		field::Field,
 		result::{TransformResult, TransformedEntry, TransformedMessage},
 	},

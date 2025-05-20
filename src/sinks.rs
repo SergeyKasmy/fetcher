@@ -18,7 +18,7 @@ pub mod error;
 pub use self::{discord::Discord, stdout::Stdout, telegram::Telegram};
 pub use crate::exec::Exec;
 use crate::{
-	action::{Action, ActionContext},
+	actions::{Action, ActionContext},
 	entry::{Entry, EntryId},
 	error::FetcherError,
 	external_save::ExternalSave,

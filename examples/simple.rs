@@ -19,7 +19,7 @@ let read_filter = Arc::new(RwLock::new(read_filter::Newer::new()));
 use std::{error::Error, time::Duration};
 
 use fetcher::{
-	action::{
+	actions::{
 		sink, transform,
 		transforms::{Html, html::DataLocation},
 	},

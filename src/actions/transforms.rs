@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains [`TransformEntry`](`entry::TransformEntry`) and [`TransformField`](`field::TransformField`) traits as well as all types that implement it
+//! This module contains [`Transform`] and [`TransformField`](`field::TransformField`) traits as well as all types that implement it
 
 pub mod async_fn;
 pub mod feed;

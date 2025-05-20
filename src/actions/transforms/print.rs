@@ -10,7 +10,7 @@ use std::{convert::Infallible, fmt::Write};
 
 use super::Transform;
 use crate::{
-	action::transforms::result::TransformedEntry,
+	actions::transforms::result::TransformedEntry,
 	entry::Entry,
 	sinks::{Sink, Stdout},
 };

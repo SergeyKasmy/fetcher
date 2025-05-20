@@ -25,7 +25,7 @@ use crate::{
 	task::TaskGroup,
 };
 
-/// A single job, containing a single or a couple [`tasks`](`Task`), possibly refetching every set amount of time
+/// A single job, containing a single or a couple [`tasks`](`crate::task::Task`), possibly refetching every set amount of time
 #[derive(bon::Builder, Debug)]
 pub struct Job<T, H> {
 	#[builder(start_fn, into)]
@@ -52,7 +52,7 @@ impl<T: TaskGroup, H> Job<T, H> {
 	/// Run this job to completion or return early on an error
 	///
 	/// # Errors
-	/// if any of the inner tasks return an error, refer to [`Task`] documentation
+	/// if any of the inner tasks return an error, refer to [`Task`](`crate::task::Task`) documentation
 	#[tracing::instrument(skip_all, fields(name = %self.name))]
 	pub async fn run_until_error(&mut self) -> Result<(), Vec<FetcherError>> {
 		tracing::info!("Running job {}", self.name);

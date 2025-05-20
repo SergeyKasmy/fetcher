@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains the [`Html`] parser as well as a way to query an HTML tag via [`ElementQuery`]
+//! This module contains the [`Html`] parser
 // TODO: cleanup and update docs
 
 pub mod error;
@@ -13,7 +13,7 @@ use self::error::{ErrorLocation, HtmlErrorInner};
 use super::Transform;
 use crate::{
 	StaticStr,
-	action::transforms::{
+	actions::transforms::{
 		error::RawContentsNotSetError,
 		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},

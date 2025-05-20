@@ -18,7 +18,7 @@ pub use self::{
 };
 
 use crate::{
-	action::filters::Filter,
+	actions::filters::Filter,
 	entry::EntryId,
 	error::FetcherError,
 	maybe_send::{MaybeSend, MaybeSendSync},

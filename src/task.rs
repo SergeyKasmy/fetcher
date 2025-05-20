@@ -15,7 +15,7 @@ pub use self::task_group::TaskGroup;
 use self::entry_to_msg_map::EntryToMsgMap;
 use crate::{
 	StaticStr,
-	action::{Action, ActionContext},
+	actions::{Action, ActionContext},
 	entry::Entry,
 	error::FetcherError,
 	external_save::ExternalSave,
@@ -25,7 +25,7 @@ use crate::{
 
 /// A core primitive of [`fetcher`](`crate`).
 ///
-/// Contains everything from a [`Source`] that allows to fetch some data, to a [`Sink`] that takes that data and sends it somewhere.
+/// Contains everything from a [`Source`] that allows to fetch some data, to a [`Sink`](`crate::sinks::Sink`) that takes that data and sends it somewhere.
 /// It also contains any transformators
 #[derive(bon::Builder, Debug)]
 pub struct Task<S, A, E> {

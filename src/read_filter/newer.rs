@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{MarkAsRead, ReadFilter};
 use crate::{
-	action::filters::Filter,
+	actions::filters::Filter,
 	entry::{Entry, EntryId},
 	error::FetcherError,
 };

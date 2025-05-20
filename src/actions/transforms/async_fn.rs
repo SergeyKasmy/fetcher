@@ -1,7 +1,7 @@
 use std::{convert::Infallible, iter};
 
 use crate::{
-	action::transforms::result::{OptionUnwrapTransformResultExt, TransformedMessage},
+	actions::transforms::result::{OptionUnwrapTransformResultExt, TransformedMessage},
 	entry::Entry,
 	maybe_send::{MaybeSend, MaybeSendSync},
 };

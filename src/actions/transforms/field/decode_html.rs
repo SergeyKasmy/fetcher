@@ -7,7 +7,7 @@
 //! This module contains the [`DecodeHtml`] field transform
 
 use super::TransformField;
-use crate::action::transforms::result::TransformResult;
+use crate::actions::transforms::result::TransformResult;
 use std::convert::Infallible;
 
 /// Decode HTML escape codes into their actual unicode forms, e.g. "&gt" -> ">"

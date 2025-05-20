@@ -5,9 +5,7 @@
  */
 
 //! This module contains the trait [`TransformField`] as well as all types that implement it
-//! And [`Field`] enum that can be used to refer to a [`Message`](Message)'s field
-//!
-//! [Message]: crate::sink::message::Message
+//! And [`Field`] enum that can be used to refer to a [`Message`](`crate::sinks::message::Message`)'s field
 
 pub mod caps;
 pub mod decode_html;
@@ -28,7 +26,7 @@ use super::{
 	result::{TransformResult, TransformedEntry},
 };
 use crate::{
-	action::transforms::error::TransformErrorKind, entry::Entry, maybe_send::MaybeSendSync,
+	actions::transforms::error::TransformErrorKind, entry::Entry, maybe_send::MaybeSendSync,
 };
 
 /// Transform/change the value of a field of an [`Entry `]
@@ -46,17 +44,17 @@ pub trait TransformField: MaybeSendSync {
 /// List of all available fields for transformations
 #[derive(Clone, Copy, Debug)]
 pub enum Field {
-	/// [`Message::title`] field
+	/// [`Message::title`](`crate::sinks::message::Message::title`) field
 	Title,
-	/// [`Message::body`] field
+	/// [`Message::body`](`crate::sinks::message::Message::body`) field
 	Body,
-	/// [`Message::link`] field
+	/// [`Message::link`](`crate::sinks::message::Message::link`) field
 	Link,
-	/// [`Entry::id`] field
+	/// [`Entry::id`](`crate::entry::Entry::id`) field
 	Id,
-	/// [`Entry::reply_to`] field
+	/// [`Entry::reply_to`](`crate::entry::Entry::reply_to`) field
 	ReplyTo,
-	/// [`Entry::raw_contents`] field
+	/// [`Entry::raw_contents`](`crate::entry::Entry::raw_contents`) field
 	RawContents,
 }
 

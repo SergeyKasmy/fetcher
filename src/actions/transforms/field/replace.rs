@@ -12,7 +12,7 @@ use std::{borrow::Cow, convert::Infallible};
 use super::TransformField;
 use crate::{
 	StaticStr,
-	action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult},
+	actions::transforms::result::{OptionUnwrapTransformResultExt, TransformResult},
 	error::BadRegexError,
 };
 

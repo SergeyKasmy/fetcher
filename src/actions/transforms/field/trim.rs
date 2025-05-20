@@ -10,7 +10,7 @@ use itertools::Itertools;
 use std::convert::Infallible;
 
 use super::TransformField;
-use crate::action::transforms::result::{OptionUnwrapTransformResultExt, TransformResult};
+use crate::actions::transforms::result::{OptionUnwrapTransformResultExt, TransformResult};
 
 /// Trim whitespace from a field
 #[derive(Debug)]

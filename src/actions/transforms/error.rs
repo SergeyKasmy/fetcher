@@ -7,7 +7,7 @@
 //! This module contains all errors that can happen in the (`parent`)[`super`] module
 
 use crate::{
-	action::transforms::{
+	actions::transforms::{
 		feed::FeedError, field::extract::ExtractError, html::HtmlError, http::HttpError,
 		json::JsonError,
 	},

@@ -15,7 +15,7 @@ use crate::{
 /// Map [`entries`][entry] to [`messages`][message]
 ///
 /// [entry]: crate::entry::Entry
-/// [message]: crate::sink::message::Message
+/// [message]: crate::sinks::message::Message
 #[derive(Debug)]
 pub struct EntryToMsgMap<E> {
 	/// External save location for that map.

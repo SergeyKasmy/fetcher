@@ -11,7 +11,7 @@ use std::fmt::Debug;
 use serde::Serialize;
 
 use crate::{
-	action::filters::Filter,
+	actions::filters::Filter,
 	entry::{Entry, EntryId},
 	error::FetcherError,
 	external_save::ExternalSave,

@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains [`Exec`] source and sink. It is re-exported in the [`crate::sink`] and [`crate::source`] modules
+//! This module contains [`Exec`] source and sink. It is re-exported in the [`crate::sinks`] and [`crate::sources`] modules
 
 use std::{io, process::Stdio, string::FromUtf8Error};
 use tokio::{io::AsyncWriteExt, process::Command};
