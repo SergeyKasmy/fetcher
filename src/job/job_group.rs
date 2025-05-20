@@ -21,9 +21,30 @@ pub trait JobGroup: MaybeSendSync {
 	fn run_concurrently(&mut self) -> impl Future<Output = Vec<JobRunResult>> + MaybeSend;
 
 	#[cfg(feature = "multithreaded")]
-	fn run_in_parallel(self) -> impl Future<Output = (Vec<JobRunResult>, Self)> + Send;
+	#[must_use = "this vec of results could contain errors"]
+	fn run_in_parallel(self) -> impl Future<Output = (Vec<JobRunResult>, Self)> + Send
+	where
+		Self: Sized;
 
 	fn names(&self) -> impl Iterator<Item = Option<&str>>;
+
+	#[cfg(feature = "multithreaded")]
+	#[must_use = "this vec of results could contain errors"]
+	fn run(self) -> impl Future<Output = (Vec<JobRunResult>, Self)> + Send
+	where
+		Self: Sized,
+	{
+		async move { self.run_in_parallel().await }
+	}
+
+	#[cfg(not(feature = "multithreaded"))]
+	#[must_use = "this vec of results could contain errors"]
+	fn run(mut self) -> impl Future<Output = (Vec<JobRunResult>, Self)>
+	where
+		Self: Sized,
+	{
+		async move { (self.run_concurrently().await, self) }
+	}
 
 	#[cfg(feature = "multithreaded")]
 	fn and<J>(self, other: J) -> CombinedJobGroup<Self, impl JobGroup>
