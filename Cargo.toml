@@ -7,8 +7,9 @@ repository = "https://github.com/SergeyKasmy/fetcher"
 edition = "2024"
 
 [features]
-default = []
+default = ["multithreaded", "scaffold"]
 send = []
+multithreaded = ["send"]
 scaffold = ["dep:tracing-journald", "dep:tracing-subscriber", "tokio/signal"]
 
 [dependencies]

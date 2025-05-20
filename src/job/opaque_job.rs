@@ -13,6 +13,16 @@ pub trait OpaqueJob: MaybeSendSync {
 		None
 	}
 
+	#[cfg(feature = "send")]
+	fn group_with<J>(self, other: J) -> impl JobGroup
+	where
+		Self: Sized + 'static,
+		J: OpaqueJob + Sized + 'static,
+	{
+		SingleJobGroup(self).and(other)
+	}
+
+	#[cfg(not(feature = "send"))]
 	fn group_with<J>(self, other: J) -> impl JobGroup
 	where
 		Self: Sized,

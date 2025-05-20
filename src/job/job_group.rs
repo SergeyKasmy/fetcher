@@ -20,8 +20,21 @@ pub trait JobGroup: MaybeSendSync {
 	#[must_use = "this vec of results could contain errors"]
 	fn run_concurrently(&mut self) -> impl Future<Output = Vec<JobRunResult>> + MaybeSend;
 
+	#[cfg(feature = "multithreaded")]
+	fn run_in_parallel(self) -> impl Future<Output = (Vec<JobRunResult>, Self)> + Send;
+
 	fn names(&self) -> impl Iterator<Item = Option<&str>>;
 
+	#[cfg(feature = "multithreaded")]
+	fn and<J>(self, other: J) -> CombinedJobGroup<Self, impl JobGroup>
+	where
+		Self: Sized,
+		J: OpaqueJob + 'static,
+	{
+		self.with(SingleJobGroup(other))
+	}
+
+	#[cfg(not(feature = "multithreaded"))]
 	fn and<J>(self, other: J) -> CombinedJobGroup<Self, impl JobGroup>
 	where
 		Self: Sized,
@@ -50,14 +63,22 @@ impl<J> JobGroup for Option<J>
 where
 	J: JobGroup,
 {
-	fn run_concurrently(&mut self) -> impl Future<Output = Vec<JobRunResult>> + MaybeSend {
-		async move {
-			let Some(group) = self else {
-				return Vec::new();
-			};
+	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
+		let Some(group) = self else {
+			return Vec::new();
+		};
 
-			group.run_concurrently().await
-		}
+		group.run_concurrently().await
+	}
+
+	#[cfg(feature = "multithreaded")]
+	async fn run_in_parallel(self) -> (Vec<JobRunResult>, Self) {
+		let Some(group) = self else {
+			return (Vec::new(), None);
+		};
+
+		let (results, inner) = group.run_in_parallel().await;
+		(results, Some(inner))
 	}
 
 	fn names(&self) -> impl Iterator<Item = Option<&str>> {
@@ -71,6 +92,12 @@ where
 {
 	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
 		self.0.run_concurrently().await
+	}
+
+	#[cfg(feature = "multithreaded")]
+	async fn run_in_parallel(self) -> (Vec<JobRunResult>, Self) {
+		let (results, inner) = self.0.run_in_parallel().await;
+		(results, (inner,))
 	}
 
 	fn names(&self) -> impl Iterator<Item = Option<&str>> {
@@ -100,6 +127,25 @@ macro_rules! impl_jobgroup_for_tuples {
 				)+
 
 				results
+			}
+
+			#[cfg(feature = "multithreaded")]
+			async fn run_in_parallel(self) -> (Vec<JobRunResult>, Self) {
+				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
+				let ($($type_name),+) = self;
+
+				// now $type_name = job run result
+				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
+				let ($($type_name),+) = join!($($type_name.run_in_parallel()),+);
+
+				let mut results = Vec::new();
+
+				$(
+					results.extend($type_name.0);
+				)+
+
+				let this = ($($type_name.1),+);
+				(results, this)
 			}
 
 			fn names(&self) -> impl Iterator<Item = Option<&str>> {

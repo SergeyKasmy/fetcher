@@ -10,6 +10,11 @@ where
 		Vec::new()
 	}
 
+	#[cfg(feature = "multithreaded")]
+	async fn run_in_parallel(self) -> (Vec<super::JobRunResult>, Self) {
+		(Vec::new(), self)
+	}
+
 	fn names(&self) -> impl Iterator<Item = Option<&str>> {
 		self.0.names()
 	}
