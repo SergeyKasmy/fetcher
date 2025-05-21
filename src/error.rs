@@ -17,6 +17,7 @@ use crate::{
 use std::fmt::Display;
 use std::{convert::Infallible, error::Error as StdError};
 
+// TODO: attach backtraces to all inner errors
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum FetcherError {

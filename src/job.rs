@@ -13,12 +13,15 @@ pub mod timepoint;
 
 mod job_result;
 
+use std::{backtrace::Backtrace, cell::Cell, panic};
+
 pub use self::{
 	error_handling::HandleError, job_group::JobGroup, job_result::JobResult, opaque_job::OpaqueJob,
 	timepoint::TimePoint,
 };
 
 use error_handling::{HandleErrorContext, HandleErrorResult};
+use futures::FutureExt;
 use tokio::{select, time::sleep};
 
 use crate::{
@@ -27,6 +30,10 @@ use crate::{
 	error::ErrorChainDisplay,
 	task::TaskGroup,
 };
+
+thread_local! {
+	static PANIC_BACKTRACE: Cell<Option<Backtrace>> = const { Cell::new(None) };
+}
 
 /// A single job, containing a single or a couple [`tasks`](`crate::task::Task`), possibly refetching every set amount of time
 #[derive(bon::Builder, Debug)]
@@ -113,6 +120,31 @@ where
 {
 	#[expect(clippy::same_name_method, reason = "can't think of a better name")] // if any come up, I'd be fine to replace it
 	pub async fn run(&mut self) -> JobResult {
+		let old_hook = panic::take_hook();
+		panic::set_hook(Box::new(move |_info| {
+			let bt = Backtrace::capture();
+			PANIC_BACKTRACE.with(move |b| b.set(Some(bt)));
+		}));
+
+		let job_result = panic::AssertUnwindSafe(self.run_inner())
+			.catch_unwind()
+			.await;
+
+		// restore old panic hook back
+		panic::set_hook(old_hook);
+
+		match job_result {
+			Ok(job_result) => job_result,
+			Err(panic_payload) => JobResult::Panicked {
+				payload: panic_payload,
+				backtrace: PANIC_BACKTRACE
+					.take()
+					.expect("payload should be present, the thread panicked"),
+			},
+		}
+	}
+
+	async fn run_inner(&mut self) -> JobResult {
 		// Error handling loop: exit out of it only when the job finishes or a fatal error occures, otherwise run the job once more
 		loop {
 			// if any errors occured, extract and handle them. Otherwise forward the result(e.g. Ok or Panicked)
