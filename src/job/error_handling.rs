@@ -1,6 +1,7 @@
 mod exponential_backoff_sleep;
 
 use std::convert::Infallible;
+use std::error::Error;
 
 use either::Either;
 
@@ -15,13 +16,13 @@ pub use self::exponential_backoff_sleep::ExponentialBackoffSleep;
 pub trait HandleError: MaybeSendSync {
 	/// The type of the error that might occure while handling task errors.
 	/// Use [`Infallible`] if the handler itself never errors
-	type Err: Into<FetcherError>;
+	type HandlerErr: Error;
 
 	fn handle_errors(
 		&mut self,
 		errors: Vec<FetcherError>,
 		cx: HandleErrorContext<'_>,
-	) -> impl Future<Output = HandleErrorResult<Self::Err>> + MaybeSend;
+	) -> impl Future<Output = HandleErrorResult<Self::HandlerErr>> + MaybeSend;
 }
 
 pub struct HandleErrorContext<'a> {
@@ -43,13 +44,13 @@ pub struct Forward;
 pub struct LogAndIgnore;
 
 impl HandleError for Forward {
-	type Err = Infallible;
+	type HandlerErr = Infallible;
 
 	async fn handle_errors(
 		&mut self,
 		errors: Vec<FetcherError>,
 		_cx: HandleErrorContext<'_>,
-	) -> HandleErrorResult<Self::Err> {
+	) -> HandleErrorResult<Self::HandlerErr> {
 		tracing::trace!("Forwarding errors");
 
 		HandleErrorResult::StopAndReturnErrs(errors)
@@ -57,13 +58,13 @@ impl HandleError for Forward {
 }
 
 impl HandleError for LogAndIgnore {
-	type Err = Infallible;
+	type HandlerErr = Infallible;
 
 	async fn handle_errors(
 		&mut self,
 		errors: Vec<FetcherError>,
 		_cx: HandleErrorContext<'_>,
-	) -> HandleErrorResult<Self::Err> {
+	) -> HandleErrorResult<Self::HandlerErr> {
 		for error in &errors {
 			tracing::error!("{}", ErrorChainDisplay(error));
 		}
@@ -77,13 +78,13 @@ where
 	A: HandleError,
 	B: HandleError,
 {
-	type Err = Either<A::Err, B::Err>;
+	type HandlerErr = Either<A::HandlerErr, B::HandlerErr>;
 
 	async fn handle_errors(
 		&mut self,
 		errors: Vec<FetcherError>,
 		cx: HandleErrorContext<'_>,
-	) -> HandleErrorResult<Self::Err> {
+	) -> HandleErrorResult<Self::HandlerErr> {
 		match self {
 			Either::Left(a) => a
 				.handle_errors(errors, cx)

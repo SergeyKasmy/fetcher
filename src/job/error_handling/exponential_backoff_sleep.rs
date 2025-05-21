@@ -24,13 +24,13 @@ pub struct ExponentialBackoffSleep {
 }
 
 impl HandleError for ExponentialBackoffSleep {
-	type Err = Infallible;
+	type HandlerErr = Infallible;
 
 	async fn handle_errors(
 		&mut self,
 		errors: Vec<FetcherError>,
 		cx: HandleErrorContext<'_>,
-	) -> HandleErrorResult<Self::Err> {
+	) -> HandleErrorResult<Self::HandlerErr> {
 		match self.should_continue(&errors, cx).await {
 			ExpBackoffHandleErrorResult::ContinueTheJob => HandleErrorResult::ContinueJob,
 			ExpBackoffHandleErrorResult::ReturnTheErrors => {

@@ -127,10 +127,6 @@ where
 				ctrlc_chan: self.ctrlc_chan.as_mut(),
 			};
 
-			// match self.error_handling.handle_errors(errors, cx).await? {
-			// 	ControlFlow::Continue(()) => (),
-			// 	ControlFlow::Break(errors) => return Err(errors),
-			// }
 			match self.error_handling.handle_errors(errors, cx).await {
 				HandleErrorResult::ContinueJob => (),
 				HandleErrorResult::StopAndReturnErrs(e) => return JobResult::Err(e),
@@ -139,8 +135,7 @@ where
 					original_errors,
 				} => {
 					tracing::error!(
-						"An error occured while handling other errors! Stopping the job and returning the original errors.\nDetails: {}",
-						err.into(),
+						"An error occured while handling other errors! Stopping the job and returning the original errors.\nDetails: {err}",
 					);
 
 					return JobResult::Err(original_errors);
