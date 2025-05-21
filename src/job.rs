@@ -111,6 +111,7 @@ where
 	T: TaskGroup,
 	H: HandleError,
 {
+	#[expect(clippy::same_name_method, reason = "can't think of a better name")] // if any come up, I'd be fine to replace it
 	pub async fn run(&mut self) -> JobResult {
 		// Error handling loop: exit out of it only when the job finishes or a fatal error occures, otherwise run the job once more
 		loop {

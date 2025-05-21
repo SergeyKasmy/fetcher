@@ -13,6 +13,8 @@ use super::TimePoint;
 pub use self::exponential_backoff_sleep::ExponentialBackoffSleep;
 
 pub trait HandleError: MaybeSendSync {
+	/// The type of the error that might occure while handling task errors.
+	/// Use [`Infallible`] if the handler itself never errors
 	type Err: Into<FetcherError>;
 
 	fn handle_errors(
