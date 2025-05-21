@@ -11,8 +11,11 @@ pub mod job_group;
 pub mod opaque_job;
 pub mod timepoint;
 
+mod job_result;
+
 pub use self::{
-	error_handling::HandleError, job_group::JobGroup, opaque_job::OpaqueJob, timepoint::TimePoint,
+	error_handling::HandleError, job_group::JobGroup, job_result::JobResult, opaque_job::OpaqueJob,
+	timepoint::TimePoint,
 };
 
 use error_handling::{HandleErrorContext, HandleErrorResult};
@@ -21,13 +24,9 @@ use tokio::{select, time::sleep};
 use crate::{
 	StaticStr,
 	ctrl_c_signal::{CtrlCSignalChannel, ctrlc_signaled},
-	error::{ErrorChainDisplay, FetcherError},
+	error::ErrorChainDisplay,
 	task::TaskGroup,
 };
-
-/// If none of the task returned Err, then the whole result is Ok(()),
-/// otherwise if at least one task returned an Err, then Err() containing all errors is returned
-pub type JobResult = Result<(), Vec<FetcherError>>;
 
 /// A single job, containing a single or a couple [`tasks`](`crate::task::Task`), possibly refetching every set amount of time
 #[derive(bon::Builder, Debug)]
@@ -53,12 +52,16 @@ pub struct Job<T, H> {
 impl<T: TaskGroup, H> Job<T, H> {
 	// TODO: instead of returning a vec of errors, return a single error type with a pretty Display implementation
 	// that contains a list of errors that can be retrieved manually if needed instead
-	/// Run this job to completion or return early on an error
+	/// Run this job to completion or return early on an error.
 	///
 	/// # Errors
 	/// if any of the inner tasks return an error, refer to [`Task`](`crate::task::Task`) documentation
+	///
+	/// # Note
+	/// If you are a user of the library and want your job to stop as soon as any error occures,
+	/// set error handling to [`error_handling::Forward`] and just run the job as normal.
 	#[tracing::instrument(skip_all, fields(name = %self.name))]
-	pub async fn run_until_error(&mut self) -> JobResult {
+	async fn run_until_first_error(&mut self) -> JobResult {
 		tracing::info!("Running job {}", self.name);
 
 		// Job loop: break out of it only on errors or if the job doesn't have a refresh time/runs only once
@@ -76,12 +79,12 @@ impl<T: TaskGroup, H> Job<T, H> {
 
 			// returns errors if any
 			if !errors.is_empty() {
-				return Err(errors);
+				return JobResult::Err(errors);
 			}
 
 			// stop the job if there's no refresh timer
 			let Some(refresh_time) = &self.refresh_time else {
-				return Ok(());
+				return JobResult::Ok;
 			};
 
 			let remaining_time = refresh_time.remaining_from_now();
@@ -96,7 +99,7 @@ impl<T: TaskGroup, H> Job<T, H> {
 				() = sleep(remaining_time) => (),
 				() = ctrlc_signaled(self.ctrlc_chan.as_mut()) => {
 					tracing::info!("Job {} is shutting down...", self.name);
-					return Ok(());
+					return JobResult::Ok;
 				}
 			}
 		}
@@ -108,11 +111,13 @@ where
 	T: TaskGroup,
 	H: HandleError,
 {
-	pub async fn run_with_error_handling(&mut self) -> JobResult {
+	pub async fn run(&mut self) -> JobResult {
 		// Error handling loop: exit out of it only when the job finishes or a fatal error occures, otherwise run the job once more
 		loop {
-			let Err::<(), _>(errors) = self.run_until_error().await else {
-				return Ok(());
+			// if any errors occured, extract and handle them. Otherwise forward the result(e.g. Ok or Panicked)
+			let errors = match self.run_until_first_error().await {
+				JobResult::Err(errors) => errors,
+				other => return other,
 			};
 
 			let cx = HandleErrorContext {
@@ -127,7 +132,7 @@ where
 			// }
 			match self.error_handling.handle_errors(errors, cx).await {
 				HandleErrorResult::ContinueJob => (),
-				HandleErrorResult::StopAndReturnErrs(e) => return Err(e),
+				HandleErrorResult::StopAndReturnErrs(e) => return JobResult::Err(e),
 				HandleErrorResult::ErrWhileHandling {
 					err,
 					original_errors,
@@ -137,7 +142,7 @@ where
 						err.into(),
 					);
 
-					return Err(original_errors);
+					return JobResult::Err(original_errors);
 				}
 			}
 		}
@@ -150,7 +155,7 @@ where
 	H: HandleError,
 {
 	async fn run(&mut self) -> JobResult {
-		self.run_with_error_handling().await
+		Job::run(self).await
 	}
 
 	fn name(&self) -> Option<&str> {

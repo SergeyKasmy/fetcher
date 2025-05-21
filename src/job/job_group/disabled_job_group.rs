@@ -1,5 +1,4 @@
-use super::JobGroup;
-use crate::job::JobResult;
+use super::{JobGroup, JobGroupResult};
 
 pub struct DisabledJobGroup<G>(pub G);
 
@@ -7,16 +6,13 @@ impl<G> JobGroup for DisabledJobGroup<G>
 where
 	G: JobGroup,
 {
-	async fn run_concurrently(&mut self) -> Vec<JobResult> {
+	async fn run_concurrently(&mut self) -> JobGroupResult {
 		Vec::new()
 	}
 
 	#[cfg(feature = "multithreaded")]
-	async fn run_in_parallel(self) -> super::MultithreadedJobGroupResult<Self> {
-		super::MultithreadedJobGroupResult::JobsFinished {
-			job_results: Vec::new(),
-			this: self,
-		}
+	async fn run_in_parallel(self) -> (JobGroupResult, Self) {
+		(Vec::new(), self)
 	}
 
 	fn names(&self) -> impl Iterator<Item = Option<&str>> {

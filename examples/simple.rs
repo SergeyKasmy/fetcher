@@ -67,7 +67,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 	// Run the job.
 	// Since the job just logs and doesn't return any errors, this will run forever.
-	job.run_with_error_handling().await.expect("never finishes");
+	job.run().await.expect("never finishes");
 
 	Ok(())
 }

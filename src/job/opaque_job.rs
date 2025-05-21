@@ -33,7 +33,7 @@ pub trait OpaqueJob: MaybeSendSync {
 
 impl OpaqueJob for () {
 	async fn run(&mut self) -> JobResult {
-		Ok(())
+		JobResult::Ok
 	}
 }
 
@@ -43,7 +43,7 @@ where
 {
 	async fn run(&mut self) -> JobResult {
 		let Some(job) = self else {
-			return Ok(());
+			return JobResult::Ok;
 		};
 
 		job.run().await
