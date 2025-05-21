@@ -19,7 +19,9 @@ impl JobResult {
 	pub fn unwrap(self) {
 		match self {
 			Self::Ok => (),
-			Self::Err(err) => unwrap_failed("called `JobResult::unwrap()` on an `Err` value", &err),
+			Self::Err(errors) => {
+				unwrap_failed("called `JobResult::unwrap()` on an `Err` value", &errors);
+			}
 			Self::Panicked { payload } => unwrap_failed(
 				"called `JobResult::unwrap()` on a `Panicked` value",
 				&payload,
@@ -30,7 +32,7 @@ impl JobResult {
 	pub fn expect(self, msg: &str) {
 		match self {
 			Self::Ok => (),
-			Self::Err(err) => unwrap_failed(msg, &err),
+			Self::Err(errors) => unwrap_failed(msg, &errors),
 			Self::Panicked { payload } => unwrap_failed(msg, &payload),
 		}
 	}

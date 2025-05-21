@@ -19,6 +19,8 @@ pub use self::{
 };
 
 use error_handling::{HandleErrorContext, HandleErrorResult};
+use futures::FutureExt;
+use std::panic;
 use tokio::{select, time::sleep};
 
 use crate::{
@@ -113,6 +115,18 @@ where
 {
 	#[expect(clippy::same_name_method, reason = "can't think of a better name")] // if any come up, I'd be fine to replace it
 	pub async fn run(&mut self) -> JobResult {
+		match panic::AssertUnwindSafe(self.run_inner())
+			.catch_unwind()
+			.await
+		{
+			Ok(job_result) => job_result,
+			Err(panic_payload) => JobResult::Panicked {
+				payload: panic_payload,
+			},
+		}
+	}
+
+	async fn run_inner(&mut self) -> JobResult {
 		// Error handling loop: exit out of it only when the job finishes or a fatal error occures, otherwise run the job once more
 		loop {
 			// if any errors occured, extract and handle them. Otherwise forward the result(e.g. Ok or Panicked)
