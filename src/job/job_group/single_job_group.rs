@@ -2,7 +2,7 @@ use std::iter;
 
 use crate::job::OpaqueJob;
 
-use super::{JobGroup, JobRunResult};
+use super::{JobGroup, JobResult};
 
 pub struct SingleJobGroup<J>(pub J);
 
@@ -11,18 +11,27 @@ impl<J> JobGroup for SingleJobGroup<J>
 where
 	J: OpaqueJob + 'static,
 {
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
+	async fn run_concurrently(&mut self) -> Vec<JobResult> {
 		vec![OpaqueJob::run(&mut self.0).await]
 	}
 
-	async fn run_in_parallel(self) -> (Vec<JobRunResult>, Self) {
-		tokio::spawn(async move {
+	async fn run_in_parallel(self) -> super::MultithreadedJobGroupResult<Self> {
+		use super::MultithreadedJobGroupResult as Res;
+
+		let task_result = tokio::spawn(async move {
 			let mut this = self;
 			let result = OpaqueJob::run(&mut this.0).await;
-			(vec![result], this)
+			(result, this)
 		})
-		.await
-		.unwrap() // TODO: task panicked. Do something about it
+		.await;
+
+		match task_result {
+			Ok((result, this)) => Res::JobsFinished {
+				job_results: vec![result],
+				this,
+			},
+			Err(join_error) => Res::JobPanicked(join_error),
+		}
 	}
 
 	fn names(&self) -> impl Iterator<Item = Option<&str>> {

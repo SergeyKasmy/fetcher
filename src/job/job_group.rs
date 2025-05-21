@@ -6,7 +6,7 @@ use std::iter;
 use tokio::join;
 
 use self::combined_job_group::CombinedJobGroup;
-use crate::error::FetcherError;
+use super::JobResult;
 use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
 pub use self::disabled_job_group::DisabledJobGroup;
@@ -14,15 +14,37 @@ pub use self::single_job_group::SingleJobGroup;
 
 use super::OpaqueJob;
 
-pub type JobRunResult = Result<(), Vec<FetcherError>>;
+#[cfg(feature = "multithreaded")]
+pub enum MultithreadedJobGroupResult<G> {
+	JobsFinished {
+		job_results: Vec<JobResult>,
+		this: G,
+	},
+	JobPanicked(tokio::task::JoinError),
+}
+
+#[cfg(feature = "multithreaded")]
+#[macro_export]
+macro_rules! try_jg_res {
+	($res:expr) => {{
+		use $crate::job::job_group::MultithreadedJobGroupResult;
+
+		match $res {
+			MultithreadedJobGroupResult::JobsFinished { job_results, this } => (job_results, this),
+			MultithreadedJobGroupResult::JobPanicked(join_error) => {
+				return MultithreadedJobGroupResult::JobPanicked(join_error);
+			}
+		}
+	}};
+}
 
 pub trait JobGroup: MaybeSendSync {
 	#[must_use = "this vec of results could contain errors"]
-	fn run_concurrently(&mut self) -> impl Future<Output = Vec<JobRunResult>> + MaybeSend;
+	fn run_concurrently(&mut self) -> impl Future<Output = Vec<JobResult>> + MaybeSend;
 
 	#[cfg(feature = "multithreaded")]
 	#[must_use = "this vec of results could contain errors"]
-	fn run_in_parallel(self) -> impl Future<Output = (Vec<JobRunResult>, Self)> + Send
+	fn run_in_parallel(self) -> impl Future<Output = MultithreadedJobGroupResult<Self>> + Send
 	where
 		Self: Sized;
 
@@ -30,7 +52,7 @@ pub trait JobGroup: MaybeSendSync {
 
 	#[cfg(feature = "multithreaded")]
 	#[must_use = "this vec of results could contain errors"]
-	fn run(self) -> impl Future<Output = (Vec<JobRunResult>, Self)> + Send
+	fn run(self) -> impl Future<Output = MultithreadedJobGroupResult<Self>> + Send
 	where
 		Self: Sized,
 	{
@@ -39,7 +61,7 @@ pub trait JobGroup: MaybeSendSync {
 
 	#[cfg(not(feature = "multithreaded"))]
 	#[must_use = "this vec of results could contain errors"]
-	fn run(mut self) -> impl Future<Output = (Vec<JobRunResult>, Self)>
+	fn run(mut self) -> impl Future<Output = (Vec<JobResult>, Self)>
 	where
 		Self: Sized,
 	{
@@ -84,7 +106,7 @@ impl<J> JobGroup for Option<J>
 where
 	J: JobGroup,
 {
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
+	async fn run_concurrently(&mut self) -> Vec<JobResult> {
 		let Some(group) = self else {
 			return Vec::new();
 		};
@@ -93,13 +115,19 @@ where
 	}
 
 	#[cfg(feature = "multithreaded")]
-	async fn run_in_parallel(self) -> (Vec<JobRunResult>, Self) {
+	async fn run_in_parallel(self) -> MultithreadedJobGroupResult<Self> {
 		let Some(group) = self else {
-			return (Vec::new(), None);
+			return MultithreadedJobGroupResult::JobsFinished {
+				job_results: Vec::new(),
+				this: None,
+			};
 		};
 
-		let (results, inner) = group.run_in_parallel().await;
-		(results, Some(inner))
+		let (job_results, inner) = try_jg_res!(group.run_in_parallel().await);
+		MultithreadedJobGroupResult::JobsFinished {
+			job_results,
+			this: Some(inner),
+		}
 	}
 
 	fn names(&self) -> impl Iterator<Item = Option<&str>> {
@@ -111,14 +139,17 @@ impl<J1> JobGroup for (J1,)
 where
 	J1: JobGroup,
 {
-	async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
+	async fn run_concurrently(&mut self) -> Vec<JobResult> {
 		self.0.run_concurrently().await
 	}
 
 	#[cfg(feature = "multithreaded")]
-	async fn run_in_parallel(self) -> (Vec<JobRunResult>, Self) {
-		let (results, inner) = self.0.run_in_parallel().await;
-		(results, (inner,))
+	async fn run_in_parallel(self) -> MultithreadedJobGroupResult<Self> {
+		let (job_results, inner) = try_jg_res!(self.0.run_in_parallel().await);
+		MultithreadedJobGroupResult::JobsFinished {
+			job_results,
+			this: (inner,),
+		}
 	}
 
 	fn names(&self) -> impl Iterator<Item = Option<&str>> {
@@ -132,7 +163,7 @@ macro_rules! impl_jobgroup_for_tuples {
 		where
 			$($type_name: JobGroup),+
 		{
-			async fn run_concurrently(&mut self) -> Vec<JobRunResult> {
+			async fn run_concurrently(&mut self) -> Vec<JobResult> {
 				// first $type_name = specific job
 				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
 				let ($($type_name),+) = self;
@@ -151,13 +182,17 @@ macro_rules! impl_jobgroup_for_tuples {
 			}
 
 			#[cfg(feature = "multithreaded")]
-			async fn run_in_parallel(self) -> (Vec<JobRunResult>, Self) {
+			async fn run_in_parallel(self) -> MultithreadedJobGroupResult<Self> {
 				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
 				let ($($type_name),+) = self;
 
 				// now $type_name = job run result
 				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
 				let ($($type_name),+) = join!($($type_name.run_in_parallel()),+);
+
+				$(
+					let $type_name = try_jg_res!($type_name);
+				)+
 
 				let mut results = Vec::new();
 
@@ -166,7 +201,10 @@ macro_rules! impl_jobgroup_for_tuples {
 				)+
 
 				let this = ($($type_name.1),+);
-				(results, this)
+				MultithreadedJobGroupResult::JobsFinished {
+					job_results: results,
+					this,
+				}
 			}
 
 			fn names(&self) -> impl Iterator<Item = Option<&str>> {

@@ -25,6 +25,10 @@ use crate::{
 	task::TaskGroup,
 };
 
+/// If none of the task returned Err, then the whole result is Ok(()),
+/// otherwise if at least one task returned an Err, then Err() containing all errors is returned
+pub type JobResult = Result<(), Vec<FetcherError>>;
+
 /// A single job, containing a single or a couple [`tasks`](`crate::task::Task`), possibly refetching every set amount of time
 #[derive(bon::Builder, Debug)]
 pub struct Job<T, H> {
@@ -54,7 +58,7 @@ impl<T: TaskGroup, H> Job<T, H> {
 	/// # Errors
 	/// if any of the inner tasks return an error, refer to [`Task`](`crate::task::Task`) documentation
 	#[tracing::instrument(skip_all, fields(name = %self.name))]
-	pub async fn run_until_error(&mut self) -> Result<(), Vec<FetcherError>> {
+	pub async fn run_until_error(&mut self) -> JobResult {
 		tracing::info!("Running job {}", self.name);
 
 		// Job loop: break out of it only on errors or if the job doesn't have a refresh time/runs only once
@@ -104,7 +108,7 @@ where
 	T: TaskGroup,
 	H: HandleError,
 {
-	pub async fn run_with_error_handling(&mut self) -> Result<(), Vec<FetcherError>> {
+	pub async fn run_with_error_handling(&mut self) -> JobResult {
 		// Error handling loop: exit out of it only when the job finishes or a fatal error occures, otherwise run the job once more
 		loop {
 			let Err::<(), _>(errors) = self.run_until_error().await else {
@@ -145,7 +149,7 @@ where
 	T: TaskGroup,
 	H: HandleError,
 {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+	async fn run(&mut self) -> JobResult {
 		self.run_with_error_handling().await
 	}
 

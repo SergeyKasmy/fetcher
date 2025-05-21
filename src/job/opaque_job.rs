@@ -1,13 +1,12 @@
 use std::convert::Infallible;
 
-use crate::error::FetcherError;
 use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
-use super::JobGroup;
 use super::job_group::SingleJobGroup;
+use super::{JobGroup, JobResult};
 
 pub trait OpaqueJob: MaybeSendSync {
-	fn run(&mut self) -> impl Future<Output = Result<(), Vec<FetcherError>>> + MaybeSend;
+	fn run(&mut self) -> impl Future<Output = JobResult> + MaybeSend;
 
 	fn name(&self) -> Option<&str> {
 		None
@@ -33,7 +32,7 @@ pub trait OpaqueJob: MaybeSendSync {
 }
 
 impl OpaqueJob for () {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+	async fn run(&mut self) -> JobResult {
 		Ok(())
 	}
 }
@@ -42,7 +41,7 @@ impl<J> OpaqueJob for Option<J>
 where
 	J: OpaqueJob,
 {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+	async fn run(&mut self) -> JobResult {
 		let Some(job) = self else {
 			return Ok(());
 		};
@@ -56,7 +55,7 @@ where
 }
 
 impl OpaqueJob for Infallible {
-	async fn run(&mut self) -> Result<(), Vec<FetcherError>> {
+	async fn run(&mut self) -> JobResult {
 		unreachable!()
 	}
 }
