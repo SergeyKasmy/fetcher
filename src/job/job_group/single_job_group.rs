@@ -39,7 +39,7 @@ where
 		vec![OpaqueJob::run(&mut self.0).await]
 	}
 
-	fn names(&self) -> impl Iterator<Item = Option<&str>> {
-		iter::once(self.0.name())
+	fn names(&self) -> impl Iterator<Item = Option<String>> {
+		iter::once(self.0.name().map(ToOwned::to_owned))
 	}
 }
