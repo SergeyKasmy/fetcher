@@ -23,6 +23,11 @@ pub struct ExponentialBackoffSleep {
 	last_error_time: Option<Instant>,
 }
 
+enum ExpBackoffHandleErrorResult {
+	ContinueTheJob,
+	ReturnTheErrors,
+}
+
 impl HandleError for ExponentialBackoffSleep {
 	type HandlerErr = Infallible;
 
@@ -40,13 +45,12 @@ impl HandleError for ExponentialBackoffSleep {
 	}
 }
 
-enum ExpBackoffHandleErrorResult {
-	ContinueTheJob,
-	ReturnTheErrors,
-}
-
 impl ExponentialBackoffSleep {
-	const DEFAULT_MAX_RETRY_COUNT: u32 = 15;
+	pub const DEFAULT_MAX_RETRY_COUNT: u32 = 15;
+
+	pub fn err_count(&self) -> u32 {
+		self.err_count
+	}
 
 	async fn should_continue(
 		&mut self,
@@ -140,16 +144,6 @@ impl ExponentialBackoffSleep {
 
 		// log and report all other errors (except for network errors up above)
 		for (i, err) in fatal_errors.enumerate() {
-			/*
-			// FIXME: doesn't and can't even work after the refactor
-
-			if let FetcherError::Transform(transform_err) = &err
-				&& let Err(e) = settings::log::log_transform_err(transform_err, job_name)
-			{
-				tracing::error!("Error logging transform error: {e:?}");
-			}
-			*/
-
 			_ = write!(
 				err_msg,
 				"\nError #{err_num}:\n{e}\n",
