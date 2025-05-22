@@ -29,7 +29,7 @@ where
 		(job_results, this)
 	}
 
-	fn names(&self) -> impl Iterator<Item = Option<&str>> {
+	fn names(&self) -> impl Iterator<Item = Option<String>> {
 		self.0.names().chain(self.1.names())
 	}
 }

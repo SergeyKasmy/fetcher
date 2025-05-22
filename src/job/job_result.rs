@@ -2,6 +2,7 @@ use std::{any::Any, fmt};
 
 use crate::error::FetcherError;
 
+#[derive(Debug)]
 pub enum JobResult {
 	/// The job successfully and no tasks returned Err
 	Ok,

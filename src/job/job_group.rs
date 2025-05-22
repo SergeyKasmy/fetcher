@@ -1,15 +1,18 @@
 mod combined_job_group;
 mod disabled_job_group;
+mod named_job_group;
 mod single_job_group;
 
 use std::iter;
 use tokio::join;
 
-use self::combined_job_group::CombinedJobGroup;
 use super::JobResult;
+use crate::StaticStr;
 use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
+pub use self::combined_job_group::CombinedJobGroup;
 pub use self::disabled_job_group::DisabledJobGroup;
+pub use self::named_job_group::NamedJobGroup;
 pub use self::single_job_group::SingleJobGroup;
 
 use super::OpaqueJob;
@@ -26,7 +29,7 @@ pub trait JobGroup: MaybeSendSync {
 	where
 		Self: Sized;
 
-	fn names(&self) -> impl Iterator<Item = Option<&str>>;
+	fn names(&self) -> impl Iterator<Item = Option<String>>;
 
 	#[cfg(feature = "multithreaded")]
 	#[must_use = "the jobs could've finished with errors"]
@@ -78,6 +81,17 @@ pub trait JobGroup: MaybeSendSync {
 	{
 		DisabledJobGroup(self)
 	}
+
+	fn with_name<S>(self, name: S) -> NamedJobGroup<Self>
+	where
+		Self: Sized,
+		S: Into<StaticStr>,
+	{
+		NamedJobGroup {
+			inner: self,
+			name: name.into(),
+		}
+	}
 }
 
 impl<J> JobGroup for Option<J>
@@ -102,7 +116,7 @@ where
 		(job_results, Some(inner))
 	}
 
-	fn names(&self) -> impl Iterator<Item = Option<&str>> {
+	fn names(&self) -> impl Iterator<Item = Option<String>> {
 		self.iter().flat_map(JobGroup::names)
 	}
 }
@@ -121,7 +135,7 @@ where
 		(job_results, (inner,))
 	}
 
-	fn names(&self) -> impl Iterator<Item = Option<&str>> {
+	fn names(&self) -> impl Iterator<Item = Option<String>> {
 		self.0.names()
 	}
 }
@@ -169,7 +183,7 @@ macro_rules! impl_jobgroup_for_tuples {
 				(results, this)
 			}
 
-			fn names(&self) -> impl Iterator<Item = Option<&str>> {
+			fn names(&self) -> impl Iterator<Item = Option<String>> {
 				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
 				let ($($type_name),+) = self;
 

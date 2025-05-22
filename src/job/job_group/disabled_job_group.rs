@@ -15,7 +15,7 @@ where
 		(Vec::new(), self)
 	}
 
-	fn names(&self) -> impl Iterator<Item = Option<&str>> {
+	fn names(&self) -> impl Iterator<Item = Option<String>> {
 		self.0.names()
 	}
 }
