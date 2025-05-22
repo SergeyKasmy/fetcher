@@ -22,7 +22,7 @@ impl Sink for Stdout {
 	/// # Errors
 	/// if there was an error writing to stdout
 	async fn send(
-		&self,
+		&mut self,
 		msg: &Message,
 		_reply_to: Option<&MessageId>,
 		tag: Option<&str>,

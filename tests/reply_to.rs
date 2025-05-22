@@ -49,7 +49,7 @@ impl Source for DummySource {}
 
 impl Sink for DummySink {
 	async fn send(
-		&self,
+		&mut self,
 		_message: &Message,
 		reply_to: Option<&MessageId>,
 		_tag: Option<&str>,

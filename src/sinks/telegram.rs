@@ -88,7 +88,7 @@ impl Sink for Telegram {
 	/// * if there's no internet connection
 	#[tracing::instrument(level = "debug", skip(message))]
 	async fn send(
-		&self,
+		&mut self,
 		message: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,

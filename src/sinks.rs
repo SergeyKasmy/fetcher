@@ -38,7 +38,7 @@ use std::{borrow::Cow, collections::HashSet, fmt::Debug};
 pub trait Sink: Debug + MaybeSendSync {
 	/// Send the message with an optional tag (usually represented as a hashtag)
 	fn send(
-		&self,
+		&mut self,
 		message: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
@@ -78,8 +78,13 @@ where
 
 		// entries should be sorted newest to oldest but we should send oldest first
 		for entry in entries.iter().rev() {
-			let msg_id =
-				send_entry(&self.0, ctx.entry_to_msg_map.as_deref_mut(), ctx.tag, entry).await?;
+			let msg_id = send_entry(
+				&mut self.0,
+				ctx.entry_to_msg_map.as_deref_mut(),
+				ctx.tag,
+				entry,
+			)
+			.await?;
 
 			if let Some(entry_id) = entry.id.as_ref() {
 				mark_entry_as_read(
@@ -98,7 +103,7 @@ where
 
 #[tracing::instrument(level = "trace", skip_all, fields(entry_id = ?entry.id))]
 async fn send_entry<'a, S, E>(
-	sink: &S,
+	sink: &mut S,
 	mut entry_to_msg_map: Option<&'a mut EntryToMsgMap<E>>,
 	tag: Option<&str>,
 	entry: &Entry,

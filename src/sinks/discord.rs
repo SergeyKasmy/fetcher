@@ -68,7 +68,7 @@ impl Discord {
 
 impl Sink for Discord {
 	async fn send(
-		&self,
+		&mut self,
 		msg: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,

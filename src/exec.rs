@@ -80,7 +80,7 @@ impl Sink for Exec {
 	/// * if the process couldn't be started
 	/// * if the data couldn't be passed to the stdin pipe of the process
 	async fn send(
-		&self,
+		&mut self,
 		message: &Message,
 		_reply_to: Option<&MessageId>,
 		_tag: Option<&str>,
