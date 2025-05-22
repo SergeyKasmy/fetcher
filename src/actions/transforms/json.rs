@@ -5,6 +5,7 @@
  */
 
 //! This module contains the [`Json`] parser
+// TODO: create a wrapper function around json::Value::pointer() that figures out which part of the pointer didn't match anything
 
 pub mod error;
 
@@ -28,30 +29,40 @@ use serde_json::Value;
 
 // TODO: migrate to serde_json::Value::pointer() API instead
 /// JSON parser
-#[derive(Debug)]
+#[derive(bon::Builder, Debug)]
 pub struct Json {
-	/// Query to find an item/entry/article in the list
-	pub item: Option<Pointer>,
-	/// Query to find the title of an item
-	pub title: Option<Query>,
 	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
+	#[builder(field)]
 	pub text: Option<Vec<Query>>,
+
+	/// Query to find an item/entry/article in the list
+	#[builder(into)]
+	pub item: Option<JsonPointer>,
+
+	/// Query to find the title of an item
+	#[builder(with = |ptr: impl Into<StaticStr>, optional: bool| Query { pointer: JsonPointer::new(ptr), optional })]
+	pub title: Option<Query>,
+
 	/// Query to find the id of an item
+	#[builder(with = |ptr: impl Into<StaticStr>, optional: bool| Query { pointer: JsonPointer::new(ptr), optional })]
 	pub id: Option<Query>,
+
 	/// Query to find the link to an item
+	#[builder(with = |ptr: impl Into<StaticStr>, optional: bool| Query { pointer: JsonPointer::new(ptr), optional })]
 	pub link: Option<Query>,
+
 	/// Query to find the image of that item
 	pub img: Option<Vec<Query>>,
 }
 
 #[derive(Clone, Debug)]
-pub struct Pointer(pub StaticStr);
+pub struct JsonPointer(pub StaticStr);
 
 /// A query to get the value of a JSON field
 #[derive(Debug)]
 pub struct Query {
 	/// a pointer to the JSON key
-	pub pointer: Pointer,
+	pub pointer: JsonPointer,
 
 	/// whether this query is fine to be ignored if not found
 	pub optional: bool,
@@ -61,6 +72,8 @@ impl Transform for Json {
 	type Err = JsonError;
 
 	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+		tracing::trace!("Parsing raw_contents as JSON");
+
 		let json: Value =
 			serde_json::from_str(entry.raw_contents.as_ref().ok_or(RawContentsNotSetError)?)?;
 
@@ -92,21 +105,25 @@ impl Transform for Json {
 					pointer: self
 						.item
 						.as_ref()
-						.map_or_else(|| Pointer("/".into()), |ptr| ptr.clone()),
+						.map_or_else(|| JsonPointer("/".into()), |ptr| ptr.clone()),
 					expected_type: "iterator (array, map)",
 					found_type: format!("{items:?}"),
 				},
 			});
 		};
 
-		items
+		let entries = items
 			.into_iter()
 			.map(|item| self.extract_entry(item))
-			.collect::<Result<Vec<_>, _>>()
+			.collect::<Result<Vec<_>, _>>()?;
+
+		tracing::debug!("Found {} JSON entries total", entries.len());
+
+		Ok(entries)
 	}
 }
 
-impl Pointer {
+impl JsonPointer {
 	pub fn new<T: Into<StaticStr>>(ptr: T) -> Self {
 		Self(ptr.into())
 	}
@@ -251,4 +268,21 @@ fn extract_id(item: &Value, query: &Query) -> Result<Option<String>, JsonErrorIn
 	};
 
 	Ok(Some(id))
+}
+
+impl From<StaticStr> for JsonPointer {
+	fn from(value: StaticStr) -> Self {
+		Self(value)
+	}
+}
+
+impl<S: json_builder::State> JsonBuilder<S> {
+	pub fn text(mut self, ptr: impl Into<StaticStr>, optional: bool) -> Self {
+		self.text.get_or_insert_default().push(Query {
+			pointer: JsonPointer::new(ptr),
+			optional,
+		});
+
+		self
+	}
 }

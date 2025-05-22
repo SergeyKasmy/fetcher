@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::{actions::transforms::error::RawContentsNotSetError, error::InvalidUrlError};
 
-use super::Pointer;
+use super::JsonPointer;
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
@@ -28,11 +28,11 @@ pub enum JsonErrorInner {
 	RawContentsNotSet(#[from] RawContentsNotSetError),
 
 	#[error("JSON key not found. Pointer: {}", pointer.0)]
-	KeyNotFound { pointer: Pointer },
+	KeyNotFound { pointer: JsonPointer },
 
 	#[error("JSON key {pointer:?} is of wrong type: expected {expected_type}, found {found_type}")]
 	KeyWrongType {
-		pointer: Pointer,
+		pointer: JsonPointer,
 		expected_type: &'static str,
 		found_type: String,
 	},

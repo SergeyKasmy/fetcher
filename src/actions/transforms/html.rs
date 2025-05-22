@@ -102,7 +102,7 @@ impl Transform for Html {
 	type Err = HtmlError;
 
 	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
-		tracing::debug!("Parsing HTML");
+		tracing::trace!("Parsing raw_contents as HTML");
 
 		// TODO: check .errors and .quirks
 		let dom =
@@ -113,6 +113,7 @@ impl Transform for Html {
 		if root.text().collect::<String>().trim().is_empty() {
 			tracing::warn!("HTML body is completely empty");
 
+			// TODO: return an error instead
 			return Ok(Vec::new());
 		}
 
@@ -125,7 +126,7 @@ impl Transform for Html {
 			.map(|item| self.extract_entry(item))
 			.collect::<Result<Vec<_>, _>>()?;
 
-		tracing::debug!("Found {num} HTML articles total", num = entries.len());
+		tracing::debug!("Found {} HTML entries total", entries.len());
 
 		Ok(entries)
 	}
