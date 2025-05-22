@@ -25,7 +25,7 @@ use crate::{
 	sources::error::SourceError,
 };
 
-use async_imap::Client;
+use async_imap::{Client, Session};
 use futures::{StreamExt, TryStreamExt};
 use mailparse::ParsedMail;
 use std::{
@@ -104,75 +104,6 @@ pub enum ImapError {
 	Other(#[from] async_imap::error::Error),
 }
 
-// I'd make that a function but the imap crate didn't want to agree with me
-macro_rules! authenticate {
-	($login:expr, $auth:expr, $client:expr) => {{
-		let auth = $auth;
-
-		match auth {
-			Auth::GmailOAuth2(auth) => {
-				tracing::trace!("Logging into IMAP with Google OAuth2");
-
-				// FIXME: don't crash
-				let _greeting = $client
-					.read_response()
-					.await
-					.expect("unexpected end of stream, expected greeting")
-					.expect("unexpected error, expected greeting");
-
-				let session = $client
-					.authenticate(
-						"XOAUTH2",
-						auth.as_imap_oauth2($login)
-							.await
-							.map_err(ImapError::GoogleOAuth2)?,
-					)
-					.await;
-
-				match session {
-					Ok(session) => {
-						tracing::trace!("Authenticated successfully");
-						session
-					}
-					// refresh access token and retry
-					Err((e, mut client)) => {
-						tracing::error!("Denied access to IMAP via OAuth2: {e}");
-						tracing::info!("Refreshing OAuth2 access token and trying again");
-
-						auth.get_new_access_token()
-							.await
-							.map_err(ImapError::GoogleOAuth2)?;
-
-						// FIXME: don't crash
-						let _greeting = client
-							.read_response()
-							.await
-							.expect("unexpected end of stream, expected greeting")
-							.expect("unexpected error, expected greeting");
-
-						client
-							.authenticate(
-								"XOAUTH2",
-								auth.as_imap_oauth2($login)
-									.await
-									.map_err(ImapError::GoogleOAuth2)?,
-							)
-							.await
-							.map_err(|(e, _)| ImapError::Auth(e))?
-					}
-				}
-			}
-			Auth::Password(password) => {
-				tracing::warn!("Logging in to IMAP with a password, this is insecure");
-
-				$client
-					.login($login, password)
-					.await
-					.map_err(|(e, _)| ImapError::Auth(e))?
-			}
-		}
-	}};
-}
 #[bon::bon]
 impl Email {
 	/// Creates an [`Email`] source that uses a password to authenticate via IMAP
@@ -253,90 +184,120 @@ impl Email {
 		Ok(Client::new(tls_stream))
 	}
 
-	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, EmailError> {
-		tracing::debug!("Fetching emails");
+	/// Creates an authenticated session with the IMAP server, passes it to the closure, and automatically logs out when the closure returns.
+	///
+	/// Passes &mut self as the first parameter to the closure to avoid borrowck errors.
+	/// Don't call session.logout() manually in the closure, this function will call it automatically at the end.
+	async fn with_session<F, T, E>(&mut self, f: F) -> Result<T, E>
+	where
+		F: AsyncFnOnce(&mut Email, &mut Session<TlsStream<TcpStream>>) -> Result<T, E>,
+		E: From<ImapError>,
+	{
+		let client = self.client().await?;
 
-		let mut client = self.client().await?;
-		let mut session = authenticate!(&self.email, &mut self.auth, client);
-
-		session.examine("INBOX").await.map_err(ImapError::Other)?;
-
-		let search_string = {
-			let mut tmp = "UNSEEN ".to_owned();
-
-			if let Some(sender) = &self.filters.sender {
-				_ = write!(tmp, r#"FROM "{sender}" "#);
+		// authenticate and create a session
+		let mut session = match &mut self.auth {
+			Auth::GmailOAuth2(auth) => {
+				authenticate_google_oauth2(client, auth, &self.email).await?
 			}
-
-			if let Some(subjects) = &self.filters.subjects {
-				for s in subjects {
-					_ = write!(tmp, r#"SUBJECT "{s}" "#);
-				}
+			Auth::Password(password) => {
+				authenticate_password(client, &self.email, password).await?
 			}
-
-			if let Some(ex_subjects) = &self.filters.exclude_subjects {
-				for exs in ex_subjects {
-					_ = write!(tmp, r#"NOT SUBJECT "{exs}" "#);
-				}
-			}
-
-			tmp.trim_end().to_owned()
 		};
 
-		tracing::debug!(
-			"Fetching all emails that match the search string: {:?}",
-			search_string,
-		);
-		let mail_ids = session
-			.uid_search(&search_string)
-			.await
-			.map_err(ImapError::Other)?
-			.into_iter()
-			.map(|x| x.to_string())
-			.collect::<Vec<_>>()
-			.join(",");
-
-		let unread_num = mail_ids.len();
-		if unread_num > 0 {
-			tracing::info!("Got {unread_num} unread filtered mails");
-		} else {
-			tracing::debug!(
-				"All email for the search query have already been read, none remaining to send"
-			);
-			return Ok(Vec::new());
+		match f(self, &mut session).await {
+			Ok(t) => {
+				session.logout().await.map_err(ImapError::Other)?;
+				Ok(t)
+			}
+			Err(e) => {
+				// try to log out anyways
+				_ = session.logout().await;
+				Err(e.into())
+			}
 		}
+	}
+	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, EmailError> {
+		self.with_session(async |this, session| {
+			tracing::debug!("Fetching emails");
 
-		tracing::trace!("Fetching all email bodies via the UIDs returned from the search");
-		let mails = session
-			.uid_fetch(&mail_ids, "BODY[]")
-			.await
-			.map_err(ImapError::Other)?;
+			session.examine("INBOX").await.map_err(ImapError::Other)?;
 
-		let entries = mails
-			.map(|mail| {
-				let mail = mail.map_err(ImapError::Other)?;
+			let search_string = {
+				let mut tmp = "UNSEEN ".to_owned();
 
-				let body = mail
-					.body()
-					.expect("Body should always be present because we explicitly requested it");
+				if let Some(sender) = &this.filters.sender {
+					_ = write!(tmp, r#"FROM "{sender}" "#);
+				}
 
-				let uid = mail
-					.uid
-					.expect(
-						"UIDs should always be present because we used uid_fetch().\
+				if let Some(subjects) = &this.filters.subjects {
+					for s in subjects {
+						_ = write!(tmp, r#"SUBJECT "{s}" "#);
+					}
+				}
+
+				if let Some(ex_subjects) = &this.filters.exclude_subjects {
+					for exs in ex_subjects {
+						_ = write!(tmp, r#"NOT SUBJECT "{exs}" "#);
+					}
+				}
+
+				tmp.trim_end().to_owned()
+			};
+
+			tracing::debug!(
+				"Fetching all emails that match the search string: {:?}",
+				search_string,
+			);
+			let mail_ids = session
+				.uid_search(&search_string)
+				.await
+				.map_err(ImapError::Other)?
+				.into_iter()
+				.map(|x| x.to_string())
+				.collect::<Vec<_>>()
+				.join(",");
+
+			let unread_num = mail_ids.len();
+			if unread_num > 0 {
+				tracing::info!("Got {unread_num} unread filtered mails");
+			} else {
+				tracing::debug!(
+					"All email for the search query have already been read, none remaining to send"
+				);
+				return Ok(Vec::new());
+			}
+
+			tracing::trace!("Fetching all email bodies via the UIDs returned from the search");
+			let mails = session
+				.uid_fetch(&mail_ids, "BODY[]")
+				.await
+				.map_err(ImapError::Other)?;
+
+			let entries = mails
+				.map(|mail| {
+					let mail = mail.map_err(ImapError::Other)?;
+
+					let body = mail
+						.body()
+						.expect("Body should always be present because we explicitly requested it");
+
+					let uid = mail
+						.uid
+						.expect(
+							"UIDs should always be present because we used uid_fetch().\
 						The server probably doesn't support them which isn't something ~we~ support for now",
-					)
-					.to_string();
+						)
+						.to_string();
 
-				parse(&mailparse::parse_mail(body)?, uid)
-			})
-			.try_collect::<Vec<Entry>>()
-			.await?;
+					parse(&mailparse::parse_mail(body)?, uid)
+				})
+				.try_collect::<Vec<Entry>>()
+				.await?;
 
-		// FIXME: doesn't logout if early returned with an error. I think it should...
-		session.logout().await.map_err(ImapError::Other)?;
-
-		Ok(entries)
+			Ok(entries)
+		})
+		.await
 	}
 
 	async fn mark_as_read_impl(&mut self, id: &str) -> Result<(), ImapError> {
@@ -344,41 +305,39 @@ impl Email {
 			return Ok(());
 		}
 
-		let mut client = self.client().await?;
-		let mut session = authenticate!(&self.email, &mut self.auth, client);
+		self.with_session(async |this, session| {
+			session.select("INBOX").await?;
 
-		session.select("INBOX").await?;
+			match this.view_mode {
+				ViewMode::MarkAsRead => {
+					session
+						.uid_store(id, "+FLAGS.SILENT (\\Seen)")
+						.await?
+						.try_collect::<Vec<_>>()
+						.await?;
 
-		match self.view_mode {
-			ViewMode::MarkAsRead => {
-				session
-					.uid_store(id, "+FLAGS.SILENT (\\Seen)")
-					.await?
-					.try_collect::<Vec<_>>()
-					.await?;
+					tracing::debug!("Marked email uid {id} as read");
+				}
+				ViewMode::Delete => {
+					session
+						.uid_store(id, "+FLAGS.SILENT (\\Deleted)")
+						.await?
+						.try_collect::<Vec<_>>()
+						.await?;
 
-				tracing::debug!("Marked email uid {id} as read");
+					session
+						.uid_expunge(id)
+						.await?
+						.try_collect::<Vec<_>>()
+						.await?;
+					tracing::debug!("Deleted email uid {id}");
+				}
+				ViewMode::ReadOnly => unreachable!(),
 			}
-			ViewMode::Delete => {
-				session
-					.uid_store(id, "+FLAGS.SILENT (\\Deleted)")
-					.await?
-					.try_collect::<Vec<_>>()
-					.await?;
 
-				session
-					.uid_expunge(id)
-					.await?
-					.try_collect::<Vec<_>>()
-					.await?;
-				tracing::debug!("Deleted email uid {id}");
-			}
-			ViewMode::ReadOnly => unreachable!(),
-		}
-
-		session.logout().await?;
-
-		Ok(())
+			Ok(())
+		})
+		.await
 	}
 }
 
@@ -413,6 +372,67 @@ fn parse(mail: &ParsedMail, id: String) -> Result<Entry, EmailError> {
 		},
 		..Default::default()
 	})
+}
+
+async fn authenticate_google_oauth2(
+	mut client: Client<TlsStream<TcpStream>>,
+	google_auth: &mut crate::auth::Google,
+	email: &str,
+) -> Result<Session<TlsStream<TcpStream>>, ImapError> {
+	tracing::trace!("Logging into IMAP with Google OAuth2");
+	let _greeting = client.read_response().await;
+	dbg!(_greeting);
+	let session = client
+		.authenticate(
+			"XOAUTH2",
+			google_auth
+				.as_imap_oauth2(email)
+				.await
+				.map_err(ImapError::GoogleOAuth2)?,
+		)
+		.await;
+
+	match session {
+		Ok(session) => {
+			tracing::trace!("Authenticated successfully");
+			Ok(session)
+		}
+		Err((e, mut client)) => {
+			tracing::error!("Denied access to IMAP via OAuth2: {e}");
+			tracing::info!("Refreshing OAuth2 access token and trying again");
+
+			google_auth
+				.get_new_access_token()
+				.await
+				.map_err(ImapError::GoogleOAuth2)?;
+
+			let _greeting = client.read_response().await;
+
+			client
+				.authenticate(
+					"XOAUTH2",
+					google_auth
+						.as_imap_oauth2(email)
+						.await
+						.map_err(ImapError::GoogleOAuth2)?,
+				)
+				.await
+				.map_err(|(e, _)| ImapError::Auth(e))
+		}
+	}
+}
+
+async fn authenticate_password(
+	client: Client<TlsStream<TcpStream>>,
+	email: &str,
+	password: &str,
+) -> Result<Session<TlsStream<TcpStream>>, ImapError> {
+	tracing::warn!("Logging in to IMAP with a password, this is insecure");
+
+	client
+		.login(email, password)
+		.await
+		.map_err(|(e, _)| ImapError::Auth(e))
 }
 
 impl Debug for Email {
