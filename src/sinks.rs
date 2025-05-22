@@ -58,6 +58,18 @@ impl<S: Sink> Sink for &mut S {
 	}
 }
 
+// TODO: make sure all other relevant similar traits are also implemented for refs and ()
+impl Sink for () {
+	async fn send(
+		&mut self,
+		_message: &Message,
+		_reply_to: Option<&MessageId>,
+		_tag: Option<&str>,
+	) -> Result<Option<MessageId>, SinkError> {
+		Ok(None)
+	}
+}
+
 impl<Si> Action for SinkWrapper<Si>
 where
 	Si: Sink,
