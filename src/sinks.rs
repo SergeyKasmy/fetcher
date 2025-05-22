@@ -47,6 +47,17 @@ pub trait Sink: Debug + MaybeSendSync {
 
 pub(crate) struct SinkWrapper<S>(pub S);
 
+impl<S: Sink> Sink for &mut S {
+	async fn send(
+		&mut self,
+		message: &Message,
+		reply_to: Option<&MessageId>,
+		tag: Option<&str>,
+	) -> Result<Option<MessageId>, SinkError> {
+		(*self).send(message, reply_to, tag).await
+	}
+}
+
 impl<Si> Action for SinkWrapper<Si>
 where
 	Si: Sink,
