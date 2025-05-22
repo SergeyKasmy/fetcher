@@ -6,91 +6,55 @@
 
 //! This module contains the [`Json`] parser
 
+pub mod error;
+
+pub use self::error::JsonError;
+
+use self::error::{ErrorLocation, JsonErrorInner};
 use super::Transform;
 use crate::{
+	StaticStr,
 	actions::transforms::{
 		error::RawContentsNotSetError,
-		field::Replace,
 		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},
 	entry::Entry,
-	error::InvalidUrlError,
 	sinks::message::Media,
 	utils::OptionExt,
 };
 
 use either::Either;
 use serde_json::Value;
-use std::{borrow::Cow, ops::ControlFlow};
 
 // TODO: migrate to serde_json::Value::pointer() API instead
 /// JSON parser
 #[derive(Debug)]
 pub struct Json {
 	/// Query to find an item/entry/article in the list
-	pub item: Option<Query>,
+	pub item: Option<Pointer>,
 	/// Query to find the title of an item
-	pub title: Option<StringQuery>,
+	pub title: Option<Query>,
 	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
-	pub text: Option<Vec<StringQuery>>, // adjecent
+	pub text: Option<Vec<Query>>,
 	/// Query to find the id of an item
-	pub id: Option<StringQuery>,
+	pub id: Option<Query>,
 	/// Query to find the link to an item
-	pub link: Option<StringQuery>,
+	pub link: Option<Query>,
 	/// Query to find the image of that item
-	pub img: Option<Vec<StringQuery>>, // nested
+	pub img: Option<Vec<Query>>,
 }
 
-/// JSON key
 #[derive(Clone, Debug)]
-pub enum Key {
-	/// object property
-	String(String),
-	/// array index
-	Usize(usize),
-}
-/// JSON keys/array of [`Key`] alias for improved readability
-pub type Keys = Vec<Key>;
-
-/// All data needed to query, extract, and finalize a string from JSON
-#[derive(Debug)]
-pub struct StringQuery {
-	/// a query to the key to get the string from
-	pub query: Query,
-	/// a regex to finalize the string
-	pub regex: Option<Replace>,
-}
+pub struct Pointer(pub StaticStr);
 
 /// A query to get the value of a JSON field
 #[derive(Debug)]
 pub struct Query {
-	/// a chain of JSON keys that are needed to be traversed to get to this key
-	pub keys: Keys,
+	/// a pointer to the JSON key
+	pub pointer: Pointer,
+
 	/// whether this query is fine to be ignored if not found
 	pub optional: bool,
-}
-
-#[expect(missing_docs, reason = "error message is self-documenting")]
-#[derive(thiserror::Error, Debug)]
-pub enum JsonError {
-	#[error(transparent)]
-	RawContentsNotSet(#[from] RawContentsNotSetError),
-
-	#[error("Invalid JSON")]
-	Invalid(#[from] serde_json::error::Error),
-
-	#[error("JSON key #{num} not found. From query list: {key_list:?}")]
-	KeyNotFound { num: usize, key_list: Keys },
-
-	#[error("JSON key {key:?} wrong type: expected {expected_type}, found {found_type}")]
-	KeyWrongType {
-		key: Keys,
-		expected_type: &'static str,
-		found_type: String,
-	},
-
-	#[error(transparent)]
-	InvalidUrl(#[from] InvalidUrlError),
 }
 
 impl Transform for Json {
@@ -101,10 +65,16 @@ impl Transform for Json {
 			serde_json::from_str(entry.raw_contents.as_ref().ok_or(RawContentsNotSetError)?)?;
 
 		let items = match self.item.as_ref() {
-			Some(query) => match extract_data(&json, query)? {
+			Some(pointer) => match json.pointer(&pointer.0) {
 				Some(items) => items,
-				// don't continue if the items query is optional and wasn't found
-				None => return Ok(Vec::new()),
+				None => {
+					return Err(JsonError::Inner {
+						error: JsonErrorInner::KeyNotFound {
+							pointer: pointer.clone(),
+						},
+						r#where: ErrorLocation::Item,
+					});
+				}
 			},
 			// use JSON root if item query is not set
 			None => &json,
@@ -116,10 +86,16 @@ impl Transform for Json {
 			// ignore map keys, iterate over values only
 			Either::Right(items.iter().map(|(_, v)| v))
 		} else {
-			return Err(JsonError::KeyWrongType {
-				key: self.item.as_ref().map_or_else(Vec::new, |v| v.keys.clone()),
-				expected_type: "iterator (array, map)",
-				found_type: format!("{items:?}"),
+			return Err(JsonError::Inner {
+				r#where: ErrorLocation::Item,
+				error: JsonErrorInner::KeyWrongType {
+					pointer: self
+						.item
+						.as_ref()
+						.map_or_else(|| Pointer("/".into()), |ptr| ptr.clone()),
+					expected_type: "iterator (array, map)",
+					found_type: format!("{items:?}"),
+				},
 			});
 		};
 
@@ -130,24 +106,62 @@ impl Transform for Json {
 	}
 }
 
+impl Pointer {
+	pub fn new<T: Into<StaticStr>>(ptr: T) -> Self {
+		Self(ptr.into())
+	}
+}
+
 impl Json {
 	fn extract_entry(&self, item: &Value) -> Result<TransformedEntry, JsonError> {
 		let title = self
 			.title
 			.as_ref()
-			.try_and_then(|q| extract_string(item, q))?;
-		let body = self.text.as_ref().try_and_then(|v| extract_body(item, v))?;
-		let id = self.id.as_ref().try_and_then(|q| extract_id(item, q))?;
+			.try_and_then(|q| extract_string(item, q))
+			.map_err(|error| JsonError::Inner {
+				r#where: ErrorLocation::Title,
+				error,
+			})?;
+
+		let body = self
+			.text
+			.as_ref()
+			.try_and_then(|v| extract_body(item, v))
+			.map_err(|(error, index)| JsonError::Inner {
+				r#where: ErrorLocation::Text { index },
+				error,
+			})?;
+
+		let id = self
+			.id
+			.as_ref()
+			.try_and_then(|q| extract_id(item, q))
+			.map_err(|error| JsonError::Inner {
+				r#where: ErrorLocation::Id,
+				error,
+			})?;
+
 		let link = self
 			.link
 			.as_ref()
-			.try_and_then(|q| extract_string(item, q))?;
+			.try_and_then(|q| extract_string(item, q))
+			.map_err(|error| JsonError::Inner {
+				r#where: ErrorLocation::Link,
+				error,
+			})?;
 
-		let img = self.img.as_ref().try_map(|v| {
-			v.iter()
-				.filter_map(|q| extract_string(item, q).transpose())
-				.collect::<Result<Vec<_>, _>>()
-		})?;
+		let img = self
+			.img
+			.as_ref()
+			.try_map(|v| {
+				v.iter()
+					.filter_map(|q| extract_string(item, q).transpose())
+					.collect::<Result<Vec<_>, _>>()
+			})
+			.map_err(|error| JsonError::Inner {
+				r#where: ErrorLocation::Img,
+				error,
+			})?;
 
 		// make it none if it's empty
 		let img = if let Some(&[]) = img.as_deref() {
@@ -172,59 +186,42 @@ impl Json {
 	}
 }
 
-fn extract_data<'a>(json: &'a Value, query: &Query) -> Result<Option<&'a Value>, JsonError> {
-	let data = query.keys.iter().enumerate().try_fold(json, |val, (i, q)| {
-		let res_val = match q {
-			Key::String(s) => val.get(s),
-			Key::Usize(u) => val.get(u),
-		};
-
-		match res_val {
-			Some(v) => ControlFlow::Continue(v),
-			None => ControlFlow::Break(i),
-		}
-	});
-
-	let data = match data {
-		ControlFlow::Continue(v) => v,
-		ControlFlow::Break(_) if query.optional => return Ok(None),
-		ControlFlow::Break(key) => {
-			return Err(JsonError::KeyNotFound {
-				num: key,
-				key_list: query.keys.clone(),
+fn extract_value<'a>(item: &'a Value, query: &Query) -> Result<Option<&'a Value>, JsonErrorInner> {
+	match item.pointer(&query.pointer.0) {
+		Some(v) => Ok(Some(v)),
+		None if query.optional => return Ok(None),
+		None => {
+			return Err(JsonErrorInner::KeyNotFound {
+				pointer: query.pointer.clone(),
 			});
 		}
-	};
-
-	Ok(Some(data))
+	}
 }
 
-fn extract_string(item: &Value, str_query: &StringQuery) -> Result<Option<String>, JsonError> {
-	let data = match extract_data(item, &str_query.query) {
-		Ok(Some(v)) => v,
-		Ok(None) => return Ok(None),
-		Err(e) => return Err(e),
+fn extract_string(item: &Value, query: &Query) -> Result<Option<String>, JsonErrorInner> {
+	let Some(value) = extract_value(item, query)? else {
+		return Ok(None);
 	};
 
-	let s = data.as_str().ok_or_else(|| JsonError::KeyWrongType {
-		key: str_query.query.keys.clone(),
+	let s = value.as_str().ok_or_else(|| JsonErrorInner::KeyWrongType {
+		pointer: query.pointer.clone(),
 		expected_type: "string",
-		found_type: format!("{data:?}"),
+		found_type: format!("{value:?}"),
 	})?;
-
-	let s = match str_query.regex.as_ref() {
-		Some(r) => r.replace(s),
-		None => Cow::Borrowed(s),
-	};
 
 	Ok(Some(s.trim().to_owned()))
 }
 
-fn extract_body(item: &Value, bodyq: &[StringQuery]) -> Result<Option<String>, JsonError> {
-	let body = bodyq
+fn extract_body(item: &Value, query: &[Query]) -> Result<Option<String>, (JsonErrorInner, usize)> {
+	let body = query
 		.iter()
-		.filter_map(|query| extract_string(item, query).transpose())
-		.collect::<Result<Vec<String>, JsonError>>()?
+		.enumerate()
+		.filter_map(|(idx, query)| {
+			extract_string(item, query)
+				.map_err(|e| (e, idx))
+				.transpose()
+		})
+		.collect::<Result<Vec<String>, (JsonErrorInner, usize)>>()?
 		.join("\n\n");
 
 	if body.is_empty() {
@@ -234,11 +231,9 @@ fn extract_body(item: &Value, bodyq: &[StringQuery]) -> Result<Option<String>, J
 	}
 }
 
-fn extract_id(item: &Value, query: &StringQuery) -> Result<Option<String>, JsonError> {
-	let id_val = match extract_data(item, &query.query) {
-		Ok(Some(v)) => v,
-		Ok(None) => return Ok(None),
-		Err(e) => return Err(e),
+fn extract_id(item: &Value, query: &Query) -> Result<Option<String>, JsonErrorInner> {
+	let Some(id_val) = extract_value(item, query)? else {
+		return Ok(None);
 	};
 
 	let id = if let Some(id) = id_val.as_str() {
@@ -248,16 +243,11 @@ fn extract_id(item: &Value, query: &StringQuery) -> Result<Option<String>, JsonE
 	} else if let Some(id) = id_val.as_u64() {
 		id.to_string()
 	} else {
-		return Err(JsonError::KeyWrongType {
-			key: query.query.keys.clone(),
+		return Err(JsonErrorInner::KeyWrongType {
+			pointer: query.pointer.clone(),
 			expected_type: "string/i64/u64",
 			found_type: format!("{id_val:?}"),
 		});
-	};
-
-	let id = match query.regex.as_ref() {
-		Some(r) => r.replace(&id).into_owned(),
-		None => id,
 	};
 
 	Ok(Some(id))

@@ -81,6 +81,7 @@ pub struct Html {
 			optional: false
 		})
 	})]
+	// TODO: why only one selector? JSON transform supports many
 	pub img: Option<DataSelector>,
 }
 
