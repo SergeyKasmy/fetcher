@@ -15,8 +15,6 @@ pub use self::disabled_job_group::DisabledJobGroup;
 pub use self::named_job_group::NamedJobGroup;
 pub use self::single_job_group::SingleJobGroup;
 
-use super::OpaqueJob;
-
 pub type JobGroupResult = Vec<JobResult>;
 
 pub trait JobGroup: MaybeSendSync {
@@ -31,43 +29,21 @@ pub trait JobGroup: MaybeSendSync {
 
 	fn names(&self) -> impl Iterator<Item = Option<String>>;
 
-	#[cfg(feature = "multithreaded")]
 	#[must_use = "the jobs could've finished with errors"]
-	fn run(self) -> impl Future<Output = (JobGroupResult, Self)> + Send
+	fn run(self) -> impl Future<Output = (JobGroupResult, Self)> + MaybeSend
 	where
 		Self: Sized,
 	{
-		async move { self.run_in_parallel().await }
+		#[cfg(feature = "multithreaded")]
+		let async_block = async move { self.run_in_parallel().await };
+
+		#[cfg(not(feature = "multithreaded"))]
+		let async_block = async move { (self.run_concurrently().await, self) };
+
+		async_block
 	}
 
-	#[cfg(not(feature = "multithreaded"))]
-	#[must_use = "the jobs could've finished with errors"]
-	fn run(mut self) -> impl Future<Output = (JobGroupResult, Self)>
-	where
-		Self: Sized,
-	{
-		async move { (self.run_concurrently().await, self) }
-	}
-
-	#[cfg(feature = "multithreaded")]
-	fn and<J>(self, other: J) -> CombinedJobGroup<Self, impl JobGroup>
-	where
-		Self: Sized,
-		J: OpaqueJob + 'static,
-	{
-		self.with(SingleJobGroup(other))
-	}
-
-	#[cfg(not(feature = "multithreaded"))]
-	fn and<J>(self, other: J) -> CombinedJobGroup<Self, impl JobGroup>
-	where
-		Self: Sized,
-		J: OpaqueJob,
-	{
-		self.with(SingleJobGroup(other))
-	}
-
-	fn with<G>(self, other: G) -> CombinedJobGroup<Self, G>
+	fn combine_with<G>(self, other: G) -> CombinedJobGroup<Self, G>
 	where
 		Self: Sized,
 		G: JobGroup,
