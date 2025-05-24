@@ -38,7 +38,10 @@ pub trait JobGroup: MaybeSendSync {
 		let async_block = async move { self.run_in_parallel().await };
 
 		#[cfg(not(feature = "multithreaded"))]
-		let async_block = async move { (self.run_concurrently().await, self) };
+		let async_block = {
+			let mut this = self;
+			async move { (this.run_concurrently().await, this) }
+		};
 
 		async_block
 	}

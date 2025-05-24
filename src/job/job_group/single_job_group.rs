@@ -1,7 +1,5 @@
 use std::iter;
 
-use tracing::Instrument;
-
 use crate::job::OpaqueJob;
 
 use super::{JobGroup, JobGroupResult};
@@ -18,6 +16,8 @@ where
 	}
 
 	async fn run_in_parallel(self) -> (JobGroupResult, Self) {
+		use tracing::Instrument;
+
 		let async_task = async move {
 			let mut this = self;
 			let result = OpaqueJob::run(&mut this.0).await;
