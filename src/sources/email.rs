@@ -252,11 +252,7 @@ impl Email {
 			let mail_ids = session
 				.uid_search(&search_string)
 				.await
-				.map_err(ImapError::Other)?
-				.into_iter()
-				.map(|x| x.to_string())
-				.collect::<Vec<_>>()
-				.join(",");
+				.map_err(ImapError::Other)?;
 
 			let unread_num = mail_ids.len();
 			if unread_num > 0 {
@@ -268,9 +264,15 @@ impl Email {
 				return Ok(Vec::new());
 			}
 
+			let mail_id_search_str = mail_ids
+				.iter()
+				.map(|x| x.to_string())
+				.collect::<Vec<_>>()
+				.join(",");
+
 			tracing::trace!("Fetching all email bodies via the UIDs returned from the search");
 			let mails = session
-				.uid_fetch(&mail_ids, "BODY[]")
+				.uid_fetch(&mail_id_search_str, "BODY[]")
 				.await
 				.map_err(ImapError::Other)?;
 
@@ -294,6 +296,8 @@ impl Email {
 				})
 				.try_collect::<Vec<Entry>>()
 				.await?;
+
+			assert_eq!(mail_ids.len(), entries.len(), "The number of email IDs and the number of fetched email bodies should be the same unless aborted by an error");
 
 			Ok(entries)
 		})

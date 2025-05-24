@@ -11,11 +11,13 @@ impl<G> JobGroup for NamedJobGroup<G>
 where
 	G: JobGroup,
 {
+	#[tracing::instrument(skip(self), fields(job_group = %self.name))]
 	async fn run_concurrently(&mut self) -> super::JobGroupResult {
 		self.inner.run_concurrently().await
 	}
 
 	#[cfg(feature = "multithreaded")]
+	#[tracing::instrument(skip(self), fields(job_group = %self.name))]
 	async fn run_in_parallel(self) -> (super::JobGroupResult, Self)
 	where
 		Self: Sized,
