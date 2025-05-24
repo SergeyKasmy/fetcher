@@ -1,0 +1,7 @@
+[jobs.check-powerset]
+command = [
+  "cargo",
+  "hack",
+  "--feature-powerset",
+  "check"
+]

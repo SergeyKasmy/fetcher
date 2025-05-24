@@ -3,20 +3,12 @@ use std::convert::Infallible;
 use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
 use super::JobResult;
-use super::job_group::SingleJobGroup;
 
 pub trait OpaqueJob: MaybeSendSync {
 	fn run(&mut self) -> impl Future<Output = JobResult> + MaybeSend;
 
 	fn name(&self) -> Option<&str> {
 		None
-	}
-
-	fn into_group(self) -> SingleJobGroup<Self>
-	where
-		Self: Sized,
-	{
-		SingleJobGroup(self)
 	}
 }
 

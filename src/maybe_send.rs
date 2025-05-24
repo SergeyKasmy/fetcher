@@ -1,9 +1,13 @@
+/// This type constrains the type to be [`Send`] only when the "send" feature is enabled.
+/// Otherwise it does nothing.
 #[cfg(feature = "send")]
 pub trait MaybeSend: Send {}
 
 #[cfg(not(feature = "send"))]
 pub trait MaybeSend {}
 
+/// This type constrains the type to be [`Sync`] only when the "send" feature is enabled.
+/// Otherwise it does nothing.
 #[cfg(feature = "send")]
 pub trait MaybeSync: Sync {}
 

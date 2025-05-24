@@ -16,7 +16,10 @@ where
 	}
 
 	#[cfg(feature = "multithreaded")]
-	async fn run_in_parallel(self) -> (JobGroupResult, Self) {
+	async fn run_in_parallel(self) -> (JobGroupResult, Self)
+	where
+		Self: 'static,
+	{
 		let ((job_results1, inner1), (job_results2, inner2)) =
 			join!(self.0.run_in_parallel(), self.1.run_in_parallel());
 

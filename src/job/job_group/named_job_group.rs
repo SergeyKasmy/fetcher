@@ -20,7 +20,7 @@ where
 	#[tracing::instrument(skip(self), fields(job_group = %self.name))]
 	async fn run_in_parallel(self) -> (super::JobGroupResult, Self)
 	where
-		Self: Sized,
+		Self: 'static,
 	{
 		let (job_results, inner) = self.inner.run_in_parallel().await;
 		(
