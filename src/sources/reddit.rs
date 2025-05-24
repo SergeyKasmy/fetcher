@@ -14,6 +14,7 @@ use crate::{
 	sources::error::SourceError,
 };
 
+use non_non_full::NonEmptyVec;
 use roux::{
 	Subreddit,
 	util::{FeedOption, TimePeriod},
@@ -147,13 +148,13 @@ impl Reddit {
 						"should contain a valid picture url since we confirmed it with is_picture",
 					);
 
-					Some(vec![Media::Photo(url)])
+					Some(NonEmptyVec::new_one(Media::Photo(url)))
 				} else if is_video {
 					let url = link.expect(
 						"should contain a valid picture url since we confirmed it with is_video",
 					);
 
-					Some(vec![Media::Video(url)])
+					Some(NonEmptyVec::new_one(Media::Video(url)))
 				} else {
 					None
 				};

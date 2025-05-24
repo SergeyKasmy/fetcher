@@ -1,3 +1,5 @@
+use std::ops;
+
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NonEmptyVec<T>(Vec<T>);
@@ -8,22 +10,6 @@ where
 {
 	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
 		self.0.hash(state);
-	}
-}
-
-#[cfg(feature = "serde")]
-impl<'de, T> serde::Deserialize<'de> for NonEmptyVec<T>
-where
-	T: serde::Deserialize<'de>,
-{
-	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-	where
-		D: serde::Deserializer<'de>,
-	{
-		let vec = Vec::deserialize(deserializer)?;
-		NonEmptyVec::new(vec).ok_or_else(|| {
-			serde::de::Error::custom("cannot deserialize empty vector as NonEmptyVec")
-		})
 	}
 }
 
@@ -39,7 +25,11 @@ impl<T> NonEmptyVec<T> {
 		}
 	}
 
-	/// Gets a reference to the underlying Vec
+	/// Creates a new NonEmptyVec containing exactly one element.
+	pub fn new_one(value: T) -> Self {
+		Self(vec![value])
+	}
+
 	pub fn as_vec(&self) -> &Vec<T> {
 		&self.0
 	}
@@ -84,6 +74,17 @@ impl<T> NonEmptyVec<T> {
 		} else {
 			self.0.pop()
 		}
+	}
+
+	/// Creates a new NonEmptyVec where each element is mapped via the provided closure.
+	///
+	/// This is an alternative to the ubiquitous `vec.into_iter().map().collect::<Vec<_>>()`
+	/// as [`FromIterator`] can't be implemented for [`NonEmptyVec`]
+	pub fn map<F, U>(self, f: F) -> NonEmptyVec<U>
+	where
+		F: FnMut(T) -> U,
+	{
+		NonEmptyVec(self.into_iter().map(f).collect())
 	}
 
 	/// Returns the length of the vector
@@ -142,6 +143,39 @@ impl<T> NonEmptyVec<T> {
 	}
 }
 
+impl<T> IntoIterator for NonEmptyVec<T> {
+	type Item = T;
+	type IntoIter = std::vec::IntoIter<T>;
+
+	fn into_iter(self) -> Self::IntoIter {
+		self.0.into_iter()
+	}
+}
+
+impl<T> ops::Deref for NonEmptyVec<T> {
+	type Target = [T];
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
+}
+
+#[cfg(feature = "serde")]
+impl<'de, T> serde::Deserialize<'de> for NonEmptyVec<T>
+where
+	T: serde::Deserialize<'de>,
+{
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: serde::Deserializer<'de>,
+	{
+		let vec = Vec::deserialize(deserializer)?;
+		NonEmptyVec::new(vec).ok_or_else(|| {
+			serde::de::Error::custom("cannot deserialize empty vector as NonEmptyVec")
+		})
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -194,5 +228,13 @@ mod tests {
 		let mut vec = NonEmptyVec::new(vec![1, 2, 3, 4]).unwrap();
 		vec.clear_except_first();
 		assert_eq!(vec.as_vec(), &vec![1]);
+	}
+
+	#[test]
+	fn new_one() {
+		let vec = NonEmptyVec::new_one(42);
+		assert_eq!(vec.len(), 1);
+		assert_eq!(vec.first(), &42);
+		assert_eq!(vec.as_vec(), &vec![42]);
 	}
 }

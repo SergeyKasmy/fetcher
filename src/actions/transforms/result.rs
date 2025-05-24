@@ -6,6 +6,8 @@
 
 //! This module contains everything needed to contruct a new [`Entry`] (via [`TransformedEntry`]) and [`Message`] (via [`TransformedMessage`]) after parsing, optionally using previous [`Entry's`](`Entry`) data if requested
 
+use non_non_full::NonEmptyVec;
+
 use crate::{
 	entry::{Entry, EntryId},
 	sinks::message::{Media, Message},
@@ -36,7 +38,7 @@ pub struct TransformedMessage {
 	pub title: TransformResult<String>,
 	pub body: TransformResult<String>,
 	pub link: TransformResult<String>,
-	pub media: TransformResult<Vec<Media>>,
+	pub media: TransformResult<NonEmptyVec<Media>>,
 }
 
 /// Specify whether to use previous/old, empty, or a new value

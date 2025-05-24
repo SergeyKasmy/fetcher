@@ -25,6 +25,7 @@ use crate::{
 };
 
 use either::Either;
+use non_non_full::NonEmptyVec;
 use serde_json::Value;
 
 // TODO: migrate to serde_json::Value::pointer() API instead
@@ -167,7 +168,7 @@ impl Json {
 				error,
 			})?;
 
-		let img = self
+		let imgs = self
 			.img
 			.as_ref()
 			.try_map(|v| {
@@ -180,13 +181,6 @@ impl Json {
 				error,
 			})?;
 
-		// make it none if it's empty
-		let img = if let Some(&[]) = img.as_deref() {
-			None
-		} else {
-			img
-		};
-
 		Ok(TransformedEntry {
 			id: id.and_then(EntryId::new).unwrap_or_prev(),
 			raw_contents: body.clone().unwrap_or_prev(),
@@ -194,8 +188,8 @@ impl Json {
 				title: title.unwrap_or_prev(),
 				body: body.unwrap_or_prev(),
 				link: link.unwrap_or_prev(),
-				media: img
-					.map(|v| v.into_iter().map(Media::Photo).collect())
+				media: imgs
+					.and_then(|imgs| Some(NonEmptyVec::new(imgs)?.map(Media::Photo)))
 					.unwrap_or_prev(),
 			},
 			..Default::default()

@@ -10,6 +10,8 @@ pub(crate) mod length_limiter;
 
 use std::fmt::Debug;
 
+use non_non_full::NonEmptyVec;
+
 /// The finalized and composed message meant to be sent to a sink
 #[derive(Clone, Default, Debug)]
 pub struct Message {
@@ -23,7 +25,7 @@ pub struct Message {
 	/// a url to the full contents or source of the message
 	pub link: Option<String>,
 	/// a list of photos or videos included in the message. They are usually attached to the message itself if the sink supports it. Otherwise they may be left as links
-	pub media: Option<Vec<Media>>,
+	pub media: Option<NonEmptyVec<Media>>,
 }
 
 // TODO: the type of the message id could be probably stored as an associated type inside Sink
