@@ -100,12 +100,13 @@ where
 		tracing::trace!("Sending entries: {entries:#?}");
 
 		// entries should be sorted newest to oldest but we should send oldest first
+		// TODO: should they be assumed to be sorted the other way instead?
 		for entry in entries.iter().rev() {
 			let msg_id = send_entry(
 				&mut self.0,
+				entry,
 				ctx.entry_to_msg_map.as_deref_mut(),
 				ctx.tag,
-				entry,
 			)
 			.await?;
 
@@ -127,9 +128,9 @@ where
 #[tracing::instrument(level = "trace", skip_all, fields(entry_id = ?entry.id))]
 async fn send_entry<'a, S, E>(
 	sink: &mut S,
+	entry: &Entry,
 	mut entry_to_msg_map: Option<&'a mut EntryToMsgMap<E>>,
 	tag: Option<&str>,
-	entry: &Entry,
 ) -> Result<Option<MessageId>, FetcherError>
 where
 	S: Sink,
@@ -138,22 +139,17 @@ where
 	tracing::trace!("Sending entry");
 
 	// send message if it isn't empty or raw_contents of they aren't
-	if entry.msg.is_empty() && entry.raw_contents.is_none() {
-		return Ok(None);
-	}
+	let msg = match (entry.msg.is_empty(), &entry.raw_contents) {
+		(false, _) => Cow::Borrowed(&entry.msg),
+		(true, Some(raw_contents)) => {
+			tracing::debug!("Message is empty, setting message body to raw_contents instead");
 
-	let msg = if entry.msg.is_empty() {
-		Cow::Owned(Message {
-			body: Some(
-				entry
-					.raw_contents
-					.clone()
-					.expect("raw_contents should be some because of the early return check"),
-			),
-			..entry.msg.clone()
-		})
-	} else {
-		Cow::Borrowed(&entry.msg)
+			Cow::Owned(Message {
+				body: Some(raw_contents.clone()),
+				..entry.msg.clone()
+			})
+		}
+		_ => return Ok(None),
 	};
 
 	let reply_to = entry_to_msg_map

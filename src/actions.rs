@@ -167,7 +167,6 @@ macro_rules! impl_action_for_tuples {
 				//	.await
 				//	.map_err(Into::into)?;
 				//let entries = self.1.apply(entries, ctx).await.map_err(Into::into)?;
-				//Ok(entries)
 
 				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
 				let ($($type_name),+) = self;
