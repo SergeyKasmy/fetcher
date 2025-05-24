@@ -13,7 +13,8 @@ use crate::{
 		field::Field,
 		result::{OptionUnwrapTransformResultExt, TransformedEntry},
 	},
-	entry::Entry,
+	entry::{Entry, EntryId},
+	utils::OptionExt,
 };
 
 /// Use the value of a field as the value of a different field
@@ -33,8 +34,8 @@ impl Transform for Use {
 			Field::Title => ent.msg.title,
 			Field::Body => ent.msg.body,
 			Field::Link => ent.msg.link,
-			Field::Id => ent.id.map(|id| id.0),
-			Field::ReplyTo => ent.reply_to.map(|id| id.0),
+			Field::Id => ent.id.map(|id| id.0.into_string()),
+			Field::ReplyTo => ent.reply_to.map(|id| id.0.into_string()),
 			Field::RawContents => ent.raw_contents,
 		};
 
@@ -43,8 +44,13 @@ impl Transform for Use {
 			Field::Title => ent.msg.title = val.unwrap_or_empty(),
 			Field::Body => ent.msg.body = val.unwrap_or_empty(),
 			Field::Link => ent.msg.link = val.unwrap_or_empty(),
-			Field::Id => ent.id = val.map(Into::into).unwrap_or_empty(),
-			Field::ReplyTo => ent.reply_to = val.map(Into::into).unwrap_or_empty(),
+			Field::Id => ent.id = val.try_map(TryInto::try_into).unwrap_or_empty(),
+			Field::ReplyTo => {
+				ent.reply_to = val
+					.try_map(|id| EntryId::try_from(id))
+					.map_err(|()| todo!())?
+					.unwrap_or_empty()
+			}
 			Field::RawContents => ent.raw_contents = val.unwrap_or_empty(),
 		}
 

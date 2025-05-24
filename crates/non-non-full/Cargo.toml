@@ -1,0 +1,9 @@
+[package]
+name = "non-non-full"
+description = "Vec and String wrappers that assert the containers are always non-empty (or, ahem, non-non-full)"
+version = "0.0.1"
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"], optional = true }

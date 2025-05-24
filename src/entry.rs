@@ -9,13 +9,9 @@
 
 use crate::sinks::message::Message;
 
+use non_non_full::NonEmptyString;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, ops::Deref};
-
-// TODO: make generic over String/i64/other types of id
-/// An ID that can identify and entry to differentiate it from another one
-#[derive(PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Debug)]
-pub struct EntryId(pub String);
 
 /// A [`fetcher`](`crate`) primitive that contains a message and an id returned from a source that can be send to a sink
 #[derive(Clone, Default)]
@@ -38,23 +34,52 @@ pub struct Entry {
 	pub msg: Message,
 }
 
+// TODO: make generic over String/i64/other types of id
+/// An ID that can identify and entry to differentiate it from another one
+#[derive(PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Debug)]
+pub struct EntryId(pub NonEmptyString);
+
 impl Deref for EntryId {
 	type Target = str;
 
 	fn deref(&self) -> &Self::Target {
-		&self.0
+		self.0.as_str()
 	}
 }
 
-impl From<String> for EntryId {
-	fn from(value: String) -> Self {
+impl From<NonEmptyString> for EntryId {
+	fn from(value: NonEmptyString) -> Self {
 		Self(value)
 	}
 }
 
-impl From<&str> for EntryId {
-	fn from(value: &str) -> Self {
-		Self(value.to_owned())
+impl TryFrom<&str> for EntryId {
+	// TODO: better error
+	type Error = ();
+
+	fn try_from(value: &str) -> Result<Self, Self::Error> {
+		if value.is_empty() {
+			Err(())
+		} else {
+			Ok(Self(
+				NonEmptyString::new(value.to_owned()).expect("should not be empty"),
+			))
+		}
+	}
+}
+
+impl TryFrom<String> for EntryId {
+	// TODO: better error
+	type Error = ();
+
+	fn try_from(value: String) -> Result<Self, Self::Error> {
+		if value.is_empty() {
+			Err(())
+		} else {
+			Ok(Self(
+				NonEmptyString::new(value).expect("should not be empty"),
+			))
+		}
 	}
 }
 
