@@ -1,10 +1,17 @@
 [package]
 name = "fetcher"
-description = "Automation and scalping framework"
+description = "Data fetching and pipelining framework"
 version = "0.15.0-alpha.1"
-license = "MPL-2.0"
 repository = "https://github.com/SergeyKasmy/fetcher"
+license.workspace = true
+edition.workspace = true
+
+[workspace]
+members = [".", "crates/non-non-full"]
+
+[workspace.package]
 edition = "2024"
+license = "MPL-2.0"
 
 [features]
 default = ["send", "scaffold"]
@@ -21,6 +28,7 @@ futures = "0.3.31"
 html-escape = "0.2.13"
 itertools = "0.14.0"
 mailparse = "0.15.0"
+non-non-full = { version = "0.0.1", path = "crates/non-non-full", features = ["serde"] }
 once_cell = "1.20.2"
 rand = "0.8.5"
 regex = "1.11.1"

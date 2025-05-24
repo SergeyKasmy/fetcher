@@ -18,8 +18,9 @@ use fetcher::{
 	sources::{Fetch, Source, error::SourceError},
 	task::{OpaqueTask, Task, entry_to_msg_map::EntryToMsgMap},
 };
+use once_cell::sync::Lazy;
 
-const ENTRY_ID: &str = "0";
+const ENTRY_ID: Lazy<EntryId> = Lazy::new(|| EntryId::new("0".to_string()).unwrap());
 const MESSAGE_ID: i64 = 0;
 
 #[derive(Debug)]
@@ -31,7 +32,7 @@ struct DummySink;
 impl Fetch for DummySource {
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
 		Ok(vec![Entry {
-			reply_to: Some(EntryId(ENTRY_ID.into())),
+			reply_to: Some(ENTRY_ID.clone()),
 			..Default::default()
 		}])
 	}

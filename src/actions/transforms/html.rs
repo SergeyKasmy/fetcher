@@ -17,13 +17,14 @@ use crate::{
 		error::RawContentsNotSetError,
 		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},
-	entry::Entry,
+	entry::{Entry, EntryId},
 	sinks::message::Media,
 	utils::OptionExt,
 };
 
 use either::Either;
 use itertools::Itertools;
+use non_non_full::NonEmptyVec;
 use scraper::{ElementRef, Html as HtmlDom, error::SelectorErrorKind};
 use std::{borrow::Cow, iter};
 
@@ -172,7 +173,7 @@ impl Html {
 				error,
 			})?;
 
-		let img = self
+		let imgs = self
 			.img
 			.as_ref()
 			.try_and_then(|q| extract_imgs(html_fragment, q))
@@ -182,13 +183,13 @@ impl Html {
 			})?;
 
 		Ok(TransformedEntry {
-			id: id.map(Into::into).unwrap_or_prev(),
+			id: id.and_then(EntryId::new).unwrap_or_prev(),
 			raw_contents: body.clone().unwrap_or_prev(),
 			msg: TransformedMessage {
 				title: title.unwrap_or_prev(),
 				body: body.unwrap_or_prev(),
 				link: link.unwrap_or_prev(),
-				media: img.unwrap_or_prev(),
+				media: imgs.unwrap_or_prev(),
 			},
 			..Default::default()
 		})
@@ -287,9 +288,15 @@ fn extract_link(
 fn extract_imgs(
 	html_fragment: ElementRef<'_>,
 	selector: &DataSelector,
-) -> Result<Option<Vec<Media>>, HtmlErrorInner> {
-	Ok(extract_data(html_fragment, selector)?
-		.map(|it| it.into_iter().map(Media::Photo).collect::<Vec<_>>()))
+) -> Result<Option<NonEmptyVec<Media>>, HtmlErrorInner> {
+	let extracted_strings = extract_data(html_fragment, selector)?;
+
+	let as_images = extracted_strings.and_then(|it| {
+		let vec = it.into_iter().map(Media::Photo).collect::<Vec<_>>();
+		NonEmptyVec::new(vec)
+	});
+
+	Ok(as_images)
 }
 
 impl<S: html_builder::State> HtmlBuilder<S> {

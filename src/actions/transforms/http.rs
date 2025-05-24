@@ -83,12 +83,18 @@ impl Transform for Http {
 			})?,
 			Field::Id => entry.id.as_ref().try_map(|id| {
 				Url::try_from(id.0.as_str()).map_err(|e| {
-					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, id.0.clone()))
+					HttpError::InvalidUrl(
+						self.from_field,
+						InvalidUrlError(e, id.0.as_string().clone()),
+					)
 				})
 			})?,
 			Field::ReplyTo => entry.reply_to.as_ref().try_map(|id| {
 				Url::try_from(id.0.as_str()).map_err(|e| {
-					HttpError::InvalidUrl(self.from_field, InvalidUrlError(e, id.0.clone()))
+					HttpError::InvalidUrl(
+						self.from_field,
+						InvalidUrlError(e, id.0.as_string().clone()),
+					)
 				})
 			})?,
 			Field::RawContents => entry.raw_contents.as_deref().try_map(|s| {

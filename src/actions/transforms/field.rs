@@ -23,10 +23,12 @@ use std::fmt::{self, Debug};
 
 use super::{
 	Transform,
-	result::{TransformResult, TransformedEntry},
+	result::{OptionUnwrapTransformResultExt, TransformResult, TransformedEntry},
 };
 use crate::{
-	actions::transforms::error::TransformErrorKind, entry::Entry, maybe_send::MaybeSendSync,
+	actions::transforms::error::TransformErrorKind,
+	entry::{Entry, EntryId},
+	maybe_send::MaybeSendSync,
 };
 
 /// Transform/change the value of a field of an [`Entry `]
@@ -109,14 +111,14 @@ where
 					.transformator
 					.transform_field(entry.id.as_deref())
 					.map_err(Into::into)?
-					.map(Into::into);
+					.and_then(|id| EntryId::new(id).unwrap_or_empty());
 			}
 			Field::ReplyTo => {
 				new_entry.reply_to = self
 					.transformator
 					.transform_field(entry.reply_to.as_deref())
 					.map_err(Into::into)?
-					.map(Into::into);
+					.and_then(|id| EntryId::new(id).unwrap_or_empty());
 			}
 			Field::RawContents => {
 				new_entry.raw_contents = self

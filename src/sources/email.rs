@@ -290,7 +290,7 @@ impl Email {
 							"UIDs should always be present because we used uid_fetch().\
 						The server probably doesn't support them which isn't something ~we~ support for now",
 						)
-						.to_string();
+						.into();
 
 					parse(&mailparse::parse_mail(body)?, uid)
 				})
@@ -345,7 +345,7 @@ impl Email {
 	}
 }
 
-fn parse(mail: &ParsedMail, id: String) -> Result<Entry, EmailError> {
+fn parse(mail: &ParsedMail, id: EntryId) -> Result<Entry, EmailError> {
 	tracing::trace!("Parsing the contents of an email with UID {id:?}");
 	let subject = mail.headers.iter().find_map(|x| {
 		if x.get_key_ref() == "Subject" {
@@ -368,7 +368,7 @@ fn parse(mail: &ParsedMail, id: String) -> Result<Entry, EmailError> {
 	};
 
 	Ok(Entry {
-		id: Some(id.into()),
+		id: Some(id),
 		msg: Message {
 			title: subject,
 			body: Some(body),
