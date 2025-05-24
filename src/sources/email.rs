@@ -213,7 +213,7 @@ impl Email {
 			Err(e) => {
 				// try to log out anyways
 				_ = session.logout().await;
-				Err(e.into())
+				Err(e)
 			}
 		}
 	}
@@ -266,7 +266,7 @@ impl Email {
 
 			let mail_id_search_str = mail_ids
 				.iter()
-				.map(|x| x.to_string())
+				.map(ToString::to_string)
 				.collect::<Vec<_>>()
 				.join(",");
 

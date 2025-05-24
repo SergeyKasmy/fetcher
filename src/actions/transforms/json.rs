@@ -105,7 +105,7 @@ impl Transform for Json {
 					pointer: self
 						.item
 						.as_ref()
-						.map_or_else(|| JsonPointer("/".into()), |ptr| ptr.clone()),
+						.map_or_else(|| JsonPointer("/".into()), Clone::clone),
 					expected_type: "iterator (array, map)",
 					found_type: format!("{items:?}"),
 				},
@@ -206,12 +206,10 @@ impl Json {
 fn extract_value<'a>(item: &'a Value, query: &Query) -> Result<Option<&'a Value>, JsonErrorInner> {
 	match item.pointer(&query.pointer.0) {
 		Some(v) => Ok(Some(v)),
-		None if query.optional => return Ok(None),
-		None => {
-			return Err(JsonErrorInner::KeyNotFound {
-				pointer: query.pointer.clone(),
-			});
-		}
+		None if query.optional => Ok(None),
+		None => Err(JsonErrorInner::KeyNotFound {
+			pointer: query.pointer.clone(),
+		}),
 	}
 }
 

@@ -48,6 +48,7 @@ impl HandleError for ExponentialBackoffSleep {
 impl ExponentialBackoffSleep {
 	pub const DEFAULT_MAX_RETRY_COUNT: u32 = 15;
 
+	#[must_use]
 	pub fn err_count(&self) -> u32 {
 		self.err_count
 	}

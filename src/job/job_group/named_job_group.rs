@@ -34,9 +34,7 @@ where
 
 	fn names(&self) -> impl Iterator<Item = Option<String>> {
 		self.inner.names().map(|name| {
-			let Some(mut name) = name else {
-				return None;
-			};
+			let mut name = name?;
 
 			name.insert(0, '/');
 			name.insert_str(0, &self.name);
