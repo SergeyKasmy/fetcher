@@ -10,7 +10,7 @@ where
 		Vec::new()
 	}
 
-	#[cfg(feature = "multithreaded")]
+	#[cfg(feature = "send")]
 	async fn run_in_parallel(self) -> (JobGroupResult, Self) {
 		(Vec::new(), self)
 	}

@@ -15,7 +15,7 @@ where
 		results.0.into_iter().chain(results.1.into_iter()).collect()
 	}
 
-	#[cfg(feature = "multithreaded")]
+	#[cfg(feature = "send")]
 	async fn run_in_parallel(self) -> (JobGroupResult, Self)
 	where
 		Self: 'static,

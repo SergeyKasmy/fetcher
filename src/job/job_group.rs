@@ -19,7 +19,7 @@ pub trait JobGroup: MaybeSendSync {
 	#[must_use = "the jobs could've finished with errors"]
 	fn run_concurrently(&mut self) -> impl Future<Output = JobGroupResult> + MaybeSend;
 
-	#[cfg(feature = "multithreaded")]
+	#[cfg(feature = "send")]
 	#[must_use = "the jobs could've finished with errors"]
 	fn run_in_parallel(self) -> impl Future<Output = (JobGroupResult, Self)> + Send
 	where
@@ -27,7 +27,7 @@ pub trait JobGroup: MaybeSendSync {
 
 	fn names(&self) -> impl Iterator<Item = Option<String>>;
 
-	#[cfg(feature = "multithreaded")]
+	#[cfg(feature = "send")]
 	#[must_use = "the jobs could've finished with errors"]
 	fn run(self) -> impl Future<Output = (JobGroupResult, Self)> + MaybeSend
 	where
@@ -36,7 +36,7 @@ pub trait JobGroup: MaybeSendSync {
 		async move { self.run_in_parallel().await }
 	}
 
-	#[cfg(not(feature = "multithreaded"))]
+	#[cfg(not(feature = "send"))]
 	#[must_use = "the jobs could've finished with errors"]
 	fn run(mut self) -> impl Future<Output = (JobGroupResult, Self)> + MaybeSend
 	where
@@ -84,7 +84,7 @@ where
 		group.run_concurrently().await
 	}
 
-	#[cfg(feature = "multithreaded")]
+	#[cfg(feature = "send")]
 	async fn run_in_parallel(self) -> (JobGroupResult, Self)
 	where
 		Self: 'static,
@@ -107,7 +107,7 @@ impl JobGroup for () {
 		Vec::new()
 	}
 
-	#[cfg(feature = "multithreaded")]
+	#[cfg(feature = "send")]
 	async fn run_in_parallel(self) -> (JobGroupResult, Self) {
 		(Vec::new(), ())
 	}
@@ -125,7 +125,7 @@ where
 		vec![self.0.run().await]
 	}
 
-	#[cfg(feature = "multithreaded")]
+	#[cfg(feature = "send")]
 	async fn run_in_parallel(self) -> (JobGroupResult, Self)
 	where
 		Self: 'static,
@@ -157,7 +157,7 @@ macro_rules! impl_jobgroup_for_tuples {
 				JobGroupResult::from([$($type_name),+])
 			}
 
-			#[cfg(feature = "multithreaded")]
+			#[cfg(feature = "send")]
 			#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
 			async fn run_in_parallel(self) -> (JobGroupResult, Self)
 			where Self: 'static
@@ -202,7 +202,7 @@ impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8);
 impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9);
 impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10);
 
-#[cfg(feature = "multithreaded")]
+#[cfg(feature = "send")]
 async fn run_job_in_parallel<J>(mut job: J) -> (JobResult, J)
 where
 	J: OpaqueJob + 'static,

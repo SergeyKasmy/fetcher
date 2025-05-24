@@ -16,7 +16,7 @@ where
 		self.inner.run_concurrently().await
 	}
 
-	#[cfg(feature = "multithreaded")]
+	#[cfg(feature = "send")]
 	#[tracing::instrument(skip(self), fields(job_group = %self.name))]
 	async fn run_in_parallel(self) -> (super::JobGroupResult, Self)
 	where
