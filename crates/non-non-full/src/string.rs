@@ -1,6 +1,6 @@
 /// A wrapper around a string that can never be empty
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NonEmptyString(String);
 
 #[cfg(feature = "serde")]

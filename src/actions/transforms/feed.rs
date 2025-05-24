@@ -12,7 +12,7 @@ use crate::{
 		error::RawContentsNotSetError,
 		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},
-	entry::Entry,
+	entry::{Entry, EntryId},
 };
 
 use feed_rs::model::{Content, Text};
@@ -70,7 +70,7 @@ fn parse_feed_entry(mut feed_entry: feed_rs::model::Entry) -> TransformedEntry {
 	let link = Some(feed_entry.links.swap_remove(0).href);
 
 	TransformedEntry {
-		id: id.map(Into::into).unwrap_or_prev(),
+		id: id.and_then(EntryId::new).unwrap_or_prev(),
 		raw_contents: body.clone().unwrap_or_prev(),
 		msg: TransformedMessage {
 			title: title.unwrap_or_prev(),

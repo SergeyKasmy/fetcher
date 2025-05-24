@@ -100,6 +100,17 @@ impl<T> TransformResult<T> {
 		}
 	}
 
+	pub fn and_then<F, U>(self, f: F) -> TransformResult<U>
+	where
+		F: FnOnce(T) -> TransformResult<U>,
+	{
+		match self {
+			TransformResult::Previous => TransformResult::Previous,
+			TransformResult::Empty => TransformResult::Empty,
+			TransformResult::New(t) => f(t),
+		}
+	}
+
 	pub fn map<F, U>(self, f: F) -> TransformResult<U>
 	where
 		F: FnOnce(T) -> U,

@@ -121,20 +121,24 @@ mod tests {
 	#![allow(clippy::unwrap_used)]
 	use super::*;
 
+	fn entry_id(id: &str) -> EntryId {
+		EntryId::new(id.to_string()).unwrap()
+	}
+
 	#[tokio::test]
 	async fn mark_as_read() {
 		let mut rf = NotPresent::new();
 
-		rf.mark_as_read(&"13".into()).await.unwrap();
+		rf.mark_as_read(&entry_id("13")).await.unwrap();
 		assert_eq!(
 			&rf.read_list.iter().map(|(s, _date)| s).collect::<Vec<_>>(),
-			&[&"13".into()]
+			&[&entry_id("13")]
 		);
 
-		rf.mark_as_read(&"1002".into()).await.unwrap();
+		rf.mark_as_read(&entry_id("1002")).await.unwrap();
 		assert_eq!(
 			&rf.read_list.iter().map(|(s, _date)| s).collect::<Vec<_>>(),
-			&[&"13".into(), &"1002".into()]
+			&[&entry_id("13"), &entry_id("1002")]
 		);
 	}
 
@@ -144,7 +148,7 @@ mod tests {
 		let mut v = Vec::with_capacity(MAX_LIST_LEN);
 
 		for i in 0..600 {
-			let id = EntryId(i.to_string());
+			let id = EntryId::new(i.to_string()).unwrap();
 			rf.mark_as_read(&id).await.unwrap();
 			v.push(id);
 		}
@@ -162,28 +166,28 @@ mod tests {
 		let mut rf = NotPresent::new();
 		assert_eq!(None, rf.last_read());
 
-		rf.mark_as_read(&"0".into()).await.unwrap();
-		rf.mark_as_read(&"1".into()).await.unwrap();
-		rf.mark_as_read(&"2".into()).await.unwrap();
-		assert_eq!(Some(&"2".into()), rf.last_read());
+		rf.mark_as_read(&entry_id("0")).await.unwrap();
+		rf.mark_as_read(&entry_id("1")).await.unwrap();
+		rf.mark_as_read(&entry_id("2")).await.unwrap();
+		assert_eq!(Some(&entry_id("2")), rf.last_read());
 
-		rf.mark_as_read(&"4".into()).await.unwrap();
-		assert_eq!(Some(&"4".into()), rf.last_read());
+		rf.mark_as_read(&entry_id("4")).await.unwrap();
+		assert_eq!(Some(&entry_id("4")), rf.last_read());
 
-		rf.mark_as_read(&"100".into()).await.unwrap();
-		rf.mark_as_read(&"101".into()).await.unwrap();
-		rf.mark_as_read(&"200".into()).await.unwrap();
-		assert_eq!(Some(&"200".into()), rf.last_read());
+		rf.mark_as_read(&entry_id("100")).await.unwrap();
+		rf.mark_as_read(&entry_id("101")).await.unwrap();
+		rf.mark_as_read(&entry_id("200")).await.unwrap();
+		assert_eq!(Some(&entry_id("200")), rf.last_read());
 	}
 
 	#[tokio::test]
 	async fn remove_read() {
 		let mut rf = NotPresent::new();
-		rf.mark_as_read(&"0".into()).await.unwrap();
-		rf.mark_as_read(&"1".into()).await.unwrap();
-		rf.mark_as_read(&"2".into()).await.unwrap();
-		rf.mark_as_read(&"5".into()).await.unwrap();
-		rf.mark_as_read(&"7".into()).await.unwrap();
+		rf.mark_as_read(&entry_id("0")).await.unwrap();
+		rf.mark_as_read(&entry_id("1")).await.unwrap();
+		rf.mark_as_read(&entry_id("2")).await.unwrap();
+		rf.mark_as_read(&entry_id("5")).await.unwrap();
+		rf.mark_as_read(&entry_id("7")).await.unwrap();
 
 		let mut entries = vec![
 			Entry {
@@ -191,23 +195,23 @@ mod tests {
 				..Default::default()
 			},
 			Entry {
-				id: Some("5".into()),
+				id: Some(entry_id("5")),
 				..Default::default()
 			},
 			Entry {
-				id: Some("4".into()),
+				id: Some(entry_id("4")),
 				..Default::default()
 			},
 			Entry {
-				id: Some("0".into()),
+				id: Some(entry_id("0")),
 				..Default::default()
 			},
 			Entry {
-				id: Some("1".into()),
+				id: Some(entry_id("1")),
 				..Default::default()
 			},
 			Entry {
-				id: Some("3".into()),
+				id: Some(entry_id("3")),
 				..Default::default()
 			},
 			Entry {
@@ -215,11 +219,11 @@ mod tests {
 				..Default::default()
 			},
 			Entry {
-				id: Some("6".into()),
+				id: Some(entry_id("6")),
 				..Default::default()
 			},
 			Entry {
-				id: Some("8".into()),
+				id: Some(entry_id("8")),
 				..Default::default()
 			},
 		];

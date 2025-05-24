@@ -2,6 +2,15 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NonEmptyVec<T>(Vec<T>);
 
+impl<T> std::hash::Hash for NonEmptyVec<T>
+where
+	T: std::hash::Hash,
+{
+	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+		self.0.hash(state);
+	}
+}
+
 #[cfg(feature = "serde")]
 impl<'de, T> serde::Deserialize<'de> for NonEmptyVec<T>
 where

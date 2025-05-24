@@ -8,7 +8,7 @@
 
 use super::Fetch;
 use crate::{
-	entry::Entry,
+	entry::{Entry, EntryId},
 	error::InvalidUrlError,
 	sinks::message::{Media, Message},
 	sources::error::SourceError,
@@ -161,7 +161,7 @@ impl Reddit {
 				let link = format!("https://reddit.com/{}", post.permalink);
 
 				Some(Entry {
-					id: Some(post.id.into()),
+					id: EntryId::new(post.id),
 					raw_contents: None,
 					msg: Message {
 						title: Some(post.title),

@@ -17,7 +17,7 @@ use crate::{
 		error::RawContentsNotSetError,
 		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},
-	entry::Entry,
+	entry::{Entry, EntryId},
 	sinks::message::Media,
 	utils::OptionExt,
 };
@@ -182,7 +182,7 @@ impl Html {
 			})?;
 
 		Ok(TransformedEntry {
-			id: id.map(Into::into).unwrap_or_prev(),
+			id: id.and_then(EntryId::new).unwrap_or_prev(),
 			raw_contents: body.clone().unwrap_or_prev(),
 			msg: TransformedMessage {
 				title: title.unwrap_or_prev(),

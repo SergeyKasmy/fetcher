@@ -102,14 +102,18 @@ mod tests {
 	#![allow(clippy::unwrap_used)]
 	use super::*;
 
+	fn entry_id(id: &str) -> EntryId {
+		EntryId::new(id.to_string()).unwrap()
+	}
+
 	#[tokio::test]
 	async fn mark_as_read() {
 		let mut rf = Newer::new();
 
-		rf.mark_as_read(&"13".into()).await.unwrap();
+		rf.mark_as_read(&entry_id("13")).await.unwrap();
 		assert_eq!(rf.last_read_id.as_deref().unwrap(), "13");
 
-		rf.mark_as_read(&"1002".into()).await.unwrap();
+		rf.mark_as_read(&entry_id("1002")).await.unwrap();
 		assert_eq!(rf.last_read_id.as_deref().unwrap(), "1002");
 	}
 
@@ -118,24 +122,24 @@ mod tests {
 		let mut rf = Newer::new();
 		assert_eq!(None, rf.last_read());
 
-		rf.mark_as_read(&"0".into()).await.unwrap();
-		rf.mark_as_read(&"1".into()).await.unwrap();
-		rf.mark_as_read(&"2".into()).await.unwrap();
-		assert_eq!(Some(&"2".into()), rf.last_read());
+		rf.mark_as_read(&entry_id("0")).await.unwrap();
+		rf.mark_as_read(&entry_id("1")).await.unwrap();
+		rf.mark_as_read(&entry_id("2")).await.unwrap();
+		assert_eq!(Some(&entry_id("2")), rf.last_read());
 
-		rf.mark_as_read(&"4".into()).await.unwrap();
-		assert_eq!(Some(&"4".into()), rf.last_read());
+		rf.mark_as_read(&entry_id("4")).await.unwrap();
+		assert_eq!(Some(&entry_id("4")), rf.last_read());
 
-		rf.mark_as_read(&"100".into()).await.unwrap();
-		rf.mark_as_read(&"101".into()).await.unwrap();
-		rf.mark_as_read(&"200".into()).await.unwrap();
-		assert_eq!(Some(&"200".into()), rf.last_read());
+		rf.mark_as_read(&entry_id("100")).await.unwrap();
+		rf.mark_as_read(&entry_id("101")).await.unwrap();
+		rf.mark_as_read(&entry_id("200")).await.unwrap();
+		assert_eq!(Some(&entry_id("200")), rf.last_read());
 	}
 
 	#[tokio::test]
 	async fn remove_read_long_list() {
 		let mut rf = Newer::new();
-		rf.mark_as_read(&"3".into()).await.unwrap();
+		rf.mark_as_read(&entry_id("3")).await.unwrap();
 
 		let mut entries = vec![
 			Entry {
@@ -143,27 +147,11 @@ mod tests {
 				..Default::default()
 			},
 			Entry {
-				id: Some("5".into()),
+				id: Some(entry_id("5")),
 				..Default::default()
 			},
 			Entry {
-				id: Some("4".into()),
-				..Default::default()
-			},
-			Entry {
-				id: None,
-				..Default::default()
-			},
-			Entry {
-				id: Some("0".into()),
-				..Default::default()
-			},
-			Entry {
-				id: Some("1".into()),
-				..Default::default()
-			},
-			Entry {
-				id: Some("3".into()),
+				id: Some(entry_id("4")),
 				..Default::default()
 			},
 			Entry {
@@ -171,11 +159,27 @@ mod tests {
 				..Default::default()
 			},
 			Entry {
-				id: Some("6".into()),
+				id: Some(entry_id("0")),
 				..Default::default()
 			},
 			Entry {
-				id: Some("8".into()),
+				id: Some(entry_id("1")),
+				..Default::default()
+			},
+			Entry {
+				id: Some(entry_id("3")),
+				..Default::default()
+			},
+			Entry {
+				id: None,
+				..Default::default()
+			},
+			Entry {
+				id: Some(entry_id("6")),
+				..Default::default()
+			},
+			Entry {
+				id: Some(entry_id("8")),
 				..Default::default()
 			},
 		];
@@ -193,10 +197,10 @@ mod tests {
 	#[tokio::test]
 	async fn remove_read_single_different() {
 		let mut rf = Newer::new();
-		rf.mark_as_read(&"3".into()).await.unwrap();
+		rf.mark_as_read(&entry_id("3")).await.unwrap();
 
 		let mut entries = vec![Entry {
-			id: Some("1".into()),
+			id: Some(entry_id("1")),
 			..Default::default()
 		}];
 
@@ -210,10 +214,10 @@ mod tests {
 	#[tokio::test]
 	async fn remove_read_single_same() {
 		let mut rf = Newer::new();
-		rf.mark_as_read(&"1".into()).await.unwrap();
+		rf.mark_as_read(&entry_id("1")).await.unwrap();
 
 		let mut entries = vec![Entry {
-			id: Some("1".into()),
+			id: Some(entry_id("1")),
 			..Default::default()
 		}];
 		rf.filter(&mut entries).await.unwrap();
