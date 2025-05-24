@@ -385,7 +385,6 @@ async fn authenticate_google_oauth2(
 ) -> Result<Session<TlsStream<TcpStream>>, ImapError> {
 	tracing::trace!("Logging into IMAP with Google OAuth2");
 	let _greeting = client.read_response().await;
-	dbg!(_greeting);
 	let session = client
 		.authenticate(
 			"XOAUTH2",
