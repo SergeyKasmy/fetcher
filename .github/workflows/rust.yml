@@ -22,8 +22,10 @@ jobs:
       uses: dtolnay/rust-toolchain@master
       with:
         toolchain: stable
+    - name: Install cargo hack
+      uses: taiki-e/install-action@cargo-hack
     - name: Build
-      run: cargo build --verbose
+      run: cargo hack --feature-powerset build --verbose
 
   test:
     runs-on: ubuntu-latest
@@ -34,8 +36,10 @@ jobs:
       uses: dtolnay/rust-toolchain@master
       with:
         toolchain: stable
+    - name: Install cargo hack
+      uses: taiki-e/install-action@cargo-hack
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo hack --feature-powerset test --verbose
 
   clippy:
     runs-on: ubuntu-latest
