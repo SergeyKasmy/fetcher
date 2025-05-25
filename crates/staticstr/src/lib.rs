@@ -50,11 +50,16 @@ use std::{borrow::Cow, fmt::Display, ops::Deref};
 pub struct StaticStr(Cow<'static, str>);
 
 impl StaticStr {
+	/// Creates a new [`StaticStr`] with a [`&'static str`].
+	///
+	/// Makes it possible to create [`StaticStr`]'s in a const context.
+	/// Works around the issue of traits, particularly `From<&'static str>`, not being const.
 	#[must_use]
 	pub const fn from_static_str(s: &'static str) -> Self {
 		Self(Cow::Borrowed(s))
 	}
 
+	/// Extracts a string slice from the owned string, or returns the borrowed &'static str
 	#[must_use]
 	pub fn as_str(&self) -> &str {
 		&self.0
@@ -108,20 +113,5 @@ impl From<&StaticStr> for String {
 impl Default for StaticStr {
 	fn default() -> Self {
 		Self(Cow::Borrowed(""))
-	}
-}
-
-pub fn add(left: u64, right: u64) -> u64 {
-	left + right
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn it_works() {
-		let result = add(2, 2);
-		assert_eq!(result, 4);
 	}
 }
