@@ -56,16 +56,20 @@ pub struct Json {
 	pub img: Option<Vec<Query>>,
 }
 
+/// A pointer to a specific JSON value.
+///
+/// Example: "/a/b/0".
+/// For more information please refer to [`serde_json::Value::pointer`] that is what is actually used under the hood.
 #[derive(Clone, Debug)]
 pub struct JsonPointer(pub StaticStr);
 
 /// A query to get the value of a JSON field
 #[derive(Debug)]
 pub struct Query {
-	/// a pointer to the JSON key
+	/// Pointer to the JSON value
 	pub pointer: JsonPointer,
 
-	/// whether this query is fine to be ignored if not found
+	/// If true, don't error if the data wasn't found
 	pub optional: bool,
 }
 
@@ -125,6 +129,7 @@ impl Transform for Json {
 }
 
 impl JsonPointer {
+	/// Creates a new [`JsonPointer`] from the provided static string
 	pub fn new<T: Into<StaticStr>>(ptr: T) -> Self {
 		Self(ptr.into())
 	}
@@ -269,6 +274,7 @@ impl From<StaticStr> for JsonPointer {
 }
 
 impl<S: json_builder::State> JsonBuilder<S> {
+	/// Adds a new text [`JsonPointer`] from the arguments
 	pub fn text(mut self, ptr: impl Into<StaticStr>, optional: bool) -> Self {
 		self.text.get_or_insert_default().push(Query {
 			pointer: JsonPointer::new(ptr),

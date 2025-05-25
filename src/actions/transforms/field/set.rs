@@ -15,15 +15,21 @@ use crate::{
 	actions::transforms::result::{OptionUnwrapTransformResultExt, TransformResult as TrRes},
 };
 
-/// Set a field to a hardcoded value
+/// Set a field to a hardcoded string, a random string, or nothing at all
 #[derive(Debug)]
 pub enum Set {
+	/// One single always the same hardcoded string
 	Single(StaticStr),
+
+	/// A random string from a list of hardcoded strings
 	Random(Vec<StaticStr>),
+
+	/// Empty the field. In other words: make it [`None`]
 	Empty,
 }
 
 impl Set {
+	/// Creates a new [`Set::single`] with the provided string
 	pub fn single<S>(string: S) -> Self
 	where
 		S: Into<StaticStr>,
@@ -31,6 +37,7 @@ impl Set {
 		Self::Single(string.into())
 	}
 
+	/// Creates a new [`Set::random`] with the provided strings
 	pub fn random<I, S>(iter: I) -> Self
 	where
 		I: IntoIterator<Item = S>,

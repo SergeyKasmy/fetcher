@@ -26,9 +26,14 @@ use crate::{
 	task::entry_to_msg_map::EntryToMsgMap,
 };
 
+/// An action that modifies the list of entries in some way
 pub trait Action: MaybeSendSync {
+	/// The associated error type that can be returned while applying the action
 	type Error: Into<FetcherError>;
 
+	/// Apllies the action to the list of `entries` and returns them back.
+	///
+	/// `context` contains some parts of the [`Task`](`crate::task::Task`) that might be useful.
 	fn apply<S, E>(
 		&mut self,
 		entries: Vec<Entry>,
@@ -39,13 +44,25 @@ pub trait Action: MaybeSendSync {
 		E: ExternalSave;
 }
 
+/// Context provided to [`Action`]s with some useful parts of the parent [`Task`][Task].
+///
+/// The task itself can't be passed as `&mut Task` because then the action would be able to get a second mut reference to itself.
+/// This works around that as a way to access some useful parts of the parent [`Task`][Task] without the aliasing issue.
+///
+/// [Task]: crate::task::Task
 #[derive(Debug)]
 pub struct ActionContext<'a, S, E> {
+	/// The [`Task::source`](`crate::task::Task::source`) of the parent task, if any.
 	pub source: Option<&'a mut S>,
+
+	/// The [`Task::entry_to_msg_map`](`crate::task::Task::entry_to_msg_map`) of the parent task, if any.
 	pub entry_to_msg_map: Option<&'a mut EntryToMsgMap<E>>,
+
+	/// The [`Task::tag`](`crate::task::Task::tag`) of the parent task, if any.
 	pub tag: Option<&'a str>,
 }
 
+/// Transforms the provided [`Filter`] into an [`Action`]
 pub fn filter<F>(f: F) -> impl Action
 where
 	F: Filter,
@@ -53,6 +70,7 @@ where
 	FilterWrapper(f)
 }
 
+/// Transforms the provided [`Transform`] into an [`Action`]
 pub fn transform<T>(t: T) -> impl Action
 where
 	T: Transform,
@@ -60,6 +78,7 @@ where
 	TransformWrapper(t)
 }
 
+/// Transforms the provided [`TransformField`] into an [`Action`] action on `field`
 pub fn transform_field<T>(field: Field, t: T) -> impl Action
 where
 	T: TransformField,
@@ -70,6 +89,7 @@ where
 	})
 }
 
+/// Transforms the provided [`TransformField`] into an [`Action`] action on [`Message::Body`](`crate::sinks::Message::body`)
 pub fn transform_body<T>(t: T) -> impl Action
 where
 	T: TransformField,
@@ -77,7 +97,10 @@ where
 	transform_field(Field::Body, t)
 }
 
-/// Allows using an async function as a transform without type annotations
+/// Transforms the provided async function implementing [`Transform`] into an [`Action`] action.
+///
+/// They can be used with the regular [`transform`] but type annotation can be annoying.
+/// This functions works around that.
 pub fn transform_fn<F, Fut, T>(f: F) -> impl Action
 where
 	F: Fn(Entry) -> Fut + MaybeSendSync,
@@ -87,6 +110,7 @@ where
 	transform(f)
 }
 
+/// Transforms the provided [`Sink`] into an [`Action`]
 pub fn sink<S>(s: S) -> impl Action
 where
 	S: Sink,
@@ -121,6 +145,53 @@ impl Action for () {
 		E: ExternalSave,
 	{
 		Ok(entries)
+	}
+}
+
+impl<A> Action for Option<A>
+where
+	A: Action,
+{
+	type Error = A::Error;
+
+	async fn apply<S, E>(
+		&mut self,
+		entries: Vec<Entry>,
+		context: ActionContext<'_, S, E>,
+	) -> Result<Vec<Entry>, Self::Error>
+	where
+		S: Source,
+		E: ExternalSave,
+	{
+		let Some(act) = self else {
+			// do nothing, just passthrough
+			return Ok(entries);
+		};
+
+		act.apply(entries, context).await
+	}
+}
+
+impl<A1, A2> Action for Either<A1, A2>
+where
+	A1: Action,
+	A2: Action,
+{
+	type Error = FetcherError;
+
+	async fn apply<S, E>(
+		&mut self,
+		entries: Vec<Entry>,
+		context: ActionContext<'_, S, E>,
+	) -> Result<Vec<Entry>, Self::Error>
+	where
+		S: Source,
+		E: ExternalSave,
+	{
+		match self {
+			Either::Left(x) => x.apply(entries, context).await.map_err(Into::into),
+			Either::Right(x) => x.apply(entries, context).await.map_err(Into::into),
+		}
 	}
 }
 
@@ -197,53 +268,6 @@ impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A
 impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18);
 impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18 A19);
 impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18 A19 A20);
-
-impl<A> Action for Option<A>
-where
-	A: Action,
-{
-	type Error = A::Error;
-
-	async fn apply<S, E>(
-		&mut self,
-		entries: Vec<Entry>,
-		context: ActionContext<'_, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
-	where
-		S: Source,
-		E: ExternalSave,
-	{
-		let Some(act) = self else {
-			// do nothing, just passthrough
-			return Ok(entries);
-		};
-
-		act.apply(entries, context).await
-	}
-}
-
-impl<A1, A2> Action for Either<A1, A2>
-where
-	A1: Action,
-	A2: Action,
-{
-	type Error = FetcherError;
-
-	async fn apply<S, E>(
-		&mut self,
-		entries: Vec<Entry>,
-		context: ActionContext<'_, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
-	where
-		S: Source,
-		E: ExternalSave,
-	{
-		match self {
-			Either::Left(x) => x.apply(entries, context).await.map_err(Into::into),
-			Either::Right(x) => x.apply(entries, context).await.map_err(Into::into),
-		}
-	}
-}
 
 impl Default for ActionContext<'_, (), ()> {
 	fn default() -> Self {

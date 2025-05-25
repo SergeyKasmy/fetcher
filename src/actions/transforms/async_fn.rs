@@ -1,3 +1,12 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+//! This module contains an implementation of [`Transform`] for async closures
+//! returning [`Entry`], [`TransformedEntry`], [`Result`] of Entries, and [`Vec`] of Entries
+
 use std::{convert::Infallible, iter};
 
 use crate::{
@@ -8,7 +17,7 @@ use crate::{
 
 use super::{Transform, error::TransformErrorKind, result::TransformedEntry};
 
-/// Use [`transform_fn`](`crate::actions::transform_fn`) to improve type inference
+///  Use [`transform_fn`](`crate::actions::transform_fn`) to improve type inference
 impl<F, T, Fut> Transform for F
 where
 	F: Fn(Entry) -> Fut + MaybeSendSync,
@@ -24,9 +33,12 @@ where
 	}
 }
 
+/// Conversion into transformed entries
 pub trait IntoTransformedEntries {
+	/// Error that may be returned. Return [`Infallible`](`std::convert::Infallible`) if it never errors
 	type Err: Into<TransformErrorKind>;
 
+	/// Converts self into an iterator of [`TransformedEntries`](`TransformedEntry`)
 	fn into_transformed_entries(
 		self,
 	) -> Result<impl IntoIterator<Item = TransformedEntry>, Self::Err>;

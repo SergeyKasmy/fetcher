@@ -102,6 +102,9 @@ impl<T> TransformResult<T> {
 		}
 	}
 
+	/// If self is [`TransformResult::New`], calls the provided function and returns the result.
+	///
+	/// Otherwise leaves the value as is.
 	pub fn and_then<F, U>(self, f: F) -> TransformResult<U>
 	where
 		F: FnOnce(T) -> TransformResult<U>,
@@ -113,6 +116,9 @@ impl<T> TransformResult<T> {
 		}
 	}
 
+	/// Maps a `TransformResult<T>` to `TransformResult<U>` by applying the provided function to a contained value (if [`TransformResult::New`]).
+	///
+	/// Otherwise leaves the value as is.
 	pub fn map<F, U>(self, f: F) -> TransformResult<U>
 	where
 		F: FnOnce(T) -> U,
@@ -124,6 +130,7 @@ impl<T> TransformResult<T> {
 		}
 	}
 
+	/// The same as [`TransformResult::map`] but the function is allowed to return an error.
 	pub fn try_map<F, U, E>(self, f: F) -> Result<TransformResult<U>, E>
 	where
 		F: FnOnce(T) -> Result<U, E>,

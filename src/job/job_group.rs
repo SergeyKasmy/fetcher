@@ -1,3 +1,11 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+//! This module contains the [`JobGroup`] trait that is used for running multiple jobs together.
+
 mod combined_job_group;
 mod disabled_job_group;
 mod named_job_group;
@@ -13,20 +21,95 @@ pub use self::combined_job_group::CombinedJobGroup;
 pub use self::disabled_job_group::DisabledJobGroup;
 pub use self::named_job_group::NamedJobGroup;
 
+/// Result type returned by job groups containing results from all jobs in the group.
+// TODO: make a generic?
 pub type JobGroupResult = Vec<JobResult>;
 
+/// A group of jobs that can be run together.
+///
+/// This trait provides functionality to:
+/// - Run multiple jobs concurrently or in parallel
+/// - Combine job groups together
+/// - Disable groups temporarily
+/// - Add names to groups
+///
+/// Job groups can be created in several ways:
+/// 1. Using tuples of jobs
+/// 2. Combining existing groups with [`combine_with`](JobGroup::combine_with)
+/// 3. Using [`Option`] for optional groups
+/// 4. Using unit `()` for empty groups
+///
+/// # Running Jobs
+/// Jobs in a group can be run in two ways:
+///
+/// - [`run_concurrently`](JobGroup::run_concurrently): Runs jobs concurrently in the same async task
+/// - [`run_in_parallel`](JobGroup::run_in_parallel): Spawns each job on a separate task (requires `send` feature)
+///
+/// The [`run`](JobGroup::run) method automatically chooses between these based on the `send` feature flag.
+///
+/// # Example
+/// ```rust
+/// # tokio_test::block_on(async {
+/// use fetcher::job::{Job, JobGroup, error_handling::Forward};
+///
+/// // Create jobs
+/// let job1 = Job::builder("job1")
+/// 				.tasks(())
+/// 				.refresh_time(None)
+/// 				.error_handling(Forward)
+/// 				.ctrlc_chan(None)
+/// 				.build();
+/// let job2 = Job::builder("job2")
+/// 				.tasks(())
+/// 				.refresh_time(None)
+/// 				.error_handling(Forward)
+/// 				.ctrlc_chan(None)
+/// 				.build();
+///
+/// // Group jobs using a tuple
+/// let mut group = (job1, job2);
+///
+/// // Run jobs and get results
+/// let results = group.run_concurrently().await;
+///
+/// // Add a name to the group
+/// let named_group = group.with_name("my_group");
+///
+/// // Temporarily disable the group
+/// let disabled = named_group.disable();
+/// # });
+/// ```
 pub trait JobGroup: MaybeSendSync {
+	/// Runs all jobs in the group concurrently in the same async task.
+	///
+	/// This method runs all jobs in the group concurrently using [`join!()`],
+	/// but does not spawn new tasks. All jobs run in the same async task.
+	/// This is in contrast to [`JobGroup::run_in_parallel`].
 	#[must_use = "the jobs could've finished with errors"]
 	fn run_concurrently(&mut self) -> impl Future<Output = JobGroupResult> + MaybeSend;
 
+	/// Runs all jobs in the group in parallel on separate tasks.
+	///
+	/// This method spawns each job on a separate task using `tokio::spawn`.
+	/// Only available when the `send` feature is enabled.
+	/// This is in contrast to [`JobGroup::run_concurrently`].
 	#[cfg(feature = "send")]
 	#[must_use = "the jobs could've finished with errors"]
 	fn run_in_parallel(self) -> impl Future<Output = (JobGroupResult, Self)> + Send
 	where
 		Self: Sized + 'static;
 
+	/// Returns the names of all jobs in the group.
+	///
+	/// Returns `None` for unnamed jobs.
 	fn names(&self) -> impl Iterator<Item = Option<String>>;
 
+	/// Run all jobs in the group using the most appropriate method.
+	///
+	/// When the `send` feature is enabled, this will run jobs in parallel using [`run_in_parallel`](JobGroup::run_in_parallel).
+	/// Otherwise, it will run jobs concurrently using [`run_concurrently`](JobGroup::run_concurrently).
+	///
+	/// This is the recommended way to run jobs unless you specifically need concurrent or parallel execution.
 	#[cfg(feature = "send")]
 	#[must_use = "the jobs could've finished with errors"]
 	fn run(self) -> impl Future<Output = (JobGroupResult, Self)> + MaybeSend
@@ -36,6 +119,12 @@ pub trait JobGroup: MaybeSendSync {
 		async move { self.run_in_parallel().await }
 	}
 
+	/// Run all jobs in the group using the most appropriate method.
+	///
+	/// When the `send` feature is enabled, this will run jobs in parallel using [`run_in_parallel`](JobGroup::run_in_parallel).
+	/// Otherwise, it will run jobs concurrently using [`run_concurrently`](JobGroup::run_concurrently).
+	///
+	/// This is the recommended way to run jobs unless you specifically need concurrent or parallel execution.
 	#[cfg(not(feature = "send"))]
 	#[must_use = "the jobs could've finished with errors"]
 	fn run(mut self) -> impl Future<Output = (JobGroupResult, Self)> + MaybeSend
@@ -45,6 +134,30 @@ pub trait JobGroup: MaybeSendSync {
 		async move { (self.run_concurrently().await, self) }
 	}
 
+	/// Combine this job group with another job group.
+	///
+	/// Creates a new [`CombinedJobGroup`] that will run all jobs from both grorups.
+	///
+	/// # Example
+	/// ```rust
+	/// # tokio_test::block_on(async {
+	/// use fetcher::job::{Job, JobGroup, error_handling::Forward};
+	///
+	/// // Create jobs
+	/// let job1 = Job::builder("job1").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job2 = Job::builder("job2").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job3 = Job::builder("job3").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job4 = Job::builder("job4").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
+	///
+	/// let group1 = (job1, job2);
+	/// let group2 = (job3, job4);
+	//r/
+	//r/ // Combine the groups
+	/// let combined = group1.combine_with(group2);
+	///
+	/// let (results, _combined) = combined.run().await;
+	/// # });
+	/// ```
 	fn combine_with<G>(self, other: G) -> CombinedJobGroup<Self, G>
 	where
 		Self: Sized,
@@ -53,6 +166,32 @@ pub trait JobGroup: MaybeSendSync {
 		CombinedJobGroup(self, other)
 	}
 
+	/// Temporarily disable this job group.
+	///
+	/// Creates a new [`DisabledJobGroup`] that wraps thris group but does not execute any jobs.
+	/// The group can be re-enabled by unwrapping the [`DisabledJobGroup`].
+	///
+	/// This is useful for temporarily disabling a set of jobs without removing them from the code.
+	///
+	/// # Example
+	/// ```rust
+	/// # tokio_test::block_on(async {
+	/// use fetcher::job::{Job, JobGroup, error_handling::Forward};
+	///
+	/// // Create jobs
+	/// let job1 = Job::builder("job1").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job2 = Job::builder("job2").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
+	///
+	/// let group = (job1, job2);
+	///
+	/// // Disable the group
+	/// let disabled = group.disable();
+	///
+	/// // Running the disabled group will do nothing
+	/// let (results, _) = disabled.run().await;
+	/// assert!(results.is_empty());
+	/// # });
+	/// ```
 	fn disable(self) -> DisabledJobGroup<Self>
 	where
 		Self: Sized,
@@ -60,6 +199,28 @@ pub trait JobGroup: MaybeSendSync {
 		DisabledJobGroup(self)
 	}
 
+	/// Add a name to this job group.
+	///
+	/// Creates a new [`NamedJobGroup`] that wraps this group with the given name.
+	/// The name is used for logging and debugging purposes.
+	///
+	/// # Example
+	/// ```rust
+	/// # tokio_test::block_on(async {
+	/// use fetcher::job::{Job, JobGroup, error_handling::Forward};
+	///
+	/// let job1 = Job::builder("job1").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job2 = Job::builder("job2").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
+	///
+	/// let group = (job1, job2);
+	///
+	/// // Add a name to the group
+	/// let named_group = group.with_name("important_jobs");
+	///
+	/// let names = named_group.names().flatten().collect::<Vec<String>>();
+	/// assert_eq!(names, vec!["important_jobs/job1", "important_jobs/job2"]);
+	/// # });
+	/// ```
 	fn with_name<S>(self, name: S) -> NamedJobGroup<Self>
 	where
 		Self: Sized,

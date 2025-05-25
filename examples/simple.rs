@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //! This example showcases the simplest recurring job there can be in fetcher.
 //!
 //! It showcases how to create a [`Task`] that fetches the contents of <http://example.com>, properly parses its HTML to extract a title and a body, and sends it to stdout.

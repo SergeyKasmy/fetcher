@@ -1,3 +1,11 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+//! This module contains the [`ExponentialBackoffSleep`] error handler
+
 use std::{
 	convert::Infallible,
 	fmt::Write,
@@ -14,9 +22,36 @@ use crate::{
 
 use super::{HandleError, HandleErrorContext, HandleErrorResult};
 
+/// An error handler that implements exponential backoff retry logic.
+///
+/// When errors occur during job execution, this handler will:
+/// 1. Log any network errors and ignore them
+/// 2. Pause the job for an exponentially increasing duration between retries
+/// 3. Track consecutive errors and stop retrying after reaching [`ExponentialBackoffSleep::max_retries`]
+///
+/// The sleep duration starts at 1 minute (2^0) and doubles with each consecutive error:
+/// - 1st error: 1 minute
+/// - 2nd error: 2 minutes
+/// - 3rd error: 4 minutes
+/// - 4th error: 8 minutes  
+/// And so on...
+///
+/// The error count is reset if the job runs successfully for:
+/// - Interval-based jobs: Two successful intervals without errors
+/// - Time-based jobs: Two days without errors
+///
+/// # Example
+/// ```rust
+/// use fetcher::job::error_handling::ExponentialBackoffSleep;
+///
+/// let mut handler = ExponentialBackoffSleep::default(); // Uses default max_retries of 15
+/// // Or configure custom retry limit:
+/// handler.max_retries = 5;
+/// ```
 #[derive(Clone, Debug)]
 pub struct ExponentialBackoffSleep {
-	// TODO: make a const generic?
+	/// Maximum number of consecutive errors allowed before stopping retries.
+	/// Defaults to [`DEFAULT_MAX_RETRY_COUNT`](`Self::DEFAULT_MAX_RETRY_COUNT`) (15).
 	pub max_retries: u32,
 
 	err_count: u32,
@@ -45,9 +80,28 @@ impl HandleError for ExponentialBackoffSleep {
 	}
 }
 
+// TODO: add a new method
 impl ExponentialBackoffSleep {
+	#[expect(missing_docs, reason = "self-explanatory")]
 	pub const DEFAULT_MAX_RETRY_COUNT: u32 = 15;
 
+	/// Creates a new [`ExponentialBackoffSleep`] instance with the default max retry count.
+	pub fn new() -> Self {
+		Self::default()
+	}
+
+	/// Creates a new [`ExponentialBackoffSleep`] instance with the max retry count set to `max_retries`.
+	pub fn new_with_max_retries(max_retries: u32) -> Self {
+		Self {
+			max_retries,
+			..Default::default()
+		}
+	}
+
+	// TODO: add example
+	/// Returns the current count of consecutive errors.
+	///
+	/// If this count reaches [`ExponentialBackoffSleep::max_retries`], then the job completely stops and returns the error.
 	#[must_use]
 	pub fn err_count(&self) -> u32 {
 		self.err_count

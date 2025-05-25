@@ -5,9 +5,11 @@
  */
 
 //! This module contains the [`Html`] parser
-// TODO: cleanup and update docs
 
 pub mod error;
+
+pub use self::error::HtmlError;
+pub use scraper::Selector;
 
 use self::error::{ErrorLocation, HtmlErrorInner};
 use super::Transform;
@@ -28,10 +30,6 @@ use non_non_full::NonEmptyVec;
 use scraper::{ElementRef, Html as HtmlDom, error::SelectorErrorKind};
 use std::{borrow::Cow, iter};
 
-pub use self::error::HtmlError;
-pub use scraper::Selector;
-
-// TODO: update doc
 /// HTML parser
 #[derive(bon::Builder, Debug)]
 pub struct Html {
@@ -40,11 +38,11 @@ pub struct Html {
 	#[builder(field)]
 	pub text: Option<Vec<DataSelector>>,
 
-	/// Query to find an item/entry/article in a list on the page. None means to thread the entire page as a single item
+	/// Selector to find an item/entry/article in a list on the page. None means to thread the entire page as a single item
 	#[builder(with = |sel: &str| -> Result<_, SelectorErrorKind> { Selector::parse(sel) })]
 	pub item: Option<Selector>,
 
-	/// Query to find the title of an item
+	/// Selector to find the title of an item
 	#[builder(with = |sel: &str, locs: impl IntoIterator<Item = DataLocation>| -> Result<_, SelectorErrorKind> {
 		Ok(DataSelector{
 			selector: Selector::parse(sel)?,
@@ -54,7 +52,7 @@ pub struct Html {
 	})]
 	pub title: Option<DataSelector>,
 
-	/// Query to find the id of an item
+	/// Selector to find the ID of an item
 	#[builder(with = |sel: &str, locs: impl IntoIterator<Item = DataLocation>| -> Result<_, SelectorErrorKind> {
 		Ok(DataSelector{
 			selector: Selector::parse(sel)?,
@@ -64,7 +62,7 @@ pub struct Html {
 	})]
 	pub id: Option<DataSelector>,
 
-	/// Query to find the link to an item
+	/// Selector to find the link to an item
 	#[builder(with = |sel: &str, locs: impl IntoIterator<Item = DataLocation>| -> Result<_, SelectorErrorKind> {
 		Ok(DataSelector{
 			selector: Selector::parse(sel)?,
@@ -74,7 +72,9 @@ pub struct Html {
 	})]
 	pub link: Option<DataSelector>,
 
-	/// Query to find the image of that item
+	// TODO: support more media types
+	// TODO: why only one selector? JSON transform supports many
+	/// Selector to find the image of that item
 	#[builder(with = |sel: &str, locs: impl IntoIterator<Item = DataLocation>| -> Result<_, SelectorErrorKind> {
 		Ok(DataSelector{
 			selector: Selector::parse(sel)?,
@@ -82,20 +82,30 @@ pub struct Html {
 			optional: false
 		})
 	})]
-	// TODO: why only one selector? JSON transform supports many
 	pub img: Option<DataSelector>,
 }
 
+/// A [`Selector`] can only select an HTML element.
+/// A [`DataSelector`] makes it possible to specify where the expect data should be, e.g. in an attribute or as the text of the element
 #[derive(Clone, Debug)]
 pub struct DataSelector {
+	/// A CSS selector to find the HTML element
 	pub selector: Selector,
+
+	/// Places where to extract the expected data from
 	pub locations: Vec<DataLocation>,
+
+	/// If true, don't error if the data wasn't found
 	pub optional: bool,
 }
 
+/// Location of the data we are looking for in an attribute
 #[derive(Clone, Debug)]
 pub enum DataLocation {
+	/// Text of the element
 	Text,
+
+	/// An attribute of the element
 	Attribute(StaticStr),
 }
 
@@ -300,6 +310,10 @@ fn extract_imgs(
 }
 
 impl<S: html_builder::State> HtmlBuilder<S> {
+	/// Adds a new text [`DataSelector`] from the arguments. Makes it not optional by default.
+	///
+	/// For now, to make it optional later, you can index the [`Html::text`] vec manually and update the field by hand.
+	// TODO: provide a way to specify whether it should be optional or not while creating it
 	pub fn text(
 		mut self,
 		sel: &str,

@@ -50,9 +50,13 @@ pub enum HttpError {
 	InvalidUrl(#[from] url::ParseError),
 }
 
+/// HTTP request type
 #[derive(Debug)]
 pub enum Request {
+	/// HTTP GET request
 	Get,
+
+	/// HTTP POST request, contaning a JSON payload
 	Post(Json),
 }
 
@@ -79,17 +83,14 @@ impl Http {
 			identity,
 		)
 	}
-}
 
-impl Fetch for Http {
-	/// Send a request to the [`URL`](`self.url`) and return the result in the [`Entry.raw_contents`] field
-	#[tracing::instrument(skip_all)]
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
-		self.fetch_impl().await.map(|x| vec![x]).map_err(Into::into)
-	}
-}
-
-impl Http {
+	/// Creates a new HTTP client with a closure that gets passed a [`reqwest::ClientBuilder`]
+	/// to allow more configuration from the caller (e.g. setting headers & cookie stores).
+	///
+	/// This is the most general constructor for [`Http`] and allows the most freedom.
+	///
+	/// # Errors
+	/// This method fails if TLS couldn't be initialized
 	pub fn new_with_client_config<F>(
 		url: Url,
 		request: Request,
@@ -114,7 +115,17 @@ impl Http {
 			client,
 		})
 	}
+}
 
+impl Fetch for Http {
+	/// Send a request to the [`URL`](`self.url`) and return the result in the [`Entry.raw_contents`] field
+	#[tracing::instrument(skip_all)]
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		self.fetch_impl().await.map(|x| vec![x]).map_err(Into::into)
+	}
+}
+
+impl Http {
 	async fn fetch_impl(&self) -> Result<Entry, HttpError> {
 		tracing::debug!("Sending an HTTP request");
 

@@ -33,20 +33,21 @@ use crate::{
 /// A single job, containing a single or a couple [`tasks`](`crate::task::Task`), possibly refetching every set amount of time
 #[derive(bon::Builder, Debug)]
 pub struct Job<T, H> {
+	/// Name of the job
 	#[builder(start_fn, into)]
 	pub name: StaticStr,
 
-	/// The tasks to run
+	/// Tasks/pipeline to run the data through
 	pub tasks: T,
 
 	/// Refresh/refetch/redo the job every "this" point of the day
 	#[builder(required)]
 	pub refresh_time: Option<TimePoint>,
 
-	/// What to do incase an error occures?
+	/// Handler for errors that occur during job execution
 	pub error_handling: H,
 
-	/// Gracefully stop the job on a Ctrl-C
+	/// Gracefully stop the job when a Ctrl-C signal arrives
 	#[builder(required)]
 	pub ctrlc_chan: Option<CtrlCSignalChannel>,
 }
@@ -113,6 +114,11 @@ where
 	T: TaskGroup,
 	H: HandleError,
 {
+	/// Runs the job until it finishes (which can only occur without a [`Job::refresh_time`]),
+	/// or until an error or a panic happens.
+	///
+	/// # Note
+	/// This function never panics. If a panic occures, [`JobResult::Panicked`] is just returned instead.
 	#[expect(clippy::same_name_method, reason = "can't think of a better name")] // if any come up, I'd be fine to replace it
 	pub async fn run(&mut self) -> JobResult {
 		match panic::AssertUnwindSafe(self.run_inner())

@@ -96,10 +96,6 @@ impl Filter for NotPresent {
 
 		Ok(())
 	}
-
-	fn is_readfilter(&self) -> bool {
-		true
-	}
 }
 
 impl FromIterator<(EntryId, DateTime<Utc>)> for NotPresent {

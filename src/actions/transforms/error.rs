@@ -17,6 +17,7 @@ use crate::{
 
 use std::{convert::Infallible, error::Error as StdError};
 
+/// An error that occured during transforming of entries
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 #[error("Error transforming entry")]

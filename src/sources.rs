@@ -33,9 +33,10 @@ pub trait Source: Fetch + MarkAsRead + Debug + MaybeSendSync {}
 
 /// A trait that defines a way to fetch (entries)[`Entry`]
 pub trait Fetch: Debug + MaybeSendSync {
-	/// Fetch all available entries from the source
+	/// Fetches all available entries from the source
 	fn fetch(&mut self) -> impl Future<Output = Result<Vec<Entry>, SourceError>> + MaybeSend;
 
+	/// Converts the value into a source with the provided [`ReadFilter`].
 	fn into_source_with_read_filter<RF>(self, read_filter: RF) -> SourceWithSharedRF<Self, RF>
 	where
 		Self: Sized,
@@ -47,6 +48,7 @@ pub trait Fetch: Debug + MaybeSendSync {
 		}
 	}
 
+	/// Converts the value into a source without support for filtering read/unread entries.
 	fn into_source_without_read_filter(self) -> SourceWithSharedRF<Self, ()>
 	where
 		Self: Sized,

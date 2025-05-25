@@ -15,8 +15,10 @@ pub mod telegram;
 
 pub mod error;
 
-pub use self::{discord::Discord, stdout::Stdout, telegram::Telegram};
+pub use self::{discord::Discord, message::Message, stdout::Stdout, telegram::Telegram};
 pub use crate::exec::Exec;
+
+use self::{error::SinkError, message::MessageId};
 use crate::{
 	actions::{Action, ActionContext},
 	entry::{Entry, EntryId},
@@ -25,11 +27,6 @@ use crate::{
 	maybe_send::{MaybeSend, MaybeSendSync},
 	sources::Source,
 	task::entry_to_msg_map::EntryToMsgMap,
-};
-
-use self::{
-	error::SinkError,
-	message::{Message, MessageId},
 };
 
 use std::{borrow::Cow, collections::HashSet, fmt::Debug};

@@ -60,12 +60,15 @@ pub enum LinkLocation {
 }
 
 impl Telegram {
-	/// Creates a new Telegram sink using the bot `token` that sends messages to chat with `chat_id` with `Message.link` put at `link_location`
+	/// Creates a new Telegram sink using the bot `token` that sends messages to chat with `chat_id`.
+	///
+	/// Defaults the link location to [`LinkLocation::PreferTitle`].
 	#[must_use]
 	pub fn new(token: impl Into<String>, chat_id: i64) -> Self {
 		Self::new_with_link_location(token, chat_id, LinkLocation::PreferTitle)
 	}
 
+	/// Creates a new Telegram sink using the bot `token` that sends messages to chat with `chat_id` with `Message.link` put at `link_location`.
 	#[must_use]
 	pub fn new_with_link_location(
 		token: impl Into<String>,

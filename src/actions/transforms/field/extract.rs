@@ -18,13 +18,17 @@ pub struct Extract {
 	re: Regex,
 
 	/// Passthrough the old value if the regex didn't match
-	passthrough: Passthrough,
+	passthrough: PassthroughIfNotMatched,
 }
 
+/// What happens if the regex doesn't match?
 #[derive(Debug)]
-pub enum Passthrough {
+pub enum PassthroughIfNotMatched {
+	/// Always passthrough the old field value, even if the regex didn't match
 	Always,
-	IfRegexMatchedOnly,
+
+	/// Return an error if the regex didn't match
+	ReturnError,
 }
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
@@ -43,7 +47,7 @@ impl Extract {
 	///
 	/// # Errors
 	/// * if the regex is invalid
-	pub fn new(re: &str, passthrough: Passthrough) -> Result<Self, ExtractError> {
+	pub fn new(re: &str, passthrough: PassthroughIfNotMatched) -> Result<Self, ExtractError> {
 		let re = Regex::new(re).map_err(BadRegexError)?;
 
 		Ok(Self { re, passthrough })
@@ -60,7 +64,7 @@ impl TransformField for Extract {
 
 		let extracted = match extract_captures_from(&self.re, field) {
 			Some(v) => v,
-			None if matches!(self.passthrough, Passthrough::Always) => field.to_owned(),
+			None if matches!(self.passthrough, PassthroughIfNotMatched::Always) => field.to_owned(),
 			None => return Err(ExtractError::CaptureGroupNotFound),
 		};
 

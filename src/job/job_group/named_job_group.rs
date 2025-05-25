@@ -1,9 +1,23 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+//! This module contains the [`NamedJobGroup`] type
+
 use crate::StaticStr;
 
 use super::JobGroup;
 
+/// A [`JobGroup`] wrapper that prepends the provided name to [`JobGroup::names`] calls and creates a tracing span containing the name.
+///
+/// See [`JobGroup::with_name`].
 pub struct NamedJobGroup<G> {
+	/// Wrapped job group
 	pub inner: G,
+
+	/// Name of the contained job group
 	pub name: StaticStr,
 }
 

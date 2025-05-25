@@ -1,7 +1,18 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+//! This module contains the [`CombinedJobGroup`] struct
+
 use futures::join;
 
 use super::{JobGroup, JobGroupResult};
 
+/// A job group that combines 2 other job groups and runs them concurrently to completion.
+///
+/// See [`JobGroup::combine_with`].
 pub struct CombinedJobGroup<G1, G2>(pub G1, pub G2);
 
 impl<G1, G2> JobGroup for CombinedJobGroup<G1, G2>

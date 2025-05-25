@@ -93,6 +93,17 @@ where
 	}
 }
 
+/// Wrapper around a type implementing [`std::error::Error`]
+/// that provides a pretty [`Display`] implementation.
+///
+/// It may looked like this:
+///
+/// Error 1
+///
+/// Caused by:
+///   1: Error 2
+///   2: Error 3
+///   3: Error 4
 pub struct ErrorChainDisplay<'a>(pub &'a dyn StdError);
 
 impl Display for ErrorChainDisplay<'_> {

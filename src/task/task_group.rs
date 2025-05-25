@@ -1,3 +1,11 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+//! This module contains the [`TaskGroup`] trait
+
 mod run_result;
 
 pub use run_result::RunResult;
@@ -9,9 +17,16 @@ use crate::{
 	task::OpaqueTask,
 };
 
+/// A group of tasks that are run together as part of a [`Job`](`crate::job::Job`).
 pub trait TaskGroup: MaybeSendSync {
+	/// Result of a run of the task group.
+	///
+	/// An iterator-like type, yielding [`Result<(), FetcherError>`]
 	type RunResult: RunResult;
 
+	/// Runs all tasks in the group in parallel in the same async task.
+	///
+	/// This method runs all jobs in the group concurrently using [`join!()`].
 	fn run_concurrently(&mut self) -> impl Future<Output = Self::RunResult> + MaybeSend;
 }
 

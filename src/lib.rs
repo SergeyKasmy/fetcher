@@ -52,9 +52,6 @@
 
 #![cfg_attr(not(feature = "send"), expect(clippy::future_not_send))]
 #![cfg_attr(test, allow(clippy::unwrap_used))]
-// TEMP
-#![allow(missing_docs)]
-#![allow(async_fn_in_trait)]
 // TODO: enable later
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::missing_errors_doc)]
@@ -77,6 +74,9 @@ pub mod utils;
 
 #[cfg(feature = "scaffold")]
 pub mod scaffold;
+
+// common types
+pub use crate::{job::Job, task::Task};
 
 pub use either;
 pub use static_str::StaticStr;

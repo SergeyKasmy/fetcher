@@ -85,10 +85,6 @@ impl Filter for Newer {
 
 		Ok(())
 	}
-
-	fn is_readfilter(&self) -> bool {
-		true
-	}
 }
 
 impl Default for Newer {

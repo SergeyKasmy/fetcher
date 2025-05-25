@@ -27,18 +27,14 @@ use super::{Action, ActionContext};
 // Right now no built-in provided filters can error but a user-implemented one might
 /// Trait for all types that support filtering entries out of a list of [`Entry`]s
 pub trait Filter: Debug + MaybeSendSync {
+	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
 	type Error: Into<FilterError>;
 
-	/// Filter out some entries out of the `entries` vector
+	/// Filter or modify the list of entries
 	fn filter(
 		&self,
 		entries: &mut Vec<Entry>,
 	) -> impl Future<Output = Result<(), Self::Error>> + MaybeSend;
-
-	/// Returns true if this filter is a [`ReadFilter`](crate::read_filter::ReadFilter)
-	fn is_readfilter(&self) -> bool {
-		false
-	}
 }
 
 pub(crate) struct FilterWrapper<F>(pub F);

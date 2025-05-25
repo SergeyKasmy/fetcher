@@ -1,9 +1,18 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+//! This module contains the [`JsonError`] and [`ErrorLocation`] types
+
 use std::fmt::Display;
 
 use crate::{actions::transforms::error::RawContentsNotSetError, error::InvalidUrlError};
 
 use super::JsonPointer;
 
+/// An error that occured during parsing the JSON tree
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum JsonError {
@@ -41,11 +50,17 @@ pub enum JsonErrorInner {
 	InvalidUrl(#[from] InvalidUrlError),
 }
 
+/// The error occured while parsing which field?
+// TODO: this is identical to html::error::ErrorLocation. Should this be merged?
+#[expect(missing_docs, reason = "self-explanatory")]
 #[derive(Clone, Copy, Debug)]
 pub enum ErrorLocation {
 	Item,
 	Title,
-	Text { index: usize },
+	/// `index` contains the index of the selector in the [`Json::text`](`super::Json::text`) array
+	Text {
+		index: usize,
+	},
 	Id,
 	Link,
 	Img,

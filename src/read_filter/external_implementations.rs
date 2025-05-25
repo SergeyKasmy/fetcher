@@ -46,14 +46,11 @@ pub mod tokio_rwlock {
 		async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 			self.read().await.filter(entries).await
 		}
-
-		fn is_readfilter(&self) -> bool {
-			true
-		}
 	}
 }
 
 /*
+// TODO: is this needed?
 /// [`ReadFilter`] implementation for `Box<dyn ReadFilter>`
 pub mod boks {
 	#[allow(clippy::wildcard_imports)]

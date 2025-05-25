@@ -1,11 +1,19 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+//! This module contains the [`HtmlError`] and [`ErrorLocation`] types
+
 use std::fmt::Display;
 
 use scraper::{Selector, selector::ToCss};
 
+use super::DataSelector;
 use crate::actions::transforms::error::RawContentsNotSetError;
 
-use super::DataSelector;
-
+/// An error that occured during parsing the HTML tree
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum HtmlError {
@@ -33,11 +41,16 @@ pub enum HtmlErrorInner {
 	ElementEmpty(DataSelector),
 }
 
+/// The error occured while parsing which field?
+#[expect(missing_docs, reason = "self-explanatory")]
 #[derive(Clone, Copy, Debug)]
 pub enum ErrorLocation {
 	Item,
 	Title,
-	Text { index: usize },
+	/// `index` contains the index of the selector in the [`Html::text`](`super::Html::text`) array
+	Text {
+		index: usize,
+	},
 	Id,
 	Link,
 	Img,

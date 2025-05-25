@@ -4,12 +4,16 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains the basic block of [`fetcher`](`crate`) that is a [`Task`]
+//! This module contains the basic block of [`fetcher`](`crate`) that is a [`Task`].
 
+mod disabled_task;
+mod opaque_task;
 mod task_group;
 
 pub mod entry_to_msg_map;
 
+pub use self::disabled_task::DisabledTask;
+pub use self::opaque_task::OpaqueTask;
 pub use self::task_group::TaskGroup;
 
 use self::entry_to_msg_map::EntryToMsgMap;
@@ -19,55 +23,52 @@ use crate::{
 	entry::Entry,
 	error::FetcherError,
 	external_save::ExternalSave,
-	maybe_send::{MaybeSend, MaybeSendSync},
 	sources::Source,
 };
 
-/// A core primitive of [`fetcher`](`crate`).
+/// A core primitive of [`fetcher`](`crate`). A single instance of a data pipeline.
 ///
-/// Contains everything from a [`Source`] that allows to fetch some data, to a [`Sink`](`crate::sinks::Sink`) that takes that data and sends it somewhere.
-/// It also contains any transformators
+/// Runs the data fetched from a [`Source`] through the pipeline ([`Task::action`])
 #[derive(bon::Builder, Debug)]
 pub struct Task<S, A, E> {
+	/// Name of the task
 	#[builder(start_fn, into)]
 	pub name: StaticStr,
 
-	/// Map of an entry to a message. Used when an entry is a reply to an older entry to be able to show that as a message, too
+	/// Map of an entry (by [`EntryId`](`crate::entry::EntryId`)) to a sent message (by [`MessageId`](`crate::sinks::message::MessageId`)).
+	///
+	/// Sinks supporting replies can make the current message a reply to an older one.
 	#[builder(field)]
 	pub entry_to_msg_map: Option<EntryToMsgMap<E>>,
 
-	/// An optional tag that may be put near a message body to differentiate this task from others that may be similar
+	/// Optional tag that a [`Sink`](`crate::sinks::Sink`) may put near a message body to differentiate this task from others that may be similar.
+	///
+	/// For example, messages from different task that are sent to the same sink can be differentiated using this adjecent tag.
 	#[builder(into)]
 	pub tag: Option<StaticStr>,
 
-	/// The source where to fetch some data from
+	/// Source where to fetch the data from.
+	///
+	/// Also used to mark the entry as read after it's been sent.
 	pub source: Option<S>,
 
-	/// A list of optional transformators which to run the data received from the source through
+	/// Pipeline (in other words, a list of actions) which the data received from the source is run through
 	pub action: Option<A>,
 }
 
-pub trait OpaqueTask: MaybeSendSync {
-	fn run(&mut self) -> impl Future<Output = Result<(), FetcherError>> + MaybeSend;
-
-	fn disable(self) -> DisabledTask<Self>
-	where
-		Self: Sized,
-	{
-		DisabledTask(self)
-	}
-}
-
-impl<S, A, E> OpaqueTask for Task<S, A, E>
+impl<S, A, E> Task<S, A, E>
 where
 	S: Source,
 	A: Action,
 	E: ExternalSave,
 {
-	/// Run a task (both the source and the sink part) once to completion
+	/// Run a task once to completion
 	///
 	/// # Errors
-	/// If there was an error fetching the data, sending the data, or saving what data was successfully sent to an external location
+	/// Errors if any part of the pipeline (source -> actions) failed,
+	/// if the [`ReadFilter`] failed,
+	/// or if the [`ExternalSave`] implementation caused the [`EntryToMsgMap`] to return an error.
+	#[expect(clippy::same_name_method, reason = "can't think of a better name")] // if any come up, I'd be fine to replace it
 	#[tracing::instrument(skip(self), fields(name = %self.name))]
 	async fn run(&mut self) -> Result<(), FetcherError> {
 		tracing::trace!("Running task");
@@ -93,39 +94,28 @@ where
 	}
 }
 
-impl OpaqueTask for () {
-	async fn run(&mut self) -> Result<(), FetcherError> {
-		Ok(())
-	}
-}
-
-impl<T> OpaqueTask for Option<T>
+impl<S, A, E> OpaqueTask for Task<S, A, E>
 where
-	T: OpaqueTask,
+	S: Source,
+	A: Action,
+	E: ExternalSave,
 {
 	async fn run(&mut self) -> Result<(), FetcherError> {
-		let Some(task) = self else {
-			return Ok(());
-		};
-
-		task.run().await
-	}
-}
-
-pub struct DisabledTask<T>(T);
-
-impl<T: MaybeSendSync> OpaqueTask for DisabledTask<T> {
-	async fn run(&mut self) -> Result<(), FetcherError> {
-		Ok(())
+		Task::run(self).await
 	}
 }
 
 impl<S, A, State: task_builder::State> TaskBuilder<S, A, (), State> {
+	/// Disables [`Task::entry_to_msg_map`].
+	///
+	/// Even though [`Task::entry_to_msg_map`] is optional, the generic still needs to be specified.
+	/// This method specifies the generic as [`()`] and sets [`Task::entry_to_msg_map`] to `None`.
 	pub fn no_entry_to_msg_map(mut self) -> Self {
 		self.entry_to_msg_map = None;
 		self
 	}
 
+	/// Builds the task while disabling the [`Task::entry_to_msg_map`] via [`TaskBuilder::no_entry_to_msg_map`].
 	pub fn build_without_replies(self) -> Task<S, A, ()> {
 		self.no_entry_to_msg_map().build()
 	}
