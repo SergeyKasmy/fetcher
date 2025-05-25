@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! A crate providing the [`StaticStr`] type - a string type that can handle both static and owned strings.
+//! [`StaticStr`] - a string type that can handle both static and owned strings.
 //!
 //! # Overview
 //!

@@ -2,7 +2,8 @@
 name = "static-str"
 description = "A string type that can hold both static and owned strings"
 version = "0.0.1"
-license.workspace = true
+repository = "https://github.com/SergeyKasmy/fetcher/crates/static-str"
+license = "MPL-2.0"
 edition.workspace = true
 
 [dependencies]

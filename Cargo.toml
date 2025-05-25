@@ -3,7 +3,7 @@ name = "fetcher"
 description = "Data fetching and pipelining framework"
 version = "0.15.0-alpha.2"
 repository = "https://github.com/SergeyKasmy/fetcher"
-license.workspace = true
+license = "MPL-2.0"
 edition.workspace = true
 
 [workspace]
@@ -11,7 +11,6 @@ members = [".", "crates/non-non-full", "crates/static-str"]
 
 [workspace.package]
 edition = "2024"
-license = "MPL-2.0"
 
 [features]
 default = ["send", "scaffold"]
