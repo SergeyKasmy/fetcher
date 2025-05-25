@@ -60,8 +60,6 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::doc_markdown)]
 
-mod static_str;
-
 pub mod actions;
 pub mod auth;
 pub mod ctrl_c_signal;
@@ -80,9 +78,8 @@ pub mod utils;
 #[cfg(feature = "scaffold")]
 pub mod scaffold;
 
-pub use crate::static_str::StaticStr;
-
 pub use either;
+pub use static_str::StaticStr;
 pub use url;
 
 // TODO: used to installa CryptoProvider. Not sure how this can be avoided

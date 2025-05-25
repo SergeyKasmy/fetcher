@@ -7,7 +7,7 @@ license.workspace = true
 edition.workspace = true
 
 [workspace]
-members = [".", "crates/non-non-full"]
+members = [".", "crates/non-non-full", "crates/static-str"]
 
 [workspace.package]
 edition = "2024"
@@ -50,6 +50,8 @@ webpki-roots = "0.26.8"
 # feature = "scaffold"
 tracing-journald = { version = "0.3.1", optional = true }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "tracing-log", "time", "local-time"], optional = true }
+
+static-str = { version = "0.0.1", path = "crates/static-str" }
 
 [dev-dependencies]
 assert_matches = "1.5"

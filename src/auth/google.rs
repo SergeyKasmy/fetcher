@@ -10,7 +10,7 @@
 use serde::Deserialize;
 use std::time::{Duration, Instant};
 
-use crate::static_str::StaticStr;
+use crate::StaticStr;
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
 
