@@ -22,7 +22,7 @@
 //! # Example
 //!
 //! ```rust
-//! use static_str::StaticStr;
+//! use staticstr::StaticStr;
 //!
 //! // Use with static strings - no allocation
 //! let static_message: StaticStr = "Hello, World!".into();

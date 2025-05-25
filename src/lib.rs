@@ -79,7 +79,7 @@ pub mod scaffold;
 pub use crate::{job::Job, task::Task};
 
 pub use either;
-pub use static_str::StaticStr;
+pub use staticstr::StaticStr;
 pub use url;
 
 // TODO: used to installa CryptoProvider. Not sure how this can be avoided

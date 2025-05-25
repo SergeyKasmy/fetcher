@@ -1,4 +1,4 @@
-# static-str
+# staticstr
 
 [`StaticStr`] - a string type that can handle both static and owned strings.
 
@@ -18,7 +18,7 @@ owned strings when needed.
 ## Example
 
 ```rust
-use static_str::StaticStr;
+use staticstr::StaticStr;
 
 // Use with static strings - no allocation
 let static_message: StaticStr = "Hello, World!".into();

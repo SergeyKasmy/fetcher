@@ -7,7 +7,7 @@ license = "MPL-2.0"
 edition.workspace = true
 
 [workspace]
-members = [".", "crates/non-non-full", "crates/static-str"]
+members = [".", "crates/non-non-full", "crates/staticstr"]
 
 [workspace.package]
 edition = "2024"
@@ -37,6 +37,7 @@ scraper = "0.23.1"
 serde_json = "1.0.135"
 serde = { version = "1.0.217", features = ["derive"] }
 serenity = "0.12.4"
+staticstr = { version = "0.0.1", path = "crates/staticstr" }
 tap = "1.0.1"
 teloxide = { version = "0.13.0", features = ["rustls", "throttle"], default-features = false }
 thiserror = "2.0.11"
@@ -49,8 +50,6 @@ webpki-roots = "0.26.8"
 # feature = "scaffold"
 tracing-journald = { version = "0.3.1", optional = true }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "tracing-log", "time", "local-time"], optional = true }
-
-static-str = { version = "0.0.1", path = "crates/static-str" }
 
 [dev-dependencies]
 assert_matches = "1.5"

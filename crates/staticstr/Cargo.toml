@@ -1,5 +1,5 @@
 [package]
-name = "static-str"
+name = "staticstr"
 description = "A string type that can hold both static and owned strings"
 version = "0.0.1"
 repository = "https://github.com/SergeyKasmy/fetcher/crates/static-str"
