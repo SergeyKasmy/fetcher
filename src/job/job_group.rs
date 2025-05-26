@@ -219,6 +219,12 @@ pub trait JobGroup: MaybeSendSync {
 	///
 	/// let names = named_group.names().flatten().collect::<Vec<String>>();
 	/// assert_eq!(names, vec!["important_jobs/job1", "important_jobs/job2"]);
+	///
+	/// // Add a second name to the group
+	/// let named_group2 = named_group.with_name("something_else");
+	///
+	/// let names = named_group2.names().flatten().collect::<Vec<String>>();
+	/// assert_eq!(names, vec!["something_else/important_jobs/job1", "something_else/important_jobs/job2"]);
 	/// # });
 	/// ```
 	fn with_name<S>(self, name: S) -> NamedJobGroup<Self>

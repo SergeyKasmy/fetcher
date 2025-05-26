@@ -57,3 +57,47 @@ where
 		})
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use crate::{
+		Job,
+		job::{JobGroup, JobResult, OpaqueJob, error_handling::Forward},
+	};
+
+	#[test]
+	fn named_job_group_doesnt_add_name_to_job_with_no_name() {
+		struct UnnamedJob;
+
+		impl OpaqueJob for UnnamedJob {
+			async fn run(&mut self) -> JobResult {
+				JobResult::Ok
+			}
+
+			fn name(&self) -> Option<&str> {
+				None
+			}
+		}
+
+		let named_job = Job::builder("named_job")
+			.tasks(())
+			.refresh_time(None)
+			.error_handling(Forward)
+			.ctrlc_chan(None)
+			.build();
+
+		let unnamed_job = UnnamedJob;
+
+		let group = (named_job, unnamed_job);
+		assert_eq!(
+			group.names().collect::<Vec<_>>(),
+			[Some("named_job".to_owned()), None]
+		);
+
+		let named_group = group.with_name("named_group");
+		assert_eq!(
+			named_group.names().collect::<Vec<_>>(),
+			[Some("named_group/named_job".to_owned()), None]
+		);
+	}
+}

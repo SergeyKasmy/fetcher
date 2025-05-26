@@ -66,7 +66,7 @@ where
 	///
 	/// # Errors
 	/// Errors if any part of the pipeline (source -> actions) failed,
-	/// if the [`ReadFilter`] failed,
+	/// if the [`ReadFilter`](`crate::read_filter::ReadFilter`) failed,
 	/// or if the [`ExternalSave`] implementation caused the [`EntryToMsgMap`] to return an error.
 	#[expect(clippy::same_name_method, reason = "can't think of a better name")] // if any come up, I'd be fine to replace it
 	#[tracing::instrument(skip(self), fields(name = %self.name))]
