@@ -14,24 +14,6 @@ use crate::StaticStr;
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
 
-// FIXME: does this type actually need to be public?
-#[expect(clippy::doc_markdown, reason = "false positive")]
-/// An OAuth2 access token. It can be used to actually access stuff via OAuth2
-#[derive(Clone, Debug)]
-pub struct AccessToken {
-	/// The token itself
-	pub token: String,
-
-	/// When it expires and will no longer be valid
-	pub expires: Instant,
-}
-
-#[derive(Deserialize)]
-struct AccessTokenResponce {
-	access_token: String,
-	expires_in: u64,
-}
-
 #[expect(clippy::doc_markdown, reason = "false positive")]
 /// Google OAuth2 authenticator
 // TODO: link docs to the oauth2 spec
@@ -63,6 +45,23 @@ pub enum GoogleOAuth2Error {
 	AccessToken(String),
 }
 
+#[expect(clippy::doc_markdown, reason = "false positive")]
+/// An OAuth2 access token. It can be used to actually access stuff via OAuth2
+#[derive(Clone, Debug)]
+struct AccessToken {
+	/// The token itself
+	pub token: String,
+
+	/// When it expires and will no longer be valid
+	pub expires: Instant,
+}
+
+#[derive(Deserialize)]
+struct AccessTokenResponce {
+	access_token: String,
+	expires_in: u64,
+}
+
 impl Google {
 	#[expect(clippy::doc_markdown, reason = "false positive")]
 	/// Creates a new Google OAuth2 authenticator
@@ -86,7 +85,7 @@ impl Google {
 	/// * if there was a network connection error
 	/// * if the responce isn't a valid `refresh_token`
 	#[expect(clippy::missing_panics_doc, reason = "doesn't actually panic")]
-	pub async fn get_new_access_token(&mut self) -> Result<&AccessToken, GoogleOAuth2Error> {
+	pub async fn get_new_access_token(&mut self) -> Result<(), GoogleOAuth2Error> {
 		let AccessTokenResponce {
 			access_token,
 			expires_in,
@@ -99,10 +98,7 @@ impl Google {
 			expires: Instant::now() + Duration::from_secs(expires_in),
 		});
 
-		Ok(self
-			.access_token
-			.as_ref()
-			.expect("Token should have just been validated and thus be present and valid"))
+		Ok(())
 	}
 
 	/// Return a previously gotten `access_token` or fetch a new one
