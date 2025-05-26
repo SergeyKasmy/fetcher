@@ -6,7 +6,7 @@
 
 //! This module contains the [`Set`] field transform
 
-use rand::seq::SliceRandom;
+use rand::seq::IndexedRandom;
 use std::convert::Infallible;
 
 use super::TransformField;
@@ -54,7 +54,7 @@ impl TransformField for Set {
 		Ok(match self {
 			Set::Single(x) => TrRes::New(x.to_string()),
 			Set::Random(vec) => vec
-				.choose(&mut rand::thread_rng())
+				.choose(&mut rand::rng())
 				.map(ToString::to_string)
 				.unwrap_or_empty(),
 			Set::Empty => TrRes::Empty,

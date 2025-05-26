@@ -18,34 +18,34 @@ send = []
 scaffold = ["dep:tracing-journald", "dep:tracing-subscriber", "tokio/signal"]
 
 [dependencies]
-async-imap = { version = "0.10.3", features = ["runtime-tokio"], default-features = false }
-bon = "3.4.0"
-chrono = "0.4.39"
-either = "1.13.0"
+async-imap = { version = "0.10.4", features = ["runtime-tokio"], default-features = false }
+bon = "3.6.3"
+chrono = "0.4.41"
+either = "1.15.0"
 feed-rs = "2.3.1"
 futures = "0.3.31"
 html-escape = "0.2.13"
 itertools = "0.14.0"
-mailparse = "0.15.0"
+mailparse = "0.16.1"
 non-non-full = { version = "0.0.1", path = "crates/non-non-full", features = ["serde"] }
-once_cell = "1.20.2"
-rand = "0.8.5"
+once_cell = "1.21.3"
+rand = "0.9.1"
 regex = "1.11.1"
-reqwest = { version = "0.12.12", features = ["rustls-tls", "gzip", "json", "cookies"], default-features = false }
+reqwest = { version = "0.12.15", features = ["rustls-tls", "gzip", "json", "cookies"], default-features = false }
 roux = { version = "2.2.14", default-features = false, features = ["rustls"] }
 scraper = "0.23.1"
-serde_json = "1.0.135"
-serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.140"
+serde = { version = "1.0.219", features = ["derive"] }
 serenity = "0.12.4"
 staticstr = { version = "0.0.1", path = "crates/staticstr" }
 tap = "1.0.1"
-teloxide = { version = "0.13.0", features = ["rustls", "throttle"], default-features = false }
-thiserror = "2.0.11"
+teloxide = { version = "0.15.0", features = ["rustls", "throttle"], default-features = false }
+thiserror = "2.0.12"
 tokio-rustls = "0.26.2"
-tokio = { version = "1.43.0", features = ["fs", "io-std", "process"] }
+tokio = { version = "1.45.1", features = ["fs", "io-std", "process"] }
 tracing = "0.1.41"
 url = "2.5.4"
-webpki-roots = "0.26.8"
+webpki-roots = "1.0.0"
 
 # feature = "scaffold"
 tracing-journald = { version = "0.3.1", optional = true }
