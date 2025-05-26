@@ -4,7 +4,22 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/// A wrapper around a string that can never be empty
+/// A string that is guaranteed to contain at least one element.
+///
+/// [`NonEmptyString`] provides a safe wrapper around `String` that maintains the invariant
+/// that the string can never be empty.
+///
+/// # Examples
+///
+/// ```
+/// use non_non_full::NonEmptyString;
+///
+/// let string = "Hello, World!".to_owned();
+/// let non_empty = NonEmptyString::new(string).unwrap();
+///
+/// // Empty String returns None
+/// assert!(NonEmptyString::new(String::new()).is_none());
+/// ```
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NonEmptyString(String);

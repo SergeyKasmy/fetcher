@@ -6,6 +6,28 @@
 
 use std::ops;
 
+/// A vector that is guaranteed to contain at least one element.
+///
+/// `NonEmptyVec` provides a safe wrapper around `Vec` that maintains the invariant
+/// that the vector can never be empty. This is useful when you need to ensure that
+/// a collection always has at least one element, making it impossible to represent
+/// an empty state.
+///
+/// # Examples
+///
+/// ```
+/// use non_non_full::NonEmptyVec;
+///
+/// // Create a new non-empty vector
+/// let vec = NonEmptyVec::new_one(42);
+///
+/// // Attempt to create from an existing Vec
+/// let vec = vec![1, 2, 3];
+/// let non_empty = NonEmptyVec::new(vec).unwrap();
+///
+/// // Empty Vec returns None
+/// assert!(NonEmptyVec::new(Vec::<()>::new()).is_none());
+/// ```
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NonEmptyVec<T>(Vec<T>);
@@ -31,11 +53,12 @@ impl<T> NonEmptyVec<T> {
 		}
 	}
 
-	/// Creates a new NonEmptyVec containing exactly one element.
+	/// Creates a new NonEmptyVec containing exactly one element
 	pub fn new_one(value: T) -> Self {
 		Self(vec![value])
 	}
 
+	/// Returns a reference to the underlying Vec
 	pub fn as_vec(&self) -> &Vec<T> {
 		&self.0
 	}
