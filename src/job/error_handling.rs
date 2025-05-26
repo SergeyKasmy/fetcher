@@ -6,9 +6,11 @@
 
 //! This module provides error handling mechanisms for [`Jobs`](`super::Job`), including:
 //! - The [`HandleError`] trait used for implementing error handling strategies
-//! - Built-in handlers like [`Forward`], [`LogAndIgnore`], and [`ExponentialBackoffSleep`]
+//! - Built-in handlers like [`Forward`], [`LogAndIgnore`], and [`ExponentialBackoff`]
 
-mod exponential_backoff_sleep;
+// TODO: add tests
+
+mod exponential_backoff;
 mod forward;
 mod log_and_ignore;
 
@@ -22,7 +24,7 @@ use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
 use super::TimePoint;
 
-pub use self::exponential_backoff_sleep::ExponentialBackoffSleep;
+pub use self::exponential_backoff::ExponentialBackoff;
 pub use self::forward::Forward;
 pub use self::log_and_ignore::LogAndIgnore;
 
@@ -67,7 +69,7 @@ pub enum HandleErrorResult<E> {
 		/// The error that occured during executing of the error handler
 		err: E,
 
-		/// The original errors that caused the error handler to be evoked in the first place
+		/// The original errors that caused the error handler to be invoked in the first place
 		original_errors: Vec<FetcherError>,
 	},
 }
