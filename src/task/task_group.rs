@@ -6,9 +6,6 @@
 
 //! This module contains the [`TaskGroup`] trait
 
-mod run_result;
-
-pub use run_result::RunResult;
 use tokio::join;
 
 use crate::{
@@ -22,7 +19,7 @@ pub trait TaskGroup: MaybeSendSync {
 	/// Result of a run of the task group.
 	///
 	/// An iterator-like type, yielding [`Result<(), FetcherError>`]
-	type RunResult: RunResult;
+	type RunResult: IntoIterator<Item = Result<(), FetcherError>>;
 
 	/// Runs all tasks in the group in parallel in the same async task.
 	///
