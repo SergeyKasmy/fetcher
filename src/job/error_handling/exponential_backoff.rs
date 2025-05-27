@@ -12,6 +12,7 @@ use std::{
 	time::{Duration, Instant},
 };
 
+use rand::Rng;
 use tap::TapOptional;
 use tokio::{select, time::sleep};
 
@@ -45,8 +46,8 @@ use super::{HandleError, HandleErrorContext, HandleErrorResult};
 /// use fetcher::job::error_handling::ExponentialBackoff;
 ///
 /// let mut handler = ExponentialBackoff::new(); // Uses default max_retries of 15
-/// // Or configure custom retry limit:
-/// handler.max_retries = 5;
+/// // Or configure custom attempt limit:
+/// handler.max_attempts = 5;
 /// ```
 #[derive(Clone, Debug)]
 pub struct ExponentialBackoff {
@@ -116,7 +117,7 @@ impl ExponentialBackoff {
 		}
 	}
 
-	/// Gets the number of the "current" attempt as if the handler would be called immediately after.
+	/// Gets the number of the next attempt, the attempt the handler would handle if called immediately after.
 	///
 	/// Can be used to wrap the [`ExponentialBackoff`] error handler with additional logging or notifications
 	///
@@ -127,7 +128,7 @@ impl ExponentialBackoff {
 	/// If this count reaches [`ExponentialBackoff::max_attempts`], then the next call to [`ExponentialBackoff::handle_errors`]
 	/// will actually just stop the job completely and returns the errors back.
 	#[must_use]
-	pub fn current_attempt(&mut self, job_refresh_time: Option<&TimePoint>) -> u32 {
+	pub fn next_attempt(&mut self, job_refresh_time: Option<&TimePoint>) -> u32 {
 		self.reset_error_count(job_refresh_time);
 
 		match self.check_limit_reached() {
@@ -179,7 +180,8 @@ impl ExponentialBackoff {
 			return false;
 		};
 
-		let pause_duration = exponential_backoff_duration(current_attempt, self.use_jitter);
+		let pause_duration =
+			exponential_backoff_duration(current_attempt, self.use_jitter, rand::rng());
 
 		self.last_error_info = Some(ErrorInfo {
 			attempt: current_attempt,
@@ -292,7 +294,7 @@ impl Default for ExponentialBackoff {
 
 // TODO: add base delay if users need it (together with max delay)
 /// Sleep in exponentially increasing amount of minutes, beginning with 2^0 = 1 minute.
-fn exponential_backoff_duration(attempt: u32, use_jitter: bool) -> Duration {
+fn exponential_backoff_duration(attempt: u32, use_jitter: bool, mut rng: impl Rng) -> Duration {
 	// 1 attempt -> wait 2^0=1 mins
 	// 2 attempt -> wait 2^1=2 mins
 	// 3 attempt -> wait 2^2=4 mins
@@ -301,11 +303,12 @@ fn exponential_backoff_duration(attempt: u32, use_jitter: bool) -> Duration {
 	let base_duration_sec = base_duration_min * 60;
 
 	let final_duration = if use_jitter {
-		let duration_secs_f64 = base_duration_sec as f64 * (rand::random::<f64>() + 0.5);
+		let duration_secs_f64 = base_duration_sec as f64 * (rng.random::<f64>() + 0.5);
 		let duration_secs = duration_secs_f64.round() as u64;
 
 		tracing::debug!(
-			"Calculated exponential backoff duration: base = {base_duration_min}m ({base_duration_sec}s), with jitter = {duration_secs_f64}s (rounded to {duration_secs}s)"
+			"Calculated exponential backoff duration: base = {base_duration_min}m ({base_duration_sec}s), with jitter = {duration_secs_f64}s (rounded to {duration_secs}s, ~{}m)",
+			duration_secs / 60
 		);
 
 		duration_secs
@@ -329,6 +332,84 @@ async fn pause_job(dur: Duration, cx: HandleErrorContext<'_>) -> bool {
 		}
 		() = ctrlc_signaled(cx.ctrlc_chan) => {
 			false
+		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use std::time::Duration;
+
+	use rand::Rng;
+
+	use super::exponential_backoff_duration;
+
+	/// Asserts that [`exponential_backoff_duration`] returned the expected duration (of within range if jitter is enabled)
+	fn check_exp_backoff_duration(
+		attempt: u32,
+		use_jitter: bool,
+		expected_result: Duration,
+		rng: impl Rng,
+	) {
+		let dur = exponential_backoff_duration(attempt, use_jitter, rng);
+		if use_jitter {
+			let dur = dur.as_secs() as f64;
+			let expected_dur = expected_result.as_secs() as f64;
+			assert!(dur <= (expected_dur * 1.5) && dur >= (expected_dur / 2.0));
+		} else {
+			assert_eq!(dur, expected_result, "attempt: {attempt}");
+		}
+	}
+
+	/// Converts minutes into a [`Duration`]
+	fn m(mins: u64) -> Duration {
+		Duration::from_secs(mins * 60 /* secs in a min*/)
+	}
+
+	#[test]
+	fn exponential_backoff_duration_no_jitter() {
+		for i in 0u32..=15 {
+			let expected_mins = 2u64.pow(i.saturating_sub(1).into());
+			check_exp_backoff_duration(i, false, m(expected_mins), rand::rng());
+		}
+	}
+
+	#[test]
+	fn exponential_backoff_duration_with_jitter() {
+		for i in 0u32..=15 {
+			let expected_mins = 2u64.pow(i.saturating_sub(1).into());
+			check_exp_backoff_duration(i, true, m(expected_mins), rand::rng());
+		}
+	}
+
+	#[test]
+	fn exponential_backoff_duration_with_fake_jitter() {
+		/// An Rng source that alternates between the MIN and MAX of a type
+		struct AlwaysExtremes(bool);
+
+		impl rand::RngCore for AlwaysExtremes {
+			fn next_u64(&mut self) -> u64 {
+				let min_or_max = self.0;
+				self.0 = !self.0;
+				if min_or_max { u64::MIN } else { u64::MAX }
+			}
+
+			fn next_u32(&mut self) -> u32 {
+				unimplemented!()
+			}
+
+			fn fill_bytes(&mut self, _dst: &mut [u8]) {
+				unimplemented!()
+			}
+		}
+
+		let mut rng = AlwaysExtremes(true);
+
+		for i in 0u32..=15 {
+			let expected_mins = 2u64.pow(i.saturating_sub(1).into());
+			// two separate calls will generate two jitter values in the two extremes of the allowed range. Confirm both are within range
+			check_exp_backoff_duration(i, true, m(expected_mins), &mut rng);
+			check_exp_backoff_duration(i, true, m(expected_mins), &mut rng);
 		}
 	}
 }
