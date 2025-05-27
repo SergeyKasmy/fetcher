@@ -29,7 +29,7 @@ use fetcher::{
 		sink, transform,
 		transforms::{Html, html::DataLocation},
 	},
-	job::{Job, TimePoint, error_handling},
+	job::{Job, RefreshTime, error_handling},
 	sinks::Stdout,
 	sources::{Http, SourceWithSharedRF},
 	task::Task,
@@ -66,7 +66,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	// Create a new job that reruns the task every seconds and ignores all errors
 	let mut job = Job::builder("example job")
 		.tasks(task)
-		.refresh_time(Some(TimePoint::Duration(Duration::from_secs(1))))
+		.refresh_time(RefreshTime::Every(Duration::from_secs(1)))
 		.ctrlc_chan(None)
 		.error_handling(error_handling::LogAndIgnore)
 		.build();

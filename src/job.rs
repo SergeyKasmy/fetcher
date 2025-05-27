@@ -9,13 +9,13 @@
 pub mod error_handling;
 pub mod job_group;
 pub mod opaque_job;
-pub mod timepoint;
+pub mod refresh_time;
 
 mod job_result;
 
 pub use self::{
 	error_handling::HandleError, job_group::JobGroup, job_result::JobResult, opaque_job::OpaqueJob,
-	timepoint::TimePoint,
+	refresh_time::RefreshTime,
 };
 
 use error_handling::{HandleErrorContext, HandleErrorResult};
@@ -40,9 +40,8 @@ pub struct Job<T, H> {
 	/// Tasks/pipeline to run the data through
 	pub tasks: T,
 
-	/// Refresh/refetch/redo the job every "this" point of the day
-	#[builder(required)]
-	pub refresh_time: Option<TimePoint>,
+	/// Refresh/refetch/redo the job every provided amount of time
+	pub refresh_time: RefreshTime,
 
 	/// Handler for errors that occur during job execution
 	pub error_handling: H,
@@ -85,12 +84,11 @@ impl<T: TaskGroup, H> Job<T, H> {
 				return JobResult::Err(errors);
 			}
 
-			// stop the job if there's no refresh timer
-			let Some(refresh_time) = &self.refresh_time else {
-				return JobResult::Ok;
+			let remaining_time = match self.refresh_time.remaining_time_from_now() {
+				Some(remaining_time) => remaining_time,
+				// stop the job if there's no refresh timer
+				None => return JobResult::Ok,
 			};
-
-			let remaining_time = refresh_time.remaining_from_now();
 
 			tracing::debug!(
 				"Putting job to sleep for {}m",
@@ -143,7 +141,7 @@ where
 
 			let cx = HandleErrorContext {
 				job_name: &self.name,
-				job_refresh_time: self.refresh_time.as_ref(),
+				job_refresh_time: &self.refresh_time,
 				ctrlc_chan: self.ctrlc_chan.as_mut(),
 			};
 

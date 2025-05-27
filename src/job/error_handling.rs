@@ -22,7 +22,7 @@ use crate::ctrl_c_signal::CtrlCSignalChannel;
 use crate::error::FetcherError;
 use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
-use super::TimePoint;
+use super::RefreshTime;
 
 pub use self::exponential_backoff::ExponentialBackoff;
 pub use self::forward::Forward;
@@ -50,7 +50,7 @@ pub struct HandleErrorContext<'a> {
 	pub job_name: &'a str,
 
 	/// The job's [`Job::refresh_time`](`super::Job::refresh_time`)
-	pub job_refresh_time: Option<&'a TimePoint>,
+	pub job_refresh_time: &'a RefreshTime,
 
 	/// The job's [`Job::ctrlc_chan`](`super::Job::ctrlc_chan`)
 	pub ctrlc_chan: Option<&'a mut CtrlCSignalChannel>,

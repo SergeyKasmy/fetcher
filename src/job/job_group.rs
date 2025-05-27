@@ -50,18 +50,18 @@ pub type JobGroupResult = Vec<JobResult>;
 /// # Example
 /// ```rust
 /// # tokio_test::block_on(async {
-/// use fetcher::job::{Job, JobGroup, error_handling::Forward};
+/// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
 ///
 /// // Create jobs
 /// let job1 = Job::builder("job1")
 /// 				.tasks(())
-/// 				.refresh_time(None)
+/// 				.refresh_time(RefreshTime::Never)
 /// 				.error_handling(Forward)
 /// 				.ctrlc_chan(None)
 /// 				.build();
 /// let job2 = Job::builder("job2")
 /// 				.tasks(())
-/// 				.refresh_time(None)
+/// 				.refresh_time(RefreshTime::Never)
 /// 				.error_handling(Forward)
 /// 				.ctrlc_chan(None)
 /// 				.build();
@@ -141,13 +141,13 @@ pub trait JobGroup: MaybeSendSync {
 	/// # Example
 	/// ```rust
 	/// # tokio_test::block_on(async {
-	/// use fetcher::job::{Job, JobGroup, error_handling::Forward};
+	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
 	///
 	/// // Create jobs
-	/// let job1 = Job::builder("job1").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job2 = Job::builder("job2").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job3 = Job::builder("job3").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job4 = Job::builder("job4").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job1 = Job::builder("job1").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job2 = Job::builder("job2").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job3 = Job::builder("job3").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job4 = Job::builder("job4").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
 	///
 	/// let group1 = (job1, job2);
 	/// let group2 = (job3, job4);
@@ -176,11 +176,11 @@ pub trait JobGroup: MaybeSendSync {
 	/// # Example
 	/// ```rust
 	/// # tokio_test::block_on(async {
-	/// use fetcher::job::{Job, JobGroup, error_handling::Forward};
+	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
 	///
 	/// // Create jobs
-	/// let job1 = Job::builder("job1").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job2 = Job::builder("job2").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job1 = Job::builder("job1").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job2 = Job::builder("job2").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
 	///
 	/// let group = (job1, job2);
 	///
@@ -207,10 +207,10 @@ pub trait JobGroup: MaybeSendSync {
 	/// # Example
 	/// ```rust
 	/// # tokio_test::block_on(async {
-	/// use fetcher::job::{Job, JobGroup, error_handling::Forward};
+	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
 	///
-	/// let job1 = Job::builder("job1").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job2 = Job::builder("job2").tasks(()).refresh_time(None).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job1 = Job::builder("job1").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job2 = Job::builder("job2").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
 	///
 	/// let group = (job1, job2);
 	///

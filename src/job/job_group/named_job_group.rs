@@ -62,7 +62,7 @@ where
 mod tests {
 	use crate::{
 		Job,
-		job::{JobGroup, JobResult, OpaqueJob, error_handling::Forward},
+		job::{JobGroup, JobResult, OpaqueJob, RefreshTime, error_handling::Forward},
 	};
 
 	#[test]
@@ -81,7 +81,7 @@ mod tests {
 
 		let named_job = Job::builder("named_job")
 			.tasks(())
-			.refresh_time(None)
+			.refresh_time(RefreshTime::Never)
 			.error_handling(Forward)
 			.ctrlc_chan(None)
 			.build();

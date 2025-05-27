@@ -18,7 +18,7 @@ use tokio::{select, time::sleep};
 
 use crate::{
 	error::FetcherError,
-	job::{ErrorChainDisplay, TimePoint, ctrlc_signaled},
+	job::{ErrorChainDisplay, RefreshTime, ctrlc_signaled},
 };
 
 use super::{HandleError, HandleErrorContext, HandleErrorResult};
@@ -117,7 +117,7 @@ impl ExponentialBackoff {
 		}
 	}
 
-	/// Gets the number of the next attempt, the attempt the handler would handle if called immediately after.
+	/// Gets the number of the next attempt, the attempt the handler would handle if it was called right away.
 	///
 	/// Can be used to wrap the [`ExponentialBackoff`] error handler with additional logging or notifications
 	///
@@ -128,7 +128,7 @@ impl ExponentialBackoff {
 	/// If this count reaches [`ExponentialBackoff::max_attempts`], then the next call to [`ExponentialBackoff::handle_errors`]
 	/// will actually just stop the job completely and returns the errors back.
 	#[must_use]
-	pub fn next_attempt(&mut self, job_refresh_time: Option<&TimePoint>) -> u32 {
+	pub fn next_attempt(&mut self, job_refresh_time: &RefreshTime) -> u32 {
 		self.reset_error_count(job_refresh_time);
 
 		match self.check_limit_reached() {
@@ -195,14 +195,13 @@ impl ExponentialBackoff {
 	// TODO: resets too early if after a long pause internet got disconnected for a while.
 	// Maybe make network errors reset last_error.happened_at?
 	/// Resets the attempt counter if enough time has passed since last error
-	fn reset_error_count(&mut self, job_refresh_time: Option<&TimePoint>) {
-		let Some((last_error, refresh_time)) = self.last_error_info.as_ref().zip(job_refresh_time)
-		else {
+	fn reset_error_count(&mut self, job_refresh_time: &RefreshTime) {
+		let Some(last_error) = self.last_error_info.as_ref() else {
 			return;
 		};
 
-		match refresh_time {
-			TimePoint::Duration(dur) => {
+		match job_refresh_time {
+			RefreshTime::Every(dur) => {
 				let twice_refresh_dur = *dur * 2; // two times the refresh duration to make sure the job ran at least twice with no errors
 				if last_error.happened_at.elapsed() > last_error.must_sleep_for + twice_refresh_dur
 				{
@@ -210,7 +209,7 @@ impl ExponentialBackoff {
 				}
 			}
 			// once a day
-			TimePoint::Time(_) => {
+			RefreshTime::OnceADayAt(_) => {
 				const TWO_DAYS: Duration = Duration::from_secs(
 					2 /* days */ * 24 /* hours a day */ * 60 /* mins an hour */ * 60, /* secs a min */
 				);
@@ -219,6 +218,7 @@ impl ExponentialBackoff {
 					self.reset();
 				}
 			}
+			RefreshTime::Never => (),
 		}
 	}
 

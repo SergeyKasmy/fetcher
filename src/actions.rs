@@ -222,6 +222,7 @@ macro_rules! impl_action_for_tuples {
 		{
 			type Error = FetcherError;
 
+			#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
 			async fn apply<S, E>(
 				&mut self,
 				entries: Vec<Entry>,
@@ -239,7 +240,7 @@ macro_rules! impl_action_for_tuples {
 				//	.map_err(Into::into)?;
 				//let entries = self.1.apply(entries, ctx).await.map_err(Into::into)?;
 
-				#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
+				// TODO: poll ctrlc-chan once between every call to apply to stop the job mid-work if requested
 				let ($($type_name),+) = self;
 				$(let entries = $type_name.apply(entries, reborrow_ctx!(&mut ctx)).await.map_err(Into::into)?;)+
 
