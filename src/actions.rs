@@ -46,10 +46,19 @@ pub trait Action: MaybeSendSync {
 		E: ExternalSave;
 }
 
+/// Result of a call to [`Action::apply`]
 #[derive(Debug)]
 pub enum ActionResult<E, T = Vec<Entry>> {
+	/// Action finished successfully
+	///
+	/// `Ok` is always expected to be `Vec<Entry>`.
+	/// The only reasul it's a generic is to support conversions from the regular [`Result`] type.
 	Ok(T),
+
+	/// Action encountered an error
 	Err(E),
+
+	/// Action has been terminated and no other actions in the pipeline should be run
 	Terminated,
 }
 
@@ -292,6 +301,7 @@ impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A
 impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18 A19 A20);
 
 impl<E> ActionResult<E> {
+	/// Maps an `ActionResult<E>` to `ActionResult<F>` by applying a function to the contained `Err` value
 	pub fn map_err<O, F>(self, op: O) -> ActionResult<F>
 	where
 		O: FnOnce(E) -> F,
@@ -313,9 +323,45 @@ impl<T, E> From<Result<T, E>> for ActionResult<E, T> {
 	}
 }
 
+/// Unwraps an [`ActionResult`] or propagates its error or terminated branches.
+///
+/// Analagous to the old [`std::try`] macro which got replaced with the `?` operator.
+///
+/// This macro applies [`ActionResult::from`] to the passed-in value
+/// which makes it possible to pass regular results to it to propagate the error as an [`ActionResult::Err`]
+///
+/// # Examples
+///
+/// ```
+/// use fetcher::{
+///     actres_try,
+/// 	entry::Entry,
+/// 	actions::ActionResult,
+/// };
+///
+/// fn action_result() -> ActionResult<i32> {
+/// 	let ok: ActionResult<i32> = ActionResult::Ok(vec![Entry::default()]);
+/// 	assert_eq!(actres_try!(ok), vec![Entry::default()]);
+///
+/// 	let terminated: ActionResult<i32> = ActionResult::Terminated;  // works the same with an `ActionResult::Err`
+/// 	actres_try!(terminated);
+///
+/// 	unreachable!();
+/// }
+///
+/// fn regular_result() -> ActionResult<i32> {
+/// 	let ok: Result<&str, i32> = Ok("hello");
+/// 	assert_eq!(actres_try!(ok), "hello"); // unwraps and returns "hello"
+///
+/// 	let err: Result<(), i32> = Err(13);
+/// 	actres_try!(err);  // returns from the function with `ActionResult::Err(13)`
+///
+/// 	unreachable!();
+/// }
+/// ```
 #[macro_export]
 macro_rules! actres_try {
-	($res:expr) => {
+	($res:expr $(,)?) => {
 		match ActionResult::from($res) {
 			ActionResult::Ok(items) => items,
 			ActionResult::Err(e) => return ActionResult::Err(From::from(e)),

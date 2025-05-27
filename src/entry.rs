@@ -15,7 +15,7 @@ use crate::{safe_slice::SafeSliceUntilExt, sinks::message::Message};
 use std::fmt::Debug;
 
 /// A [`fetcher`](`crate`) primitive that contains a message and an id returned from a source that can be send to a sink
-#[derive(Clone, Default)]
+#[derive(PartialEq, Eq, Clone, Default)]
 pub struct Entry {
 	/// ID of the entry
 	///

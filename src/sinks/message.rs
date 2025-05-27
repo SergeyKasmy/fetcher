@@ -15,7 +15,7 @@ use non_non_full::NonEmptyVec;
 use crate::safe_slice::SafeSliceUntilExt;
 
 /// The finalized and composed message meant to be sent to a sink
-#[derive(Clone, Default)]
+#[derive(PartialEq, Eq, Clone, Default)]
 pub struct Message {
 	/// title of the message
 	pub title: Option<String>,
@@ -38,7 +38,7 @@ pub struct MessageId(pub i64);
 
 // TODO: rename photo to image mb?
 /// A link to some kind of external media
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Media {
 	/// A link to a photo
 	Photo(String),
