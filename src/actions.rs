@@ -19,6 +19,7 @@ use self::filters::{Filter, FilterWrapper};
 use self::transforms::Transform;
 use self::transforms::TransformWrapper;
 
+use crate::ctrl_c_signal::CtrlCSignalChannel;
 use crate::maybe_send::{MaybeSend, MaybeSendSync};
 use crate::sinks::{Sink, SinkWrapper};
 use crate::{
@@ -60,6 +61,9 @@ pub struct ActionContext<'a, S, E> {
 
 	/// The [`Task::tag`](`crate::task::Task::tag`) of the parent task, if any.
 	pub tag: Option<&'a str>,
+
+	/// The [`Job::ctrlc_chan`](`crate::job::Job::ctrlc_chan`) of the parent job, if any.
+	pub ctrlc_chan: Option<&'a CtrlCSignalChannel>,
 }
 
 /// Transforms the provided [`Filter`] into an [`Action`]
@@ -128,6 +132,7 @@ macro_rules! reborrow_ctx {
 			source: ctx.source.as_deref_mut(),
 			entry_to_msg_map: ctx.entry_to_msg_map.as_deref_mut(),
 			tag: ctx.tag.as_deref(),
+			ctrlc_chan: ctx.ctrlc_chan.as_deref(),
 		}
 	}};
 }
@@ -240,9 +245,14 @@ macro_rules! impl_action_for_tuples {
 				//	.map_err(Into::into)?;
 				//let entries = self.1.apply(entries, ctx).await.map_err(Into::into)?;
 
-				// TODO: poll ctrlc-chan once between every call to apply to stop the job mid-work if requested
 				let ($($type_name),+) = self;
-				$(let entries = $type_name.apply(entries, reborrow_ctx!(&mut ctx)).await.map_err(Into::into)?;)+
+				$(
+					if ctx.ctrlc_chan.as_ref().is_some_and(|chan| chan.signaled()) {
+						// just return unfinished entries, it's probably fine
+						return Ok(entries);
+					}
+					let entries = $type_name.apply(entries, reborrow_ctx!(&mut ctx)).await.map_err(Into::into)?;
+				)+
 
 				Ok(entries)
 			}
@@ -276,6 +286,62 @@ impl Default for ActionContext<'_, (), ()> {
 			source: None,
 			entry_to_msg_map: None,
 			tag: None,
+			ctrlc_chan: None,
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use std::time::{Duration, Instant};
+
+	use tokio::{join, sync::watch};
+
+	use crate::{Task, actions::transform_fn, ctrl_c_signal::CtrlCSignalChannel};
+
+	#[tokio::test]
+	async fn ctrlc_signal_stops_task_mid_work() {
+		const ACTION_DELAY: u64 = 2;
+
+		let (tx, rx) = watch::channel(());
+
+		let request_stop_in_1s = async move {
+			tokio::time::sleep(Duration::from_secs(1)).await;
+			tx.send(()).unwrap();
+		};
+
+		let long_noop_transform = async |entry| {
+			tokio::time::sleep(Duration::from_secs(ACTION_DELAY)).await;
+			entry
+		};
+
+		let pipeline = (
+			transform_fn(long_noop_transform.clone()),
+			transform_fn(long_noop_transform.clone()),
+			transform_fn(long_noop_transform),
+		);
+
+		let mut task = Task::<(), _, _>::builder("test")
+			.action(pipeline)
+			.ctrlc_chan(CtrlCSignalChannel::new(rx))
+			.build_without_replies();
+
+		let now = Instant::now();
+
+		let (task_res, ()) = join!(task.run(), request_stop_in_1s);
+		task_res.unwrap();
+
+		let elapsed = now.elapsed();
+		let delay_of_3_actions = Duration::from_secs(
+			ACTION_DELAY * 3, /* number of actions in the pipeline */
+		);
+
+		assert!(
+			elapsed < delay_of_3_actions,
+			"{}s should be less than {} * 3 = {}",
+			elapsed.as_secs(),
+			ACTION_DELAY,
+			ACTION_DELAY * 3,
+		);
 	}
 }

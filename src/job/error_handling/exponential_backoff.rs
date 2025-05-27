@@ -18,7 +18,7 @@ use tokio::{select, time::sleep};
 
 use crate::{
 	error::FetcherError,
-	job::{ErrorChainDisplay, RefreshTime, ctrlc_signaled},
+	job::{ErrorChainDisplay, RefreshTime, ctrlc_wait},
 };
 
 use super::{HandleError, HandleErrorContext, HandleErrorResult};
@@ -330,7 +330,7 @@ async fn pause_job(dur: Duration, cx: HandleErrorContext<'_>) -> bool {
 		() = sleep(dur) => {
 			true
 		}
-		() = ctrlc_signaled(cx.ctrlc_chan) => {
+		() = ctrlc_wait(cx.ctrlc_chan) => {
 			false
 		}
 	}

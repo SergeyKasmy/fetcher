@@ -9,6 +9,7 @@
 use tokio::join;
 
 use crate::{
+	ctrl_c_signal::CtrlCSignalChannel,
 	error::FetcherError,
 	maybe_send::{MaybeSend, MaybeSendSync},
 	task::OpaqueTask,
@@ -25,6 +26,11 @@ pub trait TaskGroup: MaybeSendSync {
 	///
 	/// This method runs all jobs in the group concurrently using [`join!()`].
 	fn run_concurrently(&mut self) -> impl Future<Output = Self::RunResult> + MaybeSend;
+
+	/// Sets the [`CtrlCSignalChannel`] of all the tasks in the group to `channel`.
+	///
+	/// By default it uses [`OpaqueTask::set_ctrlc_channel`].
+	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel);
 }
 
 impl<T> TaskGroup for T
@@ -36,6 +42,10 @@ where
 	async fn run_concurrently(&mut self) -> Self::RunResult {
 		std::iter::once(OpaqueTask::run(self).await)
 	}
+
+	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel) {
+		OpaqueTask::set_ctrlc_channel(self, channel);
+	}
 }
 
 impl<T> TaskGroup for (T,)
@@ -46,6 +56,10 @@ where
 
 	async fn run_concurrently(&mut self) -> Self::RunResult {
 		self.0.run_concurrently().await
+	}
+
+	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel) {
+		self.0.set_ctrlc_channel(channel);
 	}
 }
 
@@ -68,6 +82,14 @@ macro_rules! impl_taskgroup_for_tuples {
 
 				let results = join!($(self.$index.run()),+);
 				results.into()
+			}
+
+			#[expect(non_snake_case, reason = "it's fine to re-use the names for macro use")]
+			fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel) {
+				let ($($type_name),+) = self;
+				$(
+					$type_name.set_ctrlc_channel(channel.clone());
+				)+
 			}
 		}
 	}

@@ -22,7 +22,7 @@ use fetcher::{
 		message::{Message, MessageId},
 	},
 	sources::{Fetch, Source, error::SourceError},
-	task::{OpaqueTask, Task, entry_to_msg_map::EntryToMsgMap},
+	task::{Task, entry_to_msg_map::EntryToMsgMap},
 };
 use once_cell::sync::Lazy;
 
@@ -75,13 +75,11 @@ async fn reply_to() {
 		.await
 		.unwrap();
 
-	let mut task = Task {
-		name: "reply_to_test".into(),
-		tag: None,
-		source: Some(DummySource),
-		action: Some(sink(DummySink)),
-		entry_to_msg_map: Some(entry_to_msg_map),
-	};
+	let mut task = Task::builder("reply_to_test")
+		.source(DummySource)
+		.action(sink(DummySink))
+		.entry_to_msg_map(entry_to_msg_map)
+		.build();
 
 	task.run().await.unwrap();
 }

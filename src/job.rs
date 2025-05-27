@@ -25,13 +25,15 @@ use tokio::{select, time::sleep};
 
 use crate::{
 	StaticStr,
-	ctrl_c_signal::{CtrlCSignalChannel, ctrlc_signaled},
+	ctrl_c_signal::{CtrlCSignalChannel, ctrlc_wait},
 	error::ErrorChainDisplay,
 	task::TaskGroup,
 };
 
 /// A single job, containing a single or a couple [`tasks`](`crate::task::Task`), possibly refetching every set amount of time
 #[derive(bon::Builder, Debug)]
+#[builder(finish_fn(name = "build_internal", vis = ""))]
+#[non_exhaustive]
 pub struct Job<T, H> {
 	/// Name of the job
 	#[builder(start_fn, into)]
@@ -98,7 +100,7 @@ impl<T: TaskGroup, H> Job<T, H> {
 			// sleep until the next refresh timer is hit or stop on Ctrl-C
 			select! {
 				() = sleep(remaining_time) => (),
-				() = ctrlc_signaled(self.ctrlc_chan.as_mut()) => {
+				() = ctrlc_wait(self.ctrlc_chan.as_mut()) => {
 					tracing::info!("Job {} is shutting down...", self.name);
 					return JobResult::Ok;
 				}
@@ -174,5 +176,22 @@ where
 
 	fn name(&self) -> Option<&str> {
 		Some(&self.name)
+	}
+}
+
+impl<T, H, S: job_builder::State> JobBuilder<T, H, S> {
+	/// Finish building and return the requested object
+	pub fn build(self) -> Job<T, H>
+	where
+		T: TaskGroup,
+		S: job_builder::IsComplete,
+	{
+		let mut job = self.build_internal();
+
+		if let Some(ctrlc_chan) = &job.ctrlc_chan {
+			job.tasks.set_ctrlc_channel(ctrlc_chan.clone());
+		}
+
+		job
 	}
 }

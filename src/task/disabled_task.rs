@@ -29,4 +29,6 @@ impl<T: MaybeSendSync> OpaqueTask for DisabledTask<T> {
 	async fn run(&mut self) -> Result<(), FetcherError> {
 		Ok(())
 	}
+
+	fn set_ctrlc_channel(&mut self, _channel: crate::ctrl_c_signal::CtrlCSignalChannel) {}
 }

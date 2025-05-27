@@ -8,6 +8,7 @@
 
 use super::DisabledTask;
 use crate::{
+	ctrl_c_signal::CtrlCSignalChannel,
 	error::FetcherError,
 	maybe_send::{MaybeSend, MaybeSendSync},
 };
@@ -34,6 +35,9 @@ pub trait OpaqueTask: MaybeSendSync {
 	/// the task's work and return a [`Result`] indicating success or failure.
 	fn run(&mut self) -> impl Future<Output = Result<(), FetcherError>> + MaybeSend;
 
+	/// Sets the [`CtrlCChannel`] of the task to `channel`
+	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel);
+
 	/// Disables the task, Making [`OpaqueTask::run`] a no-op.
 	///
 	/// Useful for quicky disabling a task without removing its code.
@@ -49,6 +53,8 @@ impl OpaqueTask for () {
 	async fn run(&mut self) -> Result<(), FetcherError> {
 		Ok(())
 	}
+
+	fn set_ctrlc_channel(&mut self, _channel: CtrlCSignalChannel) {}
 }
 
 impl<T> OpaqueTask for Option<T>
@@ -61,5 +67,13 @@ where
 		};
 
 		task.run().await
+	}
+
+	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel) {
+		let Some(task) = self else {
+			return;
+		};
+
+		task.set_ctrlc_channel(channel);
 	}
 }

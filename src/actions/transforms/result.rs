@@ -42,9 +42,10 @@ pub struct TransformedMessage {
 }
 
 /// Specify whether to use previous/old, empty, or a new value
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub enum TransformResult<T> {
 	/// Keep the previous value
+	#[default]
 	Previous,
 
 	/// Remove this value / make it empty
@@ -140,12 +141,6 @@ impl<T> TransformResult<T> {
 			TransformResult::Empty => TransformResult::Empty,
 			TransformResult::New(t) => TransformResult::New(f(t)?),
 		})
-	}
-}
-
-impl<T> Default for TransformResult<T> {
-	fn default() -> Self {
-		Self::Previous
 	}
 }
 
