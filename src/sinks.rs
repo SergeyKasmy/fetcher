@@ -20,7 +20,8 @@ pub use crate::exec::Exec;
 
 use self::{error::SinkError, message::MessageId};
 use crate::{
-	actions::{Action, ActionContext},
+	actions::{Action, ActionContext, ActionResult},
+	actres_try,
 	entry::{Entry, EntryId},
 	error::FetcherError,
 	external_save::ExternalSave,
@@ -77,7 +78,7 @@ where
 		&mut self,
 		entries: Vec<Entry>,
 		mut ctx: ActionContext<'_, So, E>,
-	) -> Result<Vec<Entry>, Self::Error>
+	) -> ActionResult<Self::Error>
 	where
 		So: Source,
 		E: ExternalSave,
@@ -99,26 +100,30 @@ where
 		// entries should be sorted newest to oldest but we should send oldest first
 		// TODO: should they be assumed to be sorted the other way instead?
 		for entry in entries.iter().rev() {
-			let msg_id = send_entry(
-				&mut self.0,
-				entry,
-				ctx.entry_to_msg_map.as_deref_mut(),
-				ctx.tag,
-			)
-			.await?;
+			let msg_id = actres_try!(
+				send_entry(
+					&mut self.0,
+					entry,
+					ctx.entry_to_msg_map.as_deref_mut(),
+					ctx.tag,
+				)
+				.await
+			);
 
 			if let Some(entry_id) = entry.id.as_ref() {
-				mark_entry_as_read(
-					entry_id,
-					msg_id,
-					ctx.source.as_deref_mut(),
-					ctx.entry_to_msg_map.as_deref_mut(),
-				)
-				.await?;
+				actres_try!(
+					mark_entry_as_read(
+						entry_id,
+						msg_id,
+						ctx.source.as_deref_mut(),
+						ctx.entry_to_msg_map.as_deref_mut(),
+					)
+					.await
+				);
 			}
 		}
 
-		Ok(entries)
+		ActionResult::Ok(entries)
 	}
 }
 

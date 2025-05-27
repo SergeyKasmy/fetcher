@@ -21,7 +21,7 @@ use crate::{
 
 use std::{convert::Infallible, fmt::Debug};
 
-use super::{Action, ActionContext};
+use super::{Action, ActionContext, ActionResult};
 
 // TODO: add error assoc type.
 // Right now no built-in provided filters can error but a user-implemented one might
@@ -49,10 +49,11 @@ where
 		&mut self,
 		mut entries: Vec<Entry>,
 		_ctx: ActionContext<'_, S, E>,
-	) -> Result<Vec<Entry>, Self::Error> {
-		self.0.filter(&mut entries).await.map_err(Into::into)?;
-
-		Ok(entries)
+	) -> ActionResult<Self::Error> {
+		match self.0.filter(&mut entries).await {
+			Ok(()) => ActionResult::Ok(entries),
+			Err(e) => ActionResult::Err(e.into()),
+		}
 	}
 }
 

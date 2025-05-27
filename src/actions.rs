@@ -19,6 +19,7 @@ use self::filters::{Filter, FilterWrapper};
 use self::transforms::Transform;
 use self::transforms::TransformWrapper;
 
+use crate::actres_try;
 use crate::ctrl_c_signal::CtrlCSignalChannel;
 use crate::maybe_send::{MaybeSend, MaybeSendSync};
 use crate::sinks::{Sink, SinkWrapper};
@@ -39,10 +40,17 @@ pub trait Action: MaybeSendSync {
 		&mut self,
 		entries: Vec<Entry>,
 		context: ActionContext<'_, S, E>,
-	) -> impl Future<Output = Result<Vec<Entry>, Self::Error>> + MaybeSend
+	) -> impl Future<Output = ActionResult<Self::Error>> + MaybeSend
 	where
 		S: Source,
 		E: ExternalSave;
+}
+
+#[derive(Debug)]
+pub enum ActionResult<E, T = Vec<Entry>> {
+	Ok(T),
+	Err(E),
+	Terminated,
 }
 
 /// Context provided to [`Action`]s with some useful parts of the parent [`Task`][Task].
@@ -144,12 +152,12 @@ impl Action for () {
 		&mut self,
 		entries: Vec<Entry>,
 		_context: ActionContext<'_, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
+	) -> ActionResult<Self::Error>
 	where
 		S: Source,
 		E: ExternalSave,
 	{
-		Ok(entries)
+		ActionResult::Ok(entries)
 	}
 }
 
@@ -163,14 +171,14 @@ where
 		&mut self,
 		entries: Vec<Entry>,
 		context: ActionContext<'_, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
+	) -> ActionResult<Self::Error>
 	where
 		S: Source,
 		E: ExternalSave,
 	{
 		let Some(act) = self else {
 			// do nothing, just passthrough
-			return Ok(entries);
+			return ActionResult::Ok(entries);
 		};
 
 		act.apply(entries, context).await
@@ -188,7 +196,7 @@ where
 		&mut self,
 		entries: Vec<Entry>,
 		context: ActionContext<'_, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
+	) -> ActionResult<Self::Error>
 	where
 		S: Source,
 		E: ExternalSave,
@@ -210,7 +218,7 @@ where
 		&mut self,
 		entries: Vec<Entry>,
 		context: ActionContext<'_, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
+	) -> ActionResult<Self::Error>
 	where
 		S: Source,
 		E: ExternalSave,
@@ -232,7 +240,7 @@ macro_rules! impl_action_for_tuples {
 				&mut self,
 				entries: Vec<Entry>,
 				mut ctx: ActionContext<'_, S, E>,
-			) -> Result<Vec<Entry>, Self::Error>
+			) -> ActionResult<Self::Error>
 			where
 				S: Source,
 				E: ExternalSave,
@@ -248,13 +256,16 @@ macro_rules! impl_action_for_tuples {
 				let ($($type_name),+) = self;
 				$(
 					if ctx.ctrlc_chan.as_ref().is_some_and(|chan| chan.signaled()) {
+						// TODO: is this fine? Maybe it shouldn't stop if a previous action had sideeffects?
+						tracing::debug!("Task terminated while in the middle of action pipeline execution. Not all have actions have been run to completion.");
 						// just return unfinished entries, it's probably fine
-						return Ok(entries);
+						return ActionResult::Terminated;
 					}
-					let entries = $type_name.apply(entries, reborrow_ctx!(&mut ctx)).await.map_err(Into::into)?;
+					let act_result = $type_name.apply(entries, reborrow_ctx!(&mut ctx)).await;
+					let entries = actres_try!(act_result.map_err(Into::into));
 				)+
 
-				Ok(entries)
+				ActionResult::Ok(entries)
 			}
 		}
 	}
@@ -279,6 +290,39 @@ impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A
 impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18);
 impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18 A19);
 impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18 A19 A20);
+
+impl<E> ActionResult<E> {
+	pub fn map_err<O, F>(self, op: O) -> ActionResult<F>
+	where
+		O: FnOnce(E) -> F,
+	{
+		match self {
+			ActionResult::Ok(items) => ActionResult::Ok(items),
+			ActionResult::Err(e) => ActionResult::Err(op(e)),
+			ActionResult::Terminated => ActionResult::Terminated,
+		}
+	}
+}
+
+impl<T, E> From<Result<T, E>> for ActionResult<E, T> {
+	fn from(value: Result<T, E>) -> Self {
+		match value {
+			Ok(t) => ActionResult::Ok(t),
+			Err(e) => ActionResult::Err(e),
+		}
+	}
+}
+
+#[macro_export]
+macro_rules! actres_try {
+	($res:expr) => {
+		match ActionResult::from($res) {
+			ActionResult::Ok(items) => items,
+			ActionResult::Err(e) => return ActionResult::Err(From::from(e)),
+			ActionResult::Terminated => return ActionResult::Terminated,
+		}
+	};
+}
 
 impl Default for ActionContext<'_, (), ()> {
 	fn default() -> Self {

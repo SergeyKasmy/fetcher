@@ -19,7 +19,7 @@ pub use self::task_group::TaskGroup;
 use self::entry_to_msg_map::EntryToMsgMap;
 use crate::{
 	StaticStr,
-	actions::{Action, ActionContext},
+	actions::{Action, ActionContext, ActionResult},
 	ctrl_c_signal::CtrlCSignalChannel,
 	entry::Entry,
 	error::FetcherError,
@@ -95,7 +95,10 @@ where
 				tag: self.tag.as_deref(),
 				ctrlc_chan: self.ctrlc_chan.as_ref(),
 			};
-			action.apply(raw, ctx).await.map_err(Into::into)?;
+			match action.apply(raw, ctx).await {
+				ActionResult::Ok(_) | ActionResult::Terminated => (),
+				ActionResult::Err(e) => return Err(e.into()),
+			}
 		}
 
 		Ok(())

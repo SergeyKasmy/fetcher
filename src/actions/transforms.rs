@@ -33,13 +33,14 @@ use self::error::TransformError;
 use self::error::TransformErrorKind;
 use self::result::TransformedEntry;
 use crate::{
+	actres_try,
 	entry::Entry,
 	external_save::ExternalSave,
 	maybe_send::{MaybeSend, MaybeSendSync},
 	sources::Source,
 };
 
-use super::{Action, ActionContext};
+use super::{Action, ActionContext, ActionResult};
 
 /*
 /// Transform an [`Entry`] into one or more new (entries)[`Entry`].
@@ -79,7 +80,7 @@ where
 		&mut self,
 		entries: Vec<Entry>,
 		_ctx: ActionContext<'_, S, E>,
-	) -> Result<Vec<Entry>, Self::Error>
+	) -> ActionResult<Self::Error>
 	where
 		S: Source,
 		E: ExternalSave,
@@ -87,10 +88,11 @@ where
 		let mut transformed_entries = Vec::new();
 
 		for entry in entries {
-			transformed_entries.extend(transform_old_entry_into_new_entries(&self.0, entry).await?);
+			let entries = actres_try!(transform_old_entry_into_new_entries(&self.0, entry).await);
+			transformed_entries.extend(entries);
 		}
 
-		Ok(transformed_entries)
+		ActionResult::Ok(transformed_entries)
 	}
 }
 

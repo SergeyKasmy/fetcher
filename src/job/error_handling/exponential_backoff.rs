@@ -331,6 +331,7 @@ async fn pause_job(dur: Duration, cx: HandleErrorContext<'_>) -> bool {
 			true
 		}
 		() = ctrlc_wait(cx.ctrlc_chan) => {
+			tracing::debug!("Job terminated mid exponential backoff pause");
 			false
 		}
 	}
