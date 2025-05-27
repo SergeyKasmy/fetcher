@@ -118,7 +118,7 @@ mod tests {
 	use super::*;
 
 	fn entry_id(id: &str) -> EntryId {
-		EntryId::new(id.to_string()).unwrap()
+		EntryId::new(id.to_owned()).unwrap()
 	}
 
 	#[tokio::test]

@@ -11,6 +11,8 @@
 #![allow(clippy::tests_outside_test_module)]
 #![allow(clippy::unwrap_used)]
 
+use std::sync::LazyLock;
+
 use fetcher::{
 	actions::sink,
 	entry::{Entry, EntryId},
@@ -24,9 +26,8 @@ use fetcher::{
 	sources::{Fetch, Source, error::SourceError},
 	task::{Task, entry_to_msg_map::EntryToMsgMap},
 };
-use once_cell::sync::Lazy;
 
-const ENTRY_ID: Lazy<EntryId> = Lazy::new(|| EntryId::new("0".to_string()).unwrap());
+static ENTRY_ID: LazyLock<EntryId> = LazyLock::new(|| EntryId::new("0".to_owned()).unwrap());
 const MESSAGE_ID: i64 = 0;
 
 #[derive(Debug)]
@@ -71,7 +72,7 @@ async fn reply_to() {
 	let mut entry_to_msg_map = EntryToMsgMap::<()>::default();
 
 	entry_to_msg_map
-		.insert(ENTRY_ID.to_owned().into(), MESSAGE_ID.into())
+		.insert(ENTRY_ID.to_owned(), MESSAGE_ID.into())
 		.await
 		.unwrap();
 

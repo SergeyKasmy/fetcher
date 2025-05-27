@@ -335,28 +335,28 @@ impl<T, E> From<Result<T, E>> for ActionResult<E, T> {
 /// ```
 /// use fetcher::{
 ///     actres_try,
-/// 	entry::Entry,
-/// 	actions::ActionResult,
+///     entry::Entry,
+///     actions::ActionResult,
 /// };
 ///
 /// fn action_result() -> ActionResult<i32> {
-/// 	let ok: ActionResult<i32> = ActionResult::Ok(vec![Entry::default()]);
-/// 	assert_eq!(actres_try!(ok), vec![Entry::default()]);
+///     let ok: ActionResult<i32> = ActionResult::Ok(vec![Entry::default()]);
+///     assert_eq!(actres_try!(ok), vec![Entry::default()]);  // unwraps and returns `vec![Entry::default()]`
 ///
-/// 	let terminated: ActionResult<i32> = ActionResult::Terminated;  // works the same with an `ActionResult::Err`
-/// 	actres_try!(terminated);
+///     let terminated: ActionResult<i32> = ActionResult::Terminated;  // works the same with an `ActionResult::Err`
+///     actres_try!(terminated);  // returns from the function with `ActionResult::Terminated`
 ///
-/// 	unreachable!();
+///     unreachable!();
 /// }
 ///
 /// fn regular_result() -> ActionResult<i32> {
-/// 	let ok: Result<&str, i32> = Ok("hello");
-/// 	assert_eq!(actres_try!(ok), "hello"); // unwraps and returns "hello"
+///     let ok: Result<&str, i32> = Ok("hello");
+///     assert_eq!(actres_try!(ok), "hello"); // unwraps and returns "hello"
 ///
-/// 	let err: Result<(), i32> = Err(13);
-/// 	actres_try!(err);  // returns from the function with `ActionResult::Err(13)`
+///     let err: Result<(), i32> = Err(13);
+///     actres_try!(err);  // returns from the function with `ActionResult::Err(13)`
 ///
-/// 	unreachable!();
+///     unreachable!();
 /// }
 /// ```
 #[macro_export]
@@ -406,8 +406,8 @@ mod tests {
 		};
 
 		let pipeline = (
-			transform_fn(long_noop_transform.clone()),
-			transform_fn(long_noop_transform.clone()),
+			transform_fn(long_noop_transform),
+			transform_fn(long_noop_transform),
 			transform_fn(long_noop_transform),
 		);
 

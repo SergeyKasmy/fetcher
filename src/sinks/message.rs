@@ -56,6 +56,7 @@ impl Message {
 
 impl Debug for Message {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		#[expect(clippy::ptr_arg, reason = "the same as Option::map expected signature")]
 		fn limit_max_len_to_250b(s: &String) -> Cow<'_, str> {
 			s.pretty_slice_until(250)
 		}

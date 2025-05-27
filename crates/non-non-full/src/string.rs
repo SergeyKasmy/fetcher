@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`NonEmptyString`] type
+
 /// A string that is guaranteed to contain at least one element.
 ///
 /// [`NonEmptyString`] provides a safe wrapper around `String` that maintains the invariant
@@ -38,8 +40,9 @@ impl<'de> serde::Deserialize<'de> for NonEmptyString {
 }
 
 impl NonEmptyString {
-	/// Creates a new NonEmptyString from a String.
-	/// Returns None if the input String is empty.
+	/// Creates a new [`NonEmptyString`] from a [`String`].
+	/// Returns `None` if the input [`String`] is empty.
+	#[must_use]
 	pub fn new(string: String) -> Option<Self> {
 		if string.is_empty() {
 			None
@@ -48,17 +51,20 @@ impl NonEmptyString {
 		}
 	}
 
-	/// Gets a reference to the underlying String
+	/// Gets a reference to the underlying [`String`]
+	#[must_use]
 	pub fn as_string(&self) -> &String {
 		&self.0
 	}
 
-	/// Converts the NonEmptyString back into a String, consuming self
+	/// Converts the [`NonEmptyString`] back into a [`String`], consuming self
+	#[must_use]
 	pub fn into_string(self) -> String {
 		self.0
 	}
 
 	/// Returns a string slice containing the entire string
+	#[must_use]
 	pub fn as_str(&self) -> &str {
 		self.0.as_str()
 	}
@@ -106,6 +112,8 @@ impl NonEmptyString {
 	}
 
 	/// Returns the length of the string in bytes
+	#[expect(clippy::len_without_is_empty, reason = "NonEmptyString is never empty")] // it's literally in the name!
+	#[must_use]
 	pub fn len(&self) -> usize {
 		self.0.len()
 	}

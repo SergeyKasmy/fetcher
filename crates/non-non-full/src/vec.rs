@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+//! This module contains the [`NonEmptyVec`] type.
+
 use std::ops;
 
 /// A vector that is guaranteed to contain at least one element.
@@ -42,9 +44,10 @@ where
 }
 
 impl<T> NonEmptyVec<T> {
-	/// Creates a new NonEmptyVec from a Vec.
+	/// Creates a new [`NonEmptyVec`] from a [`Vec`].
 	///
-	/// Returns None if the input Vec is empty.
+	/// Returns `None` if the input [`Vec`] is empty.
+	#[must_use]
 	pub fn new(vec: Vec<T>) -> Option<Self> {
 		if vec.is_empty() {
 			None
@@ -53,22 +56,26 @@ impl<T> NonEmptyVec<T> {
 		}
 	}
 
-	/// Creates a new NonEmptyVec containing exactly one element
+	/// Creates a new [`NonEmptyVec`] containing exactly one element
+	#[must_use]
 	pub fn new_one(value: T) -> Self {
 		Self(vec![value])
 	}
 
-	/// Returns a reference to the underlying Vec
+	/// Returns a reference to the underlying [`Vec`]
+	#[must_use]
 	pub fn as_vec(&self) -> &Vec<T> {
 		&self.0
 	}
 
-	/// Converts the NonEmptyVec back into a Vec, consuming self
+	/// Converts the [`NonEmptyVec`] back into a [`Vec`], consuming self
+	#[must_use]
 	pub fn into_vec(self) -> Vec<T> {
 		self.0
 	}
 
 	/// Returns a slice containing the entire vector
+	#[must_use]
 	pub fn as_slice(&self) -> &[T] {
 		self.0.as_slice()
 	}
@@ -105,10 +112,11 @@ impl<T> NonEmptyVec<T> {
 		}
 	}
 
-	/// Creates a new NonEmptyVec where each element is mapped via the provided closure.
+	/// Creates a new [`NonEmptyVec`] where each element is mapped via the provided closure.
 	///
 	/// This is an alternative to the ubiquitous `vec.into_iter().map().collect::<Vec<_>>()`
 	/// as [`FromIterator`] can't be implemented for [`NonEmptyVec`]
+	#[must_use]
 	pub fn map<F, U>(self, f: F) -> NonEmptyVec<U>
 	where
 		F: FnMut(T) -> U,
@@ -117,11 +125,14 @@ impl<T> NonEmptyVec<T> {
 	}
 
 	/// Returns the length of the vector
+	#[expect(clippy::len_without_is_empty, reason = "NonEmptyVec is never empty")] // it's literally in the name!
+	#[must_use]
 	pub fn len(&self) -> usize {
 		self.0.len()
 	}
 
 	/// Gets a reference to an element at the given index
+	#[must_use]
 	pub fn get(&self, index: usize) -> Option<&T> {
 		self.0.get(index)
 	}
@@ -132,6 +143,8 @@ impl<T> NonEmptyVec<T> {
 	}
 
 	/// Returns a reference to the first element
+	#[expect(clippy::missing_panics_doc)]
+	#[must_use]
 	pub fn first(&self) -> &T {
 		self.0
 			.first()
@@ -139,6 +152,8 @@ impl<T> NonEmptyVec<T> {
 	}
 
 	/// Returns a mutable reference to the first element
+	#[expect(clippy::missing_panics_doc)]
+	#[must_use]
 	pub fn first_mut(&mut self) -> &mut T {
 		self.0
 			.first_mut()
@@ -146,6 +161,8 @@ impl<T> NonEmptyVec<T> {
 	}
 
 	/// Returns a reference to the last element
+	#[expect(clippy::missing_panics_doc)]
+	#[must_use]
 	pub fn last(&self) -> &T {
 		self.0
 			.last()
@@ -153,6 +170,8 @@ impl<T> NonEmptyVec<T> {
 	}
 
 	/// Returns a mutable reference to the last element
+	#[expect(clippy::missing_panics_doc)]
+	#[must_use]
 	pub fn last_mut(&mut self) -> &mut T {
 		self.0
 			.last_mut()

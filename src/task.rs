@@ -58,7 +58,8 @@ pub struct Task<S, A, E> {
 
 	/// Gracefully stop the task mid-work when a Ctrl-C signal arrives
 	///
-	/// Can be specified when building a [`Job`] using [`JobBuilder::ctrlc_chan`](`crate::job::JobBuilder::ctrlc_chan`) in which this task is included.
+	/// Can be specified when building a [`Job`](`crate::job::Job`)
+	/// using [`JobBuilder::ctrlc_chan`](`crate::job::JobBuilder::ctrlc_chan`) in which this task is included.
 	/// The job will propagate the channel to all children tasks automatically.
 	pub ctrlc_chan: Option<CtrlCSignalChannel>,
 }

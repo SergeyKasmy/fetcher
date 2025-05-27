@@ -4,7 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module defines the [`RefreshTime`] type that specifies either a duration or a time of day a job should be refreshed.
+//! This module defines the [`RefreshTime`] type
+//! that specifies either a duration or a time of day a job should be refreshed.
+//!
 //! It also re-exported [`chrono`] to make use of [`NaiveTime`] and [`NaiveDateTime`] types.
 
 pub use chrono;
@@ -72,15 +74,16 @@ impl RefreshTime {
 mod tests {
 	#![allow(clippy::unwrap_used)]
 
+	use std::sync::LazyLock;
+
 	use chrono::NaiveDate;
-	use once_cell::sync::Lazy;
 
 	use super::*;
 
 	const HOUR: Duration = Duration::from_secs(60 /* mins in hour */ * 60 /* secs in min */);
 
 	// assume now is exactly 12 PM
-	static NOW: Lazy<NaiveDateTime> = Lazy::new(|| {
+	static NOW: LazyLock<NaiveDateTime> = LazyLock::new(|| {
 		NaiveDateTime::new(
 			NaiveDate::from_ymd_opt(2000, 1, 1).unwrap(),
 			NaiveTime::from_hms_opt(12, 0, 0).unwrap(),

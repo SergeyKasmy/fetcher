@@ -15,18 +15,19 @@ pub struct CtrlCSignalChannel(pub(crate) watch::Receiver<()>);
 
 impl CtrlCSignalChannel {
 	/// Creates a new [`CtrlCSignalChannel`] with the provided receiving end of the watch channel
+	#[must_use]
 	pub fn new(recv: watch::Receiver<()>) -> Self {
 		Self(recv)
 	}
 
 	/// Blocks the current task until a Ctrl-C signal has been received
-	#[expect(clippy::missing_panics_doc, reason = "never actually panics")]
 	pub async fn wait(&mut self) {
 		// assume closed channel = should stop
 		_ = self.0.changed().await;
 	}
 
 	/// Checks if the current [`CtrlCSignalChannel`] has been signaled to stop without blocking the calling thread
+	#[must_use]
 	pub fn signaled(&self) -> bool {
 		// assume closed channel = should stop
 		self.0.has_changed().unwrap_or(true)

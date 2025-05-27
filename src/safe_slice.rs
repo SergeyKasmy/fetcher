@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-pub(crate) trait SafeSliceUntilExt {
+pub trait SafeSliceUntilExt {
 	fn safe_slice_until(&self, index: usize) -> &Self;
 	fn pretty_slice_until(&self, index: usize) -> Cow<'_, str>;
 }

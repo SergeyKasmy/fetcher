@@ -116,3 +116,6 @@ use_self = "allow"
 
 # often a match can better highlight which branch is more important and draw attention to it
 single_match_else = "allow"
+
+# reverse order makes it more confusing, should be used at the developer's discretion
+map_unwrap_or = "allow"

@@ -85,4 +85,4 @@ pub use url;
 // TODO: used to installa CryptoProvider. Not sure how this can be avoided
 // pub use tokio_rustls::rustls::crypto as rustls_crypto;
 
-mod safe_slice;
+pub(crate) mod safe_slice;

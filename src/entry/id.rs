@@ -18,6 +18,7 @@ pub struct EntryId(pub NonEmptyString);
 
 impl EntryId {
 	/// Creates a new [`EntryId`] from the provided string, if it's not empty
+	#[must_use]
 	pub fn new(s: String) -> Option<Self> {
 		let inner = NonEmptyString::new(s).tap_none(|| {
 			tracing::warn!("Tried to create an Entry ID from an empty string");

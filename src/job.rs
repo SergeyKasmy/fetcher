@@ -86,10 +86,8 @@ impl<T: TaskGroup, H> Job<T, H> {
 				return JobResult::Err(errors);
 			}
 
-			let remaining_time = match self.refresh_time.remaining_time_from_now() {
-				Some(remaining_time) => remaining_time,
-				// stop the job if there's no refresh timer
-				None => return JobResult::Ok,
+			let Some(remaining_time) = self.refresh_time.remaining_time_from_now() else {
+				return JobResult::Ok;
 			};
 
 			tracing::debug!(

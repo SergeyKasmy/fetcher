@@ -54,17 +54,17 @@ pub type JobGroupResult = Vec<JobResult>;
 ///
 /// // Create jobs
 /// let job1 = Job::builder("job1")
-/// 				.tasks(())
-/// 				.refresh_time(RefreshTime::Never)
-/// 				.error_handling(Forward)
-/// 				.ctrlc_chan(None)
-/// 				.build();
+///                 .tasks(())
+///                 .refresh_time(RefreshTime::Never)
+///                 .error_handling(Forward)
+///                 .ctrlc_chan(None)
+///                 .build();
 /// let job2 = Job::builder("job2")
-/// 				.tasks(())
-/// 				.refresh_time(RefreshTime::Never)
-/// 				.error_handling(Forward)
-/// 				.ctrlc_chan(None)
-/// 				.build();
+///                 .tasks(())
+///                 .refresh_time(RefreshTime::Never)
+///                 .error_handling(Forward)
+///                 .ctrlc_chan(None)
+///                 .build();
 ///
 /// // Group jobs using a tuple
 /// let mut group = (job1, job2);
@@ -321,6 +321,7 @@ macro_rules! impl_jobgroup_for_tuples {
 				let ($($type_name),+) = join!( $($type_name.run()),+ );
 
 				// destructure the tuple into an array and then convert it
+				#[expect(clippy::tuple_array_conversions, reason = "the other way is overcomplicated")]
 				JobGroupResult::from([$($type_name),+])
 			}
 

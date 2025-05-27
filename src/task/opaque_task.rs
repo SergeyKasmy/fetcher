@@ -35,7 +35,7 @@ pub trait OpaqueTask: MaybeSendSync {
 	/// the task's work and return a [`Result`] indicating success or failure.
 	fn run(&mut self) -> impl Future<Output = Result<(), FetcherError>> + MaybeSend;
 
-	/// Sets the [`CtrlCChannel`] of the task to `channel`
+	/// Sets the [`CtrlCSignalChannel`] of the task to `channel`
 	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel);
 
 	/// Disables the task, Making [`OpaqueTask::run`] a no-op.

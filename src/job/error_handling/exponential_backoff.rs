@@ -34,8 +34,8 @@ use super::{HandleError, HandleErrorContext, HandleErrorResult};
 /// - 1st error: 1 minute
 /// - 2nd error: 2 minutes
 /// - 3rd error: 4 minutes
-/// - 4th error: 8 minutes  
-/// And so on...
+/// - 4th error: 8 minutes
+///   And so on...
 ///
 /// The error count is reset if the job runs successfully for:
 /// - Interval-based jobs: Two successful intervals without errors
@@ -99,11 +99,13 @@ impl ExponentialBackoff {
 		Duration::from_secs(5 * 60 /* secs in a min*/);
 
 	/// Creates a new [`ExponentialBackoff`] instance with the default values.
+	#[must_use]
 	pub fn new() -> Self {
 		Self::default()
 	}
 
 	/// Creates a new [`ExponentialBackoff`] instance with the max attempt count set to `max_attempts`.
+	#[must_use]
 	pub fn new_with_conf(
 		max_attempts: u32,
 		use_jitter: bool,
@@ -186,7 +188,7 @@ impl ExponentialBackoff {
 		self.last_error_info = Some(ErrorInfo {
 			attempt: current_attempt,
 			happened_at: Instant::now(),
-			must_sleep_for: pause_duration.clone(),
+			must_sleep_for: pause_duration,
 		});
 
 		pause_job(pause_duration, cx).await
@@ -303,7 +305,11 @@ fn exponential_backoff_duration(attempt: u32, use_jitter: bool, mut rng: impl Rn
 	let base_duration_sec = base_duration_min * 60;
 
 	let final_duration = if use_jitter {
+		#[expect(clippy::cast_precision_loss, reason = "what other way is there?")]
 		let duration_secs_f64 = base_duration_sec as f64 * (rng.random::<f64>() + 0.5);
+
+		#[expect(clippy::cast_possible_truncation, reason = "what other way is there?")]
+		#[expect(clippy::cast_sign_loss, reason = "always positive")]
 		let duration_secs = duration_secs_f64.round() as u64;
 
 		tracing::debug!(
@@ -339,6 +345,8 @@ async fn pause_job(dur: Duration, cx: HandleErrorContext<'_>) -> bool {
 
 #[cfg(test)]
 mod tests {
+	#![expect(clippy::cast_precision_loss, clippy::unimplemented)]
+
 	use std::time::Duration;
 
 	use rand::Rng;
@@ -370,7 +378,7 @@ mod tests {
 	#[test]
 	fn exponential_backoff_duration_no_jitter() {
 		for i in 0u32..=15 {
-			let expected_mins = 2u64.pow(i.saturating_sub(1).into());
+			let expected_mins = 2u64.pow(i.saturating_sub(1));
 			check_exp_backoff_duration(i, false, m(expected_mins), rand::rng());
 		}
 	}
@@ -378,7 +386,7 @@ mod tests {
 	#[test]
 	fn exponential_backoff_duration_with_jitter() {
 		for i in 0u32..=15 {
-			let expected_mins = 2u64.pow(i.saturating_sub(1).into());
+			let expected_mins = 2u64.pow(i.saturating_sub(1));
 			check_exp_backoff_duration(i, true, m(expected_mins), rand::rng());
 		}
 	}
@@ -407,7 +415,7 @@ mod tests {
 		let mut rng = AlwaysExtremes(true);
 
 		for i in 0u32..=15 {
-			let expected_mins = 2u64.pow(i.saturating_sub(1).into());
+			let expected_mins = 2u64.pow(i.saturating_sub(1));
 			// two separate calls will generate two jitter values in the two extremes of the allowed range. Confirm both are within range
 			check_exp_backoff_duration(i, true, m(expected_mins), &mut rng);
 			check_exp_backoff_duration(i, true, m(expected_mins), &mut rng);
