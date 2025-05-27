@@ -10,7 +10,7 @@
 pub mod id;
 pub use id::EntryId;
 
-use crate::sinks::message::Message;
+use crate::{safe_slice::SafeSliceUntilExt, sinks::message::Message};
 
 use std::fmt::Debug;
 
@@ -40,7 +40,13 @@ impl Debug for Entry {
 		f.debug_struct("Entry")
 			.field("id", &self.id)
 			.field("reply_to", &self.reply_to)
-			.field("raw_contents.is_some()", &self.raw_contents.is_some())
+			.field(
+				"raw_contents",
+				&self
+					.raw_contents
+					.as_ref()
+					.map(|s| s.pretty_slice_until(250)),
+			)
 			.field("msg", &self.msg)
 			.finish()
 	}

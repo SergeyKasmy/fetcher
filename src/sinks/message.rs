@@ -8,12 +8,14 @@
 
 pub(crate) mod length_limiter;
 
-use std::fmt::Debug;
+use std::{borrow::Cow, fmt::Debug};
 
 use non_non_full::NonEmptyVec;
 
+use crate::safe_slice::SafeSliceUntilExt;
+
 /// The finalized and composed message meant to be sent to a sink
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default)]
 pub struct Message {
 	/// title of the message
 	pub title: Option<String>,
@@ -49,6 +51,21 @@ impl Message {
 	#[must_use]
 	pub const fn is_empty(&self) -> bool {
 		self.title.is_none() && self.body.is_none() && self.link.is_none() && self.media.is_none()
+	}
+}
+
+impl Debug for Message {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		fn limit_max_len_to_250b(s: &String) -> Cow<'_, str> {
+			s.pretty_slice_until(250)
+		}
+
+		f.debug_struct("Message")
+			.field("title", &self.title.as_ref().map(limit_max_len_to_250b))
+			.field("body", &self.body.as_ref().map(limit_max_len_to_250b))
+			.field("link", &self.link.as_ref().map(limit_max_len_to_250b))
+			.field("media", &self.media)
+			.finish()
 	}
 }
 
