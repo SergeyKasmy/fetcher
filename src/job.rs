@@ -33,6 +33,10 @@ use crate::{
 /// A single job, containing a single or a couple [`tasks`](`crate::task::Task`), possibly refetching every set amount of time
 #[derive(bon::Builder, Debug)]
 #[builder(finish_fn(name = "build_internal", vis = ""))]
+#[builder(builder_type(doc {
+/// Use builder syntax to set the inputs and finish with [`build()`](`JobBuilder::build()`)
+/// or [`build_with_default_error_handling()`](`JobBuilder::build_with_default_error_handling()`).
+}))]
 #[non_exhaustive]
 pub struct Job<T, H> {
 	/// Name of the job
@@ -177,12 +181,47 @@ where
 	}
 }
 
-impl<T, H, S: job_builder::State> JobBuilder<T, H, S> {
+impl<T, S: job_builder::State> JobBuilder<T, error_handling::ExponentialBackoff, S>
+where
+	T: TaskGroup,
+{
 	/// Finish building and return the requested object
+	/// with default error handling ([`ExponentialBackoff`](`error_handling::ExponentialBackoff`)).
+	///
+	/// # Note
+	/// `T` is constrained to implement [`TaskGroup`]
+	/// because the builder propagates the [`CtrlCSignalChannel`]
+	/// too all child tasks on build.
+	pub fn build_with_default_error_handling(self) -> Job<T, error_handling::ExponentialBackoff>
+	where
+		S: job_builder::IsComplete,
+		S::CtrlcChan: job_builder::IsSet,
+		S::ErrorHandling: job_builder::IsUnset,
+		S::RefreshTime: job_builder::IsSet,
+		S::Tasks: job_builder::IsSet,
+	{
+		let this = self.error_handling(error_handling::ExponentialBackoff::default());
+		this.build()
+	}
+}
+
+impl<T, H, S: job_builder::State> JobBuilder<T, H, S>
+where
+	T: TaskGroup,
+{
+	/// Finish building and return the requested object.
+	///
+	/// # Note
+	/// `T` is constrained to implement [`TaskGroup`]
+	/// because the builder propagates the [`CtrlCSignalChannel`]
+	/// too all child tasks on build.
 	pub fn build(self) -> Job<T, H>
 	where
-		T: TaskGroup,
 		S: job_builder::IsComplete,
+		S::CtrlcChan: job_builder::IsSet,
+		S::ErrorHandling: job_builder::IsSet,
+		S::RefreshTime: job_builder::IsSet,
+		S::Tasks: job_builder::IsSet,
 	{
 		let mut job = self.build_internal();
 
