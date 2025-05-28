@@ -22,7 +22,7 @@ use fetcher::{
 		Sink,
 		message::{Message, MessageId},
 	},
-	sources::{Fetch, Source, error::SourceError},
+	sources::{Fetch, Source},
 	task::{Task, entry_to_msg_map::EntryToMsgMap},
 };
 
@@ -36,7 +36,9 @@ struct DummySource;
 struct DummySink;
 
 impl Fetch for DummySource {
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+	type Err = Infallible;
+
+	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
 		Ok(vec![Entry {
 			reply_to: Some(ENTRY_ID.clone()),
 			..Default::default()

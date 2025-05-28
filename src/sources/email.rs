@@ -145,13 +145,17 @@ impl Email {
 }
 
 impl Fetch for Email {
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
-		self.fetch_impl().await.map_err(Into::into)
+	type Err = EmailError;
+
+	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
+		// TODO: inline this fn
+		self.fetch_impl().await
 	}
 }
 
 impl MarkAsRead for Email {
 	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
+		// TODO: inline this fn
 		self.mark_as_read_impl(id)
 			.await
 			.map_err(|e| FetcherError::from(SourceError::from(EmailError::from(e))))

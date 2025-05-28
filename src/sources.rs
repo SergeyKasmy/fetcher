@@ -44,8 +44,11 @@ pub trait Source: Fetch + MarkAsRead + Debug + MaybeSendSync {}
 
 /// A trait that defines a way to fetch (entries)[`Entry`]
 pub trait Fetch: Debug + MaybeSendSync {
+	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
+	type Err: Into<SourceError>;
+
 	/// Fetches all available entries from the source
-	fn fetch(&mut self) -> impl Future<Output = Result<Vec<Entry>, SourceError>> + MaybeSend;
+	fn fetch(&mut self) -> impl Future<Output = Result<Vec<Entry>, Self::Err>> + MaybeSend;
 
 	/// Converts the value into a source with the provided [`ReadFilter`].
 	fn into_source_with_read_filter<RF>(self, read_filter: RF) -> SourceWithSharedRF<Self, RF>
@@ -87,7 +90,9 @@ where
 }
 
 impl Fetch for String {
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+	type Err = Infallible;
+
+	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
 		Ok(vec![Entry {
 			raw_contents: Some(self.clone()),
 			..Default::default()
@@ -99,11 +104,13 @@ impl<T> Fetch for Vec<T>
 where
 	T: Fetch,
 {
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+	type Err = SourceError;
+
+	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
 		let mut entries = Vec::new();
 
 		for fetch in self {
-			entries.extend(fetch.fetch().await?);
+			entries.extend(fetch.fetch().await.map_err(Into::into)?);
 		}
 
 		Ok(entries)
@@ -111,20 +118,26 @@ where
 }
 
 impl Fetch for () {
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+	type Err = Infallible;
+
+	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
 		Ok(vec![Entry::default()])
 	}
 }
 
 impl Fetch for Infallible {
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+	type Err = Infallible;
+
+	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
 		match *self {}
 	}
 }
 
 #[cfg(feature = "nightly")]
 impl Fetch for ! {
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+	type Err = !;
+
+	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
 		match *self {}
 	}
 }
@@ -133,9 +146,11 @@ impl<F> Fetch for Option<F>
 where
 	F: Fetch,
 {
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+	type Err = F::Err;
+
+	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
 		let Some(inner) = self else {
-			return ().fetch().await;
+			return ().fetch().await.map_err(|e| match e {});
 		};
 
 		inner.fetch().await
@@ -160,7 +175,9 @@ where
 	F: Fetch,
 	RF: ReadFilter,
 {
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+	type Err = F::Err;
+
+	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
 		self.source.fetch().await
 	}
 }

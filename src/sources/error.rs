@@ -17,7 +17,7 @@ use super::email::{EmailError, ImapError};
 #[cfg(feature = "source-reddit")]
 use {super::reddit::RedditError, roux::util::RouxError};
 
-use std::{error::Error as StdError, path::PathBuf};
+use std::{convert::Infallible, error::Error as StdError, path::PathBuf};
 
 // TODO: Add "Other" error (Box<dyn Error>) for use for external source impls
 #[expect(missing_docs, reason = "error message is self-documenting")]
@@ -67,5 +67,18 @@ impl SourceError {
 impl From<EmailError> for SourceError {
 	fn from(e: EmailError) -> Self {
 		Self::Email(Box::new(e))
+	}
+}
+
+impl From<Infallible> for SourceError {
+	fn from(value: Infallible) -> Self {
+		match value {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl From<!> for SourceError {
+	fn from(value: !) -> Self {
+		match value {}
 	}
 }

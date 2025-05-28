@@ -10,7 +10,7 @@
 
 pub use reqwest;
 
-use crate::{entry::Entry, sinks::message::Message, sources::error::SourceError};
+use crate::{entry::Entry, sinks::message::Message};
 
 use once_cell::sync::OnceCell;
 use reqwest::Client;
@@ -118,10 +118,13 @@ impl Http {
 }
 
 impl Fetch for Http {
+	type Err = HttpError;
+
 	/// Send a request to the [`URL`](`self.url`) and return the result in the [`Entry.raw_contents`] field
 	#[tracing::instrument(skip_all)]
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
-		self.fetch_impl().await.map(|x| vec![x]).map_err(Into::into)
+	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
+		// TODO: inline this fn
+		self.fetch_impl().await.map(|x| vec![x])
 	}
 }
 

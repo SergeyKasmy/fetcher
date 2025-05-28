@@ -22,6 +22,8 @@ pub struct File {
 }
 
 impl Fetch for File {
+	type Err = SourceError;
+
 	/// Read data from a file from the file system, returning its contents in the [`Entry.raw_contents`] field
 	// doesn't actually mutate itself
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {

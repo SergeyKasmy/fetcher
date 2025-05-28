@@ -82,7 +82,7 @@ where
 		tracing::trace!("Running task");
 
 		let raw = match &mut self.source {
-			Some(source) => source.fetch().await?,
+			Some(source) => source.fetch().await.map_err(Into::into)?,
 			None => vec![Entry::default()], // return just an empty entry if there is no source
 		};
 

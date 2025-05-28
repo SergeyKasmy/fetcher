@@ -33,7 +33,7 @@ use fetcher::{
 	job::{JobResult, RefreshTime, error_handling},
 	scaffold::{InitResult, init},
 	sinks::{Message, Sink, message::MessageId},
-	sources::{Fetch, error::SourceError},
+	sources::Fetch,
 };
 use tokio::{fs::File, io::AsyncWriteExt};
 
@@ -61,7 +61,10 @@ use tokio::{fs::File, io::AsyncWriteExt};
 struct UnixEpochTimeSource;
 
 impl Fetch for UnixEpochTimeSource {
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+	/// [`UnixEpochTimeSource`] never errors
+	type Err = Infallible;
+
+	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
 		// calculate time since unix epoch
 		let unix_epoch_time = SystemTime::now()
 			.duration_since(UNIX_EPOCH)
@@ -114,6 +117,7 @@ impl TransformField for LogFieldTransform {
 struct FilterEveryTenthEntry(usize);
 
 impl Filter for FilterEveryTenthEntry {
+	/// [`FilterEveryTenthEntry`] never errors
 	type Error = Infallible;
 
 	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {

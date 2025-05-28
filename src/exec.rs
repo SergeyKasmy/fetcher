@@ -15,7 +15,7 @@ use crate::{
 		Sink,
 		message::{Message, MessageId},
 	},
-	sources::{Fetch, error::SourceError},
+	sources::Fetch,
 };
 
 #[cfg(not(target_os = "windows"))]
@@ -52,7 +52,9 @@ pub enum ExecError {
 }
 
 impl Fetch for Exec {
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+	type Err = ExecError;
+
+	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
 		tracing::debug!("Spawning a shell with command {:?}", self.cmd);
 		let out = Command::new(SHELL)
 			.arg(SHELL_RUN_ARG)

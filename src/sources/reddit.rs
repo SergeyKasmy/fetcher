@@ -10,7 +10,6 @@ use super::Fetch;
 use crate::{
 	entry::{Entry, EntryId},
 	sinks::message::{Media, Message},
-	sources::error::SourceError,
 };
 
 use non_non_full::NonEmptyVec;
@@ -70,12 +69,15 @@ impl Reddit {
 }
 
 impl Fetch for Reddit {
+	type Err = RedditError;
+
 	/// Fetches all posts from a subreddit
 	///
 	/// # Errors
 	/// This function may error if the network connection is down, or Reddit API returns a bad or garbage responce
-	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
-		self.fetch_impl().await.map_err(Into::into)
+	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
+		// TODO: inline this fn
+		self.fetch_impl().await
 	}
 }
 
