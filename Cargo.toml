@@ -13,9 +13,11 @@ members = [".", "crates/non-non-full", "crates/staticstr"]
 edition = "2024"
 
 [features]
-default = ["send", "scaffold", "all-sources", "all-actions", "all-sinks", "all-misc"]
+default = ["send", "scaffold"]
 send = []
 scaffold = ["dep:tracing-journald", "dep:tracing-subscriber", "tokio/signal", "tokio-rustls?/aws_lc_rs"]
+
+full = ["all-sources", "all-actions", "all-sinks", "all-misc"]
 
 all-sources = ["source-email", "source-reddit", "source-http"]
 source-email = ["dep:async-imap", "dep:mailparse", "dep:webpki-roots", "source-email-tokio-rustls", "google-oauth2"]
@@ -99,6 +101,10 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter", "tracing-lo
 [dev-dependencies]
 assert_matches = "1.5"
 tokio-test = "0.4.4"
+
+[[example]]
+name = "simple"
+required-features = ["source-http", "action-html"]
 
 [lints]
 workspace = true

@@ -4,6 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+// TODO: remove me when mod is public
+#![allow(dead_code, reason = "not public yet and only used in some features")]
+
 pub struct MessageLengthLimiter<'a> {
 	pub head: Option<&'a str>,
 	pub body: Option<&'a str>,

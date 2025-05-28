@@ -32,7 +32,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! fetcher = "0.15"
+//! fetcher = { version = "0.15", features = ["full"] }
 //! tokio = { version = "1", features = ["full"] }
 //! ```
 //!

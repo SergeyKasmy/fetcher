@@ -1,7 +1,18 @@
-[jobs.check-powerset]
+[jobs.check-each]
 command = [
   "cargo",
   "hack",
-  "--feature-powerset",
+  "--each-feature",
+  "check"
+]
+
+[jobs.check-none-all]
+command = [
+  "cargo",
+  "hack",
+  "--each-feature",
+  # TODO: include no-default-features too
+  "--include-features",
+  "full",
   "check"
 ]
