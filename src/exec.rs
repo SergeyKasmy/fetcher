@@ -13,7 +13,6 @@ use crate::{
 	entry::Entry,
 	sinks::{
 		Sink,
-		error::SinkError,
 		message::{Message, MessageId},
 	},
 	sources::{Fetch, error::SourceError},
@@ -74,6 +73,8 @@ impl Fetch for Exec {
 }
 
 impl Sink for Exec {
+	type Err = ExecError;
+
 	/// Passes message's body to the stdin of the process. The tag parameter is ignored
 	///
 	/// # Errors
@@ -84,7 +85,7 @@ impl Sink for Exec {
 		message: &Message,
 		_reply_to: Option<&MessageId>,
 		_tag: Option<&str>,
-	) -> Result<Option<MessageId>, SinkError> {
+	) -> Result<Option<MessageId>, Self::Err> {
 		let Some(body) = &message.body else {
 			return Ok(None);
 		};

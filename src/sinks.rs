@@ -41,58 +41,69 @@ use std::{borrow::Cow, collections::HashSet, convert::Infallible, fmt::Debug};
 
 /// An async function that sends a message somewhere
 pub trait Sink: Debug + MaybeSendSync {
+	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
+	type Err: Into<SinkError>;
+
 	/// Send the message with an optional tag (usually represented as a hashtag)
 	fn send(
 		&mut self,
 		message: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
-	) -> impl Future<Output = Result<Option<MessageId>, SinkError>> + MaybeSend;
+	) -> impl Future<Output = Result<Option<MessageId>, Self::Err>> + MaybeSend;
 }
 
 pub(crate) struct SinkWrapper<S>(pub S);
 
 impl<S: Sink> Sink for &mut S {
+	type Err = S::Err;
+
 	async fn send(
 		&mut self,
 		message: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
-	) -> Result<Option<MessageId>, SinkError> {
+	) -> Result<Option<MessageId>, Self::Err> {
 		(*self).send(message, reply_to, tag).await
 	}
 }
 
 impl Sink for () {
+	type Err = Infallible;
+
 	async fn send(
 		&mut self,
 		_message: &Message,
 		_reply_to: Option<&MessageId>,
 		_tag: Option<&str>,
-	) -> Result<Option<MessageId>, SinkError> {
+	) -> Result<Option<MessageId>, Self::Err> {
 		Ok(None)
 	}
 }
 
 impl Sink for Infallible {
+	type Err = Infallible;
+
 	async fn send(
 		&mut self,
 		_message: &Message,
 		_reply_to: Option<&MessageId>,
 		_tag: Option<&str>,
-	) -> Result<Option<MessageId>, SinkError> {
+	) -> Result<Option<MessageId>, Self::Err> {
 		match *self {}
 	}
 }
 
 #[cfg(feature = "nightly")]
 impl Sink for ! {
+	type Err = !;
+
 	async fn send(
 		&mut self,
 		_message: &Message,
 		_reply_to: Option<&MessageId>,
 		_tag: Option<&str>,
-	) -> Result<Option<MessageId>, SinkError> {
+	) -> Result<Option<MessageId>, Self::Err> {
 		match *self {}
 	}
 }
@@ -101,12 +112,14 @@ impl<S> Sink for Option<S>
 where
 	S: Sink,
 {
+	type Err = S::Err;
+
 	async fn send(
 		&mut self,
 		message: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
-	) -> Result<Option<MessageId>, SinkError> {
+	) -> Result<Option<MessageId>, Self::Err> {
 		let Some(inner) = self else {
 			return Ok(None);
 		};
@@ -206,7 +219,10 @@ where
 		.and_then(|map| map.get_if_exists(entry.reply_to.as_ref()));
 
 	tracing::debug!("Sending {msg:?} to a sink with tag {tag:?}, replying to {reply_to:?}");
-	Ok(sink.send(&msg, reply_to, tag).await?)
+
+	sink.send(&msg, reply_to, tag)
+		.await
+		.map_err(|e| FetcherError::from(e.into()))
 }
 
 async fn mark_entry_as_read<'a, S, E>(

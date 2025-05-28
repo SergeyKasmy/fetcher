@@ -32,7 +32,7 @@ use fetcher::{
 	entry::Entry,
 	job::{JobResult, RefreshTime, error_handling},
 	scaffold::{InitResult, init},
-	sinks::{Message, Sink, error::SinkError, message::MessageId},
+	sinks::{Message, Sink, message::MessageId},
 	sources::{Fetch, error::SourceError},
 };
 use tokio::{fs::File, io::AsyncWriteExt};
@@ -137,13 +137,16 @@ impl Filter for FilterEveryTenthEntry {
 struct SaveBodyToFileSink(tokio::fs::File);
 
 impl Sink for SaveBodyToFileSink {
+	/// Any type convertible to Box<dyn Error> works
+	type Err = Box<dyn Error + Send + Sync>;
+
 	// This function will be called for every message of every entry that will pass through the sink.
 	async fn send(
 		&mut self,
 		message: &Message,
 		_reply_to: Option<&MessageId>,
 		_tag: Option<&str>,
-	) -> Result<Option<MessageId>, SinkError> {
+	) -> Result<Option<MessageId>, Self::Err> {
 		// extract the body
 		let msg_body = message
 			.body
@@ -151,16 +154,10 @@ impl Sink for SaveBodyToFileSink {
 			.expect("source should always return entries with bodies");
 
 		// erase the file
-		self.0
-			.set_len(0)
-			.await
-			.map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
+		self.0.set_len(0).await?;
 
 		// write the body (our unix time) to the file
-		self.0
-			.write_all(msg_body.as_bytes())
-			.await
-			.map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
+		self.0.write_all(msg_body.as_bytes()).await?;
 
 		Ok(None)
 	}

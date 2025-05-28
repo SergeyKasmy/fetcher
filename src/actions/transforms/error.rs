@@ -59,7 +59,7 @@ pub enum TransformErrorKind {
 	#[error("Extraction error")]
 	Extract(#[from] ExtractError),
 
-	#[error("Other error")]
+	#[error(transparent)]
 	Other(#[from] Box<dyn StdError + Send + Sync>),
 }
 

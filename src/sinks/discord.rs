@@ -67,12 +67,15 @@ impl Discord {
 }
 
 impl Sink for Discord {
+	// TODO: create a type specific for dc errors
+	type Err = SinkError;
+
 	async fn send(
 		&mut self,
 		msg: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
-	) -> Result<Option<MessageId>, SinkError> {
+	) -> Result<Option<MessageId>, Self::Err> {
 		let mut last_message = reply_to.try_map(|msgid| {
 			let dc_msgid = DcMessageId::from(u64::try_from(msgid.0)?);
 

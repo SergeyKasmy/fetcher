@@ -17,7 +17,7 @@ use crate::{
 #[cfg(feature = "google-oauth2")]
 use crate::auth::google::GoogleOAuth2Error;
 
-use std::fmt::Display;
+use std::fmt::{self, Display};
 use std::{convert::Infallible, error::Error as StdError};
 
 // TODO: attach backtraces to all inner errors
@@ -44,7 +44,7 @@ pub enum FetcherError {
 	#[error("Error writing to the external save location")]
 	ExternalSave(#[source] ExternalSaveError),
 
-	#[error("Other error")]
+	#[error(transparent)]
 	Other(#[from] Box<dyn StdError + Send + Sync>),
 }
 
@@ -120,7 +120,7 @@ where
 pub struct ErrorChainDisplay<'a>(pub &'a dyn StdError);
 
 impl Display for ErrorChainDisplay<'_> {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let mut current_err = self.0;
 		let mut counter = 0;
 		write!(f, "{current_err}")?;

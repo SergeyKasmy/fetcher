@@ -17,6 +17,8 @@ use super::MessageId;
 pub struct Stdout;
 
 impl Sink for Stdout {
+	type Err = SinkError;
+
 	/// Prints a message with an optional tag to stdout
 	///
 	/// # Errors
@@ -26,7 +28,7 @@ impl Sink for Stdout {
 		msg: &Message,
 		_reply_to: Option<&MessageId>,
 		tag: Option<&str>,
-	) -> Result<Option<MessageId>, SinkError> {
+	) -> Result<Option<MessageId>, Self::Err> {
 		io::stdout().write_all(format!(
 			"------------------------------\nMessage:\nTitle: {title}\n\nBody:\n{body}\n\nLink: {link}\n\nMedia: {media:?}\n\nTag: {tag:?}\n------------------------------\n",
 			title = msg.title.as_deref().unwrap_or("None"),

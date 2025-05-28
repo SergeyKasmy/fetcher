@@ -84,6 +84,9 @@ impl Telegram {
 }
 
 impl Sink for Telegram {
+	// TODO: create a type specific for tg errors
+	type Err = SinkError;
+
 	/// Sends a message to a Telegram chat
 	///
 	/// # Errors
@@ -95,7 +98,7 @@ impl Sink for Telegram {
 		message: &Message,
 		reply_to: Option<&MessageId>,
 		tag: Option<&str>,
-	) -> Result<Option<MessageId>, SinkError> {
+	) -> Result<Option<MessageId>, Self::Err> {
 		let reply_to = reply_to.try_map(|msgid| {
 			let tel_msg_id = TelMessageId(msgid.0.try_into()?);
 			Ok::<_, TryFromIntError>(tel_msg_id)

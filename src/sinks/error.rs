@@ -9,7 +9,7 @@
 use crate::error::InvalidUrlError;
 pub use crate::exec::ExecError;
 
-use std::{error::Error as StdError, fmt::Debug, num::TryFromIntError};
+use std::{convert::Infallible, error::Error as StdError, fmt::Debug, num::TryFromIntError};
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
@@ -40,7 +40,7 @@ pub enum SinkError {
 	#[error("Error writing to stdout")]
 	Stdout(#[source] std::io::Error),
 
-	#[error("Other error")]
+	#[error(transparent)]
 	Other(#[from] Box<dyn StdError + Send + Sync>),
 }
 
@@ -56,5 +56,18 @@ impl SinkError {
 			} => Some(self),
 			_ => None,
 		}
+	}
+}
+
+impl From<Infallible> for SinkError {
+	fn from(value: Infallible) -> Self {
+		match value {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl From<!> for SinkError {
+	fn from(value: !) -> Self {
+		match value {}
 	}
 }

@@ -41,15 +41,8 @@ pub enum SourceError {
 	#[error("Reddit error")]
 	Reddit(#[from] RedditError),
 
-	#[error("Other error")]
+	#[error(transparent)]
 	Other(#[from] Box<dyn StdError + Send + Sync>),
-}
-
-#[cfg(feature = "source-email")]
-impl From<EmailError> for SourceError {
-	fn from(e: EmailError) -> Self {
-		SourceError::Email(Box::new(e))
-	}
 }
 
 impl SourceError {
@@ -67,5 +60,12 @@ impl SourceError {
 			Self::Reddit(RedditError::Reddit(RouxError::Network(_))) => Some(self),
 			_ => None,
 		}
+	}
+}
+
+#[cfg(feature = "source-email")]
+impl From<EmailError> for SourceError {
+	fn from(e: EmailError) -> Self {
+		Self::Email(Box::new(e))
 	}
 }

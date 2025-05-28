@@ -11,7 +11,7 @@
 #![allow(clippy::tests_outside_test_module)]
 #![allow(clippy::unwrap_used)]
 
-use std::sync::LazyLock;
+use std::{convert::Infallible, sync::LazyLock};
 
 use fetcher::{
 	actions::sink,
@@ -20,7 +20,6 @@ use fetcher::{
 	read_filter::MarkAsRead,
 	sinks::{
 		Sink,
-		error::SinkError,
 		message::{Message, MessageId},
 	},
 	sources::{Fetch, Source, error::SourceError},
@@ -56,13 +55,16 @@ impl MarkAsRead for DummySource {
 impl Source for DummySource {}
 
 impl Sink for DummySink {
+	type Err = Infallible;
+
 	async fn send(
 		&mut self,
 		_message: &Message,
 		reply_to: Option<&MessageId>,
 		_tag: Option<&str>,
-	) -> Result<Option<MessageId>, SinkError> {
+	) -> Result<Option<MessageId>, Self::Err> {
 		assert_eq!(reply_to.unwrap().0, MESSAGE_ID);
+
 		Ok(None)
 	}
 }
