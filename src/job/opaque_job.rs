@@ -70,6 +70,13 @@ where
 
 impl OpaqueJob for Infallible {
 	async fn run(&mut self) -> JobResult {
-		unreachable!()
+		match *self {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl OpaqueJob for ! {
+	async fn run(&mut self) -> JobResult {
+		match *self {}
 	}
 }

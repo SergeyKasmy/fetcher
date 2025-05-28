@@ -50,6 +50,7 @@
 //!
 //! Contributions are very welcome! Please feel free to submit a pull request or open issues for any bugs, feature requests, or general feedback.
 
+#![cfg_attr(feature = "nightly", feature(never_type))]
 #![cfg_attr(not(feature = "send"), expect(clippy::future_not_send))]
 #![cfg_attr(test, allow(clippy::unwrap_used))]
 // TODO: enable later
@@ -86,3 +87,50 @@ pub use url;
 // pub use tokio_rustls::rustls::crypto as rustls_crypto;
 
 pub(crate) mod safe_slice;
+
+#[cfg(test)]
+mod tests {
+	use std::convert::Infallible;
+
+	use crate::{
+		actions::{
+			Action,
+			filters::Filter,
+			transforms::{Transform, field::TransformField},
+		},
+		external_save::ExternalSave,
+		job::{HandleError, OpaqueJob},
+		read_filter::ReadFilter,
+		sinks::Sink,
+		sources::Source,
+		task::OpaqueTask,
+	};
+
+	// TODO: make sure all other relevant similar traits are also implemented for refs and ()
+	#[test]
+	fn main_traits_implemented_for_common_types() {
+		fn implements_common_traits<T>()
+		where
+			T: Action
+				+ ExternalSave
+				+ Filter
+				+ HandleError
+				+ OpaqueJob
+				+ OpaqueTask
+				+ ReadFilter
+				+ Sink
+				+ Source
+				+ Transform
+				+ TransformField,
+		{
+		}
+
+		// TODO: check `!` on a nightly toolchain
+		implements_common_traits::<()>();
+		implements_common_traits::<Infallible>();
+		implements_common_traits::<Option<()>>();
+
+		#[cfg(feature = "nightly")]
+		implements_common_traits::<!>();
+	}
+}

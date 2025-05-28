@@ -16,6 +16,7 @@ edition = "2024"
 default = ["send", "scaffold"]
 send = []
 scaffold = ["dep:tracing-journald", "dep:tracing-subscriber", "tokio/signal", "tokio-rustls?/aws_lc_rs"]
+nightly = []
 
 full = ["all-sources", "all-actions", "all-sinks", "all-misc"]
 

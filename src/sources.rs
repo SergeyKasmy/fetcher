@@ -37,7 +37,7 @@ use crate::{
 	read_filter::{MarkAsRead, ReadFilter},
 };
 
-use std::fmt::Debug;
+use std::{convert::Infallible, fmt::Debug};
 
 /// A trait that defines a way to fetch entries as well as mark them as read afterwards
 pub trait Source: Fetch + MarkAsRead + Debug + MaybeSendSync {}
@@ -71,7 +71,20 @@ pub trait Fetch: Debug + MaybeSendSync {
 	}
 }
 
-impl Source for () {}
+/// A wrapper around a [`Fetch`] that uses an external way to filter read entries,
+/// as well as a (read filter)[`ReadFilter`]
+#[derive(Debug)]
+pub struct SourceWithSharedRF<F, RF>
+where
+	F: Fetch,
+	RF: ReadFilter,
+{
+	/// The source to fetch data from
+	pub source: F,
+
+	/// The read filter that's used to mark entries as read
+	pub rf: RF,
+}
 
 impl Fetch for String {
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
@@ -99,24 +112,48 @@ where
 
 impl Fetch for () {
 	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
-		Ok(Vec::new())
+		Ok(vec![Entry::default()])
 	}
 }
 
-/// A wrapper around a [`Fetch`] that uses an external way to filter read entries,
-/// as well as a (read filter)[`ReadFilter`]
-#[derive(Debug)]
-pub struct SourceWithSharedRF<F, RF>
+impl Fetch for Infallible {
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		match *self {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl Fetch for ! {
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		match *self {}
+	}
+}
+
+impl<F> Fetch for Option<F>
+where
+	F: Fetch,
+{
+	async fn fetch(&mut self) -> Result<Vec<Entry>, SourceError> {
+		let Some(inner) = self else {
+			return ().fetch().await;
+		};
+
+		inner.fetch().await
+	}
+}
+
+impl<F, RF> Source for SourceWithSharedRF<F, RF>
 where
 	F: Fetch,
 	RF: ReadFilter,
 {
-	/// The source to fetch data from
-	pub source: F,
-
-	/// The read filter that's used to mark entries as read
-	pub rf: RF,
 }
+
+impl Source for () {}
+impl Source for Infallible {}
+#[cfg(feature = "nightly")]
+impl Source for ! {}
+impl<S> Source for Option<S> where S: Source {}
 
 impl<F, RF> Fetch for SourceWithSharedRF<F, RF>
 where
@@ -144,11 +181,4 @@ where
 	async fn set_read_only(&mut self) {
 		self.rf.set_read_only().await
 	}
-}
-
-impl<F, RF> Source for SourceWithSharedRF<F, RF>
-where
-	F: Fetch,
-	RF: ReadFilter,
-{
 }

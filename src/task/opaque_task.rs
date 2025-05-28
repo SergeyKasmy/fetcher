@@ -6,6 +6,8 @@
 
 //! This module contains the [`OpaqueTask`] trait
 
+use std::convert::Infallible;
+
 use super::DisabledTask;
 use crate::{
 	ctrl_c_signal::CtrlCSignalChannel,
@@ -55,6 +57,27 @@ impl OpaqueTask for () {
 	}
 
 	fn set_ctrlc_channel(&mut self, _channel: CtrlCSignalChannel) {}
+}
+
+impl OpaqueTask for Infallible {
+	async fn run(&mut self) -> Result<(), FetcherError> {
+		match *self {}
+	}
+
+	fn set_ctrlc_channel(&mut self, _channel: CtrlCSignalChannel) {
+		match *self {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl OpaqueTask for ! {
+	async fn run(&mut self) -> Result<(), FetcherError> {
+		match *self {}
+	}
+
+	fn set_ctrlc_channel(&mut self, _channel: CtrlCSignalChannel) {
+		match *self {}
+	}
 }
 
 impl<T> OpaqueTask for Option<T>

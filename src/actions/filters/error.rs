@@ -21,3 +21,10 @@ impl From<Infallible> for FilterError {
 		match value {}
 	}
 }
+
+#[cfg(feature = "nightly")]
+impl From<!> for FilterError {
+	fn from(value: !) -> Self {
+		match value {}
+	}
+}

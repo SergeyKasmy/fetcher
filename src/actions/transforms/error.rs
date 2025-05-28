@@ -69,8 +69,15 @@ pub enum TransformErrorKind {
 pub struct RawContentsNotSetError;
 
 impl From<Infallible> for TransformErrorKind {
-	fn from(inf: Infallible) -> Self {
-		match inf {}
+	fn from(value: Infallible) -> Self {
+		match value {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl From<!> for TransformErrorKind {
+	fn from(value: !) -> Self {
+		match value {}
 	}
 }
 

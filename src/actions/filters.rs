@@ -76,3 +76,20 @@ impl<F: Filter> Filter for Option<F> {
 		f.filter(entries).await
 	}
 }
+
+impl Filter for Infallible {
+	type Error = Infallible;
+
+	async fn filter(&self, _entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+		match *self {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl Filter for ! {
+	type Error = !;
+
+	async fn filter(&self, _entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+		match *self {}
+	}
+}

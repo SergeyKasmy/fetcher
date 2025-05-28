@@ -23,7 +23,10 @@ pub mod decode_html;
 #[cfg(feature = "action-html-decode")]
 pub use self::decode_html::DecodeHtml;
 
-use std::fmt::{self, Debug};
+use std::{
+	convert::Infallible,
+	fmt::{self, Debug},
+};
 
 use super::{
 	Transform,
@@ -44,6 +47,7 @@ pub trait TransformField: MaybeSendSync {
 	///
 	/// # Errors
 	/// Refer to implementator's docs. Most of them never error but some do
+	// TODO: make async
 	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err>;
 }
 
@@ -133,6 +137,55 @@ where
 		}
 
 		Ok(vec![new_entry])
+	}
+}
+
+impl TransformField for () {
+	type Err = Infallible;
+
+	fn transform_field(
+		&self,
+		_old_val: Option<&str>,
+	) -> Result<TransformResult<String>, Self::Err> {
+		Ok(TransformResult::default())
+	}
+}
+
+impl TransformField for Infallible {
+	type Err = Infallible;
+
+	fn transform_field(
+		&self,
+		_old_val: Option<&str>,
+	) -> Result<TransformResult<String>, Self::Err> {
+		match *self {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl TransformField for ! {
+	type Err = !;
+
+	fn transform_field(
+		&self,
+		_old_val: Option<&str>,
+	) -> Result<TransformResult<String>, Self::Err> {
+		match *self {}
+	}
+}
+
+impl<T> TransformField for Option<T>
+where
+	T: TransformField,
+{
+	type Err = T::Err;
+
+	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
+		let Some(inner) = self else {
+			return Ok(TransformResult::default());
+		};
+
+		inner.transform_field(old_val)
 	}
 }
 

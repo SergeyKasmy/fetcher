@@ -14,6 +14,7 @@ mod exponential_backoff;
 mod forward;
 mod log_and_ignore;
 
+use std::convert::Infallible;
 use std::error::Error;
 
 use either::Either;
@@ -117,5 +118,68 @@ where
 				.await
 				.map_handler_err(Either::Right),
 		}
+	}
+}
+
+/// The same as [`Forward`]
+impl HandleError for () {
+	type HandlerErr = <Forward as HandleError>::HandlerErr;
+
+	async fn handle_errors(
+		&mut self,
+		errors: Vec<FetcherError>,
+		cx: HandleErrorContext<'_>,
+	) -> HandleErrorResult<Self::HandlerErr> {
+		Forward.handle_errors(errors, cx).await
+	}
+}
+
+impl HandleError for Infallible {
+	type HandlerErr = Infallible;
+
+	async fn handle_errors(
+		&mut self,
+		_errors: Vec<FetcherError>,
+		_cx: HandleErrorContext<'_>,
+	) -> HandleErrorResult<Self::HandlerErr> {
+		match *self {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl HandleError for ! {
+	type HandlerErr = !;
+
+	async fn handle_errors(
+		&mut self,
+		_errors: Vec<FetcherError>,
+		_cx: HandleErrorContext<'_>,
+	) -> HandleErrorResult<Self::HandlerErr> {
+		match *self {}
+	}
+}
+
+impl<H> HandleError for Option<H>
+where
+	H: HandleError,
+{
+	type HandlerErr = H::HandlerErr;
+
+	async fn handle_errors(
+		&mut self,
+		errors: Vec<FetcherError>,
+		cx: HandleErrorContext<'_>,
+	) -> HandleErrorResult<Self::HandlerErr> {
+		let Some(inner) = self else {
+			match Forward.handle_errors(errors, cx).await {
+				HandleErrorResult::ContinueJob => return HandleErrorResult::ContinueJob,
+				HandleErrorResult::StopAndReturnErrs(e) => {
+					return HandleErrorResult::StopAndReturnErrs(e);
+				}
+				HandleErrorResult::ErrWhileHandling { err, .. } => match err {},
+			}
+		};
+
+		inner.handle_errors(errors, cx).await
 	}
 }

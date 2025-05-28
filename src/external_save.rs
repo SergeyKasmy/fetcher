@@ -8,6 +8,7 @@
 
 use std::{
 	collections::HashMap,
+	convert::Infallible,
 	fmt::{Debug, Display},
 	io,
 };
@@ -68,5 +69,65 @@ impl ExternalSave for () {
 		_map: &HashMap<EntryId, MessageId>,
 	) -> Result<(), ExternalSaveError> {
 		Ok(())
+	}
+}
+
+impl ExternalSave for Infallible {
+	async fn save_read_filter<RF>(&mut self, _read_filter: &RF) -> Result<(), ExternalSaveError>
+	where
+		RF: ReadFilter + Serialize,
+	{
+		match *self {}
+	}
+
+	async fn save_entry_to_msg_map(
+		&mut self,
+		_map: &HashMap<EntryId, MessageId>,
+	) -> Result<(), ExternalSaveError> {
+		match *self {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl ExternalSave for ! {
+	async fn save_read_filter<RF>(&mut self, _read_filter: &RF) -> Result<(), ExternalSaveError>
+	where
+		RF: ReadFilter + Serialize,
+	{
+		match *self {}
+	}
+
+	async fn save_entry_to_msg_map(
+		&mut self,
+		_map: &HashMap<EntryId, MessageId>,
+	) -> Result<(), ExternalSaveError> {
+		match *self {}
+	}
+}
+
+impl<E> ExternalSave for Option<E>
+where
+	E: ExternalSave,
+{
+	async fn save_read_filter<RF>(&mut self, read_filter: &RF) -> Result<(), ExternalSaveError>
+	where
+		RF: ReadFilter + Serialize,
+	{
+		let Some(inner) = self else {
+			return Ok(());
+		};
+
+		inner.save_read_filter(read_filter).await
+	}
+
+	async fn save_entry_to_msg_map(
+		&mut self,
+		map: &HashMap<EntryId, MessageId>,
+	) -> Result<(), ExternalSaveError> {
+		let Some(inner) = self else {
+			return Ok(());
+		};
+
+		inner.save_entry_to_msg_map(map).await
 	}
 }

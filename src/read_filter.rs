@@ -24,7 +24,7 @@ use crate::{
 	maybe_send::{MaybeSend, MaybeSendSync},
 };
 
-use std::fmt::Debug;
+use std::{convert::Infallible, fmt::Debug};
 
 /// A trait that defines a way to mark an entry as read
 pub trait MarkAsRead: Debug + MaybeSendSync {
@@ -69,7 +69,6 @@ impl<M: MarkAsRead> MarkAsRead for Option<M> {
 		}
 	}
 }
-
 impl<RF: ReadFilter> ReadFilter for Option<RF> {}
 
 impl MarkAsRead for () {
@@ -79,8 +78,31 @@ impl MarkAsRead for () {
 
 	async fn set_read_only(&mut self) {}
 }
-
 impl ReadFilter for () {}
+
+impl MarkAsRead for Infallible {
+	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
+		match *self {}
+	}
+
+	async fn set_read_only(&mut self) {
+		match *self {}
+	}
+}
+impl ReadFilter for Infallible {}
+
+#[cfg(feature = "nightly")]
+impl MarkAsRead for ! {
+	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
+		match *self {}
+	}
+
+	async fn set_read_only(&mut self) {
+		match *self {}
+	}
+}
+#[cfg(feature = "nightly")]
+impl ReadFilter for ! {}
 
 /*
 impl MarkAsRead for () {

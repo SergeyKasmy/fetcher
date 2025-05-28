@@ -15,6 +15,8 @@ pub mod result;
 
 pub mod error;
 
+use std::convert::Infallible;
+
 pub use self::{
 	field::{caps::Caps, set::Set, shorten::Shorten, trim::Trim},
 	print::DebugPrint,
@@ -126,4 +128,44 @@ where
 			kind: kind.into(),
 			original_entry: old_entry,
 		})
+}
+
+impl Transform for () {
+	type Err = Infallible;
+
+	async fn transform_entry(&self, _entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+		Ok(vec![TransformedEntry::default()])
+	}
+}
+
+impl Transform for Infallible {
+	type Err = Infallible;
+
+	async fn transform_entry(&self, _entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+		match *self {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl Transform for ! {
+	type Err = !;
+
+	async fn transform_entry(&self, _entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+		match *self {}
+	}
+}
+
+impl<T> Transform for Option<T>
+where
+	T: Transform,
+{
+	type Err = T::Err;
+
+	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+		let Some(inner) = self else {
+			return Ok(vec![TransformedEntry::default()]);
+		};
+
+		inner.transform_entry(entry).await
+	}
 }

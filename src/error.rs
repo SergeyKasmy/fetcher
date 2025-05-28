@@ -81,8 +81,15 @@ impl From<TransformError> for FetcherError {
 }
 
 impl From<Infallible> for FetcherError {
-	fn from(_: Infallible) -> Self {
-		unreachable!()
+	fn from(value: Infallible) -> Self {
+		match value {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl From<!> for FetcherError {
+	fn from(value: !) -> Self {
+		match value {}
 	}
 }
 

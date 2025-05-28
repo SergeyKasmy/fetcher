@@ -217,6 +217,39 @@ where
 	}
 }
 
+impl Action for Infallible {
+	type Error = Infallible;
+
+	async fn apply<S, E>(
+		&mut self,
+		_entries: Vec<Entry>,
+		_context: ActionContext<'_, S, E>,
+	) -> ActionResult<Self::Error>
+	where
+		S: Source,
+		E: ExternalSave,
+	{
+		match *self {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl Action for ! {
+	type Error = !;
+
+	async fn apply<S, E>(
+		&mut self,
+		_entries: Vec<Entry>,
+		_context: ActionContext<'_, S, E>,
+	) -> ActionResult<Self::Error>
+	where
+		S: Source,
+		E: ExternalSave,
+	{
+		match *self {}
+	}
+}
+
 impl<A> Action for (A,)
 where
 	A: Action,

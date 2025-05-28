@@ -37,7 +37,7 @@ use crate::{
 	task::entry_to_msg_map::EntryToMsgMap,
 };
 
-use std::{borrow::Cow, collections::HashSet, fmt::Debug};
+use std::{borrow::Cow, collections::HashSet, convert::Infallible, fmt::Debug};
 
 /// An async function that sends a message somewhere
 pub trait Sink: Debug + MaybeSendSync {
@@ -63,7 +63,6 @@ impl<S: Sink> Sink for &mut S {
 	}
 }
 
-// TODO: make sure all other relevant similar traits are also implemented for refs and ()
 impl Sink for () {
 	async fn send(
 		&mut self,
@@ -72,6 +71,47 @@ impl Sink for () {
 		_tag: Option<&str>,
 	) -> Result<Option<MessageId>, SinkError> {
 		Ok(None)
+	}
+}
+
+impl Sink for Infallible {
+	async fn send(
+		&mut self,
+		_message: &Message,
+		_reply_to: Option<&MessageId>,
+		_tag: Option<&str>,
+	) -> Result<Option<MessageId>, SinkError> {
+		match *self {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl Sink for ! {
+	async fn send(
+		&mut self,
+		_message: &Message,
+		_reply_to: Option<&MessageId>,
+		_tag: Option<&str>,
+	) -> Result<Option<MessageId>, SinkError> {
+		match *self {}
+	}
+}
+
+impl<S> Sink for Option<S>
+where
+	S: Sink,
+{
+	async fn send(
+		&mut self,
+		message: &Message,
+		reply_to: Option<&MessageId>,
+		tag: Option<&str>,
+	) -> Result<Option<MessageId>, SinkError> {
+		let Some(inner) = self else {
+			return Ok(None);
+		};
+
+		inner.send(message, reply_to, tag).await
 	}
 }
 
