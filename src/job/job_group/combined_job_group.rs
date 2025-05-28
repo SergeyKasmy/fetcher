@@ -6,7 +6,7 @@
 
 //! This module contains the [`CombinedJobGroup`] struct
 
-use futures::join;
+use tokio::join;
 
 use super::{JobGroup, JobGroupResult};
 
