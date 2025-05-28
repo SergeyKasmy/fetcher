@@ -25,7 +25,7 @@ jobs:
     - name: Install cargo hack
       uses: taiki-e/install-action@cargo-hack
     - name: Build
-      run: cargo hack --each-feature build --verbose
+      run: cargo hack --each-feature --skip nightly build --verbose
 
   test:
     runs-on: ubuntu-latest
@@ -39,7 +39,7 @@ jobs:
     - name: Install cargo hack
       uses: taiki-e/install-action@cargo-hack
     - name: Run tests
-      run: cargo hack --each-feature test --verbose
+      run: cargo hack --each-feature --skip nightly test --verbose
 
   clippy:
     runs-on: ubuntu-latest
@@ -52,7 +52,7 @@ jobs:
         toolchain: stable
         components: clippy
     - name: Run Clippy
-      run: cargo clippy --all-targets --all-features
+      run: cargo clippy --all-targets --features full
 
   rustfmt:
     runs-on: ubuntu-latest
