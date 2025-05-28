@@ -66,7 +66,7 @@ where
 {
 	type Error = RF::Error;
 
-	async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 		self.rf.filter(entries).await
 	}
 }

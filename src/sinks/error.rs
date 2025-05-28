@@ -39,6 +39,9 @@ pub enum SinkError {
 
 	#[error("Error writing to stdout")]
 	Stdout(#[source] std::io::Error),
+
+	#[error("Other error")]
+	Other(#[from] Box<dyn StdError + Send + Sync>),
 }
 
 impl SinkError {

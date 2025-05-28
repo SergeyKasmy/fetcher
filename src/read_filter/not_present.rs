@@ -78,7 +78,7 @@ impl Filter for NotPresent {
 	type Error = Infallible;
 
 	#[tracing::instrument(level = "debug", name = "filter_read", skip_all)]
-	async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 		let old_len = entries.len();
 		entries.retain(|elem| {
 			// retain elements with no id

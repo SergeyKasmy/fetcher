@@ -104,11 +104,15 @@ assert_matches = "1.5"
 tokio-test = "0.4.4"
 
 [[example]]
-name = "simple"
+name = "simple_website_to_stdout"
 required-features = ["source-http", "action-html"]
 
 [[example]]
 name = "github_new_release_email_to_telegram"
+required-features = ["full"]
+
+[[example]]
+name = "custom_sources_actions_sinks"
 required-features = ["full"]
 
 [lints]

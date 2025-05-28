@@ -32,7 +32,7 @@ pub trait Filter: Debug + MaybeSendSync {
 
 	/// Filter or modify the list of entries
 	fn filter(
-		&self,
+		&mut self,
 		entries: &mut Vec<Entry>,
 	) -> impl Future<Output = Result<(), Self::Error>> + MaybeSend;
 }
@@ -60,7 +60,7 @@ where
 impl Filter for () {
 	type Error = Infallible;
 
-	async fn filter(&self, _entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, _entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 		Ok(())
 	}
 }
@@ -68,7 +68,7 @@ impl Filter for () {
 impl<F: Filter> Filter for Option<F> {
 	type Error = F::Error;
 
-	async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 		let Some(f) = self else {
 			return Ok(());
 		};
@@ -80,7 +80,7 @@ impl<F: Filter> Filter for Option<F> {
 impl Filter for Infallible {
 	type Error = Infallible;
 
-	async fn filter(&self, _entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, _entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 		match *self {}
 	}
 }
@@ -89,7 +89,7 @@ impl Filter for Infallible {
 impl Filter for ! {
 	type Error = !;
 
-	async fn filter(&self, _entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, _entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 		match *self {}
 	}
 }

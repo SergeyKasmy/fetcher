@@ -12,12 +12,12 @@ pub mod transforms;
 use std::convert::Infallible;
 
 use either::Either;
-use transforms::async_fn::IntoTransformedEntries;
-use transforms::field::{Field, TransformField, TransformFieldWrapper};
 
 use self::filters::{Filter, FilterWrapper};
 use self::transforms::Transform;
 use self::transforms::TransformWrapper;
+use self::transforms::async_fn::IntoTransformedEntries;
+use self::transforms::field::{Field, TransformField, TransformFieldWrapper};
 
 use crate::actres_try;
 use crate::ctrl_c_signal::CtrlCSignalChannel;
@@ -28,7 +28,24 @@ use crate::{
 	task::entry_to_msg_map::EntryToMsgMap,
 };
 
-/// An action that modifies the list of entries in some way
+/// An action that modifies the list of entries in some way.
+///
+/// This is the most generic trait in the family of action traits.
+/// Other action-like traits that exist are [`Transform`], [`TransformField`], [`Filter`], [`Sink`].
+/// Every type implementing these traits could also be implemented via the main [`Action`] trait
+/// but these traits provide a more focused and easy-to-use API tailored for each of their tasks.
+/// Thus they are the more prefered option when implementing actions that fit into their intented use-cases.
+/// All of them are adaptible into actions via helper functions [`transform`], [`transform_field`], [`filter`], and [`sink`].
+///
+/// For example, [`Sink`] is meant for "sinks", a place messages can be sent to, and thus [`Sink`]
+/// doesn't bother itself with the internals of the [`Action`] trait.
+/// Instead of the `Vec<Entry>` that all actions process and should then forward for other actions,
+/// sinks just receive a [`&Message`](`crate::sinks::message::Message`) and that's all.
+///
+/// In other words, prefer to implement [`Transform`], [`TransformField`], [`Filter`], or [`Sink`]
+/// instead of implementing [`Action`] directly,
+/// and implement [`Action`] only when these traits don't fit your usecase.
+// TODO: add similar explanations to all these action-like traits
 pub trait Action: MaybeSendSync {
 	/// The associated error type that can be returned while applying the action
 	type Error: Into<FetcherError>;

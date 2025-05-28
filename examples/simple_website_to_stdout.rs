@@ -6,8 +6,10 @@
 
 //! This example showcases the simplest recurring job there can be in fetcher.
 //!
-//! It showcases how to create a [`Task`] that fetches the contents of <http://example.com>, properly parses its HTML to extract a title and a body, and sends it to stdout.
-//! It also showcases how to create a [`Job`] that reruns this task every second and ignores all errors.
+//! It shows how to create a [`Task`] that fetches the contents of <http://example.com>, properly parses its HTML to extract a title and a body, and sends it to stdout.
+//! It also shows how to create a [`Job`] that reruns this task every second and ignores all errors.
+//!
+//! To make this more useful as an actual job, sink should be changed from stdout to something else.
 
 /*
 // Move this to a different example

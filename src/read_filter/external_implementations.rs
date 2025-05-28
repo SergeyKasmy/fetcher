@@ -8,7 +8,7 @@
 //! These should make passing your own [`ReadFilter`] types easier without having to make an newtype just to implement it yourself
 
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::Mutex;
 
 use super::{MarkAsRead, ReadFilter};
 use crate::{
@@ -17,34 +17,34 @@ use crate::{
 	error::FetcherError,
 };
 
-/// [`ReadFilter`] implementation for `Arc<tokio::RwLock<impl ReadFilter>>`
-pub mod tokio_rwlock {
+/// [`ReadFilter`] implementation for `Arc<tokio::Mutex<impl ReadFilter>>`
+pub mod tokio_mutex {
 	#[allow(clippy::wildcard_imports)]
 	use super::*;
 
-	impl<RF> ReadFilter for Arc<RwLock<RF>> where RF: ReadFilter {}
+	impl<RF> ReadFilter for Arc<Mutex<RF>> where RF: ReadFilter {}
 
-	impl<RF> MarkAsRead for Arc<RwLock<RF>>
+	impl<RF> MarkAsRead for Arc<Mutex<RF>>
 	where
 		RF: ReadFilter,
 	{
 		async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
-			self.write().await.mark_as_read(id).await
+			self.lock().await.mark_as_read(id).await
 		}
 
 		async fn set_read_only(&mut self) {
-			self.write().await.set_read_only().await;
+			self.lock().await.set_read_only().await;
 		}
 	}
 
-	impl<RF> Filter for Arc<RwLock<RF>>
+	impl<RF> Filter for Arc<Mutex<RF>>
 	where
 		RF: ReadFilter,
 	{
 		type Error = RF::Error;
 
-		async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
-			self.read().await.filter(entries).await
+		async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+			self.lock().await.filter(entries).await
 		}
 	}
 }

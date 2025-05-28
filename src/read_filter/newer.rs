@@ -70,7 +70,7 @@ impl Filter for Newer {
 	/// * id 8
 	/// * id 3
 	#[tracing::instrument(level = "debug", name = "filter_read", skip_all)]
-	async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 		if let Some(last_read_id) = &self.last_read_id {
 			if let Some(last_read_id_pos) = entries.iter().position(|x| {
 				let Some(id) = &x.id else { return false };

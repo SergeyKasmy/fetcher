@@ -39,7 +39,7 @@ impl Filter for Contains {
 	type Error = Infallible;
 
 	/// Filter out some entries out of the `entries` vector
-	async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 		entries.retain(|ent| {
 			let field = match self.field {
 				Field::Title => ent.msg.title.as_deref().map(Cow::Borrowed),
@@ -87,7 +87,7 @@ mod tests {
 			})
 			.collect::<Vec<_>>();
 
-		let contains = Contains::new("World", Field::Body).unwrap();
+		let mut contains = Contains::new("World", Field::Body).unwrap();
 
 		contains.filter(&mut entries).await.unwrap();
 

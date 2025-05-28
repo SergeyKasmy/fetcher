@@ -30,7 +30,7 @@ pub enum TakeFrom {
 impl Filter for Take {
 	type Error = Infallible;
 
-	async fn filter(&self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
 		match self.from {
 			TakeFrom::Beginning => {
 				entries.truncate(self.num);
@@ -63,7 +63,7 @@ mod tests {
 			})
 			.collect::<Vec<_>>();
 
-		let take = Take {
+		let mut take = Take {
 			from: TakeFrom::Beginning,
 			num: 2,
 		};
@@ -91,7 +91,7 @@ mod tests {
 			})
 			.collect::<Vec<_>>();
 
-		let take = Take {
+		let mut take = Take {
 			from: TakeFrom::End,
 			num: 2,
 		};

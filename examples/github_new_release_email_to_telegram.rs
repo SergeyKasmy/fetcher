@@ -29,6 +29,12 @@ use fetcher::{
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
 	// Initialize the default logging framework and a detached thread waiting for a Ctrl-C signal
+	//
+	// The Ctrl-C signal channel enables jobs to finish more gracefully.
+	// Instead of just exiting outright, the job can stop between actions
+	// when the last action has already run to completion
+	// or when the job is paused (be it because it's not its time yet to re-run
+	// or because e.g. [`ExponentialBackoff`] error handler paused the job to wait out the error).
 	let InitResult {
 		ctrl_c_signal_channel,
 	} = init();
@@ -71,7 +77,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 		sink(Telegram::new(env::var("TELEGRAM_BOT_TOKEN")?, -123456789)),
 	);
 
-	// Create the actual task (named "github releases") - the thing that actually does the work.
+	// Create the actual task (named "github releases") - the thing that actually does the work/runs the pipeline.
 	// Tasks do their work once and return immediately after.
 	let task = Task::builder("github releases")
 		.source(email_source)
@@ -96,7 +102,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 		.build_with_default_error_handling();
 
 	// Start the job.
-	// This will run forever unless too many errors occured or Ctrl-C has been pressed
+	// The job will run forever unless too many errors occured or Ctrl-C has been pressed
 	let result = job.run().await;
 
 	match result {
