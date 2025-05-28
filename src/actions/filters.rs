@@ -28,13 +28,13 @@ use super::{Action, ActionContext, ActionResult};
 /// Trait for all types that support filtering entries out of a list of [`Entry`]s
 pub trait Filter: Debug + MaybeSendSync {
 	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
-	type Error: Into<FilterError>;
+	type Err: Into<FilterError>;
 
 	/// Filter or modify the list of entries
 	fn filter(
 		&mut self,
 		entries: &mut Vec<Entry>,
-	) -> impl Future<Output = Result<(), Self::Error>> + MaybeSend;
+	) -> impl Future<Output = Result<(), Self::Err>> + MaybeSend;
 }
 
 pub(crate) struct FilterWrapper<F>(pub F);
@@ -43,13 +43,13 @@ impl<F> Action for FilterWrapper<F>
 where
 	F: Filter,
 {
-	type Error = FilterError;
+	type Err = FilterError;
 
 	async fn apply<S, E>(
 		&mut self,
 		mut entries: Vec<Entry>,
 		_ctx: ActionContext<'_, S, E>,
-	) -> ActionResult<Self::Error> {
+	) -> ActionResult<Self::Err> {
 		match self.0.filter(&mut entries).await {
 			Ok(()) => ActionResult::Ok(entries),
 			Err(e) => ActionResult::Err(e.into()),
@@ -58,17 +58,17 @@ where
 }
 
 impl Filter for () {
-	type Error = Infallible;
+	type Err = Infallible;
 
-	async fn filter(&mut self, _entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, _entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 		Ok(())
 	}
 }
 
 impl<F: Filter> Filter for Option<F> {
-	type Error = F::Error;
+	type Err = F::Err;
 
-	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 		let Some(f) = self else {
 			return Ok(());
 		};
@@ -78,18 +78,18 @@ impl<F: Filter> Filter for Option<F> {
 }
 
 impl Filter for Infallible {
-	type Error = Infallible;
+	type Err = Infallible;
 
-	async fn filter(&mut self, _entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, _entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 		match *self {}
 	}
 }
 
 #[cfg(feature = "nightly")]
 impl Filter for ! {
-	type Error = !;
+	type Err = !;
 
-	async fn filter(&mut self, _entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, _entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 		match *self {}
 	}
 }

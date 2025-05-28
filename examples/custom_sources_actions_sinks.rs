@@ -118,9 +118,9 @@ struct FilterEveryTenthEntry(usize);
 
 impl Filter for FilterEveryTenthEntry {
 	/// [`FilterEveryTenthEntry`] never errors
-	type Error = Infallible;
+	type Err = Infallible;
 
-	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 		entries.retain(|_| {
 			self.0 += 1;
 

@@ -64,9 +64,9 @@ where
 	RF: ReadFilter,
 	S: ExternalSave,
 {
-	type Error = RF::Error;
+	type Err = RF::Err;
 
-	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 		self.rf.filter(entries).await
 	}
 }

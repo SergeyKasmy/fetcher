@@ -36,10 +36,10 @@ impl Contains {
 }
 
 impl Filter for Contains {
-	type Error = Infallible;
+	type Err = Infallible;
 
 	/// Filter out some entries out of the `entries` vector
-	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 		entries.retain(|ent| {
 			let field = match self.field {
 				Field::Title => ent.msg.title.as_deref().map(Cow::Borrowed),

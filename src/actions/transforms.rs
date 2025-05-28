@@ -88,13 +88,13 @@ impl<T> Action for TransformWrapper<T>
 where
 	T: Transform,
 {
-	type Error = TransformError;
+	type Err = TransformError;
 
 	async fn apply<S, E>(
 		&mut self,
 		entries: Vec<Entry>,
 		_ctx: ActionContext<'_, S, E>,
-	) -> ActionResult<Self::Error>
+	) -> ActionResult<Self::Err>
 	where
 		S: Source,
 		E: ExternalSave,

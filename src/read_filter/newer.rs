@@ -50,7 +50,7 @@ impl MarkAsRead for Newer {
 }
 
 impl Filter for Newer {
-	type Error = Infallible;
+	type Err = Infallible;
 
 	/// Removes all entries that are in the `list` after the last one read, including itself, in order
 	/// Note: Make sure the list is sorted newest to oldest
@@ -70,7 +70,7 @@ impl Filter for Newer {
 	/// * id 8
 	/// * id 3
 	#[tracing::instrument(level = "debug", name = "filter_read", skip_all)]
-	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 		if let Some(last_read_id) = &self.last_read_id {
 			if let Some(last_read_id_pos) = entries.iter().position(|x| {
 				let Some(id) = &x.id else { return false };

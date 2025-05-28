@@ -6,12 +6,7 @@
 
 //! This module contains the [`ExternalSave`] trait that implementors can use to add a way to save read filter data and entry to message map externally,
 
-use std::{
-	collections::HashMap,
-	convert::Infallible,
-	fmt::{Debug, Display},
-	io,
-};
+use std::{collections::HashMap, convert::Infallible, fmt::Debug, io};
 
 use serde::Serialize;
 
@@ -20,7 +15,6 @@ use crate::{
 	maybe_send::{MaybeSend, MaybeSendSync, MaybeSync},
 	read_filter::ReadFilter,
 	sinks::message::MessageId,
-	utils::DisplayDebug,
 };
 
 /// This trait represent some kind of external save destination.
@@ -46,13 +40,13 @@ pub trait ExternalSave: Debug + MaybeSendSync {
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
-#[error("Can't save externally{}{}", .path.is_some().then_some(": ").unwrap_or_default(), if let Some(path) = .path.as_ref() { path as &dyn Display } else { &"" })]
+#[error("Can't save externally{}{}", .path.is_some().then_some(": ").unwrap_or_default(), .path.as_deref().unwrap_or_default())]
 pub struct ExternalSaveError {
 	/// Inner IO error
 	pub source: io::Error,
 
 	/// Path/URL/some other kind of identifier of the location of the error
-	pub path: Option<Box<dyn DisplayDebug + Send + Sync>>,
+	pub path: Option<String>,
 }
 
 impl ExternalSave for () {

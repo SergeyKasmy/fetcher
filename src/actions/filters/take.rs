@@ -28,9 +28,9 @@ pub enum TakeFrom {
 }
 
 impl Filter for Take {
-	type Error = Infallible;
+	type Err = Infallible;
 
-	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 		match self.from {
 			TakeFrom::Beginning => {
 				entries.truncate(self.num);

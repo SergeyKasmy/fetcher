@@ -75,10 +75,10 @@ impl MarkAsRead for NotPresent {
 }
 
 impl Filter for NotPresent {
-	type Error = Infallible;
+	type Err = Infallible;
 
 	#[tracing::instrument(level = "debug", name = "filter_read", skip_all)]
-	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 		let old_len = entries.len();
 		entries.retain(|elem| {
 			// retain elements with no id

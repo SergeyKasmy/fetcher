@@ -132,13 +132,13 @@ impl<Si> Action for SinkWrapper<Si>
 where
 	Si: Sink,
 {
-	type Error = FetcherError;
+	type Err = FetcherError;
 
 	async fn apply<So, E>(
 		&mut self,
 		entries: Vec<Entry>,
 		mut ctx: ActionContext<'_, So, E>,
-	) -> ActionResult<Self::Error>
+	) -> ActionResult<Self::Err>
 	where
 		So: Source,
 		E: ExternalSave,

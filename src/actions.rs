@@ -48,7 +48,7 @@ use crate::{
 // TODO: add similar explanations to all these action-like traits
 pub trait Action: MaybeSendSync {
 	/// The associated error type that can be returned while applying the action
-	type Error: Into<FetcherError>;
+	type Err: Into<FetcherError>;
 
 	/// Apllies the action to the list of `entries` and returns them back.
 	///
@@ -57,7 +57,7 @@ pub trait Action: MaybeSendSync {
 		&mut self,
 		entries: Vec<Entry>,
 		context: ActionContext<'_, S, E>,
-	) -> impl Future<Output = ActionResult<Self::Error>> + MaybeSend
+	) -> impl Future<Output = ActionResult<Self::Err>> + MaybeSend
 	where
 		S: Source,
 		E: ExternalSave;
@@ -172,13 +172,13 @@ macro_rules! reborrow_ctx {
 }
 
 impl Action for () {
-	type Error = Infallible;
+	type Err = Infallible;
 
 	async fn apply<S, E>(
 		&mut self,
 		entries: Vec<Entry>,
 		_context: ActionContext<'_, S, E>,
-	) -> ActionResult<Self::Error>
+	) -> ActionResult<Self::Err>
 	where
 		S: Source,
 		E: ExternalSave,
@@ -191,13 +191,13 @@ impl<A> Action for Option<A>
 where
 	A: Action,
 {
-	type Error = A::Error;
+	type Err = A::Err;
 
 	async fn apply<S, E>(
 		&mut self,
 		entries: Vec<Entry>,
 		context: ActionContext<'_, S, E>,
-	) -> ActionResult<Self::Error>
+	) -> ActionResult<Self::Err>
 	where
 		S: Source,
 		E: ExternalSave,
@@ -216,13 +216,13 @@ where
 	A1: Action,
 	A2: Action,
 {
-	type Error = FetcherError;
+	type Err = FetcherError;
 
 	async fn apply<S, E>(
 		&mut self,
 		entries: Vec<Entry>,
 		context: ActionContext<'_, S, E>,
-	) -> ActionResult<Self::Error>
+	) -> ActionResult<Self::Err>
 	where
 		S: Source,
 		E: ExternalSave,
@@ -235,13 +235,13 @@ where
 }
 
 impl Action for Infallible {
-	type Error = Infallible;
+	type Err = Infallible;
 
 	async fn apply<S, E>(
 		&mut self,
 		_entries: Vec<Entry>,
 		_context: ActionContext<'_, S, E>,
-	) -> ActionResult<Self::Error>
+	) -> ActionResult<Self::Err>
 	where
 		S: Source,
 		E: ExternalSave,
@@ -252,13 +252,13 @@ impl Action for Infallible {
 
 #[cfg(feature = "nightly")]
 impl Action for ! {
-	type Error = !;
+	type Err = !;
 
 	async fn apply<S, E>(
 		&mut self,
 		_entries: Vec<Entry>,
 		_context: ActionContext<'_, S, E>,
-	) -> ActionResult<Self::Error>
+	) -> ActionResult<Self::Err>
 	where
 		S: Source,
 		E: ExternalSave,
@@ -271,13 +271,13 @@ impl<A> Action for (A,)
 where
 	A: Action,
 {
-	type Error = A::Error;
+	type Err = A::Err;
 
 	async fn apply<S, E>(
 		&mut self,
 		entries: Vec<Entry>,
 		context: ActionContext<'_, S, E>,
-	) -> ActionResult<Self::Error>
+	) -> ActionResult<Self::Err>
 	where
 		S: Source,
 		E: ExternalSave,
@@ -292,14 +292,14 @@ macro_rules! impl_action_for_tuples {
 		where
 			$($type_name: Action),+
 		{
-			type Error = FetcherError;
+			type Err = FetcherError;
 
 			#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
 			async fn apply<S, E>(
 				&mut self,
 				entries: Vec<Entry>,
 				mut ctx: ActionContext<'_, S, E>,
-			) -> ActionResult<Self::Error>
+			) -> ActionResult<Self::Err>
 			where
 				S: Source,
 				E: ExternalSave,

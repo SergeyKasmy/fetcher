@@ -41,9 +41,9 @@ pub mod tokio_mutex {
 	where
 		RF: ReadFilter,
 	{
-		type Error = RF::Error;
+		type Err = RF::Err;
 
-		async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Error> {
+		async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 			self.lock().await.filter(entries).await
 		}
 	}
