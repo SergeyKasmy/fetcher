@@ -26,7 +26,7 @@ use fetcher::{
 	},
 };
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
 	// Initialize the default logging framework and a detached thread waiting for a Ctrl-C signal
 	//
@@ -112,6 +112,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 		// JobResult::Err contains a vector for results of each contained tasks which in our case is just the one we have.
 		JobResult::Err(mut errors) => Err(Box::new(errors.remove(0)) as Box<_>),
 		// The job panicked. This probably shouldn't happen...
-		JobResult::Panicked { payload: _ } => todo!("should probably fix that..."),
+		JobResult::Panicked { payload: _ } => Ok(()),
 	}
 }

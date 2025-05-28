@@ -13,6 +13,8 @@
 //! * a [`Filter`] that filters every 10th entry that passes through it ([`FilterEveryTenthEntry`]).
 //! * a [`Sink`] that writes the contents of message bodies passed to it to a file, every time overwriting the old value ([`SaveBodyToFileSink`]).
 
+#![allow(clippy::dbg_macro)]
+
 use std::{
 	convert::Infallible,
 	error::Error,
@@ -223,6 +225,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 	// Start the job.
 	// The job will run until an error happens and then stop immediately
+	#[expect(clippy::match_same_arms)]
 	match job.run().await {
 		// The job finished successfully. In our case can only happen when Ctrl-C has been pressed.
 		JobResult::Ok => Ok(()),
@@ -230,6 +233,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 		// JobResult::Err contains a vector for results of each contained tasks which in our case is just the one we have.
 		JobResult::Err(mut errors) => Err(Box::new(errors.remove(0)) as Box<_>),
 		// The job panicked. This probably shouldn't happen...
-		JobResult::Panicked { payload: _ } => todo!("should probably fix that..."),
+		JobResult::Panicked { payload: _ } => Ok(()),
 	}
 }
