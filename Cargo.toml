@@ -109,11 +109,11 @@ required-features = ["source-http", "action-html"]
 
 [[example]]
 name = "github_new_release_email_to_telegram"
-required-features = ["full"]
+required-features = ["scaffold", "source-email", "sink-telegram"]
 
 [[example]]
 name = "custom_sources_actions_sinks"
-required-features = ["full"]
+required-features = ["scaffold"]
 
 [lints]
 workspace = true

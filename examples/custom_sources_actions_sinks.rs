@@ -164,7 +164,7 @@ impl Sink for SaveBodyToFileSink {
 	}
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
 	// Initialize the default logging framework and a detached thread waiting for a Ctrl-C signal.
 	//
