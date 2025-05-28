@@ -31,20 +31,16 @@ use fetcher::{
 	},
 	job::{Job, RefreshTime, error_handling},
 	sinks::Stdout,
-	sources::{Http, SourceWithSharedRF},
+	sources::{Fetch, Http},
 	task::Task,
 };
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
-	// TODO: make SourceWithSharedRF more user-friendly
 	// Create a new source that fetches data from example.com and doesn't keep track if it has read it or not
-	let source = SourceWithSharedRF {
-		source: Http::new_get("http://example.com")?,
-		rf: (),
-	};
+	let source = Http::new_get("http://example.com")?.into_source_without_read_filter();
 
-	// Create a tuple that contains all actions and executes them one by one in order
+	// Create a pipeline (via a tuple) that contains all actions and executes them one by one in order
 	let actions = (
 		// Define a new transform that sets the title of the message to <h1> and the body to <p> from the HTML. Uses CSS selectors
 		transform(

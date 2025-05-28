@@ -107,6 +107,10 @@ tokio-test = "0.4.4"
 name = "simple"
 required-features = ["source-http", "action-html"]
 
+[[example]]
+name = "github_new_release_email_to_telegram"
+required-features = ["full"]
+
 [lints]
 workspace = true
 

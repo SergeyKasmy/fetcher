@@ -125,7 +125,6 @@ mod tests {
 		{
 		}
 
-		// TODO: check `!` on a nightly toolchain
 		implements_common_traits::<()>();
 		implements_common_traits::<Infallible>();
 		implements_common_traits::<Option<()>>();

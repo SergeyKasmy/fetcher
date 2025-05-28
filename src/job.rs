@@ -194,7 +194,6 @@ where
 	/// too all child tasks on build.
 	pub fn build_with_default_error_handling(self) -> Job<T, error_handling::ExponentialBackoff>
 	where
-		S: job_builder::IsComplete,
 		S::CtrlcChan: job_builder::IsSet,
 		S::ErrorHandling: job_builder::IsUnset,
 		S::RefreshTime: job_builder::IsSet,
