@@ -7,10 +7,6 @@
 //! This module contains [`Transform`] and [`TransformField`](`field::TransformField`) traits as well as all types that implement it
 
 pub mod async_fn;
-pub mod feed;
-pub mod html;
-pub mod http;
-pub mod json;
 pub mod print;
 pub mod use_as;
 
@@ -20,14 +16,30 @@ pub mod result;
 pub mod error;
 
 pub use self::{
-	feed::Feed,
 	field::{caps::Caps, set::Set, shorten::Shorten, trim::Trim},
-	html::Html,
-	http::Http,
-	json::Json,
 	print::DebugPrint,
 	use_as::Use,
 };
+
+#[cfg(feature = "action-http")]
+pub mod http;
+#[cfg(feature = "action-http")]
+pub use self::http::Http;
+
+#[cfg(feature = "action-feed")]
+pub mod feed;
+#[cfg(feature = "action-feed")]
+pub use self::feed::Feed;
+
+#[cfg(feature = "action-json")]
+pub mod json;
+#[cfg(feature = "action-json")]
+pub use self::json::Json;
+
+#[cfg(feature = "action-html")]
+pub mod html;
+#[cfg(feature = "action-html")]
+pub use self::html::Html;
 
 use self::error::TransformError;
 use self::error::TransformErrorKind;

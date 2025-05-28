@@ -7,16 +7,27 @@
 //! This module contains [`Source`]s that can fetch data and create new [`Entries`](`Entry`) out of it
 // TODO: add google calendar source. Google OAuth2 is already implemented :)
 
-pub mod always_errors;
-pub mod email;
-pub mod file;
-pub mod http;
-pub mod reddit;
-
 pub mod error;
 
-pub use self::{email::Email, file::File, http::Http, reddit::Reddit};
+pub mod file;
+
+pub use self::file::File;
 pub use crate::exec::Exec;
+
+#[cfg(feature = "source-email")]
+pub mod email;
+#[cfg(feature = "source-email")]
+pub use self::email::Email;
+
+#[cfg(feature = "source-reddit")]
+pub mod reddit;
+#[cfg(feature = "source-reddit")]
+pub use self::reddit::Reddit;
+
+#[cfg(feature = "source-http")]
+pub mod http;
+#[cfg(feature = "source-http")]
+pub use self::http::Http;
 
 use self::error::SourceError;
 use crate::{

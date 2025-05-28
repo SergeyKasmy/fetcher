@@ -7,16 +7,23 @@
 //! This module contains [`Sink`] that can be used to consume a composed [`Message`],
 //! as well as the [`message`] module itself
 
+pub mod error;
 pub mod message;
 
-pub mod discord;
 pub mod stdout;
-pub mod telegram;
 
-pub mod error;
-
-pub use self::{discord::Discord, message::Message, stdout::Stdout, telegram::Telegram};
+pub use self::{message::Message, stdout::Stdout};
 pub use crate::exec::Exec;
+
+#[cfg(feature = "sink-telegram")]
+pub mod telegram;
+#[cfg(feature = "sink-telegram")]
+pub use self::telegram::Telegram;
+
+#[cfg(feature = "sink-discord")]
+pub mod discord;
+#[cfg(feature = "sink-discord")]
+pub use self::discord::Discord;
 
 use self::{error::SinkError, message::MessageId};
 use crate::{

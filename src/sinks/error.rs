@@ -20,12 +20,14 @@ pub enum SinkError {
 	#[error("Invalid message ID type. It has probably been copied from an incompatible sink type")]
 	InvalidMessageIdType(#[from] TryFromIntError),
 
+	#[cfg(feature = "sink-telegram")]
 	#[error("Can't send via Telegram. Message contents: {msg:?}")]
 	Telegram {
 		source: teloxide::RequestError,
 		msg: Box<dyn Debug + Send + Sync>,
 	},
 
+	#[cfg(feature = "sink-discord")]
 	#[error("Can't send via Discord. Message contents: {msg:?}")]
 	Discord {
 		source: serenity::Error,
@@ -40,8 +42,11 @@ pub enum SinkError {
 }
 
 impl SinkError {
+	// TODO: rename to is_network_related, make it a trait and add it to all Error*::Other variants
+	// TODO: also, make an Other variant for SinkError
 	pub(crate) fn is_connection_err(&self) -> Option<&(dyn StdError + Send + Sync)> {
 		match self {
+			#[cfg(feature = "sink-telegram")]
 			SinkError::Telegram {
 				source: teloxide::RequestError::Network(_),
 				..

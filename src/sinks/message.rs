@@ -6,6 +6,7 @@
 
 //! This module contains [`Message`] and [`Media`]
 
+// TODO: make pub, improve docs and API first
 pub(crate) mod length_limiter;
 
 use std::{borrow::Cow, fmt::Debug};

@@ -6,6 +6,7 @@
 
 //! This module contains all external manual authentication implementations. For now it's just [`Google OAuth2`](`Google`)
 
+#[cfg(feature = "google-oauth2")]
 pub mod google;
-
+#[cfg(feature = "google-oauth2")]
 pub use google::Google;

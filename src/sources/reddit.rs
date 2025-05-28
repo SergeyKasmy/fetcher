@@ -9,7 +9,6 @@
 use super::Fetch;
 use crate::{
 	entry::{Entry, EntryId},
-	error::InvalidUrlError,
 	sinks::message::{Media, Message},
 	sources::error::SourceError,
 };
@@ -35,11 +34,6 @@ pub struct Reddit {
 pub enum RedditError {
 	#[error(transparent)]
 	Reddit(#[from] roux::util::RouxError),
-
-	#[error(
-		"Reddit API returned an invalid URL to a post/post's contents, which really shouldn't happen..."
-	)]
-	InvalidUrl(#[from] InvalidUrlError),
 }
 
 /// Sorting algorithm

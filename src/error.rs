@@ -10,9 +10,12 @@ use either::Either;
 
 use crate::actions::filters::error::FilterError;
 use crate::{
-	actions::transforms::error::TransformError, auth::google::GoogleOAuth2Error,
-	external_save::ExternalSaveError, sinks::error::SinkError, sources::error::SourceError,
+	actions::transforms::error::TransformError, external_save::ExternalSaveError,
+	sinks::error::SinkError, sources::error::SourceError,
 };
+
+#[cfg(feature = "google-oauth2")]
+use crate::auth::google::GoogleOAuth2Error;
 
 use std::fmt::Display;
 use std::{convert::Infallible, error::Error as StdError};
@@ -33,6 +36,8 @@ pub enum FetcherError {
 	#[error("Can't send messages")]
 	Sink(#[from] SinkError),
 
+	// TODO: create a separate AuthError and move that there
+	#[cfg(feature = "google-oauth2")]
 	#[error("Google authentication error")]
 	GoogleOAuth2(#[from] GoogleOAuth2Error),
 
@@ -62,6 +67,7 @@ impl FetcherError {
 			Self::Source(e) => e.is_connection_err(),
 			Self::Transform(e) => e.is_connection_err(),
 			Self::Sink(e) => e.is_connection_err(),
+			#[cfg(feature = "google-oauth2")]
 			Self::GoogleOAuth2(e) => e.is_connection_err(),
 			_ => None,
 		}

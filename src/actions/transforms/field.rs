@@ -8,7 +8,6 @@
 //! And [`Field`] enum that can be used to refer to a [`Message`](`crate::sinks::message::Message`)'s field
 
 pub mod caps;
-pub mod decode_html;
 pub mod extract;
 pub mod replace;
 pub mod set;
@@ -18,6 +17,11 @@ pub mod trim;
 pub use self::{
 	caps::Caps, extract::Extract, replace::Replace, set::Set, shorten::Shorten, trim::Trim,
 };
+
+#[cfg(feature = "action-html-decode")]
+pub mod decode_html;
+#[cfg(feature = "action-html-decode")]
+pub use self::decode_html::DecodeHtml;
 
 use std::fmt::{self, Debug};
 

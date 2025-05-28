@@ -25,7 +25,7 @@ jobs:
     - name: Install cargo hack
       uses: taiki-e/install-action@cargo-hack
     - name: Build
-      run: cargo hack --feature-powerset build --verbose
+      run: cargo hack --each-feature build --verbose
 
   test:
     runs-on: ubuntu-latest
@@ -39,7 +39,7 @@ jobs:
     - name: Install cargo hack
       uses: taiki-e/install-action@cargo-hack
     - name: Run tests
-      run: cargo hack --feature-powerset test --verbose
+      run: cargo hack --each-feature test --verbose
 
   clippy:
     runs-on: ubuntu-latest
