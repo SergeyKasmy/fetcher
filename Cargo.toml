@@ -179,3 +179,9 @@ single_match_else = "allow"
 
 # reverse order makes it more confusing, should be used at the developer's discretion
 map_unwrap_or = "allow"
+
+# false positive
+uninhabited_references = "allow"
+
+# a stylistic choice
+obfuscated_if_else = "allow"

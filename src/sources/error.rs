@@ -54,7 +54,7 @@ impl From<EmailError> for SourceError {
 
 impl SourceError {
 	pub(crate) fn is_connection_err(&self) -> Option<&(dyn StdError + Send + Sync)> {
-		#[expect(clippy::match_same_arms, reason = "clearer code")]
+		#[allow(clippy::match_same_arms, reason = "clearer code")]
 		match self {
 			#[cfg(feature = "source-http")]
 			Self::Http(_) => Some(self),

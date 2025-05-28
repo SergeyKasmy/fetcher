@@ -107,6 +107,7 @@ mod tests {
 
 	// TODO: make sure all other relevant similar traits are also implemented for refs and ()
 	#[test]
+	#[ignore = "nothing to execute, just a compile test"]
 	fn main_traits_implemented_for_common_types() {
 		fn implements_common_traits<T>()
 		where
