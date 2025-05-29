@@ -200,6 +200,24 @@ impl<T> IntoIterator for NonEmptyVec<T> {
 	}
 }
 
+impl<'a, T> IntoIterator for &'a NonEmptyVec<T> {
+	type Item = &'a T;
+	type IntoIter = <&'a Vec<T> as IntoIterator>::IntoIter;
+
+	fn into_iter(self) -> Self::IntoIter {
+		self.as_vec().iter()
+	}
+}
+
+impl<'a, T> IntoIterator for &'a mut NonEmptyVec<T> {
+	type Item = &'a mut T;
+	type IntoIter = <&'a mut Vec<T> as IntoIterator>::IntoIter;
+
+	fn into_iter(self) -> Self::IntoIter {
+		self.0.iter_mut()
+	}
+}
+
 impl<T> ops::Deref for NonEmptyVec<T> {
 	type Target = [T];
 
