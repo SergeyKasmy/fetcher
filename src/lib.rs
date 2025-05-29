@@ -78,7 +78,9 @@ pub mod scaffold;
 // common types
 pub use crate::{job::Job, task::Task};
 
+// exports to avoid different dependecy versions errors
 pub use either;
+pub use non_non_full;
 pub use staticstr::StaticStr;
 pub use url;
 
