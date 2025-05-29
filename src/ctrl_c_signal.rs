@@ -4,10 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains the [`CtrlCSignalChannel`]
+//! This module contains the [`CtrlCSignalChannel`] type
 
 use tokio::sync::watch::{self, channel};
 
+// TODO: rename
 /// The receiving end of a channel that is notified when a Ctrl-C signal has been received
 #[derive(Clone, Debug)]
 pub struct CtrlCSignalChannel(pub(crate) watch::Receiver<()>);
@@ -30,6 +31,7 @@ impl CtrlCSignalChannel {
 	#[must_use]
 	pub fn signaled(&self) -> bool {
 		// assume closed channel = should stop
+		// TODO: should probably just return an option and let the user decide
 		self.0.has_changed().unwrap_or(true)
 	}
 }
