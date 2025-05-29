@@ -103,6 +103,10 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter", "tracing-lo
 assert_matches = "1.5"
 tokio-test = "0.4.4"
 
+[[test]]
+name = "job_group_stream"
+required-features = ["tokio/rt-multi-thread"]
+
 [[example]]
 name = "simple_website_to_stdout"
 required-features = ["source-http", "action-html"]

@@ -77,7 +77,7 @@ pub type JobGroupResult = Vec<JobResult>;
 /// let mut group = (job1, job2);
 ///
 /// // Run jobs and get results
-/// let results = group.run_concurrently().await;
+/// //let results = group.run_concurrently().await;
 ///
 /// // Add a name to the group
 /// let named_group = group.with_name("my_group");

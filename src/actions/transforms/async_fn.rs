@@ -74,6 +74,25 @@ impl IntoTransformedEntries for TransformedEntry {
 	}
 }
 
+impl IntoTransformedEntries for Infallible {
+	type Err = Infallible;
+
+	#[expect(refining_impl_trait)]
+	fn into_transformed_entries(self) -> Result<iter::Empty<TransformedEntry>, Self::Err> {
+		match self {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl IntoTransformedEntries for ! {
+	type Err = !;
+
+	#[expect(refining_impl_trait)]
+	fn into_transformed_entries(self) -> Result<iter::Empty<TransformedEntry>, Self::Err> {
+		match self {}
+	}
+}
+
 impl<T> IntoTransformedEntries for Vec<T>
 where
 	T: IntoTransformedEntries<Err = Infallible>,

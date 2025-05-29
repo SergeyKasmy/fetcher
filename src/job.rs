@@ -80,9 +80,13 @@ impl<T: TaskGroup, H> Job<T, H> {
 			#[expect(clippy::manual_ok_err, reason = "false positive")]
 			let errors = results
 				.into_iter()
-				.filter_map(|r| match r {
-					Ok(()) => None,
-					Err(e) => Some(e),
+				.filter_map(|r| {
+					tracing::trace!("Task result: {r:?}");
+
+					match r {
+						Ok(()) => None,
+						Err(e) => Some(e),
+					}
 				})
 				.collect::<Vec<_>>();
 
