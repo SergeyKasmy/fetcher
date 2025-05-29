@@ -6,7 +6,7 @@
 
 //! This module contains the [`NamedJobGroup`] type
 
-use futures::Stream;
+use futures::{Stream, StreamExt};
 
 use crate::{StaticStr, job::JobResult, maybe_send::MaybeSend};
 
@@ -29,7 +29,12 @@ where
 {
 	#[tracing::instrument(skip(self), fields(job_group = %self.name))]
 	fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend {
-		self.inner.run_concurrently()
+		self.inner
+			.run_concurrently()
+			.map(|(mut job_id, job_result)| {
+				job_id.group_hierarchy.push(self.name.clone());
+				(job_id, job_result)
+			})
 	}
 
 	#[cfg(feature = "send")]

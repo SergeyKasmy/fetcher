@@ -15,13 +15,14 @@ use fetcher::{
 };
 use futures::StreamExt;
 
-struct Run3Times(usize);
+#[derive(Default)]
+struct RunXTimes<const TIMES: usize>(usize);
 
 #[derive(thiserror::Error, Debug)]
 #[error("finished")]
 struct FinishedError;
 
-impl Action for Run3Times {
+impl<const TIMES: usize> Action for RunXTimes<TIMES> {
 	type Err = Box<dyn Error + Send + Sync>;
 
 	async fn apply<S, E>(
@@ -33,8 +34,8 @@ impl Action for Run3Times {
 		S: Source,
 		E: ExternalSave,
 	{
-		eprintln!("Executing Run10Times");
-		if self.0 < 3 {
+		eprintln!("Executing RunXTimes: {}/{TIMES}", self.0);
+		if self.0 < TIMES {
 			self.0 += 1;
 			ActionResult::Ok(entries)
 		} else {
@@ -48,7 +49,7 @@ async fn main() {
 	scaffold::set_up_logging().unwrap();
 
 	let task_never_panics = Task::<(), _, _>::builder("never_panics")
-		.action(Run3Times(0))
+		.action(RunXTimes::<2>::default())
 		.build_without_replies();
 
 	#[expect(unreachable_code)]

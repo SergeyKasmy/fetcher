@@ -261,11 +261,41 @@ pub trait JobGroup: MaybeSendSync {
 	}
 }
 
+/// Unique ID of a job
+///
+/// Includes its name and all named groups' names.
+///
+/// Implements [`Display`] to format the name in a filesystem path-like manner
+///
+/// # Example
+/// ```
+/// # tokio_test::block_on(async {
+/// use fetcher::job::{Job, JobGroup, RefreshTime};
+/// use futures::stream::StreamExt;
+/// use std::pin::pin;
+///
+/// let job = Job::builder("job")
+/// 				.tasks(())
+///                 .refresh_time(RefreshTime::Never)
+///                 .ctrlc_chan(None)
+///                 .build_with_default_error_handling();
+///
+/// let inner_group = (job,).with_name("inner group");
+/// let mut outer_group = inner_group.with_name("outer group");
+/// let mut run_stream = pin!(outer_group.run_concurrently());
+///
+/// let (job_id, _job_result) = run_stream.next().await.unwrap();
+/// assert_eq!(job_id.to_string(), "outer group/inner group/job");
+/// # });
+/// ```
 #[derive(Debug)]
 pub struct JobId {
-	// outer to inner
-	pub group_hierarchy: Vec<StaticStr>,
+	/// Name of the job
 	pub job_name: Option<StaticStr>,
+
+	/// List of all job group names this job belongs to.
+	/// Starts at the inner job group and goes to the outer
+	pub group_hierarchy: Vec<StaticStr>,
 }
 
 impl<J> JobGroup for Option<J>
@@ -487,6 +517,7 @@ where
 }
 
 impl JobId {
+	/// Creates a new [`JobId`] with the provided [`JobId::job_name`]
 	pub fn new(job_name: Option<StaticStr>) -> Self {
 		Self {
 			group_hierarchy: Vec::new(),
