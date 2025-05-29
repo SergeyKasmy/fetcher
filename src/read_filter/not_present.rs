@@ -8,7 +8,6 @@ use super::{MarkAsRead, ReadFilter};
 use crate::{
 	actions::filters::Filter,
 	entry::{Entry, EntryId},
-	error::FetcherError,
 };
 
 use chrono::{DateTime, Utc};
@@ -59,7 +58,9 @@ impl NotPresent {
 impl ReadFilter for NotPresent {}
 
 impl MarkAsRead for NotPresent {
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
+	type Err = Infallible;
+
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Self::Err> {
 		self.read_list.push_back((id.clone(), chrono::Utc::now()));
 
 		while self.read_list.len() > MAX_LIST_LEN {

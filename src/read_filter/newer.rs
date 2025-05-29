@@ -12,7 +12,6 @@ use super::{MarkAsRead, ReadFilter};
 use crate::{
 	actions::filters::Filter,
 	entry::{Entry, EntryId},
-	error::FetcherError,
 };
 
 /// Read Filter that stores the id of the last read entry
@@ -39,7 +38,9 @@ impl Newer {
 impl ReadFilter for Newer {}
 
 impl MarkAsRead for Newer {
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
+	type Err = Infallible;
+
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Self::Err> {
 		self.last_read_id = Some(id.clone());
 		Ok(())
 	}

@@ -10,10 +10,10 @@ use std::fmt::Debug;
 
 use serde::Serialize;
 
+use super::mark_as_read::MarkAsReadError;
 use crate::{
 	actions::filters::Filter,
 	entry::{Entry, EntryId},
-	error::FetcherError,
 	external_save::ExternalSave,
 	read_filter::{MarkAsRead, ReadFilter},
 };
@@ -41,14 +41,13 @@ where
 	RF: ReadFilter + Serialize,
 	S: ExternalSave,
 {
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
-		self.rf.mark_as_read(id).await?;
+	type Err = MarkAsReadError;
+
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Self::Err> {
+		self.rf.mark_as_read(id).await.map_err(Into::into)?;
 
 		if let Some(ext_save) = &mut self.external_save {
-			ext_save
-				.save_read_filter(&self.rf)
-				.await
-				.map_err(FetcherError::ExternalSave)?;
+			ext_save.save_read_filter(&self.rf).await?;
 		}
 
 		Ok(())
@@ -64,7 +63,7 @@ where
 	RF: ReadFilter,
 	S: ExternalSave,
 {
-	type Err = RF::Err;
+	type Err = <RF as Filter>::Err;
 
 	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 		self.rf.filter(entries).await

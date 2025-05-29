@@ -8,6 +8,8 @@
 
 pub use crate::exec::ExecError;
 
+use crate::read_filter::mark_as_read::MarkAsReadError;
+
 #[cfg(feature = "source-http")]
 use super::http::HttpError;
 
@@ -23,6 +25,9 @@ use std::{convert::Infallible, error::Error as StdError, path::PathBuf};
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum SourceError {
+	#[error("Failed to mark an entry as read")]
+	MarkAsRead(#[from] MarkAsReadError),
+
 	#[error("Can't read file {}", .1.to_string_lossy())]
 	File(#[source] std::io::Error, PathBuf),
 

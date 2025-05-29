@@ -14,7 +14,6 @@ use super::{MarkAsRead, ReadFilter};
 use crate::{
 	actions::filters::Filter,
 	entry::{Entry, EntryId},
-	error::FetcherError,
 };
 
 /// [`ReadFilter`] implementation for `Arc<tokio::Mutex<impl ReadFilter>>`
@@ -28,7 +27,9 @@ pub mod tokio_mutex {
 	where
 		RF: ReadFilter,
 	{
-		async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
+		type Err = <RF as MarkAsRead>::Err;
+
+		async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Self::Err> {
 			self.lock().await.mark_as_read(id).await
 		}
 
@@ -41,7 +42,7 @@ pub mod tokio_mutex {
 	where
 		RF: ReadFilter,
 	{
-		type Err = RF::Err;
+		type Err = <RF as Filter>::Err;
 
 		async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 			self.lock().await.filter(entries).await

@@ -16,7 +16,6 @@ use std::{convert::Infallible, sync::LazyLock};
 use fetcher::{
 	actions::sink,
 	entry::{Entry, EntryId},
-	error::FetcherError,
 	read_filter::MarkAsRead,
 	sinks::{
 		Sink,
@@ -47,7 +46,9 @@ impl Fetch for DummySource {
 }
 
 impl MarkAsRead for DummySource {
-	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
+	type Err = Infallible;
+
+	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), Self::Err> {
 		Ok(())
 	}
 

@@ -20,9 +20,7 @@ use crate::{
 	StaticStr,
 	auth::{Google as GoogleAuth, google::GoogleOAuth2Error as GoogleAuthError},
 	entry::{Entry, EntryId},
-	error::FetcherError,
 	sinks::message::Message,
-	sources::error::SourceError,
 };
 
 use async_imap::{Client, Session};
@@ -154,11 +152,11 @@ impl Fetch for Email {
 }
 
 impl MarkAsRead for Email {
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
+	type Err = ImapError;
+
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Self::Err> {
 		// TODO: inline this fn
-		self.mark_as_read_impl(id)
-			.await
-			.map_err(|e| FetcherError::from(SourceError::from(EmailError::from(e))))
+		self.mark_as_read_impl(id).await
 	}
 
 	async fn set_read_only(&mut self) {

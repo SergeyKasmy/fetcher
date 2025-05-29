@@ -40,7 +40,7 @@ pub trait ExternalSave: Debug + MaybeSendSync {
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
-#[error("Can't save externally{}{}", .path.is_some().then_some(": ").unwrap_or_default(), .path.as_deref().unwrap_or_default())]
+#[error("Failed to save read filter state externally{}{}", .path.is_some().then_some(": ").unwrap_or_default(), .path.as_deref().unwrap_or_default())]
 pub struct ExternalSaveError {
 	/// Inner IO error
 	pub source: io::Error,

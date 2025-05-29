@@ -32,7 +32,6 @@ pub use self::http::Http;
 use self::error::SourceError;
 use crate::{
 	entry::{Entry, EntryId},
-	error::FetcherError,
 	maybe_send::{MaybeSend, MaybeSendSync},
 	read_filter::{MarkAsRead, ReadFilter},
 };
@@ -187,7 +186,9 @@ where
 	F: Fetch,
 	RF: ReadFilter,
 {
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
+	type Err = <RF as MarkAsRead>::Err;
+
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Self::Err> {
 		self.rf.mark_as_read(id).await
 	}
 

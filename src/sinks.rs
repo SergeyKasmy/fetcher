@@ -33,7 +33,7 @@ use crate::{
 	error::FetcherError,
 	external_save::ExternalSave,
 	maybe_send::{MaybeSend, MaybeSendSync},
-	sources::Source,
+	sources::{Source, error::SourceError},
 	task::entry_to_msg_map::EntryToMsgMap,
 };
 
@@ -237,7 +237,9 @@ where
 {
 	if let Some(mar) = source {
 		tracing::debug!("Marking {entry_id:?} as read");
-		mar.mark_as_read(entry_id).await?;
+		mar.mark_as_read(entry_id)
+			.await
+			.map_err(|e| SourceError::MarkAsRead(e.into()))?;
 	}
 
 	if let Some((msgid, map)) = msg_id.zip(entry_to_msg_map) {

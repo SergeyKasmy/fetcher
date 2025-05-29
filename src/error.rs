@@ -9,9 +9,10 @@
 use either::Either;
 
 use crate::actions::filters::error::FilterError;
+use crate::external_save::ExternalSaveError;
 use crate::{
-	actions::transforms::error::TransformError, external_save::ExternalSaveError,
-	sinks::error::SinkError, sources::error::SourceError,
+	actions::transforms::error::TransformError, sinks::error::SinkError,
+	sources::error::SourceError,
 };
 
 #[cfg(feature = "google-oauth2")]
@@ -41,8 +42,8 @@ pub enum FetcherError {
 	#[error("Google authentication error")]
 	GoogleOAuth2(#[from] GoogleOAuth2Error),
 
-	#[error("Error writing to the external save location")]
-	ExternalSave(#[source] ExternalSaveError),
+	#[error(transparent)]
+	ExternalSave(#[from] ExternalSaveError),
 
 	#[error(transparent)]
 	Other(#[from] Box<dyn StdError + Send + Sync>),

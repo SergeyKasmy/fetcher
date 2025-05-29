@@ -7,6 +7,8 @@
 //! This module contains the [`ReadFilter`] that is used for keeping track of what Entry has been or not been read,
 //! including all of its stragedies
 
+pub mod mark_as_read;
+
 mod external_save_wrapper;
 mod newer;
 mod not_present;
@@ -14,30 +16,13 @@ mod not_present;
 mod external_implementations;
 
 pub use self::{
-	external_save_wrapper::ExternalSaveRFWrapper, newer::Newer, not_present::NotPresent,
+	external_save_wrapper::ExternalSaveRFWrapper, mark_as_read::MarkAsRead, newer::Newer,
+	not_present::NotPresent,
 };
 
-use crate::{
-	actions::filters::Filter,
-	entry::EntryId,
-	error::FetcherError,
-	maybe_send::{MaybeSend, MaybeSendSync},
-};
+use crate::{actions::filters::Filter, maybe_send::MaybeSendSync};
 
-use std::{convert::Infallible, fmt::Debug};
-
-/// A trait that defines a way to mark an entry as read
-pub trait MarkAsRead: Debug + MaybeSendSync {
-	// TODO: remake into type Err and restrict trait ReadFilter to MarkAsRead::Err: ReadFilterErr and trait Source to MarkAsRead::Err: SourceError
-	/// Mark the entry with `id` as read
-	fn mark_as_read(
-		&mut self,
-		id: &EntryId,
-	) -> impl Future<Output = Result<(), FetcherError>> + MaybeSend;
-
-	/// Set the current "mark as read"er to read only mode
-	fn set_read_only(&mut self) -> impl Future<Output = ()> + MaybeSend;
-}
+use std::convert::Infallible;
 
 /// The trait that marks a type as a "read filter",
 /// that allows filtering out read items out of the list of [`entries`][Entry]
@@ -46,74 +31,9 @@ pub trait MarkAsRead: Debug + MaybeSendSync {
 /// [Entry]: crate::entry::Entry
 pub trait ReadFilter: MarkAsRead + Filter + MaybeSendSync {}
 
-impl<M: MarkAsRead> MarkAsRead for Option<M> {
-	#[tracing::instrument]
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), FetcherError> {
-		match self {
-			Some(m) => m.mark_as_read(id).await?,
-			None => {
-				tracing::debug!("Ignoring mark as read request");
-			}
-		}
-
-		Ok(())
-	}
-
-	#[tracing::instrument]
-	async fn set_read_only(&mut self) {
-		match self {
-			Some(m) => m.set_read_only().await,
-			None => {
-				tracing::debug!("Ignoring set read only request");
-			}
-		}
-	}
-}
 impl<RF: ReadFilter> ReadFilter for Option<RF> {}
-
-impl MarkAsRead for () {
-	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
-		Ok(())
-	}
-
-	async fn set_read_only(&mut self) {}
-}
 impl ReadFilter for () {}
-
-impl MarkAsRead for Infallible {
-	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
-		match *self {}
-	}
-
-	async fn set_read_only(&mut self) {
-		match *self {}
-	}
-}
 impl ReadFilter for Infallible {}
 
 #[cfg(feature = "nightly")]
-impl MarkAsRead for ! {
-	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
-		match *self {}
-	}
-
-	async fn set_read_only(&mut self) {
-		match *self {}
-	}
-}
-#[cfg(feature = "nightly")]
 impl ReadFilter for ! {}
-
-/*
-impl MarkAsRead for () {
-	async fn mark_as_read(&mut self, _id: &EntryId) -> Result<(), FetcherError> {
-		tracing::debug!("Ignoring mark as read request on purpose");
-		Ok(())
-	}
-
-	/// Set the current "mark as read"er to read only mode
-	async fn set_read_only(&mut self) {}
-}
-
-impl ReadFilter for () {}
-*/
