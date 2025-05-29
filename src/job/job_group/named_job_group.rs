@@ -6,9 +6,11 @@
 
 //! This module contains the [`NamedJobGroup`] type
 
-use crate::StaticStr;
+use futures::Stream;
 
-use super::JobGroup;
+use crate::{StaticStr, job::JobResult, maybe_send::MaybeSend};
+
+use super::{JobGroup, JobId};
 
 /// A [`JobGroup`] wrapper that prepends the provided name to [`JobGroup::names`] calls and creates a tracing span containing the name.
 ///
@@ -26,8 +28,8 @@ where
 	G: JobGroup,
 {
 	#[tracing::instrument(skip(self), fields(job_group = %self.name))]
-	async fn run_concurrently(&mut self) -> super::JobGroupResult {
-		self.inner.run_concurrently().await
+	fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend {
+		self.inner.run_concurrently()
 	}
 
 	#[cfg(feature = "send")]

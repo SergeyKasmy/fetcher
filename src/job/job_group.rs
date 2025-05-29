@@ -10,8 +10,15 @@ mod combined_job_group;
 mod disabled_job_group;
 mod named_job_group;
 
-use std::iter;
+use futures::{
+	Stream,
+	future::Either as FutureEither,
+	stream::{self, FuturesUnordered},
+};
 use tokio::join;
+
+use std::iter;
+use std::pin::Pin;
 
 use super::{JobResult, OpaqueJob};
 use crate::StaticStr;
@@ -86,7 +93,7 @@ pub trait JobGroup: MaybeSendSync {
 	/// but does not spawn new tasks. All jobs run in the same async task.
 	/// This is in contrast to [`JobGroup::run_in_parallel`].
 	#[must_use = "the jobs could've finished with errors"]
-	fn run_concurrently(&mut self) -> impl Future<Output = JobGroupResult> + MaybeSend;
+	fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend;
 
 	/// Runs all jobs in the group in parallel on separate tasks.
 	///
@@ -133,7 +140,8 @@ pub trait JobGroup: MaybeSendSync {
 	where
 		Self: Sized,
 	{
-		async move { (self.run_concurrently().await, self) }
+		// async move { (self.run_concurrently().await, self) }
+		todo!()
 	}
 
 	/// Combine this job group with another job group.
@@ -241,16 +249,32 @@ pub trait JobGroup: MaybeSendSync {
 	}
 }
 
+// FIXME: REMOVEME DON'T DERIVE
+#[derive(Default)]
+pub struct JobId {
+	// outer to inner
+	pub group_hierarchy: Vec<StaticStr>,
+	pub job_name: Option<StaticStr>,
+}
+
 impl<J> JobGroup for Option<J>
 where
 	J: JobGroup,
 {
-	async fn run_concurrently(&mut self) -> JobGroupResult {
+	// async fn run_concurrently(&mut self) -> JobGroupResult {
+	// 	let Some(group) = self else {
+	// 		return Vec::new();
+	// 	};
+
+	// 	group.run_concurrently().await
+	// }
+
+	fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend {
 		let Some(group) = self else {
-			return Vec::new();
+			return FutureEither::Left(stream::empty());
 		};
 
-		group.run_concurrently().await
+		FutureEither::Right(group.run_concurrently())
 	}
 
 	#[cfg(feature = "send")]
@@ -272,8 +296,8 @@ where
 }
 
 impl JobGroup for () {
-	async fn run_concurrently(&mut self) -> JobGroupResult {
-		Vec::new()
+	fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend {
+		stream::empty()
 	}
 
 	#[cfg(feature = "send")]
@@ -290,8 +314,8 @@ impl<G> JobGroup for (G,)
 where
 	G: OpaqueJob,
 {
-	async fn run_concurrently(&mut self) -> JobGroupResult {
-		vec![self.0.run().await]
+	fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend {
+		stream::once(async move { (JobId::default(), self.0.run().await) })
 	}
 
 	#[cfg(feature = "send")]
@@ -315,16 +339,30 @@ macro_rules! impl_jobgroup_for_tuples {
 			$($type_name: OpaqueJob),+
 		{
 			#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
-			async fn run_concurrently(&mut self) -> JobGroupResult {
+			fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend {
+				#[cfg(feature = "send")]
+				type MaybeSendBoxedFuture<'a> = Pin<Box<dyn Future<Output = (JobId, JobResult)> + Send + 'a>>;
+				#[cfg(not(feature = "send"))]
+				type MaybeSendBoxedFuture<'a> = Pin<Box<dyn Future<Output = (JobId, JobResult)> + 'a>>;
+
+				/// Runs the job, attaches a Job::Id and boxes the resulting future
+				fn into_maybe_send_boxed_future<'a, J: OpaqueJob>(job: &'a mut J) -> MaybeSendBoxedFuture<'a> {
+					let attach_id_to_result_fut = async move {
+						let job_result = job.run().await;
+						(JobId::default(), job_result)
+					};
+
+					Box::pin(attach_id_to_result_fut)
+				}
+
 				// $type_name = specific job
 				let ($($type_name),+) = self;
 
-				// $type_name = $type_name's job result
-				let ($($type_name),+) = join!( $($type_name.run()),+ );
-
-				// destructure the tuple into an array and then convert it
-				#[expect(clippy::tuple_array_conversions, reason = "the other way is overcomplicated")]
-				JobGroupResult::from([$($type_name),+])
+				[
+					$(into_maybe_send_boxed_future($type_name)),+
+				]
+				.into_iter()
+				.collect::<FuturesUnordered<_>>()
 			}
 
 			#[cfg(feature = "send")]

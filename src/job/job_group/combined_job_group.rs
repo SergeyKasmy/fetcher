@@ -6,9 +6,13 @@
 
 //! This module contains the [`CombinedJobGroup`] struct
 
+use std::pin::Pin;
+
+use futures::{Stream, stream::select_all};
 use tokio::join;
 
-use super::{JobGroup, JobGroupResult};
+use super::{JobGroup, JobGroupResult, JobId};
+use crate::{job::JobResult, maybe_send::MaybeSend};
 
 /// A job group that combines 2 other job groups and runs them concurrently to completion.
 ///
@@ -20,10 +24,22 @@ where
 	G1: JobGroup,
 	G2: JobGroup,
 {
-	async fn run_concurrently(&mut self) -> JobGroupResult {
-		let results = join!(self.0.run_concurrently(), self.1.run_concurrently());
+	// async fn run_concurrently(&mut self) -> JobGroupResult {
+	// 	let results = join!(self.0.run_concurrently(), self.1.run_concurrently());
 
-		results.0.into_iter().chain(results.1.into_iter()).collect()
+	// 	results.0.into_iter().chain(results.1.into_iter()).collect()
+	// }
+
+	fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend {
+		#[cfg(feature = "send")]
+		type MaybeSendBoxedStream<'a> = Pin<Box<dyn Stream<Item = (JobId, JobResult)> + Send + 'a>>;
+		#[cfg(not(feature = "send"))]
+		type MaybeSendBoxedStream<'a> = Pin<Box<dyn Stream<Item = (JobId, JobResult)> + 'a>>;
+
+		select_all([
+			Box::pin(self.0.run_concurrently()) as MaybeSendBoxedStream,
+			Box::pin(self.1.run_concurrently()),
+		])
 	}
 
 	#[cfg(feature = "send")]
