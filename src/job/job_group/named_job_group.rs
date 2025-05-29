@@ -34,27 +34,22 @@ where
 
 	#[cfg(feature = "send")]
 	#[tracing::instrument(skip(self), fields(job_group = %self.name))]
-	// async fn run_in_parallel(self) -> (super::JobGroupResult, Self)
-	// where
-	// 	Self: 'static,
-	// {
-	// 	let (job_results, inner) = self.inner.run_in_parallel().await;
-	// 	(
-	// 		job_results,
-	// 		Self {
-	// 			inner,
-	// 			name: self.name,
-	// 		},
-	// 	)
-	// }
-
 	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
 	where
 		Self: Sized + 'static,
 	{
-		self.inner.run_in_parallel()
+		use futures::StreamExt;
+
+		self.inner
+			.run_in_parallel()
+			.map(move |(mut job_id, job_result)| {
+				job_id.group_hierarchy.push(self.name.clone());
+
+				(job_id, job_result)
+			})
 	}
 
+	// TODO: seems unneeded now that run methods return JobId
 	fn names(&self) -> impl Iterator<Item = Option<String>> {
 		self.inner.names().map(|name| {
 			let mut name = name?;

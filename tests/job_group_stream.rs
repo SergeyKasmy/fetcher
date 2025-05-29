@@ -70,14 +70,16 @@ async fn main() {
 		.error_handling(Forward)
 		.build();
 
-	let group = (job_never_panics, job_always_panics);
+	let group_never_panics = (job_never_panics,).with_name("group never panics");
+	let group_always_panics = (job_always_panics,).with_name("group always panics");
+
+	let group = group_never_panics
+		.combine_with(group_always_panics)
+		.with_name("common group");
+
 	let mut stream = group.run_in_parallel();
 
 	while let Some(res) = stream.next().await {
-		eprintln!(
-			"Job {} finished! {:?}",
-			res.0.job_name.as_deref().unwrap_or_default(),
-			res.1
-		);
+		eprintln!("Job {} finished! {:?}", res.0, res.1);
 	}
 }

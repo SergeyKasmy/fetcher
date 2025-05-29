@@ -15,9 +15,13 @@ use futures::{
 	future::Either as FutureEither,
 	stream::{self, FuturesUnordered},
 };
+use itertools::Itertools;
 
-use std::iter;
 use std::pin::Pin;
+use std::{
+	fmt::{self, Display},
+	iter,
+};
 
 use super::{JobResult, OpaqueJob};
 use crate::StaticStr;
@@ -250,8 +254,7 @@ pub trait JobGroup: MaybeSendSync {
 	}
 }
 
-// FIXME: REMOVEME DON'T DERIVE
-#[derive(Default)]
+#[derive(Debug)]
 pub struct JobId {
 	// outer to inner
 	pub group_hierarchy: Vec<StaticStr>,
@@ -334,23 +337,21 @@ where
 	G: OpaqueJob,
 {
 	fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend {
-		stream::once(async move { (JobId::default(), self.0.run().await) })
+		stream::once(async move {
+			let name = self.0.name().map(|n| StaticStr::from(n.to_owned()));
+			(JobId::new(name), self.0.run().await)
+		})
 	}
 
-	// #[cfg(feature = "send")]
-	// async fn run_in_parallel(self) -> (JobGroupResult, Self)
-	// where
-	// 	Self: 'static,
-	// {
-	// 	let (result, inner) = run_job_in_parallel(self.0).await;
-	// 	(vec![result], (inner,))
-	// }
 	#[cfg(feature = "send")]
 	fn run_in_parallel(mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
 	where
 		Self: Sized + 'static,
 	{
-		stream::once(async move { (JobId::default(), self.0.run().await) })
+		stream::once(async move {
+			let name = self.0.name().map(|n| StaticStr::from(n.to_owned()));
+			(JobId::new(name), self.0.run().await)
+		})
 	}
 
 	fn names(&self) -> impl Iterator<Item = Option<String>> {
@@ -375,7 +376,8 @@ macro_rules! impl_jobgroup_for_tuples {
 				fn into_maybe_send_boxed_future<'a, J: OpaqueJob>(job: &'a mut J) -> MaybeSendBoxedFuture<'a> {
 					let attach_id_to_result_fut = async move {
 						let job_result = job.run().await;
-						(JobId::default(), job_result)
+						let job_name = job.name().map(|n| StaticStr::from(n.to_owned()));
+						(JobId::new(job_name), job_result)
 					};
 
 					Box::pin(attach_id_to_result_fut)
@@ -415,8 +417,9 @@ macro_rules! impl_jobgroup_for_tuples {
 			{
   				fn into_maybe_send_boxed_future<J: OpaqueJob + 'static>(job: J) -> MaybeSendBoxedFuture<'static> {
 					let attach_id_to_result_fut = async move {
-						let (job_result, _job_unused_leftover) = run_job_in_parallel(job).await;
-						(JobId::default(), job_result)
+						let (job_result, job) = run_job_in_parallel(job).await;
+						let job_name = job.name().map(|n| StaticStr::from(n.to_owned()));
+						(JobId::new(job_name), job_result)
 					};
 
   					Box::pin(attach_id_to_result_fut)
@@ -474,4 +477,26 @@ where
 	tokio::spawn(async_task.in_current_span())
 		.await
 		.expect("should never panic, all panicked should've been caught")
+}
+
+impl JobId {
+	pub fn new(job_name: Option<StaticStr>) -> Self {
+		Self {
+			group_hierarchy: Vec::new(),
+			job_name,
+		}
+	}
+}
+
+impl Display for JobId {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let path = self
+			.group_hierarchy
+			.iter()
+			.rev()
+			.chain(self.job_name.iter())
+			.join("/");
+
+		f.write_str(&path)
+	}
 }
