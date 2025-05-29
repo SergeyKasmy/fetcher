@@ -18,12 +18,12 @@ pub use self::{
 	refresh_time::RefreshTime,
 };
 
-use error_handling::{HandleErrorContext, HandleErrorResult};
 use futures::FutureExt;
 use non_non_full::NonEmptyVec;
 use std::panic;
 use tokio::{select, time::sleep};
 
+use self::error_handling::{HandleErrorContext, HandleErrorResult};
 use crate::{
 	StaticStr,
 	ctrl_c_signal::{CtrlCSignalChannel, ctrlc_wait},

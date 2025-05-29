@@ -20,13 +20,13 @@ use super::{Transform, error::TransformErrorKind, result::TransformedEntry};
 ///  Use [`transform_fn`](`crate::actions::transform_fn`) to improve type inference
 impl<F, T, Fut> Transform for F
 where
-	F: Fn(Entry) -> Fut + MaybeSendSync,
+	F: FnMut(Entry) -> Fut + MaybeSendSync,
 	Fut: Future<Output = T> + MaybeSend,
 	T: IntoTransformedEntries,
 {
 	type Err = T::Err;
 
-	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&mut self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		let entries = (self)(entry).await;
 
 		Ok(entries.into_transformed_entries()?.into_iter().collect())

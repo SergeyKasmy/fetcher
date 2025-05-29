@@ -22,7 +22,7 @@ pub struct DebugPrint;
 impl Transform for DebugPrint {
 	type Err = Infallible;
 
-	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&mut self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		let mut msg = entry.msg;
 
 		// append id and raw_contents entry fields to the body to help in debugging

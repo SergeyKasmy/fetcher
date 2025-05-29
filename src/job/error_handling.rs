@@ -6,7 +6,7 @@
 
 //! This module provides error handling mechanisms for [`Jobs`](`super::Job`), including:
 //! - The [`HandleError`] trait used for implementing error handling strategies
-//! - Built-in handlers like [`Forward`], [`LogAndIgnore`], and [`ExponentialBackoff`]
+//! - Built-in handlers: [`Forward`], [`LogAndIgnore`], and [`ExponentialBackoff`]
 
 // TODO: add tests
 

@@ -74,7 +74,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 			"",
 		)?),
 		// Send these entries to a telegram chat with chat ID -123456789 from a telegram bot using the provided bot token
-		sink(Telegram::new(env::var("TELEGRAM_BOT_TOKEN")?, -123456789)),
+		sink(Telegram::new(env::var("TELEGRAM_BOT_TOKEN")?, -123_456_789)),
 	);
 
 	// Create the actual task (named "github releases") - the thing that actually does the work/runs the pipeline.
@@ -110,7 +110,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 		JobResult::Ok => Ok(()),
 		// The job finished with an error. This means the task have failed somwhere in the pipeline (e.g. the source or the actions).
 		// JobResult::Err contains a vector for results of each contained tasks which in our case is just the one we have.
-		JobResult::Err(mut errors) => Err(Box::new(errors.remove(0)) as Box<_>),
+		JobResult::Err(errors) => Err(Box::new(errors.into_first()) as Box<_>),
 		// The job panicked. This probably shouldn't happen...
 		JobResult::Panicked { payload: _ } => Ok(()),
 	}

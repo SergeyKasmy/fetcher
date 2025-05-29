@@ -21,7 +21,10 @@ pub struct Shorten {
 impl TransformField for Shorten {
 	type Err = Infallible;
 
-	fn transform_field(&self, field: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
+	fn transform_field(
+		&mut self,
+		field: Option<&str>,
+	) -> Result<TransformResult<String>, Self::Err> {
 		// len == 0 means we should unset the field. Same effect as Set with value: None here
 		let new_val = if self.len == 0 {
 			None

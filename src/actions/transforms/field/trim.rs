@@ -19,7 +19,10 @@ pub struct Trim;
 impl TransformField for Trim {
 	type Err = Infallible;
 
-	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
+	fn transform_field(
+		&mut self,
+		old_val: Option<&str>,
+	) -> Result<TransformResult<String>, Self::Err> {
 		Ok(old_val.map(trim).unwrap_or_empty())
 	}
 }

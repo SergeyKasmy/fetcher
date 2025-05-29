@@ -17,7 +17,10 @@ pub struct DecodeHtml;
 impl TransformField for DecodeHtml {
 	type Err = Infallible;
 
-	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
+	fn transform_field(
+		&mut self,
+		old_val: Option<&str>,
+	) -> Result<TransformResult<String>, Self::Err> {
 		let Some(old_val) = old_val else {
 			return Ok(TransformResult::Previous);
 		};

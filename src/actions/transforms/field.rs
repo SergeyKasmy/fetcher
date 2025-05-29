@@ -48,7 +48,10 @@ pub trait TransformField: MaybeSendSync {
 	/// # Errors
 	/// Refer to implementator's docs. Most of them never error but some do
 	// TODO: make async
-	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err>;
+	fn transform_field(
+		&mut self,
+		old_val: Option<&str>,
+	) -> Result<TransformResult<String>, Self::Err>;
 }
 
 /// List of all available fields for transformations
@@ -92,7 +95,7 @@ where
 {
 	type Err = TransformErrorKind;
 
-	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&mut self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		let mut new_entry = TransformedEntry::default();
 
 		match self.field {
@@ -144,7 +147,7 @@ impl TransformField for () {
 	type Err = Infallible;
 
 	fn transform_field(
-		&self,
+		&mut self,
 		_old_val: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
 		Ok(TransformResult::default())
@@ -155,7 +158,7 @@ impl TransformField for Infallible {
 	type Err = Infallible;
 
 	fn transform_field(
-		&self,
+		&mut self,
 		_old_val: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
 		match *self {}
@@ -167,7 +170,7 @@ impl TransformField for ! {
 	type Err = !;
 
 	fn transform_field(
-		&self,
+		&mut self,
 		_old_val: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
 		match *self {}
@@ -180,7 +183,10 @@ where
 {
 	type Err = T::Err;
 
-	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
+	fn transform_field(
+		&mut self,
+		old_val: Option<&str>,
+	) -> Result<TransformResult<String>, Self::Err> {
 		let Some(inner) = self else {
 			return Ok(TransformResult::default());
 		};

@@ -64,7 +64,7 @@ impl Http {
 impl Transform for Http {
 	type Err = HttpError;
 
-	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&mut self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		let url: Option<Url> = match self.from_field {
 			Field::Title => entry.msg.title.as_deref().try_map(|s| {
 				Url::try_from(s).map_err(|e| {

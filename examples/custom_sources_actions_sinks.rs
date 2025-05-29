@@ -99,7 +99,10 @@ impl TransformField for LogFieldTransform {
 
 	// TODO: rename old_val to something better
 	/// `old_val` contains the value the field currently contains
-	fn transform_field(&self, old_val: Option<&str>) -> Result<TransformResult<String>, Self::Err> {
+	fn transform_field(
+		&mut self,
+		old_val: Option<&str>,
+	) -> Result<TransformResult<String>, Self::Err> {
 		let time = old_val.expect("our source always returns entries with bodies");
 
 		// just log it

@@ -35,7 +35,7 @@ pub enum FeedError {
 impl Transform for Feed {
 	type Err = FeedError;
 
-	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&mut self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		tracing::trace!("Parsing feed entries");
 
 		let feed = feed_rs::parser::parse(

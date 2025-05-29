@@ -76,7 +76,7 @@ pub struct Query {
 impl Transform for Json {
 	type Err = JsonError;
 
-	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&mut self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		tracing::trace!("Parsing raw_contents as JSON");
 
 		let json: Value =

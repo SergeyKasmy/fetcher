@@ -77,7 +77,7 @@ pub trait Transform: MaybeSendSync {
 
 	/// Transform the `entry` into one or several separate entries
 	fn transform_entry(
-		&self,
+		&mut self,
 		entry: Entry,
 	) -> impl Future<Output = Result<Vec<TransformedEntry>, Self::Err>> + MaybeSend;
 }
@@ -102,7 +102,8 @@ where
 		let mut transformed_entries = Vec::new();
 
 		for entry in entries {
-			let entries = actres_try!(transform_old_entry_into_new_entries(&self.0, entry).await);
+			let entries =
+				actres_try!(transform_old_entry_into_new_entries(&mut self.0, entry).await);
 			transformed_entries.extend(entries);
 		}
 
@@ -111,7 +112,7 @@ where
 }
 
 async fn transform_old_entry_into_new_entries<T>(
-	this: &T,
+	this: &mut T,
 	old_entry: Entry,
 ) -> Result<Vec<Entry>, TransformError>
 where
@@ -133,7 +134,7 @@ where
 impl Transform for () {
 	type Err = Infallible;
 
-	async fn transform_entry(&self, _entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&mut self, _entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		Ok(vec![TransformedEntry::default()])
 	}
 }
@@ -141,7 +142,7 @@ impl Transform for () {
 impl Transform for Infallible {
 	type Err = Infallible;
 
-	async fn transform_entry(&self, _entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&mut self, _entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		match *self {}
 	}
 }
@@ -150,7 +151,7 @@ impl Transform for Infallible {
 impl Transform for ! {
 	type Err = !;
 
-	async fn transform_entry(&self, _entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&mut self, _entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		match *self {}
 	}
 }
@@ -161,7 +162,7 @@ where
 {
 	type Err = T::Err;
 
-	async fn transform_entry(&self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
+	async fn transform_entry(&mut self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
 		let Some(inner) = self else {
 			return Ok(vec![TransformedEntry::default()]);
 		};
