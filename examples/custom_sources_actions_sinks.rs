@@ -57,7 +57,6 @@ use tokio::{fs::File, io::AsyncWriteExt};
 /// and use it with a no-op [`ReadFilter`] via [`Fetch::into_source_without_read_filter`].
 /// This is in contast to [`Fetch::into_source_with_read_filter`] which takes an external read filter
 /// to keep track of our entry read status.
-#[derive(Debug)]
 struct UnixEpochTimeSource;
 
 impl Fetch for UnixEpochTimeSource {
@@ -116,7 +115,6 @@ impl TransformField for LogFieldTransform {
 /// Define the type that we will implement [`Filter`] on.
 ///
 /// It will remove every 10th entry and stop it from getting further in the pipeline.
-#[derive(Debug)]
 struct FilterEveryTenthEntry(usize);
 
 impl Filter for FilterEveryTenthEntry {
@@ -140,7 +138,6 @@ impl Filter for FilterEveryTenthEntry {
 /// It will write bodies of the messages passed to it to a file, overwriting it every time.
 ///
 /// We keep a handle to the open file in the type.
-#[derive(Debug)]
 struct SaveBodyToFileSink(tokio::fs::File);
 
 impl Sink for SaveBodyToFileSink {

@@ -36,13 +36,13 @@ use crate::{
 	read_filter::{MarkAsRead, ReadFilter},
 };
 
-use std::{convert::Infallible, fmt::Debug};
+use std::convert::Infallible;
 
 /// A trait that defines a way to fetch entries as well as mark them as read afterwards
-pub trait Source: Fetch + MarkAsRead + Debug + MaybeSendSync {}
+pub trait Source: Fetch + MarkAsRead + MaybeSendSync {}
 
 /// A trait that defines a way to fetch (entries)[`Entry`]
-pub trait Fetch: Debug + MaybeSendSync {
+pub trait Fetch: MaybeSendSync {
 	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
 	type Err: Into<SourceError>;
 

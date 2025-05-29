@@ -37,10 +37,10 @@ use crate::{
 	task::entry_to_msg_map::EntryToMsgMap,
 };
 
-use std::{borrow::Cow, collections::HashSet, convert::Infallible, fmt::Debug};
+use std::{borrow::Cow, collections::HashSet, convert::Infallible};
 
 /// An async function that sends a message somewhere
-pub trait Sink: Debug + MaybeSendSync {
+pub trait Sink: MaybeSendSync {
 	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
 	type Err: Into<SinkError>;
 

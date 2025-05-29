@@ -19,7 +19,7 @@ use crate::{
 
 /// This trait represent some kind of external save destination.
 /// A way to preserve the state of a read filter, i.e. what has and has not been read, across restarts.
-pub trait ExternalSave: Debug + MaybeSendSync {
+pub trait ExternalSave: MaybeSendSync {
 	/// This function will be called every time something has been marked as read and should be saved externally
 	///
 	/// # Errors

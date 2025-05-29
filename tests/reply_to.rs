@@ -28,10 +28,8 @@ use fetcher::{
 static ENTRY_ID: LazyLock<EntryId> = LazyLock::new(|| EntryId::new("0".to_owned()).unwrap());
 const MESSAGE_ID: i64 = 0;
 
-#[derive(Debug)]
 struct DummySource;
 
-#[derive(Debug)]
 struct DummySink;
 
 impl Fetch for DummySource {

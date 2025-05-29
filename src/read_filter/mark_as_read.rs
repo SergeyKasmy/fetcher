@@ -18,7 +18,7 @@ use crate::{
 use crate::sources::email::ImapError;
 
 /// A trait that defines a way to mark an entry as read
-pub trait MarkAsRead: Debug + MaybeSendSync {
+pub trait MarkAsRead: MaybeSendSync {
 	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
 	type Err: Into<MarkAsReadError>;
 
@@ -60,7 +60,7 @@ impl MarkAsRead for () {
 impl<M: MarkAsRead> MarkAsRead for Option<M> {
 	type Err = M::Err;
 
-	#[tracing::instrument]
+	#[tracing::instrument(skip(self))]
 	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Self::Err> {
 		match self {
 			Some(m) => m.mark_as_read(id).await?,
@@ -72,7 +72,6 @@ impl<M: MarkAsRead> MarkAsRead for Option<M> {
 		Ok(())
 	}
 
-	#[tracing::instrument]
 	async fn set_read_only(&mut self) {
 		match self {
 			Some(m) => m.set_read_only().await,
