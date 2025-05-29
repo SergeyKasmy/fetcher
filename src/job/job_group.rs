@@ -61,6 +61,7 @@ pub type JobGroupResult = Vec<JobResult>;
 /// ```rust
 /// # tokio_test::block_on(async {
 /// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
+/// use futures::stream::StreamExt;
 ///
 /// // Create jobs
 /// let job1 = Job::builder("job1")
@@ -80,7 +81,11 @@ pub type JobGroupResult = Vec<JobResult>;
 /// let mut group = (job1, job2);
 ///
 /// // Run jobs and get results
-/// //let results = group.run_concurrently().await;
+/// let mut group_results = group.run_concurrently();
+/// while let Some(job_result) = group_results.next().await {
+///     println!("Job {} finished!", job_result.0);
+/// }
+/// drop(group_results);
 ///
 /// // Add a name to the group
 /// let named_group = group.with_name("my_group");
@@ -157,6 +162,7 @@ pub trait JobGroup: MaybeSendSync {
 	/// ```rust
 	/// # tokio_test::block_on(async {
 	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
+	/// use futures::stream::StreamExt;
 	///
 	/// // Create jobs
 	/// let job1 = Job::builder("job1").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
@@ -170,7 +176,7 @@ pub trait JobGroup: MaybeSendSync {
 	//r/ // Combine the groups
 	/// let combined = group1.combine_with(group2);
 	///
-	/// let (results, _combined) = combined.run().await;
+	/// let results = combined.run().collect::<Vec<_>>().await;
 	/// # });
 	/// ```
 	fn combine_with<G>(self, other: G) -> CombinedJobGroup<Self, G>
@@ -192,6 +198,7 @@ pub trait JobGroup: MaybeSendSync {
 	/// ```rust
 	/// # tokio_test::block_on(async {
 	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
+	/// use futures::stream::StreamExt;
 	///
 	/// // Create jobs
 	/// let job1 = Job::builder("job1").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
@@ -203,7 +210,7 @@ pub trait JobGroup: MaybeSendSync {
 	/// let disabled = group.disable();
 	///
 	/// // Running the disabled group will do nothing
-	/// let (results, _) = disabled.run().await;
+	/// let results = disabled.run().collect::<Vec<_>>().await;
 	/// assert!(results.is_empty());
 	/// # });
 	/// ```
