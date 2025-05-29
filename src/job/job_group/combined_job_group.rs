@@ -9,15 +9,19 @@
 use std::pin::Pin;
 
 use futures::{Stream, stream::select_all};
-use tokio::join;
 
-use super::{JobGroup, JobGroupResult, JobId};
+use super::{JobGroup, JobId};
 use crate::{job::JobResult, maybe_send::MaybeSend};
 
 /// A job group that combines 2 other job groups and runs them concurrently to completion.
 ///
 /// See [`JobGroup::combine_with`].
 pub struct CombinedJobGroup<G1, G2>(pub G1, pub G2);
+
+#[cfg(feature = "send")]
+type MaybeSendBoxedStream<'a> = Pin<Box<dyn Stream<Item = (JobId, JobResult)> + Send + 'a>>;
+#[cfg(not(feature = "send"))]
+type MaybeSendBoxedStream<'a> = Pin<Box<dyn Stream<Item = (JobId, JobResult)> + 'a>>;
 
 impl<G1, G2> JobGroup for CombinedJobGroup<G1, G2>
 where
@@ -31,11 +35,6 @@ where
 	// }
 
 	fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend {
-		#[cfg(feature = "send")]
-		type MaybeSendBoxedStream<'a> = Pin<Box<dyn Stream<Item = (JobId, JobResult)> + Send + 'a>>;
-		#[cfg(not(feature = "send"))]
-		type MaybeSendBoxedStream<'a> = Pin<Box<dyn Stream<Item = (JobId, JobResult)> + 'a>>;
-
 		select_all([
 			Box::pin(self.0.run_concurrently()) as MaybeSendBoxedStream,
 			Box::pin(self.1.run_concurrently()),
@@ -43,20 +42,29 @@ where
 	}
 
 	#[cfg(feature = "send")]
-	async fn run_in_parallel(self) -> (JobGroupResult, Self)
+	// async fn run_in_parallel(self) -> (JobGroupResult, Self)
+	// where
+	// 	Self: 'static,
+	// {
+	// 	let ((job_results1, inner1), (job_results2, inner2)) =
+	// 		join!(self.0.run_in_parallel(), self.1.run_in_parallel());
+
+	// 	let job_results = job_results1
+	// 		.into_iter()
+	// 		.chain(job_results2.into_iter())
+	// 		.collect();
+
+	// 	let this = Self(inner1, inner2);
+	// 	(job_results, this)
+	// }
+	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
 	where
-		Self: 'static,
+		Self: Sized + 'static,
 	{
-		let ((job_results1, inner1), (job_results2, inner2)) =
-			join!(self.0.run_in_parallel(), self.1.run_in_parallel());
-
-		let job_results = job_results1
-			.into_iter()
-			.chain(job_results2.into_iter())
-			.collect();
-
-		let this = Self(inner1, inner2);
-		(job_results, this)
+		select_all([
+			Box::pin(self.0.run_in_parallel()) as MaybeSendBoxedStream,
+			Box::pin(self.1.run_in_parallel()),
+		])
 	}
 
 	fn names(&self) -> impl Iterator<Item = Option<String>> {

@@ -10,7 +10,7 @@ use futures::{Stream, stream};
 
 use crate::{job::JobResult, maybe_send::MaybeSend};
 
-use super::{JobGroup, JobGroupResult, JobId};
+use super::{JobGroup, JobId};
 
 /// Wraps a [`JobGroup`] implementation but doesn't do anything when asked to run.
 ///
@@ -35,8 +35,11 @@ where
 	}
 
 	#[cfg(feature = "send")]
-	async fn run_in_parallel(self) -> (JobGroupResult, Self) {
-		(Vec::new(), self)
+	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
+	where
+		Self: Sized + 'static,
+	{
+		stream::empty()
 	}
 
 	fn names(&self) -> impl Iterator<Item = Option<String>> {

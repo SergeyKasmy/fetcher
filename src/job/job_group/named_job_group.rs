@@ -34,18 +34,25 @@ where
 
 	#[cfg(feature = "send")]
 	#[tracing::instrument(skip(self), fields(job_group = %self.name))]
-	async fn run_in_parallel(self) -> (super::JobGroupResult, Self)
+	// async fn run_in_parallel(self) -> (super::JobGroupResult, Self)
+	// where
+	// 	Self: 'static,
+	// {
+	// 	let (job_results, inner) = self.inner.run_in_parallel().await;
+	// 	(
+	// 		job_results,
+	// 		Self {
+	// 			inner,
+	// 			name: self.name,
+	// 		},
+	// 	)
+	// }
+
+	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
 	where
-		Self: 'static,
+		Self: Sized + 'static,
 	{
-		let (job_results, inner) = self.inner.run_in_parallel().await;
-		(
-			job_results,
-			Self {
-				inner,
-				name: self.name,
-			},
-		)
+		self.inner.run_in_parallel()
 	}
 
 	fn names(&self) -> impl Iterator<Item = Option<String>> {

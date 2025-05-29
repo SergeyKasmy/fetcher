@@ -51,6 +51,7 @@ async fn main() {
 		.action(Run3Times(0))
 		.build_without_replies();
 
+	#[expect(unreachable_code)]
 	let task_always_panics = Task::<(), _, _>::builder("always_panics")
 		.action(transform_fn(async |_| panic!() as Infallible))
 		.build_without_replies();
@@ -69,8 +70,8 @@ async fn main() {
 		.error_handling(Forward)
 		.build();
 
-	let mut group = (job_never_panics, job_always_panics);
-	let mut stream = group.run_concurrently();
+	let group = (job_never_panics, job_always_panics);
+	let mut stream = group.run_in_parallel();
 
 	while let Some(res) = stream.next().await {
 		eprintln!(
