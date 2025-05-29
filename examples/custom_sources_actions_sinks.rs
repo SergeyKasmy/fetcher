@@ -232,7 +232,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 		JobResult::Ok => Ok(()),
 		// The job finished with an error. This means the task have failed somwhere in the pipeline (e.g. the source or the actions).
 		// JobResult::Err contains a vector for results of each contained tasks which in our case is just the one we have.
-		JobResult::Err(mut errors) => Err(Box::new(errors.remove(0)) as Box<_>),
+		JobResult::Err(errors) => Err(Box::new(errors.into_first()) as Box<_>),
 		// The job panicked. This probably shouldn't happen...
 		JobResult::Panicked { payload: _ } => Ok(()),
 	}

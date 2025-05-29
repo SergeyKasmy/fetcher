@@ -18,6 +18,7 @@ use std::convert::Infallible;
 use std::error::Error;
 
 use either::Either;
+use non_non_full::NonEmptyVec;
 
 use crate::ctrl_c_signal::CtrlCSignalChannel;
 use crate::error::FetcherError;
@@ -40,7 +41,7 @@ pub trait HandleError: MaybeSendSync {
 	/// The error handler decides what should happen with the job afterwards via the [`HandleErrorResult`] type.
 	fn handle_errors(
 		&mut self,
-		errors: Vec<FetcherError>,
+		errors: NonEmptyVec<FetcherError>,
 		cx: HandleErrorContext<'_>,
 	) -> impl Future<Output = HandleErrorResult<Self::HandlerErr>> + MaybeSend;
 }
@@ -63,7 +64,7 @@ pub enum HandleErrorResult<E> {
 	ContinueJob,
 
 	/// The [`Job`](`super::Job`) should be stopped and these errors should be returned
-	StopAndReturnErrs(Vec<FetcherError>),
+	StopAndReturnErrs(NonEmptyVec<FetcherError>),
 
 	/// The [`Job`](`super::Job`) should be stopped because an error has occured while handling the errors
 	ErrWhileHandling {
@@ -71,7 +72,7 @@ pub enum HandleErrorResult<E> {
 		err: E,
 
 		/// The original errors that caused the error handler to be invoked in the first place
-		original_errors: Vec<FetcherError>,
+		original_errors: NonEmptyVec<FetcherError>,
 	},
 }
 
@@ -104,7 +105,7 @@ where
 
 	async fn handle_errors(
 		&mut self,
-		errors: Vec<FetcherError>,
+		errors: NonEmptyVec<FetcherError>,
 		cx: HandleErrorContext<'_>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		match self {
@@ -127,7 +128,7 @@ impl HandleError for () {
 
 	async fn handle_errors(
 		&mut self,
-		errors: Vec<FetcherError>,
+		errors: NonEmptyVec<FetcherError>,
 		cx: HandleErrorContext<'_>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		Forward.handle_errors(errors, cx).await
@@ -139,7 +140,7 @@ impl HandleError for Infallible {
 
 	async fn handle_errors(
 		&mut self,
-		_errors: Vec<FetcherError>,
+		_errors: NonEmptyVec<FetcherError>,
 		_cx: HandleErrorContext<'_>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		match *self {}
@@ -152,7 +153,7 @@ impl HandleError for ! {
 
 	async fn handle_errors(
 		&mut self,
-		_errors: Vec<FetcherError>,
+		_errors: NonEmptyVec<FetcherError>,
 		_cx: HandleErrorContext<'_>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		match *self {}
@@ -167,7 +168,7 @@ where
 
 	async fn handle_errors(
 		&mut self,
-		errors: Vec<FetcherError>,
+		errors: NonEmptyVec<FetcherError>,
 		cx: HandleErrorContext<'_>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		let Some(inner) = self else {

@@ -8,6 +8,8 @@
 
 use std::{any::Any, fmt};
 
+use non_non_full::NonEmptyVec;
+
 use crate::error::FetcherError;
 
 /// A result of a job execution.
@@ -21,7 +23,7 @@ pub enum JobResult {
 	Ok,
 
 	/// One or more task returned errors
-	Err(Vec<FetcherError>),
+	Err(NonEmptyVec<FetcherError>),
 
 	/// The job panicked
 	Panicked {

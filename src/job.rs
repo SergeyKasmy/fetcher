@@ -20,6 +20,7 @@ pub use self::{
 
 use error_handling::{HandleErrorContext, HandleErrorResult};
 use futures::FutureExt;
+use non_non_full::NonEmptyVec;
 use std::panic;
 use tokio::{select, time::sleep};
 
@@ -86,7 +87,7 @@ impl<T: TaskGroup, H> Job<T, H> {
 				.collect::<Vec<_>>();
 
 			// returns errors if any
-			if !errors.is_empty() {
+			if let Some(errors) = NonEmptyVec::new(errors) {
 				return JobResult::Err(errors);
 			}
 

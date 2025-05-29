@@ -8,6 +8,8 @@
 
 use std::convert::Infallible;
 
+use non_non_full::NonEmptyVec;
+
 use crate::error::FetcherError;
 use crate::job::ErrorChainDisplay;
 
@@ -21,7 +23,7 @@ impl HandleError for LogAndIgnore {
 
 	async fn handle_errors(
 		&mut self,
-		errors: Vec<FetcherError>,
+		errors: NonEmptyVec<FetcherError>,
 		_cx: HandleErrorContext<'_>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		for error in &errors {

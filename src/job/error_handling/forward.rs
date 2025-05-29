@@ -8,6 +8,8 @@
 
 use std::convert::Infallible;
 
+use non_non_full::NonEmptyVec;
+
 use super::{HandleError, HandleErrorContext, HandleErrorResult};
 use crate::error::FetcherError;
 
@@ -19,7 +21,7 @@ impl HandleError for Forward {
 
 	async fn handle_errors(
 		&mut self,
-		errors: Vec<FetcherError>,
+		errors: NonEmptyVec<FetcherError>,
 		_cx: HandleErrorContext<'_>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		tracing::trace!("Forwarding errors");

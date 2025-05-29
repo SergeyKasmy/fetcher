@@ -160,6 +160,25 @@ impl<T> NonEmptyVec<T> {
 			.expect("NonEmptyVec invariant guarantees at least one element")
 	}
 
+	/// Returns the first element, consuming the vector
+	///
+	/// Mostly useful when you are sure there is only one element
+	/// or when you only need the one element and don't care about others
+	///
+	/// # Note
+	/// Drops the other elements
+	///
+	/// # Example
+	/// ```
+	/// let non_empty = NonEmptyVec::new(vec![1, 2, 3]).unwrap();
+	/// let first = non_empty.into_first();
+	/// assert_eq!(first, 1);
+	/// ```
+	#[must_use]
+	pub fn into_first(mut self) -> T {
+		self.0.swap_remove(0)
+	}
+
 	/// Returns a reference to the last element
 	#[expect(clippy::missing_panics_doc)]
 	#[must_use]

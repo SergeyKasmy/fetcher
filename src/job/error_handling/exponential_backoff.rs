@@ -12,6 +12,7 @@ use std::{
 	time::{Duration, Instant},
 };
 
+use non_non_full::NonEmptyVec;
 use rand::Rng;
 use tap::TapOptional;
 use tokio::{select, time::sleep};
@@ -80,7 +81,7 @@ impl HandleError for ExponentialBackoff {
 
 	async fn handle_errors(
 		&mut self,
-		errors: Vec<FetcherError>,
+		errors: NonEmptyVec<FetcherError>,
 		cx: HandleErrorContext<'_>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		if self.should_continue(&errors, cx).await {
