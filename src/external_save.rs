@@ -125,3 +125,25 @@ where
 		inner.save_entry_to_msg_map(map).await
 	}
 }
+
+impl<E> ExternalSave for &mut E
+where
+	E: ExternalSave,
+{
+	fn save_read_filter<RF>(
+		&mut self,
+		read_filter: &RF,
+	) -> impl Future<Output = Result<(), ExternalSaveError>> + MaybeSend
+	where
+		RF: ReadFilter + Serialize,
+	{
+		(*self).save_read_filter(read_filter)
+	}
+
+	fn save_entry_to_msg_map(
+		&mut self,
+		map: &HashMap<EntryId, MessageId>,
+	) -> impl Future<Output = Result<(), ExternalSaveError>> + MaybeSend {
+		(*self).save_entry_to_msg_map(map)
+	}
+}

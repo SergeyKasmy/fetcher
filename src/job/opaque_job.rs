@@ -80,3 +80,12 @@ impl OpaqueJob for ! {
 		match *self {}
 	}
 }
+
+impl<J> OpaqueJob for &mut J
+where
+	J: OpaqueJob,
+{
+	fn run(&mut self) -> impl Future<Output = JobResult> + MaybeSend {
+		(*self).run()
+	}
+}

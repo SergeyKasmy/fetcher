@@ -37,3 +37,5 @@ impl ReadFilter for Infallible {}
 
 #[cfg(feature = "nightly")]
 impl ReadFilter for ! {}
+
+impl<R> ReadFilter for &mut R where R: ReadFilter {}

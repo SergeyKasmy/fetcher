@@ -155,6 +155,16 @@ where
 		inner.fetch().await
 	}
 }
+impl<F> Fetch for &mut F
+where
+	F: Fetch,
+{
+	type Err = F::Err;
+
+	fn fetch(&mut self) -> impl Future<Output = Result<Vec<Entry>, Self::Err>> + MaybeSend {
+		(*self).fetch()
+	}
+}
 
 impl<F, RF> Source for SourceWithSharedRF<F, RF>
 where
@@ -168,6 +178,7 @@ impl Source for Infallible {}
 #[cfg(feature = "nightly")]
 impl Source for ! {}
 impl<S> Source for Option<S> where S: Source {}
+impl<S> Source for &mut S where S: Source {}
 
 impl<F, RF> Fetch for SourceWithSharedRF<F, RF>
 where

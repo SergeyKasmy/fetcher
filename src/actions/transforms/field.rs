@@ -195,6 +195,20 @@ where
 	}
 }
 
+impl<T> TransformField for &mut T
+where
+	T: TransformField,
+{
+	type Err = T::Err;
+
+	fn transform_field(
+		&mut self,
+		old_val: Option<&str>,
+	) -> Result<TransformResult<String>, Self::Err> {
+		(*self).transform_field(old_val)
+	}
+}
+
 impl fmt::Display for Field {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let name = match self {

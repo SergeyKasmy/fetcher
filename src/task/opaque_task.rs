@@ -100,3 +100,16 @@ where
 		task.set_ctrlc_channel(channel);
 	}
 }
+
+impl<T> OpaqueTask for &mut T
+where
+	T: OpaqueTask,
+{
+	fn run(&mut self) -> impl Future<Output = Result<(), FetcherError>> + MaybeSend {
+		(*self).run()
+	}
+
+	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel) {
+		(*self).set_ctrlc_channel(channel);
+	}
+}

@@ -108,6 +108,24 @@ impl MarkAsRead for ! {
 	}
 }
 
+impl<M> MarkAsRead for &mut M
+where
+	M: MarkAsRead,
+{
+	type Err = M::Err;
+
+	fn mark_as_read(
+		&mut self,
+		id: &EntryId,
+	) -> impl Future<Output = Result<(), Self::Err>> + MaybeSend {
+		(*self).mark_as_read(id)
+	}
+
+	fn set_read_only(&mut self) -> impl Future<Output = ()> + MaybeSend {
+		(*self).set_read_only()
+	}
+}
+
 impl From<Infallible> for MarkAsReadError {
 	fn from(value: Infallible) -> Self {
 		match value {}

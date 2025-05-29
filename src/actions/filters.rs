@@ -93,3 +93,17 @@ impl Filter for ! {
 		match *self {}
 	}
 }
+
+impl<F> Filter for &mut F
+where
+	F: Filter,
+{
+	type Err = F::Err;
+
+	fn filter(
+		&mut self,
+		entries: &mut Vec<Entry>,
+	) -> impl Future<Output = Result<(), Self::Err>> + MaybeSend {
+		(*self).filter(entries)
+	}
+}

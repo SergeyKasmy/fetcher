@@ -17,8 +17,10 @@ use crate::{
 
 use super::{Transform, error::TransformErrorKind, result::TransformedEntry};
 
-///  Use [`transform_fn`](`crate::actions::transform_fn`) to improve type inference
-impl<F, T, Fut> Transform for F
+///  Use [`transform_fn`](`crate::actions::transform_fn`)
+pub struct AsyncFnTransform<F>(pub F);
+
+impl<F, T, Fut> Transform for AsyncFnTransform<F>
 where
 	F: FnMut(Entry) -> Fut + MaybeSendSync,
 	Fut: Future<Output = T> + MaybeSend,
@@ -27,7 +29,7 @@ where
 	type Err = T::Err;
 
 	async fn transform_entry(&mut self, entry: Entry) -> Result<Vec<TransformedEntry>, Self::Err> {
-		let entries = (self)(entry).await;
+		let entries = self.0(entry).await;
 
 		Ok(entries.into_transformed_entries()?.into_iter().collect())
 	}

@@ -136,16 +136,13 @@ where
 }
 
 /// Transforms the provided async function implementing [`Transform`] into an [`Action`] action.
-///
-/// They can be used with the regular [`transform`] but type annotation can be annoying.
-/// This functions works around that.
 pub fn transform_fn<F, Fut, T>(f: F) -> impl Action
 where
 	F: Fn(Entry) -> Fut + MaybeSendSync,
 	Fut: Future<Output = T> + MaybeSend,
 	T: IntoTransformedEntries,
 {
-	transform(f)
+	transform(transforms::async_fn::AsyncFnTransform(f))
 }
 
 /// Transforms the provided [`Sink`] into an [`Action`]
@@ -264,6 +261,25 @@ impl Action for ! {
 		E: ExternalSave,
 	{
 		match *self {}
+	}
+}
+
+impl<A> Action for &mut A
+where
+	A: Action,
+{
+	type Err = A::Err;
+
+	fn apply<S, E>(
+		&mut self,
+		entries: Vec<Entry>,
+		context: ActionContext<'_, S, E>,
+	) -> impl Future<Output = ActionResult<Self::Err>> + MaybeSend
+	where
+		S: Source,
+		E: ExternalSave,
+	{
+		(*self).apply(entries, context)
 	}
 }
 

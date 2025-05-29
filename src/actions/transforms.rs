@@ -6,7 +6,6 @@
 
 //! This module contains [`Transform`] and [`TransformField`](`field::TransformField`) traits as well as all types that implement it
 
-pub mod async_fn;
 pub mod print;
 pub mod use_as;
 
@@ -15,13 +14,15 @@ pub mod result;
 
 pub mod error;
 
-use std::convert::Infallible;
+pub(crate) mod async_fn;
 
 pub use self::{
 	field::{caps::Caps, set::Set, shorten::Shorten, trim::Trim},
 	print::DebugPrint,
 	use_as::Use,
 };
+
+use std::convert::Infallible;
 
 #[cfg(feature = "action-http")]
 pub mod http;
@@ -168,5 +169,19 @@ where
 		};
 
 		inner.transform_entry(entry).await
+	}
+}
+
+impl<T> Transform for &mut T
+where
+	T: Transform,
+{
+	type Err = T::Err;
+
+	fn transform_entry(
+		&mut self,
+		entry: Entry,
+	) -> impl Future<Output = Result<Vec<TransformedEntry>, Self::Err>> + MaybeSend {
+		(*self).transform_entry(entry)
 	}
 }

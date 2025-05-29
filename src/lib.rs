@@ -105,10 +105,9 @@ mod tests {
 		task::OpaqueTask,
 	};
 
-	// TODO: make sure all other relevant similar traits are also implemented for refs and ()
 	#[test]
 	#[ignore = "nothing to execute, just a compile test"]
-	fn main_traits_implemented_for_common_types() {
+	fn common_types_implement_main_traits() {
 		fn implements_common_traits<T>()
 		where
 			T: Action
@@ -128,6 +127,7 @@ mod tests {
 		implements_common_traits::<()>();
 		implements_common_traits::<Infallible>();
 		implements_common_traits::<Option<()>>();
+		implements_common_traits::<&mut ()>();
 
 		#[cfg(feature = "nightly")]
 		implements_common_traits::<!>();

@@ -184,3 +184,18 @@ where
 		inner.handle_errors(errors, cx).await
 	}
 }
+
+impl<H> HandleError for &mut H
+where
+	H: HandleError,
+{
+	type HandlerErr = H::HandlerErr;
+
+	fn handle_errors(
+		&mut self,
+		errors: NonEmptyVec<FetcherError>,
+		cx: HandleErrorContext<'_>,
+	) -> impl Future<Output = HandleErrorResult<Self::HandlerErr>> + MaybeSend {
+		(*self).handle_errors(errors, cx)
+	}
+}
