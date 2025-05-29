@@ -28,7 +28,6 @@ use either::Either;
 use non_non_full::NonEmptyVec;
 use serde_json::Value;
 
-// TODO: migrate to serde_json::Value::pointer() API instead
 /// JSON parser
 #[derive(bon::Builder, Debug)]
 pub struct Json {

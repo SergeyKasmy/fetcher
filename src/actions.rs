@@ -451,7 +451,7 @@ impl Default for ActionContext<'_, (), ()> {
 mod tests {
 	use std::time::{Duration, Instant};
 
-	use tokio::{join, sync::watch};
+	use tokio::join;
 
 	use crate::{Task, actions::transform_fn, ctrl_c_signal::CtrlCSignalChannel};
 
@@ -459,7 +459,7 @@ mod tests {
 	async fn ctrlc_signal_stops_task_mid_work() {
 		const ACTION_DELAY: u64 = 2;
 
-		let (tx, rx) = watch::channel(());
+		let (ctrlc_chan, tx) = CtrlCSignalChannel::new();
 
 		let request_stop_in_1s = async move {
 			tokio::time::sleep(Duration::from_secs(1)).await;
@@ -479,7 +479,7 @@ mod tests {
 
 		let mut task = Task::<(), _, _>::builder("test")
 			.action(pipeline)
-			.ctrlc_chan(CtrlCSignalChannel::new(rx))
+			.ctrlc_chan(ctrlc_chan)
 			.build_without_replies();
 
 		let now = Instant::now();

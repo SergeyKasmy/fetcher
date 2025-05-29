@@ -5,9 +5,8 @@
  */
 
 //! This module contains the [`CtrlCSignalChannel`]
-// TODO: no way to create this type without scaffold
 
-use tokio::sync::watch;
+use tokio::sync::watch::{self, channel};
 
 /// The receiving end of a channel that is notified when a Ctrl-C signal has been received
 #[derive(Clone, Debug)]
@@ -16,8 +15,9 @@ pub struct CtrlCSignalChannel(pub(crate) watch::Receiver<()>);
 impl CtrlCSignalChannel {
 	/// Creates a new [`CtrlCSignalChannel`] with the provided receiving end of the watch channel
 	#[must_use]
-	pub fn new(recv: watch::Receiver<()>) -> Self {
-		Self(recv)
+	pub fn new() -> (Self, watch::Sender<()>) {
+		let (tx, rx) = channel(());
+		(Self(rx), tx)
 	}
 
 	/// Blocks the current task until a Ctrl-C signal has been received
