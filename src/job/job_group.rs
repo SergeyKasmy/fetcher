@@ -112,6 +112,8 @@ pub trait JobGroup: MaybeSendSync {
 	/// This is the recommended way to run jobs unless you specifically need concurrent or parallel execution.
 	#[cfg(feature = "send")]
 	#[must_use = "the jobs could've finished with errors"]
+	// TODO: return a stream of job results instead!
+	// Makes it possible to somehow handle errors and panics in jobs without waiting for other jobs to stop
 	fn run(self) -> impl Future<Output = (JobGroupResult, Self)> + MaybeSend
 	where
 		Self: Sized + 'static,

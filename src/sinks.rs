@@ -155,7 +155,9 @@ where
 			);
 		}
 
-		tracing::trace!("Sending entries: {entries:#?}");
+		if !entries.is_empty() {
+			tracing::trace!("Sending entries: {entries:#?}");
+		}
 
 		// entries should be sorted newest to oldest but we should send oldest first
 		// TODO: should they be assumed to be sorted the other way instead?
@@ -182,6 +184,8 @@ where
 				);
 			}
 		}
+
+		tracing::trace!("Done sending entries");
 
 		ActionResult::Ok(entries)
 	}

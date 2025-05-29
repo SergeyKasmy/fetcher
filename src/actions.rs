@@ -328,14 +328,21 @@ macro_rules! impl_action_for_tuples {
 				//	.map_err(Into::into)?;
 				//let entries = self.1.apply(entries, ctx).await.map_err(Into::into)?;
 
+				let mut action_num = 0;
 				let ($($type_name),+) = self;
 				$(
 					if ctx.ctrlc_chan.as_ref().is_some_and(|chan| chan.signaled()) {
 						// TODO: is this fine? Maybe it shouldn't stop if a previous action had sideeffects?
 						tracing::debug!("Task terminated while in the middle of action pipeline execution. Not all have actions have been run to completion.");
-						// just return unfinished entries, it's probably fine
 						return ActionResult::Terminated;
 					}
+
+					#[allow(unused_assignments, reason = "last iteration won't use it, it's fine")]
+					{
+						tracing::trace!("Running action #{action_num}");
+						action_num += 1;
+					}
+
 					let act_result = $type_name.apply(entries, reborrow_ctx!(&mut ctx)).await;
 					let entries = actres_try!(act_result.map_err(Into::into));
 				)+

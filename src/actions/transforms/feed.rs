@@ -13,6 +13,7 @@ use crate::{
 		result::{OptionUnwrapTransformResultExt, TransformedEntry, TransformedMessage},
 	},
 	entry::{Entry, EntryId},
+	safe_slice::SafeSliceUntilExt,
 };
 
 use feed_rs::model::{Content, Text};
@@ -90,9 +91,8 @@ fn message_body_from_feed_entry(summary: Option<Text>, content: Option<Content>)
 	match summary.map(|text| text.content) {
 		Some(summary) => {
 			tracing::trace!(
-				"Using the summary as the body of the message: {:?}{}",
-				&summary[..100],
-				if summary.len() > 100 { "..." } else { "" },
+				"Using the summary as the body of the message: {}",
+				summary.pretty_slice_until(100)
 			);
 			Some(summary)
 		}
@@ -101,9 +101,8 @@ fn message_body_from_feed_entry(summary: Option<Text>, content: Option<Content>)
 			match content {
 				Some(content) => {
 					tracing::trace!(
-						r#"Summary missing, falling back to "content": {:?}{}"#,
-						&content[..100],
-						if content.len() > 100 { "..." } else { "" },
+						r#"Summary missing, falling back to "content": {}"#,
+						content.pretty_slice_until(100)
 					);
 					Some(content)
 				}
