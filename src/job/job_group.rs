@@ -17,10 +17,9 @@ use futures::{
 };
 use itertools::Itertools;
 
-use std::pin::Pin;
 use std::{
 	fmt::{self, Display},
-	iter,
+	pin::Pin,
 };
 
 use super::{JobResult, OpaqueJob};
@@ -110,18 +109,9 @@ pub trait JobGroup: MaybeSendSync {
 	/// This is in contrast to [`JobGroup::run_concurrently`].
 	#[cfg(feature = "send")]
 	#[must_use = "the jobs could've finished with errors"]
-	// fn run_in_parallel(self) -> impl Future<Output = (JobGroupResult, Self)> + Send
-	// where
-	// 	Self: Sized + 'static;
-
-	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
+	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + Send
 	where
 		Self: Sized + 'static;
-
-	/// Returns the names of all jobs in the group.
-	///
-	/// Returns `None` for unnamed jobs.
-	fn names(&self) -> impl Iterator<Item = Option<String>>;
 
 	/// Run all jobs in the group using the most appropriate method.
 	///
@@ -131,7 +121,7 @@ pub trait JobGroup: MaybeSendSync {
 	/// This is the recommended way to run jobs unless you specifically need concurrent or parallel execution.
 	#[cfg(feature = "send")]
 	#[must_use = "the jobs could've finished with errors"]
-	fn run(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
+	fn run(self) -> impl Stream<Item = (JobId, JobResult)> + Send
 	where
 		Self: Sized + 'static,
 	{
@@ -146,12 +136,11 @@ pub trait JobGroup: MaybeSendSync {
 	/// This is the recommended way to run jobs unless you specifically need concurrent or parallel execution.
 	#[cfg(not(feature = "send"))]
 	#[must_use = "the jobs could've finished with errors"]
-	fn run(mut self) -> impl Future<Output = (JobGroupResult, Self)> + MaybeSend
+	fn run(self) -> impl Stream<Item = (JobId, JobResult)>
 	where
-		Self: Sized,
+		Self: Sized + 'static,
 	{
-		// async move { (self.run_concurrently().await, self) }
-		todo!()
+		self.run_concurrently()
 	}
 
 	/// Combine this job group with another job group.
@@ -302,14 +291,6 @@ impl<J> JobGroup for Option<J>
 where
 	J: JobGroup,
 {
-	// async fn run_concurrently(&mut self) -> JobGroupResult {
-	// 	let Some(group) = self else {
-	// 		return Vec::new();
-	// 	};
-
-	// 	group.run_concurrently().await
-	// }
-
 	fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend {
 		let Some(group) = self else {
 			return FutureEither::Left(stream::empty());
@@ -318,20 +299,8 @@ where
 		FutureEither::Right(group.run_concurrently())
 	}
 
-	// #[cfg(feature = "send")]
-	// async fn run_in_parallel(self) -> (JobGroupResult, Self)
-	// where
-	// 	Self: 'static,
-	// {
-	// 	let Some(group) = self else {
-	// 		return (Vec::new(), None);
-	// 	};
-
-	// 	let (job_results, inner) = group.run_in_parallel().await;
-	// 	(job_results, Some(inner))
-	// }
 	#[cfg(feature = "send")]
-	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
+	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + Send
 	where
 		Self: Sized + 'static,
 	{
@@ -341,10 +310,6 @@ where
 
 		FutureEither::Right(group.run_in_parallel())
 	}
-
-	fn names(&self) -> impl Iterator<Item = Option<String>> {
-		self.iter().flat_map(JobGroup::names)
-	}
 }
 
 impl JobGroup for () {
@@ -352,20 +317,12 @@ impl JobGroup for () {
 		stream::empty()
 	}
 
-	// #[cfg(feature = "send")]
-	// async fn run_in_parallel(self) -> (JobGroupResult, Self) {
-	// 	(Vec::new(), ())
-	// }
 	#[cfg(feature = "send")]
-	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
+	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + Send
 	where
 		Self: Sized + 'static,
 	{
 		stream::empty()
-	}
-
-	fn names(&self) -> impl Iterator<Item = Option<String>> {
-		iter::empty()
 	}
 }
 
@@ -381,7 +338,7 @@ where
 	}
 
 	#[cfg(feature = "send")]
-	fn run_in_parallel(mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
+	fn run_in_parallel(mut self) -> impl Stream<Item = (JobId, JobResult)> + Send
 	where
 		Self: Sized + 'static,
 	{
@@ -389,10 +346,6 @@ where
 			let name = self.0.name().map(|n| StaticStr::from(n.to_owned()));
 			(JobId::new(name), self.0.run().await)
 		})
-	}
-
-	fn names(&self) -> impl Iterator<Item = Option<String>> {
-		iter::once(self.0.name().map(ToOwned::to_owned))
 	}
 }
 
@@ -430,26 +383,9 @@ macro_rules! impl_jobgroup_for_tuples {
 				.collect::<FuturesUnordered<_>>()
 			}
 
-			// #[cfg(feature = "send")]
-			// #[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
-			// async fn run_in_parallel(self) -> (JobGroupResult, Self)
-			// where Self: 'static
-			// {
-			// 	// $type_name = specific job
-			// 	let ($($type_name),+) = self;
-
-			// 	// $type_name = typle of (job_result, old $type_name)
-			// 	let ($($type_name),+) = join!($(run_job_in_parallel($type_name)),+);
-
-			// 	// destructure the tuple into an array and then convert it
-			// 	let results = JobGroupResult::from([$($type_name.0),+]);
-			// 	let this = ($($type_name.1),+);
-
-			// 	(results, this)
-			// }
 			#[cfg(feature = "send")]
 			#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
-			fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
+			fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + Send
 			where Self: 'static
 			{
   				fn into_maybe_send_boxed_future<J: OpaqueJob + 'static>(job: J) -> MaybeSendBoxedFuture<'static> {
@@ -470,20 +406,6 @@ macro_rules! impl_jobgroup_for_tuples {
 				]
 				.into_iter()
 				.collect::<FuturesUnordered<_>>()
-			}
-
-			#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
-			fn names(&self) -> impl Iterator<Item = Option<String>> {
-				let ($($type_name),+) = self;
-
-				iter::empty()
-					$(
-						.chain(
-							iter::once(
-								$type_name.name().map(ToOwned::to_owned)
-							)
-						)
-					)+
 			}
 		}
 	}

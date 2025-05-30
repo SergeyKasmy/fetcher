@@ -35,14 +35,10 @@ where
 	}
 
 	#[cfg(feature = "send")]
-	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
+	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + Send
 	where
 		Self: Sized + 'static,
 	{
 		stream::empty()
-	}
-
-	fn names(&self) -> impl Iterator<Item = Option<String>> {
-		self.0.names()
 	}
 }

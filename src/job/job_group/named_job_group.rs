@@ -39,7 +39,7 @@ where
 
 	#[cfg(feature = "send")]
 	#[tracing::instrument(skip(self), fields(job_group = %self.name))]
-	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
+	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + Send
 	where
 		Self: Sized + 'static,
 	{
@@ -52,61 +52,5 @@ where
 
 				(job_id, job_result)
 			})
-	}
-
-	// TODO: seems unneeded now that run methods return JobId
-	fn names(&self) -> impl Iterator<Item = Option<String>> {
-		self.inner.names().map(|name| {
-			let mut name = name?;
-
-			name.insert(0, '/');
-			name.insert_str(0, &self.name);
-
-			Some(name)
-		})
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use crate::{
-		Job,
-		job::{JobGroup, JobResult, OpaqueJob, RefreshTime, error_handling::Forward},
-	};
-
-	#[test]
-	fn named_job_group_doesnt_add_name_to_job_with_no_name() {
-		struct UnnamedJob;
-
-		impl OpaqueJob for UnnamedJob {
-			async fn run(&mut self) -> JobResult {
-				JobResult::Ok
-			}
-
-			fn name(&self) -> Option<&str> {
-				None
-			}
-		}
-
-		let named_job = Job::builder("named_job")
-			.tasks(())
-			.refresh_time(RefreshTime::Never)
-			.error_handling(Forward)
-			.ctrlc_chan(None)
-			.build();
-
-		let unnamed_job = UnnamedJob;
-
-		let group = (named_job, unnamed_job);
-		assert_eq!(
-			group.names().collect::<Vec<_>>(),
-			[Some("named_job".to_owned()), None]
-		);
-
-		let named_group = group.with_name("named_group");
-		assert_eq!(
-			named_group.names().collect::<Vec<_>>(),
-			[Some("named_group/named_job".to_owned()), None]
-		);
 	}
 }
