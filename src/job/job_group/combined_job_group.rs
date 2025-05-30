@@ -6,9 +6,11 @@
 
 //! This module contains the [`CombinedJobGroup`] struct
 
-use std::pin::Pin;
+use std::pin::pin;
 
-use futures::{Stream, stream::select_all};
+use futures::{Stream, StreamExt as _, stream_select};
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
 
 use super::{JobGroup, JobId};
 use crate::{job::JobResult, maybe_send::MaybeSend};
@@ -18,31 +20,27 @@ use crate::{job::JobResult, maybe_send::MaybeSend};
 /// See [`JobGroup::combine_with`].
 pub struct CombinedJobGroup<G1, G2>(pub G1, pub G2);
 
-#[cfg(feature = "send")]
-type MaybeSendBoxedStream<'a> = Pin<Box<dyn Stream<Item = (JobId, JobResult)> + Send + 'a>>;
-#[cfg(not(feature = "send"))]
-type MaybeSendBoxedStream<'a> = Pin<Box<dyn Stream<Item = (JobId, JobResult)> + 'a>>;
-
 impl<G1, G2> JobGroup for CombinedJobGroup<G1, G2>
 where
 	G1: JobGroup,
 	G2: JobGroup,
 {
-	fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend {
-		select_all([
-			Box::pin(self.0.run_concurrently()) as MaybeSendBoxedStream,
-			Box::pin(self.1.run_concurrently()),
-		])
-	}
-
-	#[cfg(feature = "send")]
-	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + Send
+	fn run(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
 	where
 		Self: Sized + 'static,
 	{
-		select_all([
-			Box::pin(self.0.run_in_parallel()) as MaybeSendBoxedStream,
-			Box::pin(self.1.run_in_parallel()),
-		])
+		let (tx, rx) = mpsc::channel(128);
+
+		tokio::spawn(async move {
+			let g1_run = pin!(self.0.run());
+			let g2_run = pin!(self.1.run());
+
+			let mut stream = stream_select!(g1_run, g2_run);
+			while let Some(item) = stream.next().await {
+				tx.send(item).await.unwrap();
+			}
+		});
+
+		ReceiverStream::new(rx)
 	}
 }

@@ -14,6 +14,7 @@ use super::{HandleError, HandleErrorContext, HandleErrorResult};
 use crate::error::FetcherError;
 
 /// Error handler that forwards all errors to the caller, stopping the job immediately.
+#[derive(Clone, Copy, Debug)]
 pub struct Forward;
 
 impl HandleError for Forward {

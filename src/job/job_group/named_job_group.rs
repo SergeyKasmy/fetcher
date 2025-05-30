@@ -6,11 +6,10 @@
 
 //! This module contains the [`NamedJobGroup`] type
 
-use futures::{Stream, StreamExt};
-
-use crate::{StaticStr, job::JobResult, maybe_send::MaybeSend};
+use futures::Stream;
 
 use super::{JobGroup, JobId};
+use crate::{StaticStr, job::JobResult, maybe_send::MaybeSend};
 
 /// A [`JobGroup`] wrapper that prepends the provided name to [`JobGroup::names`] calls and creates a tracing span containing the name.
 ///
@@ -28,29 +27,16 @@ where
 	G: JobGroup,
 {
 	#[tracing::instrument(skip(self), fields(job_group = %self.name))]
-	fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend {
-		self.inner
-			.run_concurrently()
-			.map(|(mut job_id, job_result)| {
-				job_id.group_hierarchy.push(self.name.clone());
-				(job_id, job_result)
-			})
-	}
-
-	#[cfg(feature = "send")]
-	#[tracing::instrument(skip(self), fields(job_group = %self.name))]
-	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + Send
+	fn run(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
 	where
 		Self: Sized + 'static,
 	{
 		use futures::StreamExt;
 
-		self.inner
-			.run_in_parallel()
-			.map(move |(mut job_id, job_result)| {
-				job_id.group_hierarchy.push(self.name.clone());
+		self.inner.run().map(move |(mut job_id, job_result)| {
+			job_id.group_hierarchy.push(self.name.clone());
 
-				(job_id, job_result)
-			})
+			(job_id, job_result)
+		})
 	}
 }

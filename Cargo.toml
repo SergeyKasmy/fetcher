@@ -98,6 +98,7 @@ reqwest = { version = "0.12.15", features = ["rustls-tls", "gzip", "cookies"], d
 ## feature = "scaffold"
 tracing-journald = { version = "0.3.1", default-features = false, optional = true }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "tracing-log", "time", "local-time", "fmt", "ansi"], default-features = false, optional = true }
+tokio-stream = { version = "0.1.17", default-features = false }
 
 [dev-dependencies]
 assert_matches = "1.5"

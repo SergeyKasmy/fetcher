@@ -30,12 +30,7 @@ impl<G> JobGroup for DisabledJobGroup<G>
 where
 	G: JobGroup,
 {
-	fn run_concurrently(&mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend {
-		stream::empty()
-	}
-
-	#[cfg(feature = "send")]
-	fn run_in_parallel(self) -> impl Stream<Item = (JobId, JobResult)> + Send
+	fn run(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
 	where
 		Self: Sized + 'static,
 	{

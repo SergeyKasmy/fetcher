@@ -78,7 +78,7 @@ async fn main() {
 		.combine_with(group_always_panics)
 		.with_name("common group");
 
-	let mut stream = group.run_in_parallel();
+	let mut stream = group.run();
 
 	while let Some(res) = stream.next().await {
 		eprintln!("Job {} finished! {:?}", res.0, res.1);

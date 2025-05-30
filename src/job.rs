@@ -32,7 +32,7 @@ use crate::{
 };
 
 /// A single job, containing a single or a couple [`tasks`](`crate::task::Task`), possibly refetching every set amount of time
-#[derive(bon::Builder, Debug)]
+#[derive(bon::Builder, Clone, Debug)]
 #[builder(finish_fn(name = "build_internal", vis = ""))]
 #[builder(builder_type(doc {
 /// Use builder syntax to set the inputs and finish with [`build()`](`JobBuilder::build()`)
