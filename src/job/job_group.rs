@@ -16,6 +16,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
 use std::fmt::{self, Display};
+use std::iter;
 
 use super::{JobResult, OpaqueJob};
 use crate::StaticStr;
@@ -347,11 +348,13 @@ impl JobId {
 
 impl Display for JobId {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		const UNKNOWN_JOB: StaticStr = StaticStr::from_static_str("<UNKNOWN>");
+
 		let path = self
 			.group_hierarchy
 			.iter()
 			.rev()
-			.chain(self.job_name.iter())
+			.chain(iter::once(self.job_name.as_ref().unwrap_or(&UNKNOWN_JOB)))
 			.join("/");
 
 		f.write_str(&path)
