@@ -174,7 +174,6 @@ impl Email {
 			.await
 			.map_err(ImapError::ConnectionFailed)?;
 
-		// let domain: ServerName<'static> =
 		let domain = ServerName::try_from(String::from(&self.imap_server))?;
 
 		tracing::trace!("Establishing a TLS connection");

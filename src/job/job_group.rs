@@ -306,7 +306,7 @@ macro_rules! impl_jobgroup_for_tuples {
 						let tx = tx.clone();
 						let mut job = $type_name;
 						// TODO: what if the task panics?
-						tokio::spawn(async move {
+						spawn(async move {
 							let result = OpaqueJob::run(&mut job).await;
 							let id = JobId::new(job.name().map(|s| StaticStr::from(s.to_owned())));
 							if let Err(e) = tx.send((id, result)).await {
@@ -356,4 +356,15 @@ impl Display for JobId {
 
 		f.write_str(&path)
 	}
+}
+
+pub(crate) fn spawn<F, T>(fut: F)
+where
+	F: Future<Output = T> + MaybeSend + 'static,
+	T: MaybeSend + 'static,
+{
+	#[cfg(feature = "send")]
+	tokio::spawn(fut);
+	#[cfg(not(feature = "send"))]
+	tokio::task::spawn_local(fut);
 }

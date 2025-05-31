@@ -12,7 +12,7 @@ use futures::{Stream, StreamExt as _, stream_select};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
-use super::{JobGroup, JobId};
+use super::{JobGroup, JobId, spawn};
 use crate::{job::JobResult, maybe_send::MaybeSend};
 
 /// A job group that combines 2 other job groups and runs them concurrently to completion.
@@ -31,7 +31,7 @@ where
 	{
 		let (tx, rx) = mpsc::channel(128);
 
-		tokio::spawn(async move {
+		spawn(async move {
 			let g1_run = pin!(self.0.run());
 			let g2_run = pin!(self.1.run());
 
