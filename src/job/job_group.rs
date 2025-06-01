@@ -221,7 +221,7 @@ pub trait JobGroup: MaybeSendSync {
 /// use std::pin::pin;
 ///
 /// let job = Job::builder("job")
-/// 				.tasks(())
+///                 .tasks(())
 ///                 .trigger(trigger::Never)
 ///                 .ctrlc_chan(None)
 ///                 .build_with_default_error_handling();
@@ -337,6 +337,7 @@ impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10);
 
 impl JobId {
 	/// Creates a new [`JobId`] with the provided [`JobId::job_name`]
+	#[must_use]
 	pub fn new(job_name: Option<StaticStr>) -> Self {
 		Self {
 			group_hierarchy: Vec::new(),

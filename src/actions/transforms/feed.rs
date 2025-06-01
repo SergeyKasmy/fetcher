@@ -83,10 +83,6 @@ fn parse_feed_entry(mut feed_entry: feed_rs::model::Entry) -> TransformedEntry {
 	}
 }
 
-#[expect(
-	clippy::cognitive_complexity,
-	reason = "simplified as much as necessary"
-)]
 fn message_body_from_feed_entry(summary: Option<Text>, content: Option<Content>) -> Option<String> {
 	match summary.map(|text| text.content) {
 		Some(summary) => {

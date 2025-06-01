@@ -35,7 +35,7 @@ impl Trigger for OnceADayAt {
 }
 
 impl OnceADayAt {
-	fn time_remaining_from(&self, now: NaiveDateTime) -> Duration {
+	fn time_remaining_from(self, now: NaiveDateTime) -> Duration {
 		let time_remaining = self.0 - now.time();
 
 		match time_remaining.to_std() {
