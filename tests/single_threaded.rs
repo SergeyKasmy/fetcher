@@ -1,7 +1,7 @@
 // FIXME
 #![expect(missing_docs)]
 
-use fetcher::job::{Job, JobGroup, RefreshTime, error_handling::Forward};
+use fetcher::job::{Job, JobGroup, Trigger, error_handling::Forward};
 use futures::stream::StreamExt;
 use tokio::task::LocalSet;
 
@@ -12,13 +12,13 @@ async fn main() {
 			// Create jobs
 			let job1 = Job::builder("job1")
 				.tasks(())
-				.refresh_time(RefreshTime::Never)
+				.trigger(Trigger::Never)
 				.error_handling(Forward)
 				.ctrlc_chan(None)
 				.build();
 			let job2 = Job::builder("job2")
 				.tasks(())
-				.refresh_time(RefreshTime::Never)
+				.trigger(Trigger::Never)
 				.error_handling(Forward)
 				.ctrlc_chan(None)
 				.build();

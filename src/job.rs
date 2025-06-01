@@ -9,13 +9,13 @@
 pub mod error_handling;
 pub mod job_group;
 pub mod opaque_job;
-pub mod refresh_time;
+pub mod trigger;
 
 mod job_result;
 
 pub use self::{
 	error_handling::HandleError, job_group::JobGroup, job_result::JobResult, opaque_job::OpaqueJob,
-	refresh_time::RefreshTime,
+	trigger::Trigger,
 };
 
 use futures::FutureExt;
@@ -47,8 +47,8 @@ pub struct Job<T, H> {
 	/// Tasks/pipeline to run the data through
 	pub tasks: T,
 
-	/// Refresh/refetch/redo the job every provided amount of time
-	pub refresh_time: RefreshTime,
+	/// Trigger the job at the provided intervals or when the trigger condition is met
+	pub trigger: Trigger,
 
 	/// Handler for errors that occur during job execution
 	pub error_handling: H,
@@ -73,7 +73,7 @@ impl<T: TaskGroup, H> Job<T, H> {
 	async fn run_until_first_error(&mut self) -> JobResult {
 		tracing::info!("Running job {}", self.name);
 
-		// Job loop: break out of it only on errors or if the job doesn't have a refresh time/runs only once
+		// Job loop: break out of it only on errors or if the job runs only once
 		loop {
 			let results = self.tasks.run_concurrently().await;
 
@@ -95,7 +95,7 @@ impl<T: TaskGroup, H> Job<T, H> {
 				return JobResult::Err(errors);
 			}
 
-			let Some(remaining_time) = self.refresh_time.remaining_time_from_now() else {
+			let Some(remaining_time) = self.trigger.remaining_time_from_now() else {
 				return JobResult::Ok;
 			};
 
@@ -104,7 +104,7 @@ impl<T: TaskGroup, H> Job<T, H> {
 				remaining_time.as_secs() / 60
 			);
 
-			// sleep until the next refresh timer is hit or stop on Ctrl-C
+			// sleep until the next trigger is hit or stop on Ctrl-C
 			select! {
 				() = sleep(remaining_time) => (),
 				() = ctrlc_wait(self.ctrlc_chan.as_mut()) => {
@@ -121,7 +121,7 @@ where
 	T: TaskGroup,
 	H: HandleError,
 {
-	/// Runs the job until it finishes (which can only occur without a [`Job::refresh_time`]),
+	/// Runs the job until it finishes (which can only occur without a [`Job::trigger`]),
 	/// or until an error or a panic happens.
 	///
 	/// # Note
@@ -150,7 +150,7 @@ where
 
 			let cx = HandleErrorContext {
 				job_name: &self.name,
-				job_refresh_time: &self.refresh_time,
+				job_trigger: &self.trigger,
 				ctrlc_chan: self.ctrlc_chan.as_mut(),
 			};
 
@@ -201,7 +201,7 @@ where
 	where
 		S::CtrlcChan: job_builder::IsSet,
 		S::ErrorHandling: job_builder::IsUnset,
-		S::RefreshTime: job_builder::IsSet,
+		S::Trigger: job_builder::IsSet,
 		S::Tasks: job_builder::IsSet,
 	{
 		let this = self.error_handling(error_handling::ExponentialBackoff::default());
@@ -224,7 +224,7 @@ where
 		S: job_builder::IsComplete,
 		S::CtrlcChan: job_builder::IsSet,
 		S::ErrorHandling: job_builder::IsSet,
-		S::RefreshTime: job_builder::IsSet,
+		S::Trigger: job_builder::IsSet,
 		S::Tasks: job_builder::IsSet,
 	{
 		let mut job = self.build_internal();

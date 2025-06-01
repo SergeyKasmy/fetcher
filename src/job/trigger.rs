@@ -4,8 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module defines the [`RefreshTime`] type
-//! that specifies either a duration or a time of day a job should be refreshed.
+//! This module defines the [`Trigger`] type
+//! that specifies either a duration or a time of day a job should be re-triggered.
 //!
 //! It also re-exported [`chrono`] to make use of [`NaiveTime`] and [`NaiveDateTime`] types.
 
@@ -14,28 +14,28 @@ pub use chrono;
 use chrono::{NaiveDateTime, NaiveTime, offset::Local as LocalTime};
 use std::time::Duration;
 
-/// When to refresh the job?
+/// When to re-trigger the job?
 #[derive(Clone, Debug)]
-pub enum RefreshTime {
+pub enum Trigger {
 	/// After this mount of time has passed since the last time
 	Every(Duration),
 
 	/// Once a day at this time
 	OnceADayAt(NaiveTime),
 
-	/// Never refresh, run once
+	/// Never re-trigger, run once
 	Never,
 }
 
-impl RefreshTime {
-	/// Returns the duration that is left to the next time a refresh should be run, from now
+impl Trigger {
+	/// Returns the duration that is left to the next time the job should be re-triggered, from now
 	#[must_use]
 	pub fn remaining_time_from_now(&self) -> Option<Duration> {
 		let now = LocalTime::now().naive_local();
 		self.remaining_time_from(now)
 	}
 
-	/// Returns the duration that is left to the next time a refresh should be run, from the provided time `now`
+	/// Returns the duration that is left to the next time the job should be re-triggered, from the provided time `now`
 	#[expect(
 		clippy::missing_panics_doc,
 		reason = "doesn't actually panic, unless bugged"
@@ -43,8 +43,8 @@ impl RefreshTime {
 	#[must_use]
 	pub fn remaining_time_from(&self, now: NaiveDateTime) -> Option<Duration> {
 		match self {
-			RefreshTime::Every(dur) => Some(*dur),
-			RefreshTime::OnceADayAt(time) => {
+			Trigger::Every(dur) => Some(*dur),
+			Trigger::OnceADayAt(time) => {
 				let remaining_time = *time - now.time();
 
 				// return if duration is not negative, i.e. it is in the future.
@@ -65,7 +65,7 @@ impl RefreshTime {
 
 				Some(time_left)
 			}
-			RefreshTime::Never => None,
+			Trigger::Never => None,
 		}
 	}
 }
@@ -92,26 +92,26 @@ mod tests {
 
 	#[test]
 	fn never() {
-		assert_eq!(RefreshTime::Never.remaining_time_from_now(), None);
+		assert_eq!(Trigger::Never.remaining_time_from_now(), None);
 	}
 
 	#[test]
 	fn every() {
-		let time_point = RefreshTime::Every(HOUR * 5);
+		let time_point = Trigger::Every(HOUR * 5);
 
 		assert_eq!(time_point.remaining_time_from(*NOW).unwrap(), HOUR * 5);
 	}
 
 	#[test]
 	fn once_a_day_today() {
-		let at_2_pm = RefreshTime::OnceADayAt(NaiveTime::from_hms_opt(14, 0, 0).unwrap());
+		let at_2_pm = Trigger::OnceADayAt(NaiveTime::from_hms_opt(14, 0, 0).unwrap());
 
 		assert_eq!(at_2_pm.remaining_time_from(*NOW).unwrap(), HOUR * 2);
 	}
 
 	#[test]
 	fn once_a_day_tomorrow() {
-		let at_10_am = RefreshTime::OnceADayAt(NaiveTime::from_hms_opt(10, 0, 0).unwrap());
+		let at_10_am = Trigger::OnceADayAt(NaiveTime::from_hms_opt(10, 0, 0).unwrap());
 
 		assert_eq!(at_10_am.remaining_time_from(*NOW).unwrap(), HOUR * 22);
 	}

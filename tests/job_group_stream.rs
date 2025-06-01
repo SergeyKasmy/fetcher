@@ -10,7 +10,7 @@ use fetcher::{
 	actions::{Action, ActionContext, ActionResult, transform_fn},
 	entry::Entry,
 	external_save::ExternalSave,
-	job::{JobGroup, RefreshTime},
+	job::{JobGroup, Trigger},
 	scaffold,
 	sources::Source,
 };
@@ -60,14 +60,14 @@ async fn main() {
 
 	let job_never_panics = Job::builder("never_panics")
 		.tasks(task_never_panics)
-		.refresh_time(RefreshTime::Every(Duration::from_secs(1)))
+		.trigger(Trigger::Every(Duration::from_secs(1)))
 		.ctrlc_chan(None)
 		.error_handling(Forward)
 		.build();
 
 	let job_always_panics = Job::builder("always_panics")
 		.tasks(task_always_panics)
-		.refresh_time(RefreshTime::Every(Duration::from_secs(1)))
+		.trigger(Trigger::Every(Duration::from_secs(1)))
 		.ctrlc_chan(None)
 		.error_handling(Forward)
 		.build();
