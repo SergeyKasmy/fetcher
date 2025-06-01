@@ -30,7 +30,7 @@ use fetcher::{
 		transforms::{field::TransformField, result::TransformResult},
 	},
 	entry::Entry,
-	job::{JobResult, Trigger, error_handling},
+	job::{JobResult, error_handling, trigger},
 	scaffold::{InitResult, init},
 	sinks::{Message, Sink, message::MessageId},
 	sources::Fetch,
@@ -217,7 +217,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	let mut job = Job::builder("example")
 		.tasks(task)
 		// the task will re-run every 5 seconds
-		.trigger(Trigger::Every(Duration::from_secs(5)))
+		.trigger(trigger::Every(Duration::from_secs(5)))
 		// the job and the task will be stopped mid-work when they receive a signal
 		.ctrlc_chan(Some(ctrl_c_signal_channel))
 		// if an error occures, stop the job immediately and return, aka "forward" the error

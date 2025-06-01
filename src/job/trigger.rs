@@ -11,9 +11,110 @@
 
 pub use chrono;
 
-use chrono::{NaiveDateTime, NaiveTime, offset::Local as LocalTime};
-use std::time::Duration;
+use chrono::{NaiveTime, offset::Local as LocalTime};
+use std::{fmt::Display, time::Duration};
 
+use crate::maybe_send::{MaybeSend, MaybeSendSync};
+
+// TODO: add error type
+pub trait Trigger: MaybeSendSync {
+	fn wait(&mut self) -> impl Future<Output = ContinueJob> + MaybeSend;
+
+	// TODO: not a very nice API. Provide more freedom for trigger and handleerror implementations to handle errors and waiting as they want.
+	// This one is too heavily coupled with ExponentialBackoff specifically
+	fn twice_as_duration(&self) -> Duration;
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ContinueJob {
+	Yes,
+	No,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Every(pub Duration);
+
+impl Trigger for Every {
+	async fn wait(&mut self) -> ContinueJob {
+		sleep(self.0).await;
+		ContinueJob::Yes
+	}
+
+	fn twice_as_duration(&self) -> Duration {
+		self.0 * 2
+	}
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct OnceADayAt(pub NaiveTime);
+
+impl Trigger for OnceADayAt {
+	async fn wait(&mut self) -> ContinueJob {
+		let remaining_time = self.0 - LocalTime::now().naive_local().time();
+
+		let time_left = match remaining_time.to_std() {
+			// duration is positive, points to a moment in the future
+			Ok(dur) => dur,
+
+			// duration is negative, points to a moment in the past.
+			// This means we should add a day and return that
+			// since that time today has already passed
+			Err(_) => (remaining_time + chrono::Duration::days(1))
+				.to_std()
+				.expect("should point to the future since we added a day to the current day"),
+		};
+
+		sleep(time_left).await;
+		ContinueJob::Yes
+	}
+
+	fn twice_as_duration(&self) -> Duration {
+		const TWO_DAYS: Duration = Duration::from_secs(
+			2 /* days */ * 24 /* hours a day */ * 60 /* mins an hour */ * 60, /* secs a min */
+		);
+
+		TWO_DAYS
+	}
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Never;
+
+impl Trigger for Never {
+	async fn wait(&mut self) -> ContinueJob {
+		ContinueJob::No
+	}
+
+	fn twice_as_duration(&self) -> Duration {
+		Duration::ZERO
+	}
+}
+
+async fn sleep(duration: Duration) {
+	const SECS_IN_MIN: u64 = 60;
+
+	// scope to avoid keeping &dyn Display's across .await points
+	{
+		let mins = duration.as_secs() / SECS_IN_MIN;
+		let remainder = duration.as_secs() % SECS_IN_MIN;
+		let show_remaining_secs = mins < 5 && remainder > 0;
+		let display_remainder: (&dyn Display, &'static str) = if show_remaining_secs {
+			(&remainder, "s")
+		} else {
+			(&"", "")
+		};
+
+		tracing::debug!(
+			"Putting job to sleep for {mins}m{}{}",
+			display_remainder.0,
+			display_remainder.1
+		);
+	}
+
+	tokio::time::sleep(duration).await;
+}
+
+/*
 /// When to re-trigger the job?
 #[derive(Clone, Debug)]
 pub enum Trigger {
@@ -116,3 +217,4 @@ mod tests {
 		assert_eq!(at_10_am.remaining_time_from(*NOW).unwrap(), HOUR * 22);
 	}
 }
+*/

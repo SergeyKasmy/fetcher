@@ -21,13 +21,15 @@ pub use self::{
 use futures::FutureExt;
 use non_non_full::NonEmptyVec;
 use std::panic;
-use tokio::{select, time::sleep};
+use tokio::select;
 
 use self::error_handling::{HandleErrorContext, HandleErrorResult};
+use self::trigger::ContinueJob;
 use crate::{
 	StaticStr,
 	ctrl_c_signal::{CtrlCSignalChannel, ctrlc_wait},
 	error::ErrorChainDisplay,
+	maybe_send::MaybeSync,
 	task::TaskGroup,
 };
 
@@ -39,7 +41,7 @@ use crate::{
 /// or [`build_with_default_error_handling()`](`JobBuilder::build_with_default_error_handling()`).
 }))]
 #[non_exhaustive]
-pub struct Job<T, H> {
+pub struct Job<T, Tr, H> {
 	/// Name of the job
 	#[builder(start_fn, into)]
 	pub name: StaticStr,
@@ -48,7 +50,7 @@ pub struct Job<T, H> {
 	pub tasks: T,
 
 	/// Trigger the job at the provided intervals or when the trigger condition is met
-	pub trigger: Trigger,
+	pub trigger: Tr,
 
 	/// Handler for errors that occur during job execution
 	pub error_handling: H,
@@ -58,8 +60,11 @@ pub struct Job<T, H> {
 	pub ctrlc_chan: Option<CtrlCSignalChannel>,
 }
 
-impl<T: TaskGroup, H> Job<T, H> {
-	// TODO: instead of returning a vec of errors, return a single error type with a pretty Display implementation
+impl<T, Tr, H> Job<T, Tr, H>
+where
+	T: TaskGroup,
+	Tr: Trigger,
+{
 	// that contains a list of errors that can be retrieved manually if needed instead
 	/// Run this job to completion or return early on an error.
 	///
@@ -95,18 +100,11 @@ impl<T: TaskGroup, H> Job<T, H> {
 				return JobResult::Err(errors);
 			}
 
-			let Some(remaining_time) = self.trigger.remaining_time_from_now() else {
-				return JobResult::Ok;
-			};
-
-			tracing::debug!(
-				"Putting job to sleep for {}m",
-				remaining_time.as_secs() / 60
-			);
-
 			// sleep until the next trigger is hit or stop on Ctrl-C
 			select! {
-				() = sleep(remaining_time) => (),
+				continue_job = self.trigger.wait() => {
+					if matches!(continue_job, ContinueJob::No) { return JobResult::Ok }
+				},
 				() = ctrlc_wait(self.ctrlc_chan.as_mut()) => {
 					tracing::info!("Job {} is shutting down...", self.name);
 					return JobResult::Ok;
@@ -116,10 +114,11 @@ impl<T: TaskGroup, H> Job<T, H> {
 	}
 }
 
-impl<T, H> Job<T, H>
+impl<T, Tr, H> Job<T, Tr, H>
 where
 	T: TaskGroup,
-	H: HandleError,
+	Tr: Trigger + MaybeSync,
+	H: HandleError<Tr>,
 {
 	/// Runs the job until it finishes (which can only occur without a [`Job::trigger`]),
 	/// or until an error or a panic happens.
@@ -172,10 +171,11 @@ where
 	}
 }
 
-impl<T, H> OpaqueJob for Job<T, H>
+impl<T, Tr, H> OpaqueJob for Job<T, Tr, H>
 where
 	T: TaskGroup,
-	H: HandleError,
+	Tr: Trigger + MaybeSync,
+	H: HandleError<Tr>,
 {
 	async fn run(&mut self) -> JobResult {
 		Job::run(self).await
@@ -186,7 +186,7 @@ where
 	}
 }
 
-impl<T, S: job_builder::State> JobBuilder<T, error_handling::ExponentialBackoff, S>
+impl<T, Tr, S: job_builder::State> JobBuilder<T, Tr, error_handling::ExponentialBackoff, S>
 where
 	T: TaskGroup,
 {
@@ -197,7 +197,7 @@ where
 	/// `T` is constrained to implement [`TaskGroup`]
 	/// because the builder propagates the [`CtrlCSignalChannel`]
 	/// too all child tasks on build.
-	pub fn build_with_default_error_handling(self) -> Job<T, error_handling::ExponentialBackoff>
+	pub fn build_with_default_error_handling(self) -> Job<T, Tr, error_handling::ExponentialBackoff>
 	where
 		S::CtrlcChan: job_builder::IsSet,
 		S::ErrorHandling: job_builder::IsUnset,
@@ -209,7 +209,7 @@ where
 	}
 }
 
-impl<T, H, S: job_builder::State> JobBuilder<T, H, S>
+impl<T, Tr, H, S: job_builder::State> JobBuilder<T, Tr, H, S>
 where
 	T: TaskGroup,
 {
@@ -219,7 +219,7 @@ where
 	/// `T` is constrained to implement [`TaskGroup`]
 	/// because the builder propagates the [`CtrlCSignalChannel`]
 	/// too all child tasks on build.
-	pub fn build(self) -> Job<T, H>
+	pub fn build(self) -> Job<T, Tr, H>
 	where
 		S: job_builder::IsComplete,
 		S::CtrlcChan: job_builder::IsSet,

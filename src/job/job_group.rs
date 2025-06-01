@@ -51,19 +51,19 @@ pub type JobGroupResult = Vec<JobResult>;
 /// ```rust
 /// # tokio_test::block_on(async {
 /// # tokio::task::LocalSet::new().run_until(async {
-/// use fetcher::job::{Job, JobGroup, error_handling::Forward, Trigger};
+/// use fetcher::job::{Job, JobGroup, error_handling::Forward, trigger};
 /// use futures::stream::StreamExt;
 ///
 /// // Create jobs
 /// let job1 = Job::builder("job1")
 ///                 .tasks(())
-///                 .trigger(Trigger::Never)
+///                 .trigger(trigger::Never)
 ///                 .error_handling(Forward)
 ///                 .ctrlc_chan(None)
 ///                 .build();
 /// let job2 = Job::builder("job2")
 ///                 .tasks(())
-///                 .trigger(Trigger::Never)
+///                 .trigger(trigger::Never)
 ///                 .error_handling(Forward)
 ///                 .ctrlc_chan(None)
 ///                 .build();
@@ -104,14 +104,14 @@ pub trait JobGroup: MaybeSendSync {
 	/// ```rust
 	/// # tokio_test::block_on(async {
 	/// # tokio::task::LocalSet::new().run_until(async {
-	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, Trigger};
+	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, trigger};
 	/// use futures::stream::StreamExt;
 	///
 	/// // Create jobs
-	/// let job1 = Job::builder("job1").tasks(()).trigger(Trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job2 = Job::builder("job2").tasks(()).trigger(Trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job3 = Job::builder("job3").tasks(()).trigger(Trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job4 = Job::builder("job4").tasks(()).trigger(Trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job1 = Job::builder("job1").tasks(()).trigger(trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job2 = Job::builder("job2").tasks(()).trigger(trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job3 = Job::builder("job3").tasks(()).trigger(trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job4 = Job::builder("job4").tasks(()).trigger(trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
 	///
 	/// let group1 = (job1, job2);
 	/// let group2 = (job3, job4);
@@ -141,12 +141,12 @@ pub trait JobGroup: MaybeSendSync {
 	/// # Example
 	/// ```rust
 	/// # tokio_test::block_on(async {
-	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, Trigger};
+	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, trigger};
 	/// use futures::stream::StreamExt;
 	///
 	/// // Create jobs
-	/// let job1 = Job::builder("job1").tasks(()).trigger(Trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job2 = Job::builder("job2").tasks(()).trigger(Trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job1 = Job::builder("job1").tasks(()).trigger(trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job2 = Job::builder("job2").tasks(()).trigger(trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
 	///
 	/// let group = (job1, job2);
 	///
@@ -216,13 +216,13 @@ pub trait JobGroup: MaybeSendSync {
 /// # Example
 /// ```
 /// # tokio_test::block_on(async {
-/// use fetcher::job::{Job, JobGroup, Trigger};
+/// use fetcher::job::{Job, JobGroup, trigger};
 /// use futures::stream::StreamExt;
 /// use std::pin::pin;
 ///
 /// let job = Job::builder("job")
 /// 				.tasks(())
-///                 .trigger(Trigger::Never)
+///                 .trigger(trigger::Never)
 ///                 .ctrlc_chan(None)
 ///                 .build_with_default_error_handling();
 ///

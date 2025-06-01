@@ -17,7 +17,7 @@ use fetcher::{
 	Job, Task,
 	actions::{sink, transform_body, transforms::field::Replace},
 	auth,
-	job::{JobResult, Trigger},
+	job::{JobResult, trigger},
 	scaffold::{InitResult, init},
 	sinks::Telegram,
 	sources::{
@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	let mut job = Job::builder("github releases")
 		.tasks(task)
 		// the task will re-run every 30 minutes
-		.trigger(Trigger::Every(Duration::from_secs(
+		.trigger(trigger::Every(Duration::from_secs(
 			30 /* m */ * 60, /* secs in a min */
 		)))
 		// the job and the task will be stopped mid-work when they receive a signal

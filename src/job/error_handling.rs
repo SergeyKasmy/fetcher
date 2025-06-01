@@ -22,16 +22,17 @@ use non_non_full::NonEmptyVec;
 
 use crate::ctrl_c_signal::CtrlCSignalChannel;
 use crate::error::FetcherError;
-use crate::maybe_send::{MaybeSend, MaybeSendSync};
-
-use super::Trigger;
+use crate::maybe_send::{MaybeSend, MaybeSendSync, MaybeSync};
 
 pub use self::exponential_backoff::ExponentialBackoff;
 pub use self::forward::Forward;
 pub use self::log_and_ignore::LogAndIgnore;
 
 /// Handler for errors that occur during a [`Job's`](`super::Job`) execution.
-pub trait HandleError: MaybeSendSync {
+pub trait HandleError<Tr>: MaybeSendSync
+where
+	Tr: MaybeSync,
+{
 	/// The type of the error that might occure while handling task errors.
 	/// Use [`Infallible`](`std::convert::Infallible`) if the handler itself never errors
 	type HandlerErr: Error;
@@ -42,17 +43,20 @@ pub trait HandleError: MaybeSendSync {
 	fn handle_errors(
 		&mut self,
 		errors: NonEmptyVec<FetcherError>,
-		cx: HandleErrorContext<'_>,
+		cx: HandleErrorContext<'_, Tr>,
 	) -> impl Future<Output = HandleErrorResult<Self::HandlerErr>> + MaybeSend;
 }
 
 /// Context about the parent [`Job`](`super::Job`) provided to a [`HandleError`]
-pub struct HandleErrorContext<'a> {
+pub struct HandleErrorContext<'a, Tr>
+where
+	Tr: MaybeSync,
+{
 	/// Name of the Job
 	pub job_name: &'a str,
 
 	/// The job's [`Job::trigger`](`super::Job::trigger`)
-	pub job_trigger: &'a Trigger,
+	pub job_trigger: &'a Tr,
 
 	/// The job's [`Job::ctrlc_chan`](`super::Job::ctrlc_chan`)
 	pub ctrlc_chan: Option<&'a mut CtrlCSignalChannel>,
@@ -96,17 +100,18 @@ impl<E> HandleErrorResult<E> {
 	}
 }
 
-impl<A, B> HandleError for Either<A, B>
+impl<A, B, Tr> HandleError<Tr> for Either<A, B>
 where
-	A: HandleError,
-	B: HandleError,
+	A: HandleError<Tr>,
+	B: HandleError<Tr>,
+	Tr: MaybeSync,
 {
 	type HandlerErr = Either<A::HandlerErr, B::HandlerErr>;
 
 	async fn handle_errors(
 		&mut self,
 		errors: NonEmptyVec<FetcherError>,
-		cx: HandleErrorContext<'_>,
+		cx: HandleErrorContext<'_, Tr>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		match self {
 			Either::Left(a) => a
@@ -123,53 +128,63 @@ where
 }
 
 /// The same as [`Forward`]
-impl HandleError for () {
-	type HandlerErr = <Forward as HandleError>::HandlerErr;
+impl<Tr> HandleError<Tr> for ()
+where
+	Tr: MaybeSync,
+{
+	type HandlerErr = <Forward as HandleError<Tr>>::HandlerErr;
 
 	async fn handle_errors(
 		&mut self,
 		errors: NonEmptyVec<FetcherError>,
-		cx: HandleErrorContext<'_>,
+		cx: HandleErrorContext<'_, Tr>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		Forward.handle_errors(errors, cx).await
 	}
 }
 
-impl HandleError for Infallible {
+impl<Tr> HandleError<Tr> for Infallible
+where
+	Tr: MaybeSync,
+{
 	type HandlerErr = Infallible;
 
 	async fn handle_errors(
 		&mut self,
 		_errors: NonEmptyVec<FetcherError>,
-		_cx: HandleErrorContext<'_>,
+		_cx: HandleErrorContext<'_, Tr>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		match *self {}
 	}
 }
 
 #[cfg(feature = "nightly")]
-impl HandleError for ! {
+impl<Tr> HandleError<Tr> for !
+where
+	Tr: MaybeSync,
+{
 	type HandlerErr = !;
 
 	async fn handle_errors(
 		&mut self,
 		_errors: NonEmptyVec<FetcherError>,
-		_cx: HandleErrorContext<'_>,
+		_cx: HandleErrorContext<'_, Tr>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		match *self {}
 	}
 }
 
-impl<H> HandleError for Option<H>
+impl<H, Tr> HandleError<Tr> for Option<H>
 where
-	H: HandleError,
+	H: HandleError<Tr>,
+	Tr: MaybeSync,
 {
 	type HandlerErr = H::HandlerErr;
 
 	async fn handle_errors(
 		&mut self,
 		errors: NonEmptyVec<FetcherError>,
-		cx: HandleErrorContext<'_>,
+		cx: HandleErrorContext<'_, Tr>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		let Some(inner) = self else {
 			match Forward.handle_errors(errors, cx).await {
@@ -185,16 +200,17 @@ where
 	}
 }
 
-impl<H> HandleError for &mut H
+impl<H, Tr> HandleError<Tr> for &mut H
 where
-	H: HandleError,
+	H: HandleError<Tr>,
+	Tr: MaybeSync,
 {
 	type HandlerErr = H::HandlerErr;
 
 	fn handle_errors(
 		&mut self,
 		errors: NonEmptyVec<FetcherError>,
-		cx: HandleErrorContext<'_>,
+		cx: HandleErrorContext<'_, Tr>,
 	) -> impl Future<Output = HandleErrorResult<Self::HandlerErr>> + MaybeSend {
 		(*self).handle_errors(errors, cx)
 	}

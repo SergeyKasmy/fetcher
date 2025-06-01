@@ -11,19 +11,22 @@ use std::convert::Infallible;
 use non_non_full::NonEmptyVec;
 
 use super::{HandleError, HandleErrorContext, HandleErrorResult};
-use crate::error::FetcherError;
+use crate::{error::FetcherError, maybe_send::MaybeSync};
 
 /// Error handler that forwards all errors to the caller, stopping the job immediately.
 #[derive(Clone, Copy, Debug)]
 pub struct Forward;
 
-impl HandleError for Forward {
+impl<Tr> HandleError<Tr> for Forward
+where
+	Tr: MaybeSync,
+{
 	type HandlerErr = Infallible;
 
 	async fn handle_errors(
 		&mut self,
 		errors: NonEmptyVec<FetcherError>,
-		_cx: HandleErrorContext<'_>,
+		_cx: HandleErrorContext<'_, Tr>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		tracing::trace!("Forwarding errors");
 

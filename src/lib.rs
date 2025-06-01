@@ -91,7 +91,7 @@ pub(crate) mod safe_slice;
 
 #[cfg(test)]
 mod tests {
-	use std::convert::Infallible;
+	use std::{convert::Infallible, marker::PhantomData};
 
 	use crate::{
 		actions::{
@@ -101,6 +101,7 @@ mod tests {
 		},
 		external_save::ExternalSave,
 		job::{HandleError, OpaqueJob},
+		maybe_send::MaybeSync,
 		read_filter::ReadFilter,
 		sinks::Sink,
 		sources::Source,
@@ -110,12 +111,17 @@ mod tests {
 	#[test]
 	#[ignore = "nothing to execute, just a compile test"]
 	fn common_types_implement_main_traits() {
-		fn implements_common_traits<T>()
+		struct ImplementsCommonTraits<T, Tr = ()> {
+			t: PhantomData<T>,
+			tr: PhantomData<Tr>,
+		}
+
+		impl<T, Tr> ImplementsCommonTraits<T, Tr>
 		where
 			T: Action
 				+ ExternalSave
 				+ Filter
-				+ HandleError
+				+ HandleError<Tr>
 				+ OpaqueJob
 				+ OpaqueTask
 				+ ReadFilter
@@ -123,15 +129,17 @@ mod tests {
 				+ Source
 				+ Transform
 				+ TransformField,
+			Tr: MaybeSync,
 		{
+			fn test() {}
 		}
 
-		implements_common_traits::<()>();
-		implements_common_traits::<Infallible>();
-		implements_common_traits::<Option<()>>();
-		implements_common_traits::<&mut ()>();
+		ImplementsCommonTraits::<()>::test();
+		ImplementsCommonTraits::<Infallible>::test();
+		ImplementsCommonTraits::<Option<()>>::test();
+		ImplementsCommonTraits::<&mut ()>::test();
 
 		#[cfg(feature = "nightly")]
-		implements_common_traits::<!>();
+		ImplementsCommonTraits::<!>::test();
 	}
 }

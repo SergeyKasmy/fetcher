@@ -10,8 +10,8 @@ use std::convert::Infallible;
 
 use non_non_full::NonEmptyVec;
 
-use crate::error::FetcherError;
 use crate::job::ErrorChainDisplay;
+use crate::{error::FetcherError, maybe_send::MaybeSync};
 
 use super::{HandleError, HandleErrorContext, HandleErrorResult};
 
@@ -19,13 +19,13 @@ use super::{HandleError, HandleErrorContext, HandleErrorResult};
 #[derive(Clone, Copy, Debug)]
 pub struct LogAndIgnore;
 
-impl HandleError for LogAndIgnore {
+impl<Tr: MaybeSync> HandleError<Tr> for LogAndIgnore {
 	type HandlerErr = Infallible;
 
 	async fn handle_errors(
 		&mut self,
 		errors: NonEmptyVec<FetcherError>,
-		_cx: HandleErrorContext<'_>,
+		_cx: HandleErrorContext<'_, Tr>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		for error in &errors {
 			tracing::error!("{}", ErrorChainDisplay(error));
