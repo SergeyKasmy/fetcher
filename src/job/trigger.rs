@@ -7,7 +7,7 @@
 //! This module defines the [`Trigger`] type
 //! that specifies either a duration or a time of day a job should be re-triggered.
 //!
-//! It also re-exported [`chrono`] to make use of [`NaiveTime`] and [`NaiveDateTime`] types.
+//! It also re-exported [`chrono`] to make use of the [`NaiveTime`](`chrono::NaiveTime`) type.
 
 mod every;
 mod never;
@@ -16,6 +16,7 @@ mod once_a_day;
 pub use self::{every::Every, never::Never, once_a_day::OnceADayAt};
 
 pub use chrono;
+use either::Either;
 
 use std::{error::Error, fmt::Display, time::Duration};
 
@@ -39,7 +40,7 @@ pub trait Trigger: MaybeSendSync {
 	/// Returns twice of the approximate duration of the typical [`Trigger::wait`].
 	///
 	/// Currently used as a way to calculate that long enough has passed
-	/// and the error counter (if present in the implementation of [`HandleErrors`](`super::error_handling::HandleErrors`))
+	/// and the error counter (if present in the implementation of [`HandleError`](`super::error_handling::HandleError`))
 	/// can be reset, and thus it can be assumed that the next error isn't a consecutive error but a new one.
 	// TODO: improve docs
 	fn twice_as_duration(&self) -> Duration;
@@ -53,6 +54,27 @@ pub enum ContinueJob {
 
 	/// The job should just be stopped
 	No,
+}
+
+impl<A, B> Trigger for Either<A, B>
+where
+	A: Trigger,
+	B: Trigger,
+{
+	type Err = Box<dyn Error + Send + Sync>;
+
+	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
+		match self {
+			Either::Left(tr) => tr.wait().await.map_err(Into::into),
+			Either::Right(tr) => tr.wait().await.map_err(Into::into),
+		}
+	}
+
+	fn twice_as_duration(&self) -> Duration {
+		self.as_ref()
+			.map_either(|a| a.twice_as_duration(), |b| b.twice_as_duration())
+			.into_inner()
+	}
 }
 
 async fn sleep(duration: Duration) {
