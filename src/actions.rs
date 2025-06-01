@@ -14,11 +14,11 @@ use std::convert::Infallible;
 use either::Either;
 use transforms::async_fn::AsyncFnTransform;
 
-use self::filters::{Filter, FilterWrapper};
+use self::filters::{Filter, FilterAction};
 use self::transforms::Transform;
-use self::transforms::TransformWrapper;
+use self::transforms::TransformAction;
 use self::transforms::async_fn::IntoTransformedEntries;
-use self::transforms::field::{Field, TransformField, TransformFieldWrapper};
+use self::transforms::field::{Field, TransformField, TransformFieldAdapter};
 
 use crate::actres_try;
 use crate::ctrl_c_signal::CtrlCSignalChannel;
@@ -104,34 +104,34 @@ pub struct ActionContext<'a, S, E> {
 }
 
 /// Transforms the provided [`Filter`] into an [`Action`]
-pub fn filter<F>(f: F) -> FilterWrapper<F>
+pub fn filter<F>(f: F) -> FilterAction<F>
 where
 	F: Filter,
 {
-	FilterWrapper(f)
+	FilterAction(f)
 }
 
 /// Transforms the provided [`Transform`] into an [`Action`]
-pub fn transform<T>(t: T) -> TransformWrapper<T>
+pub fn transform<T>(t: T) -> TransformAction<T>
 where
 	T: Transform,
 {
-	TransformWrapper(t)
+	TransformAction(t)
 }
 
 /// Transforms the provided [`TransformField`] into an [`Action`] action on `field`
-pub fn transform_field<T>(field: Field, t: T) -> TransformWrapper<TransformFieldWrapper<T>>
+pub fn transform_field<T>(field: Field, t: T) -> TransformAction<TransformFieldAdapter<T>>
 where
 	T: TransformField,
 {
-	transform(TransformFieldWrapper {
+	transform(TransformFieldAdapter {
 		field,
 		transformator: t,
 	})
 }
 
 /// Transforms the provided [`TransformField`] into an [`Action`] action on [`Message::Body`](`crate::sinks::Message::body`)
-pub fn transform_body<T>(t: T) -> TransformWrapper<TransformFieldWrapper<T>>
+pub fn transform_body<T>(t: T) -> TransformAction<TransformFieldAdapter<T>>
 where
 	T: TransformField,
 {
@@ -139,7 +139,7 @@ where
 }
 
 /// Transforms the provided async function implementing [`Transform`] into an [`Action`] action.
-pub fn transform_fn<F, Fut, T>(f: F) -> TransformWrapper<AsyncFnTransform<F>>
+pub fn transform_fn<F, Fut, T>(f: F) -> TransformAction<AsyncFnTransform<F>>
 where
 	F: Fn(Entry) -> Fut + MaybeSendSync,
 	Fut: Future<Output = T> + MaybeSend,

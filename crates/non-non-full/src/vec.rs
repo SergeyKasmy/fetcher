@@ -58,6 +58,7 @@ impl<T> NonEmptyVec<T> {
 
 	/// Creates a new [`NonEmptyVec`] containing exactly one element
 	#[must_use]
+	// TODO: rename to with_first
 	pub fn new_one(value: T) -> Self {
 		Self(vec![value])
 	}

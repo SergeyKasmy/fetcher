@@ -1,4 +1,15 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //! This test checks that spawning non-send jobs works as expected when feature "send" is not enabled
+
+#[cfg(feature = "send")]
+#[test]
+#[ignore = "this test runs only when feature send is off"]
+fn non_send_jobs() {}
 
 #[cfg(not(feature = "send"))]
 #[tokio::test(flavor = "current_thread")]

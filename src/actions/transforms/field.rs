@@ -71,14 +71,9 @@ pub enum Field {
 	RawContents,
 }
 
-// TODO: make a new name
-/// A wrapper around a [`TransformField`].
-///
-/// It takes a value out of a [`Field`], passes it to the transformator,
-/// and processes the result - updating, removing, or retaining the old value of the field as specified by the transformator
-#[doc(hidden)]
-#[derive(Debug)]
-pub struct TransformFieldWrapper<T>
+/// Adapt [`TransformField`] to implement [`Transform`] by running [`TransformField::transform_field`] on the specified field.
+#[derive(Clone, Debug)]
+pub struct TransformFieldAdapter<T>
 where
 	T: TransformField,
 {
@@ -89,7 +84,7 @@ where
 	pub transformator: T,
 }
 
-impl<T> Transform for TransformFieldWrapper<T>
+impl<T> Transform for TransformFieldAdapter<T>
 where
 	T: TransformField,
 {

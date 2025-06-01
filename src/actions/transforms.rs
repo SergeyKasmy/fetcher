@@ -83,55 +83,9 @@ pub trait Transform: MaybeSendSync {
 	) -> impl Future<Output = Result<Vec<TransformedEntry>, Self::Err>> + MaybeSend;
 }
 
+/// Adapt a [`Transform`] to implement [`Action`] by applying [`Transform::transform_entry`] to each entry
 #[derive(Clone, Debug)]
-pub struct TransformWrapper<T>(pub T);
-
-impl<T> Action for TransformWrapper<T>
-where
-	T: Transform,
-{
-	type Err = TransformError;
-
-	async fn apply<S, E>(
-		&mut self,
-		entries: Vec<Entry>,
-		_ctx: ActionContext<'_, S, E>,
-	) -> ActionResult<Self::Err>
-	where
-		S: Source,
-		E: ExternalSave,
-	{
-		let mut transformed_entries = Vec::new();
-
-		for entry in entries {
-			let entries =
-				actres_try!(transform_old_entry_into_new_entries(&mut self.0, entry).await);
-			transformed_entries.extend(entries);
-		}
-
-		ActionResult::Ok(transformed_entries)
-	}
-}
-
-async fn transform_old_entry_into_new_entries<T>(
-	this: &mut T,
-	old_entry: Entry,
-) -> Result<Vec<Entry>, TransformError>
-where
-	T: Transform,
-{
-	this.transform_entry(old_entry.clone())
-		.await
-		.map(|vec| {
-			vec.into_iter()
-				.map(|transformed_entry| transformed_entry.into_entry(&old_entry))
-				.collect()
-		})
-		.map_err(|kind| TransformError {
-			kind: kind.into(),
-			original_entry: old_entry,
-		})
-}
+pub struct TransformAction<T>(pub T);
 
 impl Transform for () {
 	type Err = Infallible;
@@ -185,4 +139,51 @@ where
 	) -> impl Future<Output = Result<Vec<TransformedEntry>, Self::Err>> + MaybeSend {
 		(*self).transform_entry(entry)
 	}
+}
+
+impl<T> Action for TransformAction<T>
+where
+	T: Transform,
+{
+	type Err = TransformError;
+
+	async fn apply<S, E>(
+		&mut self,
+		entries: Vec<Entry>,
+		_ctx: ActionContext<'_, S, E>,
+	) -> ActionResult<Self::Err>
+	where
+		S: Source,
+		E: ExternalSave,
+	{
+		let mut transformed_entries = Vec::new();
+
+		for entry in entries {
+			let entries =
+				actres_try!(transform_old_entry_into_new_entries(&mut self.0, entry).await);
+			transformed_entries.extend(entries);
+		}
+
+		ActionResult::Ok(transformed_entries)
+	}
+}
+
+async fn transform_old_entry_into_new_entries<T>(
+	this: &mut T,
+	old_entry: Entry,
+) -> Result<Vec<Entry>, TransformError>
+where
+	T: Transform,
+{
+	this.transform_entry(old_entry.clone())
+		.await
+		.map(|vec| {
+			vec.into_iter()
+				.map(|transformed_entry| transformed_entry.into_entry(&old_entry))
+				.collect()
+		})
+		.map_err(|kind| TransformError {
+			kind: kind.into(),
+			original_entry: old_entry,
+		})
 }

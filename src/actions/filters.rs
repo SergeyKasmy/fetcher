@@ -37,26 +37,9 @@ pub trait Filter: MaybeSendSync {
 	) -> impl Future<Output = Result<(), Self::Err>> + MaybeSend;
 }
 
+/// Adapt a [`Filter`] to implement [`Action`] by actually filtering the entries
 #[derive(Clone, Debug)]
-pub struct FilterWrapper<F>(pub F);
-
-impl<F> Action for FilterWrapper<F>
-where
-	F: Filter,
-{
-	type Err = FilterError;
-
-	async fn apply<S, E>(
-		&mut self,
-		mut entries: Vec<Entry>,
-		_ctx: ActionContext<'_, S, E>,
-	) -> ActionResult<Self::Err> {
-		match self.0.filter(&mut entries).await {
-			Ok(()) => ActionResult::Ok(entries),
-			Err(e) => ActionResult::Err(e.into()),
-		}
-	}
-}
+pub struct FilterAction<F>(pub F);
 
 impl Filter for () {
 	type Err = Infallible;
@@ -106,5 +89,23 @@ where
 		entries: &mut Vec<Entry>,
 	) -> impl Future<Output = Result<(), Self::Err>> + MaybeSend {
 		(*self).filter(entries)
+	}
+}
+
+impl<F> Action for FilterAction<F>
+where
+	F: Filter,
+{
+	type Err = FilterError;
+
+	async fn apply<S, E>(
+		&mut self,
+		mut entries: Vec<Entry>,
+		_ctx: ActionContext<'_, S, E>,
+	) -> ActionResult<Self::Err> {
+		match self.0.filter(&mut entries).await {
+			Ok(()) => ActionResult::Ok(entries),
+			Err(e) => ActionResult::Err(e.into()),
+		}
 	}
 }
