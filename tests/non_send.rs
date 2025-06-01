@@ -29,7 +29,10 @@ async fn non_send_jobs() {
 
 			let task = Task::<(), _, _>::builder("task")
 				.action(transform_fn(async |entry| {
+					#[cfg(feature = "nightly")]
 					rc.update(|x| x + 1);
+					#[cfg(not(feature = "nightly"))]
+					rc.set(rc.get() + 1);
 					entry
 				}))
 				.build_without_replies();
@@ -48,7 +51,7 @@ async fn non_send_jobs() {
 				.ctrlc_chan(None)
 				.build();
 
-			let res = join!(job1.run(), job2.run());
+			let _res = join!(job1.run(), job2.run());
 
 			assert_eq!(rc.get(), 2);
 		})
