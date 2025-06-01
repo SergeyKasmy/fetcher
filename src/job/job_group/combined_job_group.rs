@@ -6,9 +6,14 @@
 
 //! This module contains the [`CombinedJobGroup`] struct
 
-use tokio::join;
+use std::pin::pin;
 
-use super::{JobGroup, JobGroupResult};
+use futures::{Stream, StreamExt as _, stream_select};
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
+
+use super::{JobGroup, JobId, spawn};
+use crate::{job::JobResult, maybe_send::MaybeSend};
 
 /// A job group that combines 2 other job groups and runs them concurrently to completion.
 ///
@@ -20,30 +25,22 @@ where
 	G1: JobGroup,
 	G2: JobGroup,
 {
-	async fn run_concurrently(&mut self) -> JobGroupResult {
-		let results = join!(self.0.run_concurrently(), self.1.run_concurrently());
-
-		results.0.into_iter().chain(results.1.into_iter()).collect()
-	}
-
-	#[cfg(feature = "send")]
-	async fn run_in_parallel(self) -> (JobGroupResult, Self)
+	fn run(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
 	where
-		Self: 'static,
+		Self: Sized + 'static,
 	{
-		let ((job_results1, inner1), (job_results2, inner2)) =
-			join!(self.0.run_in_parallel(), self.1.run_in_parallel());
+		let (tx, rx) = mpsc::channel(128);
 
-		let job_results = job_results1
-			.into_iter()
-			.chain(job_results2.into_iter())
-			.collect();
+		spawn(async move {
+			let g1_run = pin!(self.0.run());
+			let g2_run = pin!(self.1.run());
 
-		let this = Self(inner1, inner2);
-		(job_results, this)
-	}
+			let mut stream = stream_select!(g1_run, g2_run);
+			while let Some(item) = stream.next().await {
+				tx.send(item).await.unwrap();
+			}
+		});
 
-	fn names(&self) -> impl Iterator<Item = Option<String>> {
-		self.0.names().chain(self.1.names())
+		ReceiverStream::new(rx)
 	}
 }

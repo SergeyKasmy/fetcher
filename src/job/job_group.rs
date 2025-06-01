@@ -10,8 +10,13 @@ mod combined_job_group;
 mod disabled_job_group;
 mod named_job_group;
 
+use futures::{Stream, future::Either as FutureEither, stream};
+use itertools::Itertools;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
+
+use std::fmt::{self, Display};
 use std::iter;
-use tokio::join;
 
 use super::{JobResult, OpaqueJob};
 use crate::StaticStr;
@@ -40,17 +45,14 @@ pub type JobGroupResult = Vec<JobResult>;
 /// 4. Using unit `()` for empty groups
 ///
 /// # Running Jobs
-/// Jobs in a group can be run in two ways:
-///
-/// - [`run_concurrently`](JobGroup::run_concurrently): Runs jobs concurrently in the same async task
-/// - [`run_in_parallel`](JobGroup::run_in_parallel): Spawns each job on a separate task (requires `send` feature)
-///
-/// The [`run`](JobGroup::run) method automatically chooses between these based on the `send` feature flag.
+/// The [`run`](JobGroup::run) method automatically chooses between [`tokio::spawn`] and [`tokio::task::spawn_local`] based on the `send` feature flag.
 ///
 /// # Example
 /// ```rust
 /// # tokio_test::block_on(async {
+/// # tokio::task::LocalSet::new().run_until(async {
 /// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
+/// use futures::stream::StreamExt;
 ///
 /// // Create jobs
 /// let job1 = Job::builder("job1")
@@ -70,71 +72,29 @@ pub type JobGroupResult = Vec<JobResult>;
 /// let mut group = (job1, job2);
 ///
 /// // Run jobs and get results
-/// let results = group.run_concurrently().await;
+/// let mut group_results = group.clone().run();
+/// while let Some(job_result) = group_results.next().await {
+///     println!("Job {} finished!", job_result.0);
+/// }
+/// drop(group_results);
 ///
 /// // Add a name to the group
 /// let named_group = group.with_name("my_group");
 ///
 /// // Temporarily disable the group
-/// let disabled = named_group.disable();
+/// let _disabled = named_group.disable();
+/// # }).await;
 /// # });
 /// ```
 pub trait JobGroup: MaybeSendSync {
-	/// Runs all jobs in the group concurrently in the same async task.
-	///
-	/// This method runs all jobs in the group concurrently using [`join!()`],
-	/// but does not spawn new tasks. All jobs run in the same async task.
-	/// This is in contrast to [`JobGroup::run_in_parallel`].
-	#[must_use = "the jobs could've finished with errors"]
-	fn run_concurrently(&mut self) -> impl Future<Output = JobGroupResult> + MaybeSend;
-
-	/// Runs all jobs in the group in parallel on separate tasks.
+	// TODO: fix docs
+	/// Runs all jobs in the group TODO
 	///
 	/// This method spawns each job on a separate task using `tokio::spawn`.
-	/// Only available when the `send` feature is enabled.
-	/// This is in contrast to [`JobGroup::run_concurrently`].
-	#[cfg(feature = "send")]
 	#[must_use = "the jobs could've finished with errors"]
-	fn run_in_parallel(self) -> impl Future<Output = (JobGroupResult, Self)> + Send
+	fn run(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
 	where
 		Self: Sized + 'static;
-
-	/// Returns the names of all jobs in the group.
-	///
-	/// Returns `None` for unnamed jobs.
-	fn names(&self) -> impl Iterator<Item = Option<String>>;
-
-	/// Run all jobs in the group using the most appropriate method.
-	///
-	/// When the `send` feature is enabled, this will run jobs in parallel using [`run_in_parallel`](JobGroup::run_in_parallel).
-	/// Otherwise, it will run jobs concurrently using [`run_concurrently`](JobGroup::run_concurrently).
-	///
-	/// This is the recommended way to run jobs unless you specifically need concurrent or parallel execution.
-	#[cfg(feature = "send")]
-	#[must_use = "the jobs could've finished with errors"]
-	// TODO: return a stream of job results instead!
-	// Makes it possible to somehow handle errors and panics in jobs without waiting for other jobs to stop
-	fn run(self) -> impl Future<Output = (JobGroupResult, Self)> + MaybeSend
-	where
-		Self: Sized + 'static,
-	{
-		async move { self.run_in_parallel().await }
-	}
-
-	/// Run all jobs in the group using the most appropriate method.
-	///
-	/// When the `send` feature is enabled, this will run jobs in parallel using [`run_in_parallel`](JobGroup::run_in_parallel).
-	/// Otherwise, it will run jobs concurrently using [`run_concurrently`](JobGroup::run_concurrently).
-	///
-	/// This is the recommended way to run jobs unless you specifically need concurrent or parallel execution.
-	#[cfg(not(feature = "send"))]
-	#[must_use = "the jobs could've finished with errors"]
-	fn run(mut self) -> impl Future<Output = (JobGroupResult, Self)> + MaybeSend
-	where
-		Self: Sized,
-	{
-		async move { (self.run_concurrently().await, self) }
-	}
 
 	/// Combine this job group with another job group.
 	///
@@ -143,7 +103,9 @@ pub trait JobGroup: MaybeSendSync {
 	/// # Example
 	/// ```rust
 	/// # tokio_test::block_on(async {
+	/// # tokio::task::LocalSet::new().run_until(async {
 	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
+	/// use futures::stream::StreamExt;
 	///
 	/// // Create jobs
 	/// let job1 = Job::builder("job1").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
@@ -157,7 +119,8 @@ pub trait JobGroup: MaybeSendSync {
 	//r/ // Combine the groups
 	/// let combined = group1.combine_with(group2);
 	///
-	/// let (results, _combined) = combined.run().await;
+	/// let results = combined.run().collect::<Vec<_>>().await;
+	/// # }).await;
 	/// # });
 	/// ```
 	fn combine_with<G>(self, other: G) -> CombinedJobGroup<Self, G>
@@ -179,6 +142,7 @@ pub trait JobGroup: MaybeSendSync {
 	/// ```rust
 	/// # tokio_test::block_on(async {
 	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
+	/// use futures::stream::StreamExt;
 	///
 	/// // Create jobs
 	/// let job1 = Job::builder("job1").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
@@ -190,7 +154,7 @@ pub trait JobGroup: MaybeSendSync {
 	/// let disabled = group.disable();
 	///
 	/// // Running the disabled group will do nothing
-	/// let (results, _) = disabled.run().await;
+	/// let results = disabled.run().collect::<Vec<_>>().await;
 	/// assert!(results.is_empty());
 	/// # });
 	/// ```
@@ -206,29 +170,31 @@ pub trait JobGroup: MaybeSendSync {
 	/// Creates a new [`NamedJobGroup`] that wraps this group with the given name.
 	/// The name is used for logging and debugging purposes.
 	///
-	/// # Example
-	/// ```rust
-	/// # tokio_test::block_on(async {
-	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
 	///
-	/// let job1 = Job::builder("job1").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job2 = Job::builder("job2").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
-	///
-	/// let group = (job1, job2);
-	///
-	/// // Add a name to the group
-	/// let named_group = group.with_name("important_jobs");
-	///
-	/// let names = named_group.names().flatten().collect::<Vec<String>>();
-	/// assert_eq!(names, vec!["important_jobs/job1", "important_jobs/job2"]);
-	///
-	/// // Add a second name to the group
-	/// let named_group2 = named_group.with_name("something_else");
-	///
-	/// let names = named_group2.names().flatten().collect::<Vec<String>>();
-	/// assert_eq!(names, vec!["something_else/important_jobs/job1", "something_else/important_jobs/job2"]);
-	/// # });
-	/// ```
+	// TODO: fix doccomment
+	// # Example
+	// ```rust
+	// # tokio_test::block_on(async {
+	// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
+	//
+	// let job1 = Job::builder("job1").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
+	// let job2 = Job::builder("job2").tasks(()).refresh_time(RefreshTime::Never).error_handling(Forward).ctrlc_chan(None).build();
+	//
+	// let group = (job1, job2);
+	//
+	// // Add a name to the group
+	// let named_group = group.with_name("important_jobs");
+	//
+	// let names = named_group.names().flatten().collect::<Vec<String>>();
+	// assert_eq!(names, vec!["important_jobs/job1", "important_jobs/job2"]);
+	//
+	// // Add a second name to the group
+	// let named_group2 = named_group.with_name("something_else");
+	//
+	// let names = named_group2.names().flatten().collect::<Vec<String>>();
+	// assert_eq!(names, vec!["something_else/important_jobs/job1", "something_else/important_jobs/job2"]);
+	// # });
+	// ```
 	fn with_name<S>(self, name: S) -> NamedJobGroup<Self>
 	where
 		Self: Sized,
@@ -241,48 +207,65 @@ pub trait JobGroup: MaybeSendSync {
 	}
 }
 
+/// Unique ID of a job
+///
+/// Includes its name and all named groups' names.
+///
+/// Implements [`Display`] to format the name in a filesystem path-like manner
+///
+/// # Example
+/// ```
+/// # tokio_test::block_on(async {
+/// use fetcher::job::{Job, JobGroup, RefreshTime};
+/// use futures::stream::StreamExt;
+/// use std::pin::pin;
+///
+/// let job = Job::builder("job")
+/// 				.tasks(())
+///                 .refresh_time(RefreshTime::Never)
+///                 .ctrlc_chan(None)
+///                 .build_with_default_error_handling();
+///
+/// let inner_group = (job,).with_name("inner group");
+/// let mut outer_group = inner_group.with_name("outer group");
+/// let mut run_stream = pin!(outer_group.run());
+///
+/// let (job_id, _job_result) = run_stream.next().await.unwrap();
+/// assert_eq!(job_id.to_string(), "outer group/inner group/job");
+/// # });
+/// ```
+#[derive(Debug)]
+pub struct JobId {
+	/// Name of the job
+	pub job_name: Option<StaticStr>,
+
+	/// List of all job group names this job belongs to.
+	/// Starts at the inner job group and goes to the outer
+	pub group_hierarchy: Vec<StaticStr>,
+}
+
 impl<J> JobGroup for Option<J>
 where
 	J: JobGroup,
 {
-	async fn run_concurrently(&mut self) -> JobGroupResult {
-		let Some(group) = self else {
-			return Vec::new();
-		};
-
-		group.run_concurrently().await
-	}
-
-	#[cfg(feature = "send")]
-	async fn run_in_parallel(self) -> (JobGroupResult, Self)
+	fn run(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
 	where
-		Self: 'static,
+		Self: Sized + 'static,
 	{
 		let Some(group) = self else {
-			return (Vec::new(), None);
+			return FutureEither::Left(stream::empty());
 		};
 
-		let (job_results, inner) = group.run_in_parallel().await;
-		(job_results, Some(inner))
-	}
-
-	fn names(&self) -> impl Iterator<Item = Option<String>> {
-		self.iter().flat_map(JobGroup::names)
+		FutureEither::Right(group.run())
 	}
 }
 
 impl JobGroup for () {
-	async fn run_concurrently(&mut self) -> JobGroupResult {
-		Vec::new()
-	}
-
-	#[cfg(feature = "send")]
-	async fn run_in_parallel(self) -> (JobGroupResult, Self) {
-		(Vec::new(), ())
-	}
-
-	fn names(&self) -> impl Iterator<Item = Option<String>> {
-		iter::empty()
+	fn run(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
+	where
+		Self: Sized + 'static,
+	{
+		stream::empty()
 	}
 }
 
@@ -290,21 +273,14 @@ impl<G> JobGroup for (G,)
 where
 	G: OpaqueJob,
 {
-	async fn run_concurrently(&mut self) -> JobGroupResult {
-		vec![self.0.run().await]
-	}
-
-	#[cfg(feature = "send")]
-	async fn run_in_parallel(self) -> (JobGroupResult, Self)
+	fn run(mut self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
 	where
-		Self: 'static,
+		Self: Sized + 'static,
 	{
-		let (result, inner) = run_job_in_parallel(self.0).await;
-		(vec![result], (inner,))
-	}
-
-	fn names(&self) -> impl Iterator<Item = Option<String>> {
-		iter::once(self.0.name().map(ToOwned::to_owned))
+		stream::once(async move {
+			let name = self.0.name().map(|n| StaticStr::from(n.to_owned()));
+			(JobId::new(name), self.0.run().await)
+		})
 	}
 }
 
@@ -314,52 +290,39 @@ macro_rules! impl_jobgroup_for_tuples {
 		where
 			$($type_name: OpaqueJob),+
 		{
-			#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
-			async fn run_concurrently(&mut self) -> JobGroupResult {
-				// $type_name = specific job
-				let ($($type_name),+) = self;
-
-				// $type_name = $type_name's job result
-				let ($($type_name),+) = join!( $($type_name.run()),+ );
-
-				// destructure the tuple into an array and then convert it
-				#[expect(clippy::tuple_array_conversions, reason = "the other way is overcomplicated")]
-				JobGroupResult::from([$($type_name),+])
-			}
-
-			#[cfg(feature = "send")]
-			#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
-			async fn run_in_parallel(self) -> (JobGroupResult, Self)
-			where Self: 'static
+			#[expect(
+				non_snake_case,
+				reason = "it's fine to re-use the names to make calling the macro easier"
+			)]
+			fn run(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
+			where
+				Self: Sized + 'static,
 			{
-				// $type_name = specific job
+				let (tx, rx) = mpsc::channel(128);
 				let ($($type_name),+) = self;
 
-				// $type_name = typle of (job_result, old $type_name)
-				let ($($type_name),+) = join!($(run_job_in_parallel($type_name)),+);
+				$(
+					{
+						let tx = tx.clone();
+						let mut job = $type_name;
+						// TODO: what if the task panics?
+						spawn(async move {
+							let result = OpaqueJob::run(&mut job).await;
+							let id = JobId::new(job.name().map(|s| StaticStr::from(s.to_owned())));
+							if let Err(e) = tx.send((id, result)).await {
+								tracing::debug!(
+									"run Stream channel closed before job result has been sent. JobId: {}",
+									e.0.0
+								);
+							}
+						});
+					}
+				)+
 
-				// destructure the tuple into an array and then convert it
-				let results = JobGroupResult::from([$($type_name.0),+]);
-				let this = ($($type_name.1),+);
-
-				(results, this)
-			}
-
-			#[expect(non_snake_case, reason = "it's fine to re-use the names to make calling the macro easier")]
-			fn names(&self) -> impl Iterator<Item = Option<String>> {
-				let ($($type_name),+) = self;
-
-				iter::empty()
-					$(
-						.chain(
-							iter::once(
-								$type_name.name().map(ToOwned::to_owned)
-							)
-						)
-					)+
+				ReceiverStream::new(rx)
 			}
 		}
-	}
+	};
 }
 
 impl_jobgroup_for_tuples!(J1 J2);
@@ -372,19 +335,38 @@ impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8);
 impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9);
 impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10);
 
-#[cfg(feature = "send")]
-async fn run_job_in_parallel<J>(mut job: J) -> (JobResult, J)
+impl JobId {
+	/// Creates a new [`JobId`] with the provided [`JobId::job_name`]
+	pub fn new(job_name: Option<StaticStr>) -> Self {
+		Self {
+			group_hierarchy: Vec::new(),
+			job_name,
+		}
+	}
+}
+
+impl Display for JobId {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		const UNKNOWN_JOB: StaticStr = StaticStr::from_static_str("<UNKNOWN>");
+
+		let path = self
+			.group_hierarchy
+			.iter()
+			.rev()
+			.chain(iter::once(self.job_name.as_ref().unwrap_or(&UNKNOWN_JOB)))
+			.join("/");
+
+		f.write_str(&path)
+	}
+}
+
+pub(crate) fn spawn<F, T>(fut: F)
 where
-	J: OpaqueJob + 'static,
+	F: Future<Output = T> + MaybeSend + 'static,
+	T: MaybeSend + 'static,
 {
-	use tracing::Instrument;
-
-	let async_task = async move {
-		let result = OpaqueJob::run(&mut job).await;
-		(result, job)
-	};
-
-	tokio::spawn(async_task.in_current_span())
-		.await
-		.expect("should never panic, all panicked should've been caught")
+	#[cfg(feature = "send")]
+	tokio::spawn(fut);
+	#[cfg(not(feature = "send"))]
+	tokio::task::spawn_local(fut);
 }

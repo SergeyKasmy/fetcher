@@ -6,7 +6,11 @@
 
 //! This module contains the [`DisabledJobGroup`] type.
 
-use super::{JobGroup, JobGroupResult};
+use futures::{Stream, stream};
+
+use crate::{job::JobResult, maybe_send::MaybeSend};
+
+use super::{JobGroup, JobId};
 
 /// Wraps a [`JobGroup`] implementation but doesn't do anything when asked to run.
 ///
@@ -26,16 +30,10 @@ impl<G> JobGroup for DisabledJobGroup<G>
 where
 	G: JobGroup,
 {
-	async fn run_concurrently(&mut self) -> JobGroupResult {
-		Vec::new()
-	}
-
-	#[cfg(feature = "send")]
-	async fn run_in_parallel(self) -> (JobGroupResult, Self) {
-		(Vec::new(), self)
-	}
-
-	fn names(&self) -> impl Iterator<Item = Option<String>> {
-		self.0.names()
+	fn run(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
+	where
+		Self: Sized + 'static,
+	{
+		stream::empty()
 	}
 }

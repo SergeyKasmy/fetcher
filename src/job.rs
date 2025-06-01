@@ -32,7 +32,7 @@ use crate::{
 };
 
 /// A single job, containing a single or a couple [`tasks`](`crate::task::Task`), possibly refetching every set amount of time
-#[derive(bon::Builder, Debug)]
+#[derive(bon::Builder, Clone, Debug)]
 #[builder(finish_fn(name = "build_internal", vis = ""))]
 #[builder(builder_type(doc {
 /// Use builder syntax to set the inputs and finish with [`build()`](`JobBuilder::build()`)
@@ -80,9 +80,13 @@ impl<T: TaskGroup, H> Job<T, H> {
 			#[expect(clippy::manual_ok_err, reason = "false positive")]
 			let errors = results
 				.into_iter()
-				.filter_map(|r| match r {
-					Ok(()) => None,
-					Err(e) => Some(e),
+				.filter_map(|r| {
+					tracing::trace!("Task result: {r:?}");
+
+					match r {
+						Ok(()) => None,
+						Err(e) => Some(e),
+					}
 				})
 				.collect::<Vec<_>>();
 

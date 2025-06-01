@@ -15,7 +15,7 @@ use chrono::{NaiveDateTime, NaiveTime, offset::Local as LocalTime};
 use std::time::Duration;
 
 /// When to refresh the job?
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum RefreshTime {
 	/// After this mount of time has passed since the last time
 	Every(Duration),

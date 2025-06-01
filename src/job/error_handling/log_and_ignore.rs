@@ -16,6 +16,7 @@ use crate::job::ErrorChainDisplay;
 use super::{HandleError, HandleErrorContext, HandleErrorResult};
 
 /// Error handler that logs all errors and continues job execution.
+#[derive(Clone, Copy, Debug)]
 pub struct LogAndIgnore;
 
 impl HandleError for LogAndIgnore {

@@ -763,6 +763,7 @@ dependencies = [
  "thiserror 2.0.12",
  "tokio",
  "tokio-rustls 0.26.2",
+ "tokio-stream",
  "tokio-test",
  "tracing",
  "tracing-journald",

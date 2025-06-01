@@ -81,6 +81,9 @@ macro_rules! impl_taskgroup_for_tuples {
 				//[results.0, results.1]
 
 				let results = join!($(self.$index.run()),+);
+
+				tracing::trace!("All tasks have finished");
+
 				results.into()
 			}
 

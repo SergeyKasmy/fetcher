@@ -63,6 +63,8 @@ pub trait Action: MaybeSendSync {
 		E: ExternalSave;
 }
 
+// TODO: make this TaskResult to allow jobs to be terminated by actions.
+// Right now tasks return just a normal result with no way to stop the job without returning an error
 /// Result of a call to [`Action::apply`]
 #[derive(Debug)]
 pub enum ActionResult<E, T = Vec<Entry>> {
