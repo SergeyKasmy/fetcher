@@ -28,12 +28,11 @@ To use fetcher, you need to add it as a dependency to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-fetcher = "0.15"
+fetcher = { version = "0.15", features = ["full"] }
 tokio = { version = "1", features = ["full"] }
 ```
 
-For the smallest example on how to use fetcher, please see `examples/simple.rs`.
-
+For the smallest example on how to use fetcher, please see `examples/simple_website_to_stdout.rs`.
 More complete examples can be found in the `examples/` directory. They demonstrate how to:
 
 * Fetch data from various sources.

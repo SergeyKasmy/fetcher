@@ -37,7 +37,12 @@ where
 
 			let mut stream = stream_select!(g1_run, g2_run);
 			while let Some(item) = stream.next().await {
-				tx.send(item).await.expect("FIXME HANDLE THIS");
+				if let Err(e) = tx.send(item).await {
+					tracing::debug!(
+						"CombinedJobGroup::run stream channel closed before job result sent. JobId: {}",
+						e.0.0
+					);
+				}
 			}
 		});
 
