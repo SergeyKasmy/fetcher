@@ -37,7 +37,7 @@ where
 
 			let mut stream = stream_select!(g1_run, g2_run);
 			while let Some(item) = stream.next().await {
-				tx.send(item).await.unwrap();
+				tx.send(item).await.expect("FIXME HANDLE THIS");
 			}
 		});
 

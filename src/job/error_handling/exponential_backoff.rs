@@ -20,6 +20,7 @@ use tokio::{select, time::sleep};
 use crate::{
 	error::FetcherError,
 	job::{ErrorChainDisplay, Trigger, ctrlc_wait},
+	maybe_send::MaybeSync,
 };
 
 use super::{HandleError, HandleErrorContext, HandleErrorResult};
@@ -72,17 +73,21 @@ pub struct ExponentialBackoff {
 #[derive(Clone, Debug)]
 struct ErrorInfo {
 	attempt: u32,
+	// TODO: change to systemtime
 	happened_at: Instant,
 	must_sleep_for: Duration,
 }
 
-impl HandleError for ExponentialBackoff {
+impl<Tr> HandleError<Tr> for ExponentialBackoff
+where
+	Tr: Trigger,
+{
 	type HandlerErr = Infallible;
 
 	async fn handle_errors(
 		&mut self,
 		errors: NonEmptyVec<FetcherError>,
-		cx: HandleErrorContext<'_>,
+		cx: HandleErrorContext<'_, Tr>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		if self.should_continue(&errors, cx).await {
 			HandleErrorResult::ContinueJob
@@ -131,7 +136,7 @@ impl ExponentialBackoff {
 	/// If this count reaches [`ExponentialBackoff::max_attempts`], then the next call to [`ExponentialBackoff::handle_errors`]
 	/// will actually just stop the job completely and returns the errors back.
 	#[must_use]
-	pub fn next_attempt(&mut self, job_trigger: &Trigger) -> u32 {
+	pub fn next_attempt<Tr: Trigger>(&mut self, job_trigger: &Tr) -> u32 {
 		self.reset_error_count(job_trigger);
 
 		match self.check_limit_reached() {
@@ -150,10 +155,10 @@ enum AttemptLimitReached {
 impl ExponentialBackoff {
 	/// Returns `true` if the job should continue executing.
 	/// Returns `false` if the job should stop.
-	async fn should_continue(
+	async fn should_continue<Tr: Trigger>(
 		&mut self,
 		errors: &[FetcherError],
-		cx: HandleErrorContext<'_>,
+		cx: HandleErrorContext<'_, Tr>,
 	) -> bool {
 		// reset counter if a while has passed since last error
 		self.reset_error_count(cx.job_trigger);
@@ -198,30 +203,15 @@ impl ExponentialBackoff {
 	// TODO: resets too early if after a long pause internet got disconnected for a while.
 	// Maybe make network errors reset last_error.happened_at?
 	/// Resets the attempt counter if enough time has passed since last error
-	fn reset_error_count(&mut self, job_trigger: &Trigger) {
+	fn reset_error_count<Tr: Trigger>(&mut self, job_trigger: &Tr) {
 		let Some(last_error) = self.last_error_info.as_ref() else {
 			return;
 		};
 
-		match job_trigger {
-			Trigger::Every(dur) => {
-				let twice_trigger_dur = *dur * 2; // two times the re-trigger duration to make sure the job ran at least twice with no errors
-				if last_error.happened_at.elapsed() > last_error.must_sleep_for + twice_trigger_dur
-				{
-					self.reset();
-				}
-			}
-			// once a day
-			Trigger::OnceADayAt(_) => {
-				const TWO_DAYS: Duration = Duration::from_secs(
-					2 /* days */ * 24 /* hours a day */ * 60 /* mins an hour */ * 60, /* secs a min */
-				);
-
-				if last_error.happened_at.elapsed() > last_error.must_sleep_for + TWO_DAYS {
-					self.reset();
-				}
-			}
-			Trigger::Never => (),
+		if last_error.happened_at.elapsed()
+			> last_error.must_sleep_for + job_trigger.twice_as_duration()
+		{
+			self.reset();
 		}
 	}
 
@@ -330,7 +320,7 @@ fn exponential_backoff_duration(attempt: u32, use_jitter: bool, mut rng: impl Rn
 
 /// Returns `true` if the job should continue after the pause.
 /// Returns `false` if the pause was interrupted and the job should stop
-async fn pause_job(dur: Duration, cx: HandleErrorContext<'_>) -> bool {
+async fn pause_job<Tr: MaybeSync>(dur: Duration, cx: HandleErrorContext<'_, Tr>) -> bool {
 	tracing::info!("Pausing job {} for {}m", cx.job_name, dur.as_secs() / 60);
 
 	select! {

@@ -9,110 +9,73 @@
 //!
 //! It also re-exported [`chrono`] to make use of [`NaiveTime`] and [`NaiveDateTime`] types.
 
+mod every;
+mod never;
+mod once_a_day;
+
+pub use self::{every::Every, never::Never, once_a_day::OnceADayAt};
+
 pub use chrono;
 
-use chrono::{NaiveDateTime, NaiveTime, offset::Local as LocalTime};
-use std::time::Duration;
+use std::{error::Error, fmt::Display, time::Duration};
 
-/// When to re-trigger the job?
-#[derive(Clone, Debug)]
-pub enum Trigger {
-	/// After this mount of time has passed since the last time
-	Every(Duration),
+use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
-	/// Once a day at this time
-	OnceADayAt(NaiveTime),
+/// Specifies the condition under which a job will be re-triggered
+pub trait Trigger: MaybeSendSync {
+	/// The error type that can be returned while waiting
+	type Err: Into<Box<dyn Error + Send + Sync>>;
 
-	/// Never re-trigger, run once
-	Never,
+	/// Block the current job until the appropriate condition is met
+	///
+	/// # Returns
+	/// `Ok(ContinueJob::Yes)` if the job should be retriggered after the wait has ended
+	/// `Ok(ContinueJob::No)` if the job should be stopped after the wait has ended
+	/// `Err(Self::Err)` if an error occured while waiting
+	fn wait(&mut self) -> impl Future<Output = Result<ContinueJob, Self::Err>> + MaybeSend;
+
+	// TODO: not a very nice API. Provide more freedom for trigger and handleerror implementations to handle errors and waiting as they want.
+	// This one is too heavily coupled with ExponentialBackoff specifically
+	/// Returns twice of the approximate duration of the typical [`Trigger::wait`].
+	///
+	/// Currently used as a way to calculate that long enough has passed
+	/// and the error counter (if present in the implementation of [`HandleErrors`](`super::error_handling::HandleErrors`))
+	/// can be reset, and thus it can be assumed that the next error isn't a consecutive error but a new one.
+	// TODO: improve docs
+	fn twice_as_duration(&self) -> Duration;
 }
 
-impl Trigger {
-	/// Returns the duration that is left to the next time the job should be re-triggered, from now
-	#[must_use]
-	pub fn remaining_time_from_now(&self) -> Option<Duration> {
-		let now = LocalTime::now().naive_local();
-		self.remaining_time_from(now)
-	}
+/// What should happen after the [`Trigger::wait`] has ended?
+#[derive(Clone, Copy, Debug)]
+pub enum ContinueJob {
+	/// The job should be continued and re-triggered
+	Yes,
 
-	/// Returns the duration that is left to the next time the job should be re-triggered, from the provided time `now`
-	#[expect(
-		clippy::missing_panics_doc,
-		reason = "doesn't actually panic, unless bugged"
-	)]
-	#[must_use]
-	pub fn remaining_time_from(&self, now: NaiveDateTime) -> Option<Duration> {
-		match self {
-			Trigger::Every(dur) => Some(*dur),
-			Trigger::OnceADayAt(time) => {
-				let remaining_time = *time - now.time();
-
-				// return if duration is not negative, i.e. it is in the future.
-				// Assumes that [`chrono::Duration::to_std()`] errors otherwise
-				let time_left = match remaining_time.to_std() {
-					// duration is positive, points to a moment in the future
-					Ok(dur) => dur,
-
-					// duration is negative, points to a moment in the past.
-					// This means we should add a day and return that
-					// since that time today has already passed
-					Err(_) => (remaining_time + chrono::Duration::days(1))
-						.to_std()
-						.expect(
-							"should point to the future since we added a day to the current day",
-						),
-				};
-
-				Some(time_left)
-			}
-			Trigger::Never => None,
-		}
-	}
+	/// The job should just be stopped
+	No,
 }
 
-#[cfg(test)]
-mod tests {
-	#![allow(clippy::unwrap_used)]
+async fn sleep(duration: Duration) {
+	const SECS_IN_MIN: u64 = 60;
 
-	use std::sync::LazyLock;
+	// log remaining sleep time
+	// scope to avoid keeping &dyn Display's across .await points
+	{
+		let mins = duration.as_secs() / SECS_IN_MIN;
+		let remainder = duration.as_secs() % SECS_IN_MIN;
+		let show_remaining_secs = mins < 5 && remainder > 0;
+		let display_remainder: (&dyn Display, &'static str) = if show_remaining_secs {
+			(&remainder, "s")
+		} else {
+			(&"", "")
+		};
 
-	use chrono::NaiveDate;
-
-	use super::*;
-
-	const HOUR: Duration = Duration::from_secs(60 /* mins in hour */ * 60 /* secs in min */);
-
-	// assume now is exactly 12 PM
-	static NOW: LazyLock<NaiveDateTime> = LazyLock::new(|| {
-		NaiveDateTime::new(
-			NaiveDate::from_ymd_opt(2000, 1, 1).unwrap(),
-			NaiveTime::from_hms_opt(12, 0, 0).unwrap(),
-		)
-	});
-
-	#[test]
-	fn never() {
-		assert_eq!(Trigger::Never.remaining_time_from_now(), None);
+		tracing::debug!(
+			"Putting job to sleep for {mins}m{}{}",
+			display_remainder.0,
+			display_remainder.1
+		);
 	}
 
-	#[test]
-	fn every() {
-		let time_point = Trigger::Every(HOUR * 5);
-
-		assert_eq!(time_point.remaining_time_from(*NOW).unwrap(), HOUR * 5);
-	}
-
-	#[test]
-	fn once_a_day_today() {
-		let at_2_pm = Trigger::OnceADayAt(NaiveTime::from_hms_opt(14, 0, 0).unwrap());
-
-		assert_eq!(at_2_pm.remaining_time_from(*NOW).unwrap(), HOUR * 2);
-	}
-
-	#[test]
-	fn once_a_day_tomorrow() {
-		let at_10_am = Trigger::OnceADayAt(NaiveTime::from_hms_opt(10, 0, 0).unwrap());
-
-		assert_eq!(at_10_am.remaining_time_from(*NOW).unwrap(), HOUR * 22);
-	}
+	tokio::time::sleep(duration).await;
 }

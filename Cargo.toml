@@ -190,3 +190,6 @@ uninhabited_references = "allow"
 
 # a stylistic choice
 obfuscated_if_else = "allow"
+
+# sometimes asks to split an already small function which would just make it harder to read
+cognitive_complexity = "allow"
