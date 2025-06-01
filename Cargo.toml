@@ -13,7 +13,7 @@ members = [".", "crates/non-non-full", "crates/staticstr"]
 edition = "2024"
 
 [features]
-default = ["send", "scaffold"]
+default = ["send"]
 send = []
 scaffold = ["dep:tracing-journald", "dep:tracing-subscriber", "tokio/signal", "tokio-rustls?/aws_lc_rs"]
 nightly = []
@@ -106,7 +106,7 @@ tokio-test = "0.4.4"
 
 [[test]]
 name = "job_group_stream"
-required-features = ["tokio/rt-multi-thread"]
+required-features = ["send", "scaffold", "tokio/rt-multi-thread"]
 
 [[example]]
 name = "simple_website_to_stdout"
