@@ -100,7 +100,7 @@ mod tests {
 			transforms::{Transform, field::TransformField},
 		},
 		external_save::ExternalSave,
-		job::{HandleError, OpaqueJob},
+		job::{HandleError, OpaqueJob, Trigger},
 		maybe_send::MaybeSync,
 		read_filter::ReadFilter,
 		sinks::Sink,
@@ -128,7 +128,8 @@ mod tests {
 				+ Sink
 				+ Source
 				+ Transform
-				+ TransformField,
+				+ TransformField
+				+ Trigger,
 			Tr: MaybeSync,
 		{
 			fn test() {}

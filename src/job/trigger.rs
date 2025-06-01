@@ -18,7 +18,7 @@ pub use self::{every::Every, never::Never, once_a_day::OnceADayAt};
 pub use chrono;
 use either::Either;
 
-use std::{error::Error, fmt::Display, time::Duration};
+use std::{convert::Infallible, error::Error, fmt::Display, time::Duration};
 
 use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
@@ -56,6 +56,49 @@ pub enum ContinueJob {
 	No,
 }
 
+/// Forward implementation to [`Never`]
+impl Trigger for () {
+	type Err = <Never as Trigger>::Err;
+
+	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
+		Never.wait().await
+	}
+
+	fn twice_as_duration(&self) -> Duration {
+		Never.twice_as_duration()
+	}
+}
+
+impl<T: Trigger> Trigger for Option<T> {
+	type Err = T::Err;
+
+	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
+		match self {
+			Some(inner) => inner.wait().await,
+			None => Never.wait().await.map_err(|e| match e {}),
+		}
+	}
+
+	fn twice_as_duration(&self) -> Duration {
+		match self {
+			Some(inner) => inner.twice_as_duration(),
+			None => Never.twice_as_duration(),
+		}
+	}
+}
+
+impl<T: Trigger> Trigger for &mut T {
+	type Err = T::Err;
+
+	fn wait(&mut self) -> impl Future<Output = Result<ContinueJob, Self::Err>> + MaybeSend {
+		(**self).wait()
+	}
+
+	fn twice_as_duration(&self) -> Duration {
+		(**self).twice_as_duration()
+	}
+}
+
 impl<A, B> Trigger for Either<A, B>
 where
 	A: Trigger,
@@ -74,6 +117,31 @@ where
 		self.as_ref()
 			.map_either(|a| a.twice_as_duration(), |b| b.twice_as_duration())
 			.into_inner()
+	}
+}
+
+impl Trigger for Infallible {
+	type Err = Infallible;
+
+	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
+		match *self {}
+	}
+
+	fn twice_as_duration(&self) -> Duration {
+		match *self {}
+	}
+}
+
+#[cfg(feature = "nightly")]
+impl Trigger for ! {
+	type Err = !;
+
+	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
+		match *self {}
+	}
+
+	fn twice_as_duration(&self) -> Duration {
+		match *self {}
 	}
 }
 
