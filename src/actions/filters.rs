@@ -37,7 +37,8 @@ pub trait Filter: MaybeSendSync {
 	) -> impl Future<Output = Result<(), Self::Err>> + MaybeSend;
 }
 
-pub(crate) struct FilterWrapper<F>(pub F);
+#[derive(Clone, Debug)]
+pub struct FilterWrapper<F>(pub F);
 
 impl<F> Action for FilterWrapper<F>
 where

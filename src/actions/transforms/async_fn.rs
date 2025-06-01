@@ -18,6 +18,7 @@ use crate::{
 use super::{Transform, error::TransformErrorKind, result::TransformedEntry};
 
 ///  Use [`transform_fn`](`crate::actions::transform_fn`)
+#[derive(Clone, Debug)]
 pub struct AsyncFnTransform<F>(pub F);
 
 impl<F, T, Fut> Transform for AsyncFnTransform<F>

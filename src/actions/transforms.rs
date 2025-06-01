@@ -83,7 +83,8 @@ pub trait Transform: MaybeSendSync {
 	) -> impl Future<Output = Result<Vec<TransformedEntry>, Self::Err>> + MaybeSend;
 }
 
-pub(crate) struct TransformWrapper<T>(pub T);
+#[derive(Clone, Debug)]
+pub struct TransformWrapper<T>(pub T);
 
 impl<T> Action for TransformWrapper<T>
 where

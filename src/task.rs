@@ -30,7 +30,7 @@ use crate::{
 /// A core primitive of [`fetcher`](`crate`). A single instance of a data pipeline.
 ///
 /// Runs the data fetched from a [`Source`] through the pipeline ([`Task::action`])
-#[derive(bon::Builder, Debug)]
+#[derive(bon::Builder, Clone, Debug)]
 #[non_exhaustive]
 pub struct Task<S, A, E> {
 	/// Name of the task

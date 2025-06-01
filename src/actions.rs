@@ -12,6 +12,7 @@ pub mod transforms;
 use std::convert::Infallible;
 
 use either::Either;
+use transforms::async_fn::AsyncFnTransform;
 
 use self::filters::{Filter, FilterWrapper};
 use self::transforms::Transform;
@@ -103,7 +104,7 @@ pub struct ActionContext<'a, S, E> {
 }
 
 /// Transforms the provided [`Filter`] into an [`Action`]
-pub fn filter<F>(f: F) -> impl Action
+pub fn filter<F>(f: F) -> FilterWrapper<F>
 where
 	F: Filter,
 {
@@ -111,7 +112,7 @@ where
 }
 
 /// Transforms the provided [`Transform`] into an [`Action`]
-pub fn transform<T>(t: T) -> impl Action
+pub fn transform<T>(t: T) -> TransformWrapper<T>
 where
 	T: Transform,
 {
@@ -119,7 +120,7 @@ where
 }
 
 /// Transforms the provided [`TransformField`] into an [`Action`] action on `field`
-pub fn transform_field<T>(field: Field, t: T) -> impl Action
+pub fn transform_field<T>(field: Field, t: T) -> TransformWrapper<TransformFieldWrapper<T>>
 where
 	T: TransformField,
 {
@@ -130,7 +131,7 @@ where
 }
 
 /// Transforms the provided [`TransformField`] into an [`Action`] action on [`Message::Body`](`crate::sinks::Message::body`)
-pub fn transform_body<T>(t: T) -> impl Action
+pub fn transform_body<T>(t: T) -> TransformWrapper<TransformFieldWrapper<T>>
 where
 	T: TransformField,
 {
@@ -138,7 +139,7 @@ where
 }
 
 /// Transforms the provided async function implementing [`Transform`] into an [`Action`] action.
-pub fn transform_fn<F, Fut, T>(f: F) -> impl Action
+pub fn transform_fn<F, Fut, T>(f: F) -> TransformWrapper<AsyncFnTransform<F>>
 where
 	F: Fn(Entry) -> Fut + MaybeSendSync,
 	Fut: Future<Output = T> + MaybeSend,

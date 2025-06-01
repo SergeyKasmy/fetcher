@@ -16,7 +16,7 @@ use crate::{
 ///
 /// [entry]: crate::entry::Entry
 /// [message]: crate::sinks::message::Message
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct EntryToMsgMap<E> {
 	/// External save location for that map.
 	/// It's called every time on [`Self::insert()`]
