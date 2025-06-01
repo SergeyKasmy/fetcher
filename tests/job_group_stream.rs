@@ -5,12 +5,13 @@ use std::error::Error;
 use std::{convert::Infallible, time::Duration};
 
 use fetcher::job::error_handling::Forward;
+use fetcher::job::trigger;
 use fetcher::{
 	Job, Task,
 	actions::{Action, ActionContext, ActionResult, transform_fn},
 	entry::Entry,
 	external_save::ExternalSave,
-	job::{JobGroup, Trigger},
+	job::JobGroup,
 	scaffold,
 	sources::Source,
 };
@@ -60,14 +61,14 @@ async fn main() {
 
 	let job_never_panics = Job::builder("never_panics")
 		.tasks(task_never_panics)
-		.trigger(Trigger::Every(Duration::from_secs(1)))
+		.trigger(trigger::Every(Duration::from_secs(1)))
 		.ctrlc_chan(None)
 		.error_handling(Forward)
 		.build();
 
 	let job_always_panics = Job::builder("always_panics")
 		.tasks(task_always_panics)
-		.trigger(Trigger::Every(Duration::from_secs(1)))
+		.trigger(trigger::Every(Duration::from_secs(1)))
 		.ctrlc_chan(None)
 		.error_handling(Forward)
 		.build();

@@ -235,5 +235,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 		JobResult::Err(errors) => Err(Box::new(errors.into_first()) as Box<_>),
 		// The job panicked. This probably shouldn't happen...
 		JobResult::Panicked { payload: _ } => Ok(()),
+		// trigger::Every never fails
+		JobResult::TriggerFailed(_) => unreachable!(),
 	}
 }
