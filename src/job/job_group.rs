@@ -55,6 +55,7 @@ pub type JobGroupResult = Vec<JobResult>;
 /// # Example
 /// ```rust
 /// # tokio_test::block_on(async {
+/// # tokio::task::LocalSet::new().run_until(async {
 /// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
 /// use futures::stream::StreamExt;
 ///
@@ -86,7 +87,8 @@ pub type JobGroupResult = Vec<JobResult>;
 /// let named_group = group.with_name("my_group");
 ///
 /// // Temporarily disable the group
-/// let disabled = named_group.disable();
+/// let _disabled = named_group.disable();
+/// # }).await;
 /// # });
 /// ```
 pub trait JobGroup: MaybeSendSync {
@@ -106,6 +108,7 @@ pub trait JobGroup: MaybeSendSync {
 	/// # Example
 	/// ```rust
 	/// # tokio_test::block_on(async {
+	/// # tokio::task::LocalSet::new().run_until(async {
 	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, RefreshTime};
 	/// use futures::stream::StreamExt;
 	///
@@ -122,6 +125,7 @@ pub trait JobGroup: MaybeSendSync {
 	/// let combined = group1.combine_with(group2);
 	///
 	/// let results = combined.run().collect::<Vec<_>>().await;
+	/// # }).await;
 	/// # });
 	/// ```
 	fn combine_with<G>(self, other: G) -> CombinedJobGroup<Self, G>
