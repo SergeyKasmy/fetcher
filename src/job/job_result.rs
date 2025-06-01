@@ -6,7 +6,11 @@
 
 //! This module contains the [`JobResult`] type
 
-use std::{any::Any, fmt};
+use std::{
+	any::Any,
+	error::Error,
+	fmt::{self, Debug},
+};
 
 use non_non_full::NonEmptyVec;
 
@@ -30,6 +34,11 @@ pub enum JobResult {
 		/// Payload of the panic
 		payload: Box<dyn Any + Send + 'static>,
 	},
+
+	// Note: making this a generic creates way too much noise,
+	// especially considering this isn't even used by us
+	/// The trigger returned an error
+	TriggerFailed(Box<dyn Error + Send + Sync>),
 }
 
 impl JobResult {
@@ -47,6 +56,10 @@ impl JobResult {
 				"called `JobResult::unwrap()` on a `Panicked` value",
 				&payload,
 			),
+			Self::TriggerFailed(err) => unwrap_failed(
+				"called `JobResult::unwrap()` on a `TriggerFailed` value",
+				&err,
+			),
 		}
 	}
 
@@ -59,6 +72,7 @@ impl JobResult {
 			Self::Ok => (),
 			Self::Err(errors) => unwrap_failed(msg, &errors),
 			Self::Panicked { payload } => unwrap_failed(msg, &payload),
+			Self::TriggerFailed(err) => unwrap_failed(msg, &err),
 		}
 	}
 }

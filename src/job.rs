@@ -102,8 +102,12 @@ where
 
 			// sleep until the next trigger is hit or stop on Ctrl-C
 			select! {
-				continue_job = self.trigger.wait() => {
-					if matches!(continue_job, ContinueJob::No) { return JobResult::Ok }
+				trigger_res = self.trigger.wait() => {
+					match trigger_res {
+						Ok(ContinueJob::Yes) => (),
+						Ok(ContinueJob::No) => return JobResult::Ok,
+						Err(e) => return JobResult::TriggerFailed(e.into()),
+					}
 				},
 				() = ctrlc_wait(self.ctrlc_chan.as_mut()) => {
 					tracing::info!("Job {} is shutting down...", self.name);

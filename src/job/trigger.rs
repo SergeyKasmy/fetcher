@@ -12,13 +12,14 @@
 pub use chrono;
 
 use chrono::{NaiveTime, offset::Local as LocalTime};
-use std::{fmt::Display, time::Duration};
+use std::{convert::Infallible, error::Error, fmt::Display, time::Duration};
 
 use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
-// TODO: add error type
 pub trait Trigger: MaybeSendSync {
-	fn wait(&mut self) -> impl Future<Output = ContinueJob> + MaybeSend;
+	type Err: Into<Box<dyn Error + Send + Sync>>;
+
+	fn wait(&mut self) -> impl Future<Output = Result<ContinueJob, Self::Err>> + MaybeSend;
 
 	// TODO: not a very nice API. Provide more freedom for trigger and handleerror implementations to handle errors and waiting as they want.
 	// This one is too heavily coupled with ExponentialBackoff specifically
@@ -35,9 +36,11 @@ pub enum ContinueJob {
 pub struct Every(pub Duration);
 
 impl Trigger for Every {
-	async fn wait(&mut self) -> ContinueJob {
+	type Err = Infallible;
+
+	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
 		sleep(self.0).await;
-		ContinueJob::Yes
+		Ok(ContinueJob::Yes)
 	}
 
 	fn twice_as_duration(&self) -> Duration {
@@ -49,7 +52,9 @@ impl Trigger for Every {
 pub struct OnceADayAt(pub NaiveTime);
 
 impl Trigger for OnceADayAt {
-	async fn wait(&mut self) -> ContinueJob {
+	type Err = Infallible;
+
+	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
 		let remaining_time = self.0 - LocalTime::now().naive_local().time();
 
 		let time_left = match remaining_time.to_std() {
@@ -65,7 +70,7 @@ impl Trigger for OnceADayAt {
 		};
 
 		sleep(time_left).await;
-		ContinueJob::Yes
+		Ok(ContinueJob::Yes)
 	}
 
 	fn twice_as_duration(&self) -> Duration {
@@ -81,8 +86,10 @@ impl Trigger for OnceADayAt {
 pub struct Never;
 
 impl Trigger for Never {
-	async fn wait(&mut self) -> ContinueJob {
-		ContinueJob::No
+	type Err = Infallible;
+
+	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
+		Ok(ContinueJob::No)
 	}
 
 	fn twice_as_duration(&self) -> Duration {
