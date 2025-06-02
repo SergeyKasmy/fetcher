@@ -78,6 +78,12 @@ where
 	async fn run_until_first_error(&mut self) -> JobResult {
 		tracing::info!("Running job {}", self.name);
 
+		match self.trigger.wait_start().await {
+			Ok(ContinueJob::Yes) => (),
+			Ok(ContinueJob::No) => return JobResult::Ok,
+			Err(e) => return JobResult::TriggerFailed(e.into()),
+		}
+
 		// Job loop: break out of it only on errors or if the job runs only once
 		loop {
 			let results = self.tasks.run_concurrently().await;

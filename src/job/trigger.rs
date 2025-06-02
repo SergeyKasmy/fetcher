@@ -4,10 +4,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module defines the [`Trigger`] type
-//! that specifies either a duration or a time of day a job should be re-triggered.
+//! This module defines the [`Trigger`] trait and its provided implementations [`Never`], [`Every`], and [`OnceADayAt`].
 //!
-//! It also re-exported [`chrono`] to make use of the [`NaiveTime`](`chrono::NaiveTime`) type.
+//! It also re-exports [`chrono`] to make the [`NaiveTime`](`chrono::NaiveTime`) easily available.
 
 mod every;
 mod never;
@@ -16,9 +15,10 @@ mod once_a_day;
 pub use self::{every::Every, never::Never, once_a_day::OnceADayAt};
 
 pub use chrono;
+
 use either::Either;
 
-use std::{convert::Infallible, error::Error, fmt::Display, time::Duration};
+use std::{convert::Infallible, error::Error, fmt::Display, future::Future, time::Duration};
 
 use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
@@ -44,6 +44,14 @@ pub trait Trigger: MaybeSendSync {
 	/// can be reset, and thus it can be assumed that the next error isn't a consecutive error but a new one.
 	// TODO: improve docs
 	fn twice_as_duration(&self) -> Duration;
+
+	/// Like [`Trigger::wait`] but is called just once when the job starts for the first time.
+	///
+	/// This function can just delegate itself to [`Trigger::wait`] to wait for the trigger first before running the job.
+	/// The default implementation just immediately returns [`ContinueJob::Yes`] to make the job run once before waiting for the trigger.
+	fn wait_start(&mut self) -> impl Future<Output = Result<ContinueJob, Self::Err>> + MaybeSend {
+		async { Ok(ContinueJob::Yes) }
+	}
 }
 
 /// What should happen after the [`Trigger::wait`] has ended?
@@ -115,7 +123,7 @@ where
 
 	fn twice_as_duration(&self) -> Duration {
 		self.as_ref()
-			.map_either(|a| a.twice_as_duration(), |b| b.twice_as_duration())
+			.map_either(Trigger::twice_as_duration, Trigger::twice_as_duration)
 			.into_inner()
 	}
 }
