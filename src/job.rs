@@ -33,6 +33,7 @@ use crate::{
 	task::TaskGroup,
 };
 
+// TODO: create a "small job" that combines job and task builders into one for small tasks
 /// A single job, containing a single or a couple [`tasks`](`crate::task::Task`), possibly refetching every set amount of time
 #[derive(bon::Builder, Clone, Debug)]
 #[builder(finish_fn(name = "build_internal", vis = ""))]
