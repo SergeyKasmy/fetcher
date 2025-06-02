@@ -36,10 +36,8 @@ impl Fetch for DummySource {
 	type Err = Infallible;
 
 	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
-		Ok(vec![Entry {
-			reply_to: Some(ENTRY_ID.clone()),
-			..Default::default()
-		}])
+		let entry = Entry::builder().reply_to(ENTRY_ID.clone()).build();
+		Ok(vec![entry])
 	}
 }
 

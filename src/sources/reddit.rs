@@ -8,7 +8,7 @@
 
 use super::Fetch;
 use crate::{
-	entry::{Entry, EntryId},
+	entry::Entry,
 	sinks::message::{Media, Message},
 };
 
@@ -157,17 +157,18 @@ impl Reddit {
 
 				let link = format!("https://reddit.com/{}", post.permalink);
 
-				Some(Entry {
-					id: EntryId::new(post.id),
-					raw_contents: None,
-					msg: Message {
-						title: Some(post.title),
-						body: Some(body),
-						link: Some(link),
-						media,
-					},
-					..Default::default()
-				})
+				let entry = Entry::builder()
+					.id(post.id)
+					.msg(
+						Message::builder()
+							.title(post.title)
+							.body(body)
+							.link(link)
+							.maybe_media(media),
+					)
+					.build();
+
+				Some(entry)
 			})
 			.collect::<_>();
 

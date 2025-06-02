@@ -368,15 +368,12 @@ fn parse(mail: &ParsedMail, id: EntryId) -> Result<Entry, EmailError> {
 		.get_body()?
 	};
 
-	Ok(Entry {
-		id: Some(id),
-		msg: Message {
-			title: subject,
-			body: Some(body),
-			..Default::default()
-		},
-		..Default::default()
-	})
+	let entry = Entry::builder()
+		.id_raw(id)
+		.msg(Message::builder().maybe_title(subject).body(body))
+		.build();
+
+	Ok(entry)
 }
 
 async fn authenticate_google_oauth2(

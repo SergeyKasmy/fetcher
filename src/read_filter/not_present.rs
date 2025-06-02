@@ -187,42 +187,15 @@ mod tests {
 		rf.mark_as_read(&entry_id("7")).await.unwrap();
 
 		let mut entries = vec![
-			Entry {
-				id: None,
-				..Default::default()
-			},
-			Entry {
-				id: Some(entry_id("5")),
-				..Default::default()
-			},
-			Entry {
-				id: Some(entry_id("4")),
-				..Default::default()
-			},
-			Entry {
-				id: Some(entry_id("0")),
-				..Default::default()
-			},
-			Entry {
-				id: Some(entry_id("1")),
-				..Default::default()
-			},
-			Entry {
-				id: Some(entry_id("3")),
-				..Default::default()
-			},
-			Entry {
-				id: None,
-				..Default::default()
-			},
-			Entry {
-				id: Some(entry_id("6")),
-				..Default::default()
-			},
-			Entry {
-				id: Some(entry_id("8")),
-				..Default::default()
-			},
+			Entry::default(),
+			Entry::builder().id_raw(entry_id("5")).build(),
+			Entry::builder().id_raw(entry_id("4")).build(),
+			Entry::builder().id_raw(entry_id("0")).build(),
+			Entry::builder().id_raw(entry_id("1")).build(),
+			Entry::builder().id_raw(entry_id("3")).build(),
+			Entry::default(),
+			Entry::builder().id_raw(entry_id("6")).build(),
+			Entry::builder().id_raw(entry_id("8")).build(),
 		];
 
 		rf.filter(&mut entries).await.unwrap();

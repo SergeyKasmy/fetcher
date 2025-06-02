@@ -136,14 +136,12 @@ impl Http {
 
 		// tracing::trace!("Done. Body: ----------------------------------------\n{page:?}\n----------------------------------------\n");
 
-		Ok(Entry {
-			raw_contents: Some(page),
-			msg: Message {
-				link: Some(self.url.as_str().to_owned()),
-				..Default::default()
-			},
-			..Default::default()
-		})
+		let entry = Entry::builder()
+			.raw_contents(page)
+			.msg(Message::builder().link(self.url.as_str().to_owned()))
+			.build();
+
+		Ok(entry)
 	}
 }
 

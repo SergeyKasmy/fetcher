@@ -69,15 +69,10 @@ impl Fetch for UnixEpochTimeSource {
 			.duration_since(UNIX_EPOCH)
 			.expect("system time shouldn't be set to before 1970");
 
-		// TODO: add and use builders
 		// create an entry and put that time into its message body
-		let entry = Entry {
-			msg: Message {
-				body: Some(unix_epoch_time.as_secs().to_string()),
-				..Default::default()
-			},
-			..Default::default()
-		};
+		let entry = Entry::builder()
+			.msg(Message::builder().body(unix_epoch_time.as_secs().to_string()))
+			.build();
 
 		Ok(vec![entry])
 	}

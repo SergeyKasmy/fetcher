@@ -54,12 +54,10 @@ mod tests {
 	#[tokio::test]
 	async fn beginning() {
 		let mut entries = (0..5)
-			.map(|idx| Entry {
-				msg: Message {
-					body: Some(idx.to_string()),
-					..Default::default()
-				},
-				..Default::default()
+			.map(|idx| {
+				Entry::builder()
+					.msg(Message::builder().body(idx.to_string()))
+					.build()
 			})
 			.collect::<Vec<_>>();
 
@@ -82,12 +80,10 @@ mod tests {
 	#[tokio::test]
 	async fn end() {
 		let mut entries = (0..5)
-			.map(|idx| Entry {
-				msg: Message {
-					body: Some(idx.to_string()),
-					..Default::default()
-				},
-				..Default::default()
+			.map(|idx| {
+				Entry::builder()
+					.msg(Message::builder().body(idx.to_string()))
+					.build()
 			})
 			.collect::<Vec<_>>();
 

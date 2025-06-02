@@ -14,13 +14,30 @@ use crate::{safe_slice::SafeSliceUntilExt, sinks::message::Message};
 
 use std::fmt::Debug;
 
-/// A [`fetcher`](`crate`) primitive that contains a message and an id returned from a source that can be send to a sink
-#[derive(PartialEq, Eq, Clone, Default)]
+/// A [`fetcher`](`crate`) primitive that contains a message and an id returned from a source that can be send to a sink.
+///
+/// Supports building with builders as well as a shorthand to avoid calling `.build()` on the message.
+/// For example, this works:
+/// ```
+/// # use fetcher::entry::Entry;
+/// # use fetcher::sinks::Message;
+/// let _entry = Entry::builder()
+///     .id("id".to_owned())
+///     .msg(Message::builder()
+///         .body("message body".to_owned()))  // notice no `.build()` on the message builder
+///     .build(); // this `.build()` builds both
+/// ```
+#[derive(PartialEq, Eq, Clone, Default, bon::Builder)]
 pub struct Entry {
 	/// ID of the entry
 	///
 	/// A [`ReadFilter`](`crate::read_filter::ReadFilter`) can use it to differentiate already read entries from the unread ones.
 	/// It is also used to map between entries and messages to support, e.g. replies
+	// #[builder(required, with = |id: String| EntryId::new(id), default)]
+	#[builder(required, default, setters(
+		name = id_internal,
+		vis = "",
+	))]
 	pub id: Option<EntryId>,
 
 	/// An entry this entry is replying to/quoting
@@ -32,6 +49,7 @@ pub struct Entry {
 	pub raw_contents: Option<String>,
 
 	/// The message itself
+	#[builder(into, default)]
 	pub msg: Message,
 }
 
@@ -49,5 +67,21 @@ impl Debug for Entry {
 			)
 			.field("msg", &self.msg)
 			.finish()
+	}
+}
+
+impl<S: entry_builder::State> EntryBuilder<S> {
+	pub fn id(self, entry_id: String) -> EntryBuilder<entry_builder::SetId<S>>
+	where
+		S::Id: entry_builder::IsUnset,
+	{
+		self.id_internal(EntryId::new(entry_id))
+	}
+
+	pub fn id_raw(self, entry_id: EntryId) -> EntryBuilder<entry_builder::SetId<S>>
+	where
+		S::Id: entry_builder::IsUnset,
+	{
+		self.id_internal(Some(entry_id))
 	}
 }

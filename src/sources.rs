@@ -92,10 +92,8 @@ impl Fetch for String {
 	type Err = Infallible;
 
 	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
-		Ok(vec![Entry {
-			raw_contents: Some(self.clone()),
-			..Default::default()
-		}])
+		let entry = Entry::builder().raw_contents(self.clone()).build();
+		Ok(vec![entry])
 	}
 }
 

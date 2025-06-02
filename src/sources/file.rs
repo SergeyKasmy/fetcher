@@ -32,9 +32,6 @@ impl Fetch for File {
 			.map(|s| s.trim().to_owned())
 			.map_err(|e| SourceError::File(e, self.path.clone()))?;
 
-		Ok(vec![Entry {
-			raw_contents: Some(text),
-			..Default::default()
-		}])
+		Ok(vec![Entry::builder().raw_contents(text).build()])
 	}
 }

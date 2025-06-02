@@ -67,10 +67,9 @@ impl Fetch for Exec {
 		let out = String::from_utf8(out).map_err(ExecError::BadUtf8)?;
 		tracing::debug!("Got {out:?} from the command");
 
-		Ok(vec![Entry {
-			raw_contents: Some(out),
-			..Default::default()
-		}])
+		let entry = Entry::builder().raw_contents(out).build();
+
+		Ok(vec![entry])
 	}
 }
 

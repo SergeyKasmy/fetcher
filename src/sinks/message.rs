@@ -16,7 +16,7 @@ use non_non_full::NonEmptyVec;
 use crate::safe_slice::SafeSliceUntilExt;
 
 /// The finalized and composed message meant to be sent to a sink
-#[derive(PartialEq, Eq, Clone, Default)]
+#[derive(PartialEq, Eq, Clone, Default, bon::Builder)]
 pub struct Message {
 	/// title of the message
 	pub title: Option<String>,
@@ -74,5 +74,14 @@ impl Debug for Message {
 impl From<i64> for MessageId {
 	fn from(value: i64) -> Self {
 		Self(value)
+	}
+}
+
+impl<S> From<MessageBuilder<S>> for Message
+where
+	S: message_builder::IsComplete,
+{
+	fn from(value: MessageBuilder<S>) -> Self {
+		value.build()
 	}
 }

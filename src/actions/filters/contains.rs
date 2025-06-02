@@ -78,12 +78,10 @@ mod tests {
 
 		let mut entries = bodies
 			.into_iter()
-			.map(|body| Entry {
-				msg: Message {
-					body: Some(body.to_owned()),
-					..Default::default()
-				},
-				..Default::default()
+			.map(|body| {
+				Entry::builder()
+					.msg(Message::builder().body(body.to_owned()))
+					.build()
 			})
 			.collect::<Vec<_>>();
 
