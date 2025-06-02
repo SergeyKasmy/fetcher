@@ -36,52 +36,40 @@ pub struct Html {
 	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
 	// TODO: what happens when the option is Some but the vec is empty? Should be handled probs
 	#[builder(field)]
-	pub text: Option<Vec<DataSelector>>,
+	pub text: Option<NonEmptyVec<DataSelector>>,
 
 	/// Selector to find an item/entry/article in a list on the page. None means to thread the entire page as a single item
 	#[builder(with = |sel: &str| -> Result<_, SelectorErrorKind> { Selector::parse(sel) })]
 	pub item: Option<Selector>,
 
 	/// Selector to find the title of an item
-	#[builder(with = |sel: &str, locs: impl IntoIterator<Item = DataLocation>| -> Result<_, SelectorErrorKind> {
-		Ok(DataSelector{
-			selector: Selector::parse(sel)?,
-			locations: locs.into_iter().collect(),
-			optional: false
-		})
-	})]
+	#[builder(setters(
+		name = title_internal,
+		vis = ""
+	))]
 	pub title: Option<DataSelector>,
 
 	/// Selector to find the ID of an item
-	#[builder(with = |sel: &str, locs: impl IntoIterator<Item = DataLocation>| -> Result<_, SelectorErrorKind> {
-		Ok(DataSelector{
-			selector: Selector::parse(sel)?,
-			locations: locs.into_iter().collect(),
-			optional: false
-		})
-	})]
+	#[builder(setters(
+		name = id_internal,
+		vis = ""
+	))]
 	pub id: Option<DataSelector>,
 
 	/// Selector to find the link to an item
-	#[builder(with = |sel: &str, locs: impl IntoIterator<Item = DataLocation>| -> Result<_, SelectorErrorKind> {
-		Ok(DataSelector{
-			selector: Selector::parse(sel)?,
-			locations: locs.into_iter().collect(),
-			optional: false
-		})
-	})]
+	#[builder(setters(
+		name = link_internal,
+		vis = ""
+	))]
 	pub link: Option<DataSelector>,
 
 	// TODO: support more media types
 	// TODO: why only one selector? JSON transform supports many
 	/// Selector to find the image of that item
-	#[builder(with = |sel: &str, locs: impl IntoIterator<Item = DataLocation>| -> Result<_, SelectorErrorKind> {
-		Ok(DataSelector{
-			selector: Selector::parse(sel)?,
-			locations: locs.into_iter().collect(),
-			optional: false
-		})
-	})]
+	#[builder(setters(
+		name = img_internal,
+		vis = ""
+	))]
 	pub img: Option<DataSelector>,
 }
 
@@ -310,21 +298,143 @@ fn extract_imgs(
 }
 
 impl<S: html_builder::State> HtmlBuilder<S> {
-	/// Adds a new text [`DataSelector`] from the arguments. Makes it not optional by default.
+	/// Selector to find the text of an item.
 	///
-	/// For now, to make it optional later, you can index the [`Html::text`] vec manually and update the field by hand.
-	// TODO: provide a way to specify whether it should be optional or not while creating it
-	pub fn text(
+	/// Can be called multiple times.
+	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
+	pub fn text(self, sel: &str) -> Result<Self, SelectorErrorKind> {
+		self.text_with_conf(sel, iter::once(DataLocation::Text), false)
+	}
+
+	/// Selector to find the text of an item.
+	pub fn text_with_conf(
 		mut self,
 		sel: &str,
 		locations: impl IntoIterator<Item = DataLocation>,
+		optional: bool,
 	) -> Result<Self, SelectorErrorKind> {
-		self.text.get_or_insert_default().push(DataSelector {
+		let data_selector = DataSelector {
 			selector: Selector::parse(sel)?,
 			locations: locations.into_iter().collect(),
-			optional: false,
-		});
+			optional,
+		};
+
+		match &mut self.text {
+			Some(text) => text.push(data_selector),
+			None => self.text = Some(NonEmptyVec::with_first(data_selector)),
+		}
 
 		Ok(self)
+	}
+
+	/// Selector to find the title of an item.
+	///
+	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
+	pub fn title(
+		self,
+		sel: &str,
+	) -> Result<HtmlBuilder<html_builder::SetTitle<S>>, SelectorErrorKind>
+	where
+		S::Title: html_builder::IsUnset,
+	{
+		self.title_with_conf(sel, iter::once(DataLocation::Text), false)
+	}
+
+	/// Selector to find the title of an item.
+	pub fn title_with_conf(
+		self,
+		sel: &str,
+		locations: impl IntoIterator<Item = DataLocation>,
+		optional: bool,
+	) -> Result<HtmlBuilder<html_builder::SetTitle<S>>, SelectorErrorKind>
+	where
+		S::Title: html_builder::IsUnset,
+	{
+		Ok(self.title_internal(DataSelector {
+			selector: Selector::parse(sel)?,
+			locations: locations.into_iter().collect(),
+			optional,
+		}))
+	}
+
+	/// Selector to find the id of an item.
+	///
+	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
+	pub fn id(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetId<S>>, SelectorErrorKind>
+	where
+		S::Id: html_builder::IsUnset,
+	{
+		self.id_with_conf(sel, iter::once(DataLocation::Text), false)
+	}
+
+	/// Selector to find the id of an item.
+	pub fn id_with_conf(
+		self,
+		sel: &str,
+		locations: impl IntoIterator<Item = DataLocation>,
+		optional: bool,
+	) -> Result<HtmlBuilder<html_builder::SetId<S>>, SelectorErrorKind>
+	where
+		S::Id: html_builder::IsUnset,
+	{
+		Ok(self.id_internal(DataSelector {
+			selector: Selector::parse(sel)?,
+			locations: locations.into_iter().collect(),
+			optional,
+		}))
+	}
+
+	/// Selector to find the link of an item.
+	///
+	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
+	pub fn link(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetLink<S>>, SelectorErrorKind>
+	where
+		S::Link: html_builder::IsUnset,
+	{
+		self.link_with_conf(sel, iter::once(DataLocation::Text), false)
+	}
+
+	/// Selector to find the link of an item.
+	pub fn link_with_conf(
+		self,
+		sel: &str,
+		locations: impl IntoIterator<Item = DataLocation>,
+		optional: bool,
+	) -> Result<HtmlBuilder<html_builder::SetLink<S>>, SelectorErrorKind>
+	where
+		S::Link: html_builder::IsUnset,
+	{
+		Ok(self.link_internal(DataSelector {
+			selector: Selector::parse(sel)?,
+			locations: locations.into_iter().collect(),
+			optional,
+		}))
+	}
+
+	/// Selector to find the img of an item.
+	///
+	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
+	pub fn img(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetImg<S>>, SelectorErrorKind>
+	where
+		S::Img: html_builder::IsUnset,
+	{
+		self.img_with_conf(sel, iter::once(DataLocation::Text), false)
+	}
+
+	/// Selector to find the img of an item.
+	pub fn img_with_conf(
+		self,
+		sel: &str,
+		locations: impl IntoIterator<Item = DataLocation>,
+		optional: bool,
+	) -> Result<HtmlBuilder<html_builder::SetImg<S>>, SelectorErrorKind>
+	where
+		S::Img: html_builder::IsUnset,
+	{
+		Ok(self.img_internal(DataSelector {
+			selector: Selector::parse(sel)?,
+			locations: locations.into_iter().collect(),
+			optional,
+		}))
 	}
 }

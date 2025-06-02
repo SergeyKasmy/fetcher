@@ -27,10 +27,7 @@ let read_filter = Arc::new(RwLock::new(read_filter::Newer::new()));
 use std::{error::Error, time::Duration};
 
 use fetcher::{
-	actions::{
-		sink, transform,
-		transforms::{Html, html::DataLocation},
-	},
+	actions::{sink, transform, transforms::Html},
 	job::{Job, error_handling, trigger},
 	sinks::Stdout,
 	sources::{Fetch, Http},
@@ -45,12 +42,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	// Create a pipeline (via a tuple) that contains all actions and executes them one by one in order
 	let actions = (
 		// Define a new transform that sets the title of the message to <h1> and the body to <p> from the HTML. Uses CSS selectors
-		transform(
-			Html::builder()
-				.title("h1", Some(DataLocation::Text))?
-				.text("p", Some(DataLocation::Text))?
-				.build(),
-		),
+		transform(Html::builder().title("h1")?.text("p")?.build()),
 		// Define a sink that just prints all messages to stdout
 		sink(Stdout),
 	);
