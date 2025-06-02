@@ -123,25 +123,16 @@ impl Fetch for Http {
 	/// Send a request to the [`URL`](`self.url`) and return the result in the [`Entry.raw_contents`] field
 	#[tracing::instrument(skip_all)]
 	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
-		// TODO: inline this fn
-		self.fetch_impl().await.map(|x| vec![x])
-	}
-}
-
-impl Http {
-	async fn fetch_impl(&self) -> Result<Entry, HttpError> {
 		tracing::debug!("Sending an HTTP request");
 
 		let page = send_request(&self.client, &self.request, &self.url).await?;
-
-		// tracing::trace!("Done. Body: ----------------------------------------\n{page:?}\n----------------------------------------\n");
 
 		let entry = Entry::builder()
 			.raw_contents(page)
 			.msg(Message::builder().link(self.url.as_str().to_owned()))
 			.build();
 
-		Ok(entry)
+		Ok(vec![entry])
 	}
 }
 

@@ -26,6 +26,12 @@ impl EntryId {
 
 		Some(Self(inner))
 	}
+
+	/// Returns a string slice containing the string ID representation
+	#[must_use]
+	pub fn as_str(&self) -> &str {
+		self.0.as_str()
+	}
 }
 
 impl Deref for EntryId {

@@ -146,79 +146,6 @@ impl Fetch for Email {
 	type Err = EmailError;
 
 	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
-		// TODO: inline this fn
-		self.fetch_impl().await
-	}
-}
-
-impl MarkAsRead for Email {
-	type Err = ImapError;
-
-	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Self::Err> {
-		// TODO: inline this fn
-		self.mark_as_read_impl(id).await
-	}
-
-	async fn set_read_only(&mut self) {
-		self.view_mode = ViewMode::ReadOnly;
-	}
-}
-
-impl Source for Email {}
-
-impl Email {
-	async fn client(&self) -> Result<Client<TlsStream<TcpStream>>, ImapError> {
-		tracing::trace!("Connecting to the IMAP server");
-
-		let tcp_stream = TcpStream::connect((self.imap_server.as_str(), IMAP_PORT))
-			.await
-			.map_err(ImapError::ConnectionFailed)?;
-
-		let domain = ServerName::try_from(String::from(&self.imap_server))?;
-
-		tracing::trace!("Establishing a TLS connection");
-		let tls_stream = TLS_CONNECTOR
-			.connect(domain, tcp_stream)
-			.await
-			.map_err(ImapError::ConnectionFailed)?;
-
-		Ok(Client::new(tls_stream))
-	}
-
-	/// Creates an authenticated session with the IMAP server, passes it to the closure, and automatically logs out when the closure returns.
-	///
-	/// Passes &mut self as the first parameter to the closure to avoid borrowck errors.
-	/// Don't call session.logout() manually in the closure, this function will call it automatically at the end.
-	async fn with_session<F, T, E>(&mut self, f: F) -> Result<T, E>
-	where
-		F: AsyncFnOnce(&mut Email, &mut Session<TlsStream<TcpStream>>) -> Result<T, E>,
-		E: From<ImapError>,
-	{
-		let client = self.client().await?;
-
-		// authenticate and create a session
-		let mut session = match &mut self.auth {
-			Auth::GmailOAuth2(auth) => {
-				authenticate_google_oauth2(client, auth, &self.email).await?
-			}
-			Auth::Password(password) => {
-				authenticate_password(client, &self.email, password).await?
-			}
-		};
-
-		match f(self, &mut session).await {
-			Ok(t) => {
-				session.logout().await.map_err(ImapError::Other)?;
-				Ok(t)
-			}
-			Err(e) => {
-				// try to log out anyways
-				_ = session.logout().await;
-				Err(e)
-			}
-		}
-	}
-	async fn fetch_impl(&mut self) -> Result<Vec<Entry>, EmailError> {
 		self.with_session(async |this, session| {
 			tracing::debug!("Fetching emails");
 
@@ -304,8 +231,12 @@ impl Email {
 		})
 		.await
 	}
+}
 
-	async fn mark_as_read_impl(&mut self, id: &str) -> Result<(), ImapError> {
+impl MarkAsRead for Email {
+	type Err = ImapError;
+
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Self::Err> {
 		if let ViewMode::ReadOnly = self.view_mode {
 			return Ok(());
 		}
@@ -313,6 +244,7 @@ impl Email {
 		self.with_session(async |this, session| {
 			session.select("INBOX").await?;
 
+			let id = id.as_str();
 			match this.view_mode {
 				ViewMode::MarkAsRead => {
 					session
@@ -343,6 +275,66 @@ impl Email {
 			Ok(())
 		})
 		.await
+	}
+
+	async fn set_read_only(&mut self) {
+		self.view_mode = ViewMode::ReadOnly;
+	}
+}
+
+impl Source for Email {}
+
+impl Email {
+	async fn client(&self) -> Result<Client<TlsStream<TcpStream>>, ImapError> {
+		tracing::trace!("Connecting to the IMAP server");
+
+		let tcp_stream = TcpStream::connect((self.imap_server.as_str(), IMAP_PORT))
+			.await
+			.map_err(ImapError::ConnectionFailed)?;
+
+		let domain = ServerName::try_from(String::from(&self.imap_server))?;
+
+		tracing::trace!("Establishing a TLS connection");
+		let tls_stream = TLS_CONNECTOR
+			.connect(domain, tcp_stream)
+			.await
+			.map_err(ImapError::ConnectionFailed)?;
+
+		Ok(Client::new(tls_stream))
+	}
+
+	/// Creates an authenticated session with the IMAP server, passes it to the closure, and automatically logs out when the closure returns.
+	///
+	/// Passes &mut self as the first parameter to the closure to avoid borrowck errors.
+	/// Don't call session.logout() manually in the closure, this function will call it automatically at the end.
+	async fn with_session<F, T, E>(&mut self, f: F) -> Result<T, E>
+	where
+		F: AsyncFnOnce(&mut Email, &mut Session<TlsStream<TcpStream>>) -> Result<T, E>,
+		E: From<ImapError>,
+	{
+		let client = self.client().await?;
+
+		// authenticate and create a session
+		let mut session = match &mut self.auth {
+			Auth::GmailOAuth2(auth) => {
+				authenticate_google_oauth2(client, auth, &self.email).await?
+			}
+			Auth::Password(password) => {
+				authenticate_password(client, &self.email, password).await?
+			}
+		};
+
+		match f(self, &mut session).await {
+			Ok(t) => {
+				session.logout().await.map_err(ImapError::Other)?;
+				Ok(t)
+			}
+			Err(e) => {
+				// try to log out anyways
+				_ = session.logout().await;
+				Err(e)
+			}
+		}
 	}
 }
 

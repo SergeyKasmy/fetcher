@@ -76,15 +76,7 @@ impl Fetch for Reddit {
 	/// # Errors
 	/// This function may error if the network connection is down, or Reddit API returns a bad or garbage responce
 	async fn fetch(&mut self) -> Result<Vec<Entry>, Self::Err> {
-		// TODO: inline this fn
-		self.fetch_impl().await
-	}
-}
-
-impl Reddit {
-	async fn fetch_impl(&self) -> Result<Vec<Entry>, RedditError> {
 		let s = &self.subreddit;
-
 		macro_rules! top_in {
 			($tp:tt) => {
 				s.top(
@@ -94,7 +86,6 @@ impl Reddit {
 				.await
 			};
 		}
-
 		let posts = match self.sort {
 			Sort::Latest => s.latest(100, None).await,
 			Sort::Rising => s.rising(100, None).await,
@@ -171,7 +162,6 @@ impl Reddit {
 				Some(entry)
 			})
 			.collect::<_>();
-
 		Ok(entries)
 	}
 }
