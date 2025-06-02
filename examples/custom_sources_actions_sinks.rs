@@ -96,13 +96,12 @@ impl TransformField for LogFieldTransform {
 	/// [`LogFieldTransform`] never errors
 	type Err = Infallible;
 
-	// TODO: rename old_val to something better
-	/// `old_val` contains the value the field currently contains
+	/// `value` contains the value the field currently contains
 	fn transform_field(
 		&mut self,
-		old_val: Option<&str>,
+		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
-		let time = old_val.expect("our source always returns entries with bodies");
+		let time = value.expect("our source always returns entries with bodies");
 
 		// just log it
 		tracing::info!("Current time is {time}!");

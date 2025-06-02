@@ -73,7 +73,6 @@ pub struct ExponentialBackoff {
 #[derive(Clone, Debug)]
 struct ErrorInfo {
 	attempt: u32,
-	// TODO: change to systemtime
 	happened_at: Instant,
 	must_sleep_for: Duration,
 }

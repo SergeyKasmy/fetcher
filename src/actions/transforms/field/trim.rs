@@ -21,9 +21,9 @@ impl TransformField for Trim {
 
 	fn transform_field(
 		&mut self,
-		old_val: Option<&str>,
+		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
-		Ok(old_val.map(trim).unwrap_or_empty())
+		Ok(value.map(trim).unwrap_or_empty())
 	}
 }
 

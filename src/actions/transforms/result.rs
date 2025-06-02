@@ -92,12 +92,12 @@ impl TransformedMessage {
 
 impl<T> TransformResult<T> {
 	/// Combine new value with the old value using new value's merge stradegy
-	pub fn get<F>(self, old_val: F) -> Option<T>
+	pub fn get<F>(self, prev_value: F) -> Option<T>
 	where
 		F: FnOnce() -> Option<T>,
 	{
 		match self {
-			Self::Previous => old_val(),
+			Self::Previous => prev_value(),
 			Self::Empty => None,
 			Self::New(val) => Some(val),
 		}

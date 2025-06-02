@@ -47,9 +47,9 @@ impl TransformField for Replace {
 
 	fn transform_field(
 		&mut self,
-		old_val: Option<&str>,
+		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
-		Ok(old_val
+		Ok(value
 			.map(|old| self.re.replace_all(old, self.with.as_str()).into_owned())
 			.unwrap_or_empty())
 	}

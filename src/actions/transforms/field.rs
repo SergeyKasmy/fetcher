@@ -50,7 +50,7 @@ pub trait TransformField: MaybeSendSync {
 	// TODO: make async
 	fn transform_field(
 		&mut self,
-		old_val: Option<&str>,
+		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err>;
 }
 
@@ -143,7 +143,7 @@ impl TransformField for () {
 
 	fn transform_field(
 		&mut self,
-		_old_val: Option<&str>,
+		_value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
 		Ok(TransformResult::default())
 	}
@@ -154,7 +154,7 @@ impl TransformField for Infallible {
 
 	fn transform_field(
 		&mut self,
-		_old_val: Option<&str>,
+		_value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
 		match *self {}
 	}
@@ -166,7 +166,7 @@ impl TransformField for ! {
 
 	fn transform_field(
 		&mut self,
-		_old_val: Option<&str>,
+		_value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
 		match *self {}
 	}
@@ -180,13 +180,13 @@ where
 
 	fn transform_field(
 		&mut self,
-		old_val: Option<&str>,
+		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
 		let Some(inner) = self else {
 			return Ok(TransformResult::default());
 		};
 
-		inner.transform_field(old_val)
+		inner.transform_field(value)
 	}
 }
 
@@ -198,9 +198,9 @@ where
 
 	fn transform_field(
 		&mut self,
-		old_val: Option<&str>,
+		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
-		(*self).transform_field(old_val)
+		(*self).transform_field(value)
 	}
 }
 

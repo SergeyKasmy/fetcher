@@ -59,9 +59,9 @@ impl TransformField for Extract {
 
 	fn transform_field(
 		&mut self,
-		old_val: Option<&str>,
+		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
-		let Some(field) = old_val else {
+		let Some(field) = value else {
 			return Ok(TransformResult::Previous);
 		};
 
