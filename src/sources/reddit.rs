@@ -144,13 +144,13 @@ impl Reddit {
 						"should contain a valid picture url since we confirmed it with is_picture",
 					);
 
-					Some(NonEmptyVec::new_one(Media::Photo(url)))
+					Some(NonEmptyVec::with_first(Media::Photo(url)))
 				} else if is_video {
 					let url = link.expect(
 						"should contain a valid picture url since we confirmed it with is_video",
 					);
 
-					Some(NonEmptyVec::new_one(Media::Video(url)))
+					Some(NonEmptyVec::with_first(Media::Video(url)))
 				} else {
 					None
 				};

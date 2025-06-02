@@ -54,6 +54,7 @@ serde = { version = "1.0.219", features = ["derive"], default-features = false }
 staticstr = { version = "0.0.1", path = "crates/staticstr", default-features = false }
 tap = { version = "1.0.1", default-features = false }
 thiserror = { version = "2.0.12", default-features = false }
+tokio-stream = { version = "0.1.17", default-features = false }
 tokio = { version = "1.45.1", features = ["fs", "io-std", "process", "macros", "io-util", "time", "sync", "rt"], default-features = false }
 tracing = { version = "0.1.41", features = ["attributes"], default-features = false }
 url = { version = "2.5.4", default-features = false }
@@ -98,7 +99,6 @@ reqwest = { version = "0.12.15", features = ["rustls-tls", "gzip", "cookies"], d
 ## feature = "scaffold"
 tracing-journald = { version = "0.3.1", default-features = false, optional = true }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "tracing-log", "time", "local-time", "fmt", "ansi"], default-features = false, optional = true }
-tokio-stream = { version = "0.1.17", default-features = false }
 
 [dev-dependencies]
 assert_matches = "1.5"

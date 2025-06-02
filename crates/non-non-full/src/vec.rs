@@ -58,8 +58,7 @@ impl<T> NonEmptyVec<T> {
 
 	/// Creates a new [`NonEmptyVec`] containing exactly one element
 	#[must_use]
-	// TODO: rename to with_first
-	pub fn new_one(value: T) -> Self {
+	pub fn with_first(value: T) -> Self {
 		Self(vec![value])
 	}
 
@@ -317,8 +316,8 @@ mod tests {
 	}
 
 	#[test]
-	fn new_one() {
-		let vec = NonEmptyVec::new_one(42);
+	fn with_first() {
+		let vec = NonEmptyVec::with_first(42);
 		assert_eq!(vec.len(), 1);
 		assert_eq!(vec.first(), &42);
 		assert_eq!(vec.as_vec(), &vec![42]);
