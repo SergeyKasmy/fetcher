@@ -334,6 +334,8 @@ impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7);
 impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8);
 impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9);
 impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10);
+impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10 J11);
+impl_jobgroup_for_tuples!(J1 J2 J3 J4 J5 J6 J7 J8 J9 J10 J11 J12);
 
 impl JobId {
 	/// Creates a new [`JobId`] with the provided [`JobId::job_name`]

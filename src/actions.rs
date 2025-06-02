@@ -367,14 +367,6 @@ impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9);
 impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10);
 impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11);
 impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12);
-impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13);
-impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14);
-impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15);
-impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16);
-impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17);
-impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18);
-impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18 A19);
-impl_action_for_tuples!(A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18 A19 A20);
 
 impl<E> ActionResult<E> {
 	/// Maps an `ActionResult<E>` to `ActionResult<F>` by applying a function to the contained `Err` value

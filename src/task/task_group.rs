@@ -151,3 +151,15 @@ impl_taskgroup_for_tuples! {
 	type_names = T1 T2 T3 T4 T5 T6 T7 T8 T9 T10;
 	indices = 0 1 2 3 4 5 6 7 8 9
 }
+
+impl_taskgroup_for_tuples! {
+	size = 11;
+	type_names = T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11;
+	indices = 0 1 2 3 4 5 6 7 8 9 10
+}
+
+impl_taskgroup_for_tuples! {
+	size = 12;
+	type_names = T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12;
+	indices = 0 1 2 3 4 5 6 7 8 9 10 11
+}
