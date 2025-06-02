@@ -33,7 +33,6 @@ pub struct Entry {
 	///
 	/// A [`ReadFilter`](`crate::read_filter::ReadFilter`) can use it to differentiate already read entries from the unread ones.
 	/// It is also used to map between entries and messages to support, e.g. replies
-	// #[builder(required, with = |id: String| EntryId::new(id), default)]
 	#[builder(required, default, setters(
 		name = id_internal,
 		vis = "",
@@ -71,6 +70,10 @@ impl Debug for Entry {
 }
 
 impl<S: entry_builder::State> EntryBuilder<S> {
+	/// ID of the entry
+	///
+	/// A [`ReadFilter`](`crate::read_filter::ReadFilter`) can use it to differentiate already read entries from the unread ones.
+	/// It is also used to map between entries and messages to support, e.g. replies
 	pub fn id(self, entry_id: String) -> EntryBuilder<entry_builder::SetId<S>>
 	where
 		S::Id: entry_builder::IsUnset,
@@ -78,6 +81,10 @@ impl<S: entry_builder::State> EntryBuilder<S> {
 		self.id_internal(EntryId::new(entry_id))
 	}
 
+	/// ID of the entry
+	///
+	/// A [`ReadFilter`](`crate::read_filter::ReadFilter`) can use it to differentiate already read entries from the unread ones.
+	/// It is also used to map between entries and messages to support, e.g. replies
 	pub fn id_raw(self, entry_id: EntryId) -> EntryBuilder<entry_builder::SetId<S>>
 	where
 		S::Id: entry_builder::IsUnset,

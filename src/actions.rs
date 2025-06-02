@@ -467,17 +467,17 @@ mod tests {
 
 	#[tokio::test]
 	async fn cancel_token_stops_task_mid_work() {
-		const ACTION_DELAY: u64 = 2;
+		const ACTION_DELAY_MS: u64 = 200;
 
 		let (cancel_token, tx) = CancellationToken::new();
 
-		let request_stop_in_1s = async move {
-			tokio::time::sleep(Duration::from_secs(1)).await;
+		let request_stop_in_100ms = async move {
+			tokio::time::sleep(Duration::from_millis(100)).await;
 			tx.send(()).unwrap();
 		};
 
 		let long_noop_transform = async |entry| {
-			tokio::time::sleep(Duration::from_secs(ACTION_DELAY)).await;
+			tokio::time::sleep(Duration::from_millis(ACTION_DELAY_MS)).await;
 			entry
 		};
 
@@ -494,20 +494,20 @@ mod tests {
 
 		let now = Instant::now();
 
-		let (task_res, ()) = join!(task.run(), request_stop_in_1s);
+		let (task_res, ()) = join!(task.run(), request_stop_in_100ms);
 		task_res.unwrap();
 
 		let elapsed = now.elapsed();
-		let delay_of_3_actions = Duration::from_secs(
-			ACTION_DELAY * 3, /* number of actions in the pipeline */
+		let delay_of_3_actions = Duration::from_millis(
+			ACTION_DELAY_MS * 3, /* number of actions in the pipeline */
 		);
 
 		assert!(
 			elapsed < delay_of_3_actions,
-			"{}s should be less than {} * 3 = {}",
-			elapsed.as_secs(),
-			ACTION_DELAY,
-			ACTION_DELAY * 3,
+			"{}ms should be less than {} * 3 = {}",
+			elapsed.as_millis(),
+			ACTION_DELAY_MS,
+			ACTION_DELAY_MS * 3,
 		);
 	}
 }
