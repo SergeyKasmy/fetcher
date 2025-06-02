@@ -30,5 +30,5 @@ impl<T: MaybeSendSync> OpaqueTask for DisabledTask<T> {
 		Ok(())
 	}
 
-	fn set_ctrlc_channel(&mut self, _channel: crate::ctrl_c_signal::CtrlCSignalChannel) {}
+	fn set_cancel_token(&mut self, _channel: crate::cancellation_token::CancellationToken) {}
 }

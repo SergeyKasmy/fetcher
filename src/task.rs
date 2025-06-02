@@ -20,7 +20,7 @@ use self::entry_to_msg_map::EntryToMsgMap;
 use crate::{
 	StaticStr,
 	actions::{Action, ActionContext, ActionResult},
-	ctrl_c_signal::CtrlCSignalChannel,
+	cancellation_token::CancellationToken,
 	entry::Entry,
 	error::FetcherError,
 	external_save::ExternalSave,
@@ -56,12 +56,12 @@ pub struct Task<S, A, E> {
 	/// Pipeline (in other words, a list of actions) which the data received from the source is run through
 	pub action: Option<A>,
 
-	/// Gracefully stop the task mid-work when a Ctrl-C signal arrives
+	/// Gracefully stop the task mid-work when signalled
 	///
 	/// Can be specified when building a [`Job`](`crate::job::Job`)
-	/// using [`JobBuilder::ctrlc_chan`](`crate::job::JobBuilder::ctrlc_chan`) in which this task is included.
-	/// The job will propagate the channel to all children tasks automatically.
-	pub ctrlc_chan: Option<CtrlCSignalChannel>,
+	/// using [`JobBuilder::cancel_token`](`crate::job::JobBuilder::cancel_token`) in which this task is included.
+	/// The job will propagate the token to all children tasks automatically.
+	pub cancel_token: Option<CancellationToken>,
 }
 
 impl<S, A, E> Task<S, A, E>
@@ -94,7 +94,7 @@ where
 				source: self.source.as_mut(),
 				entry_to_msg_map: self.entry_to_msg_map.as_mut(),
 				tag: self.tag.as_deref(),
-				ctrlc_chan: self.ctrlc_chan.as_ref(),
+				cancel_token: self.cancel_token.as_ref(),
 			};
 			match action.apply(raw, ctx).await {
 				ActionResult::Ok(_) | ActionResult::Terminated => (),
@@ -116,8 +116,8 @@ where
 		Task::run(self).await
 	}
 
-	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel) {
-		self.ctrlc_chan = Some(channel);
+	fn set_cancel_token(&mut self, channel: CancellationToken) {
+		self.cancel_token = Some(channel);
 	}
 }
 

@@ -13,16 +13,16 @@ use std::process;
 use tokio::sync::watch;
 use tracing::subscriber::SetGlobalDefaultError;
 
-use crate::ctrl_c_signal::CtrlCSignalChannel;
+use crate::cancellation_token::CancellationToken;
 
 /// Contains the result of the [`init`] function
-#[must_use = "ctrl_c_signal_channel should probably be used. Ignore this type manually if you are sure you don't want it"]
+#[must_use = "ctrlc_cancel_token should probably be used"]
 pub struct InitResult {
 	/// The receiving channel end of the Ctrl-C signal handler background task
-	pub ctrl_c_signal_channel: CtrlCSignalChannel,
+	pub ctrlc_cancel_token: CancellationToken,
 }
 
-/// Initializes a tracing subscriber and a background task that will notify when a Ctrl-C signal has arrived via [`CtrlCSignalChannel`].
+/// Initializes a tracing subscriber and a background task that will notify when a Ctrl-C signal has arrived via a returned [`CancellationToken`].
 ///
 /// See [`set_up_logging`] and [`set_up_ctrl_c_handler`] for more info
 pub fn init() -> InitResult {
@@ -41,7 +41,7 @@ pub fn init() -> InitResult {
 	}
 
 	InitResult {
-		ctrl_c_signal_channel: set_up_ctrl_c_handler(),
+		ctrlc_cancel_token: set_up_ctrl_c_handler(),
 	}
 }
 
@@ -104,10 +104,10 @@ pub fn set_up_logging() -> Result<(), SetGlobalDefaultError> {
 /// Starts a detached tokio::task that sets up a Ctrl-C signal handler
 ///
 /// When a Ctrl-C signal is received,
-/// all jobs waiting on the [`CtrlCSignalChannel`] will receive a notification
+/// all jobs waiting on the returned [`CancellationToken`] will receive a notification
 /// and attempt to shutdown.
 #[must_use]
-pub fn set_up_ctrl_c_handler() -> CtrlCSignalChannel {
+pub fn set_up_ctrl_c_handler() -> CancellationToken {
 	let (shutdown_tx, shutdown_rx) = watch::channel(());
 
 	// signal handler
@@ -134,5 +134,5 @@ pub fn set_up_ctrl_c_handler() -> CtrlCSignalChannel {
 		process::exit(1);
 	});
 
-	CtrlCSignalChannel(shutdown_rx)
+	CancellationToken(shutdown_rx)
 }

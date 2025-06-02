@@ -27,7 +27,7 @@ use self::error_handling::{HandleErrorContext, HandleErrorResult};
 use self::trigger::ContinueJob;
 use crate::{
 	StaticStr,
-	ctrl_c_signal::{CtrlCSignalChannel, ctrlc_wait},
+	cancellation_token::{CancellationToken, cancel_wait},
 	error::ErrorChainDisplay,
 	maybe_send::MaybeSync,
 	task::TaskGroup,
@@ -55,9 +55,9 @@ pub struct Job<T, Tr, H> {
 	/// Handler for errors that occur during job execution
 	pub error_handling: H,
 
-	/// Gracefully stop the job when a Ctrl-C signal arrives
+	/// Gracefully stop the job when signalled
 	#[builder(required)]
-	pub ctrlc_chan: Option<CtrlCSignalChannel>,
+	pub cancel_token: Option<CancellationToken>,
 }
 
 impl<T, Tr, H> Job<T, Tr, H>
@@ -100,7 +100,7 @@ where
 				return JobResult::Err(errors);
 			}
 
-			// sleep until the next trigger is hit or stop on Ctrl-C
+			// sleep until the next trigger is hit or stop when the cancel token is triggered
 			select! {
 				trigger_res = self.trigger.wait() => {
 					match trigger_res {
@@ -109,7 +109,7 @@ where
 						Err(e) => return JobResult::TriggerFailed(e.into()),
 					}
 				},
-				() = ctrlc_wait(self.ctrlc_chan.as_mut()) => {
+				() = cancel_wait(self.cancel_token.as_mut()) => {
 					tracing::info!("Job {} is shutting down...", self.name);
 					return JobResult::Ok;
 				}
@@ -154,7 +154,7 @@ where
 			let cx = HandleErrorContext {
 				job_name: &self.name,
 				job_trigger: &self.trigger,
-				ctrlc_chan: self.ctrlc_chan.as_mut(),
+				cancel_token: self.cancel_token.as_mut(),
 			};
 
 			match self.error_handling.handle_errors(errors, cx).await {
@@ -199,11 +199,11 @@ where
 	///
 	/// # Note
 	/// `T` is constrained to implement [`TaskGroup`]
-	/// because the builder propagates the [`CtrlCSignalChannel`]
+	/// because the builder propagates the [`CancellationToken`]
 	/// too all child tasks on build.
 	pub fn build_with_default_error_handling(self) -> Job<T, Tr, error_handling::ExponentialBackoff>
 	where
-		S::CtrlcChan: job_builder::IsSet,
+		S::CancelToken: job_builder::IsSet,
 		S::ErrorHandling: job_builder::IsUnset,
 		S::Trigger: job_builder::IsSet,
 		S::Tasks: job_builder::IsSet,
@@ -221,20 +221,20 @@ where
 	///
 	/// # Note
 	/// `T` is constrained to implement [`TaskGroup`]
-	/// because the builder propagates the [`CtrlCSignalChannel`]
+	/// because the builder propagates the [`CancellationToken`]
 	/// too all child tasks on build.
 	pub fn build(self) -> Job<T, Tr, H>
 	where
 		S: job_builder::IsComplete,
-		S::CtrlcChan: job_builder::IsSet,
+		S::CancelToken: job_builder::IsSet,
 		S::ErrorHandling: job_builder::IsSet,
 		S::Trigger: job_builder::IsSet,
 		S::Tasks: job_builder::IsSet,
 	{
 		let mut job = self.build_internal();
 
-		if let Some(ctrlc_chan) = &job.ctrlc_chan {
-			job.tasks.set_ctrlc_channel(ctrlc_chan.clone());
+		if let Some(token) = &job.cancel_token {
+			job.tasks.set_cancel_token(token.clone());
 		}
 
 		job

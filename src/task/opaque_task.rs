@@ -10,7 +10,7 @@ use std::convert::Infallible;
 
 use super::DisabledTask;
 use crate::{
-	ctrl_c_signal::CtrlCSignalChannel,
+	cancellation_token::CancellationToken,
 	error::FetcherError,
 	maybe_send::{MaybeSend, MaybeSendSync},
 };
@@ -37,8 +37,8 @@ pub trait OpaqueTask: MaybeSendSync {
 	/// the task's work and return a [`Result`] indicating success or failure.
 	fn run(&mut self) -> impl Future<Output = Result<(), FetcherError>> + MaybeSend;
 
-	/// Sets the [`CtrlCSignalChannel`] of the task to `channel`
-	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel);
+	/// Sets the [`CancellationToken`] of the task to `token`
+	fn set_cancel_token(&mut self, token: CancellationToken);
 
 	/// Disables the task, Making [`OpaqueTask::run`] a no-op.
 	///
@@ -56,7 +56,7 @@ impl OpaqueTask for () {
 		Ok(())
 	}
 
-	fn set_ctrlc_channel(&mut self, _channel: CtrlCSignalChannel) {}
+	fn set_cancel_token(&mut self, _channel: CancellationToken) {}
 }
 
 impl OpaqueTask for Infallible {
@@ -64,7 +64,7 @@ impl OpaqueTask for Infallible {
 		match *self {}
 	}
 
-	fn set_ctrlc_channel(&mut self, _channel: CtrlCSignalChannel) {
+	fn set_cancel_token(&mut self, _channel: CancellationToken) {
 		match *self {}
 	}
 }
@@ -75,7 +75,7 @@ impl OpaqueTask for ! {
 		match *self {}
 	}
 
-	fn set_ctrlc_channel(&mut self, _channel: CtrlCSignalChannel) {
+	fn set_cancel_token(&mut self, _channel: CancellationToken) {
 		match *self {}
 	}
 }
@@ -92,12 +92,12 @@ where
 		task.run().await
 	}
 
-	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel) {
+	fn set_cancel_token(&mut self, channel: CancellationToken) {
 		let Some(task) = self else {
 			return;
 		};
 
-		task.set_ctrlc_channel(channel);
+		task.set_cancel_token(channel);
 	}
 }
 
@@ -109,7 +109,7 @@ where
 		(*self).run()
 	}
 
-	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel) {
-		(*self).set_ctrlc_channel(channel);
+	fn set_cancel_token(&mut self, channel: CancellationToken) {
+		(*self).set_cancel_token(channel);
 	}
 }

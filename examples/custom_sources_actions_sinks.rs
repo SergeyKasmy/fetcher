@@ -172,14 +172,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	// Initialize the default logging framework and a detached thread waiting for a Ctrl-C signal.
 	//
 	// TODO: add this to Ctrl-C chan docs
-	// The Ctrl-C signal channel enables jobs to finish more gracefully.
+	// The Ctrl-C cancellation token enables jobs to finish more gracefully.
 	// Instead of just exiting outright, the job can stop between actions
 	// when the last action has already run to completion
 	// or when the job is paused (be it because it's not its time yet to re-run
 	// or because e.g. [`ExponentialBackoff`] error handler paused the job to wait out the error)
-	let InitResult {
-		ctrl_c_signal_channel,
-	} = init();
+	let InitResult { ctrlc_cancel_token } = init();
 
 	// create a sink that writes the contents of the message body to file "time.txt"
 	let save_to_file = SaveBodyToFileSink(
@@ -219,7 +217,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 		// the task will re-run every 5 seconds
 		.trigger(trigger::Every(Duration::from_secs(5)))
 		// the job and the task will be stopped mid-work when they receive a signal
-		.ctrlc_chan(Some(ctrl_c_signal_channel))
+		.cancel_token(Some(ctrlc_cancel_token))
 		// if an error occures, stop the job immediately and return, aka "forward" the error
 		.error_handling(error_handling::Forward)
 		.build();

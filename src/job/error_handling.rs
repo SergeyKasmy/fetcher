@@ -20,7 +20,7 @@ use std::error::Error;
 use either::Either;
 use non_non_full::NonEmptyVec;
 
-use crate::ctrl_c_signal::CtrlCSignalChannel;
+use crate::cancellation_token::CancellationToken;
 use crate::error::FetcherError;
 use crate::maybe_send::{MaybeSend, MaybeSendSync, MaybeSync};
 
@@ -58,8 +58,8 @@ where
 	/// The job's [`Job::trigger`](`super::Job::trigger`)
 	pub job_trigger: &'a Tr,
 
-	/// The job's [`Job::ctrlc_chan`](`super::Job::ctrlc_chan`)
-	pub ctrlc_chan: Option<&'a mut CtrlCSignalChannel>,
+	/// The job's [`Job::cancel_token`](`super::Job::cancel_token`)
+	pub cancel_token: Option<&'a mut CancellationToken>,
 }
 
 /// What should happen after the handler returns

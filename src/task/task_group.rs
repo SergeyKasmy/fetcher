@@ -9,7 +9,7 @@
 use tokio::join;
 
 use crate::{
-	ctrl_c_signal::CtrlCSignalChannel,
+	cancellation_token::CancellationToken,
 	error::FetcherError,
 	maybe_send::{MaybeSend, MaybeSendSync},
 	task::OpaqueTask,
@@ -27,10 +27,10 @@ pub trait TaskGroup: MaybeSendSync {
 	/// This method runs all jobs in the group concurrently using [`join!()`].
 	fn run_concurrently(&mut self) -> impl Future<Output = Self::RunResult> + MaybeSend;
 
-	/// Sets the [`CtrlCSignalChannel`] of all the tasks in the group to `channel`.
+	/// Sets the [`CancellationToken`] of all the tasks in the group to `token`.
 	///
-	/// By default it uses [`OpaqueTask::set_ctrlc_channel`].
-	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel);
+	/// By default it uses [`OpaqueTask::set_cancel_token`].
+	fn set_cancel_token(&mut self, token: CancellationToken);
 }
 
 impl<T> TaskGroup for T
@@ -43,8 +43,8 @@ where
 		std::iter::once(OpaqueTask::run(self).await)
 	}
 
-	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel) {
-		OpaqueTask::set_ctrlc_channel(self, channel);
+	fn set_cancel_token(&mut self, channel: CancellationToken) {
+		OpaqueTask::set_cancel_token(self, channel);
 	}
 }
 
@@ -58,8 +58,8 @@ where
 		self.0.run_concurrently().await
 	}
 
-	fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel) {
-		self.0.set_ctrlc_channel(channel);
+	fn set_cancel_token(&mut self, channel: CancellationToken) {
+		self.0.set_cancel_token(channel);
 	}
 }
 
@@ -69,6 +69,7 @@ macro_rules! impl_taskgroup_for_tuples {
 		type_names = $($type_name:ident)+;
 		indices = $($index:tt)+
 	} => {
+		#[expect(non_snake_case, reason = "it's fine to re-use the names for macro use")]
 		impl<$($type_name),+> TaskGroup for ($($type_name),+)
 		where
 			$($type_name: OpaqueTask),+
@@ -87,11 +88,10 @@ macro_rules! impl_taskgroup_for_tuples {
 				results.into()
 			}
 
-			#[expect(non_snake_case, reason = "it's fine to re-use the names for macro use")]
-			fn set_ctrlc_channel(&mut self, channel: CtrlCSignalChannel) {
+			fn set_cancel_token(&mut self, token: CancellationToken) {
 				let ($($type_name),+) = self;
 				$(
-					$type_name.set_ctrlc_channel(channel.clone());
+					$type_name.set_cancel_token(token.clone());
 				)+
 			}
 		}

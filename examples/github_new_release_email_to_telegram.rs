@@ -35,9 +35,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	// when the last action has already run to completion
 	// or when the job is paused (be it because it's not its time yet to re-run
 	// or because e.g. [`ExponentialBackoff`] error handler paused the job to wait out the error).
-	let InitResult {
-		ctrl_c_signal_channel,
-	} = init();
+	let InitResult { ctrlc_cancel_token } = init();
 
 	// Create a new instance of an OAuth2 authenticator for Google
 	let auth = auth::Google::new(
@@ -93,7 +91,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 			30 /* m */ * 60, /* secs in a min */
 		)))
 		// the job and the task will be stopped mid-work when they receive a signal
-		.ctrlc_chan(Some(ctrl_c_signal_channel))
+		.cancel_token(Some(ctrlc_cancel_token))
 		// Use the default error handling that uses exponential backoff when an error occures while the tasks executes.
 		// This means that the job will stop, go pause (go to sleep), and re-run the task once more a bit later.
 		// If an error still occures, it will repeat this process but with a longer pause.

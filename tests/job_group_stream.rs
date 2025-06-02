@@ -73,14 +73,14 @@ async fn job_group_stream() {
 	let job_never_panics = Job::builder("never_panics")
 		.tasks(task_never_panics)
 		.trigger(trigger_every_100ms)
-		.ctrlc_chan(None)
+		.cancel_token(None)
 		.error_handling(Forward)
 		.build();
 
 	let job_always_panics = Job::builder("always_panics")
 		.tasks(task_always_panics)
 		.trigger(trigger_every_100ms)
-		.ctrlc_chan(None)
+		.cancel_token(None)
 		.error_handling(Forward)
 		.build();
 

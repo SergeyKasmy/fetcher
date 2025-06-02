@@ -59,13 +59,13 @@ pub type JobGroupResult = Vec<JobResult>;
 ///                 .tasks(())
 ///                 .trigger(trigger::Never)
 ///                 .error_handling(Forward)
-///                 .ctrlc_chan(None)
+///                 .cancel_token(None)
 ///                 .build();
 /// let job2 = Job::builder("job2")
 ///                 .tasks(())
 ///                 .trigger(trigger::Never)
 ///                 .error_handling(Forward)
-///                 .ctrlc_chan(None)
+///                 .cancel_token(None)
 ///                 .build();
 ///
 /// // Group jobs using a tuple
@@ -108,10 +108,10 @@ pub trait JobGroup: MaybeSendSync {
 	/// use futures::stream::StreamExt;
 	///
 	/// // Create jobs
-	/// let job1 = Job::builder("job1").tasks(()).trigger(trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job2 = Job::builder("job2").tasks(()).trigger(trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job3 = Job::builder("job3").tasks(()).trigger(trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job4 = Job::builder("job4").tasks(()).trigger(trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job1 = Job::builder("job1").tasks(()).trigger(trigger::Never).error_handling(Forward).cancel_token(None).build();
+	/// let job2 = Job::builder("job2").tasks(()).trigger(trigger::Never).error_handling(Forward).cancel_token(None).build();
+	/// let job3 = Job::builder("job3").tasks(()).trigger(trigger::Never).error_handling(Forward).cancel_token(None).build();
+	/// let job4 = Job::builder("job4").tasks(()).trigger(trigger::Never).error_handling(Forward).cancel_token(None).build();
 	///
 	/// let group1 = (job1, job2);
 	/// let group2 = (job3, job4);
@@ -145,8 +145,8 @@ pub trait JobGroup: MaybeSendSync {
 	/// use futures::stream::StreamExt;
 	///
 	/// // Create jobs
-	/// let job1 = Job::builder("job1").tasks(()).trigger(trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
-	/// let job2 = Job::builder("job2").tasks(()).trigger(trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
+	/// let job1 = Job::builder("job1").tasks(()).trigger(trigger::Never).error_handling(Forward).cancel_token(None).build();
+	/// let job2 = Job::builder("job2").tasks(()).trigger(trigger::Never).error_handling(Forward).cancel_token(None).build();
 	///
 	/// let group = (job1, job2);
 	///
@@ -177,8 +177,8 @@ pub trait JobGroup: MaybeSendSync {
 	// # tokio_test::block_on(async {
 	// use fetcher::job::{Job, JobGroup, error_handling::Forward, Trigger};
 	//
-	// let job1 = Job::builder("job1").tasks(()).trigger(Trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
-	// let job2 = Job::builder("job2").tasks(()).trigger(Trigger::Never).error_handling(Forward).ctrlc_chan(None).build();
+	// let job1 = Job::builder("job1").tasks(()).trigger(Trigger::Never).error_handling(Forward).cancel_token(None).build();
+	// let job2 = Job::builder("job2").tasks(()).trigger(Trigger::Never).error_handling(Forward).cancel_token(None).build();
 	//
 	// let group = (job1, job2);
 	//
@@ -223,7 +223,7 @@ pub trait JobGroup: MaybeSendSync {
 /// let job = Job::builder("job")
 ///                 .tasks(())
 ///                 .trigger(trigger::Never)
-///                 .ctrlc_chan(None)
+///                 .cancel_token(None)
 ///                 .build_with_default_error_handling();
 ///
 /// let inner_group = (job,).with_name("inner group");

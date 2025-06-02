@@ -65,7 +65,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	let mut job = Job::builder("example job")
 		.tasks(task)
 		.trigger(trigger::Every(Duration::from_secs(1)))
-		.ctrlc_chan(None)
+		.cancel_token(None)
 		.error_handling(error_handling::LogAndIgnore)
 		.build();
 

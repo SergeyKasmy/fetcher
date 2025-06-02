@@ -59,7 +59,7 @@
 
 pub mod actions;
 pub mod auth;
-pub mod ctrl_c_signal;
+pub mod cancellation_token;
 pub mod entry;
 pub mod error;
 pub mod exec;

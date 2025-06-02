@@ -21,7 +21,7 @@ use self::transforms::async_fn::IntoTransformedEntries;
 use self::transforms::field::{Field, TransformField, TransformFieldAdapter};
 
 use crate::actres_try;
-use crate::ctrl_c_signal::CtrlCSignalChannel;
+use crate::cancellation_token::CancellationToken;
 use crate::maybe_send::{MaybeSend, MaybeSendSync};
 use crate::sinks::{Sink, SinkWrapper};
 use crate::{
@@ -99,8 +99,8 @@ pub struct ActionContext<'a, S, E> {
 	/// The [`Task::tag`](`crate::task::Task::tag`) of the parent task, if any.
 	pub tag: Option<&'a str>,
 
-	/// The [`Job::ctrlc_chan`](`crate::job::Job::ctrlc_chan`) of the parent job, if any.
-	pub ctrlc_chan: Option<&'a CtrlCSignalChannel>,
+	/// The [`Job::cancel_token`](`crate::job::Job::cancel_token`) of the parent job, if any.
+	pub cancel_token: Option<&'a CancellationToken>,
 }
 
 /// Transforms the provided [`Filter`] into an [`Action`]
@@ -166,7 +166,7 @@ macro_rules! reborrow_ctx {
 			source: ctx.source.as_deref_mut(),
 			entry_to_msg_map: ctx.entry_to_msg_map.as_deref_mut(),
 			tag: ctx.tag.as_deref(),
-			ctrlc_chan: ctx.ctrlc_chan.as_deref(),
+			cancel_token: ctx.cancel_token.as_deref(),
 		}
 	}};
 }
@@ -334,7 +334,7 @@ macro_rules! impl_action_for_tuples {
 				let mut action_num = 0;
 				let ($($type_name),+) = self;
 				$(
-					if ctx.ctrlc_chan.as_ref().is_some_and(|chan| chan.signaled()) {
+					if ctx.cancel_token.as_ref().is_some_and(|tok| tok.is_cancelled()) {
 						// TODO: is this fine? Maybe it shouldn't stop if a previous action had sideeffects?
 						tracing::debug!("Task terminated while in the middle of action pipeline execution. Not all have actions have been run to completion.");
 						return ActionResult::Terminated;
@@ -452,7 +452,7 @@ impl Default for ActionContext<'_, (), ()> {
 			source: None,
 			entry_to_msg_map: None,
 			tag: None,
-			ctrlc_chan: None,
+			cancel_token: None,
 		}
 	}
 }
@@ -463,13 +463,13 @@ mod tests {
 
 	use tokio::join;
 
-	use crate::{Task, actions::transform_fn, ctrl_c_signal::CtrlCSignalChannel};
+	use crate::{Task, actions::transform_fn, cancellation_token::CancellationToken};
 
 	#[tokio::test]
-	async fn ctrlc_signal_stops_task_mid_work() {
+	async fn cancel_token_stops_task_mid_work() {
 		const ACTION_DELAY: u64 = 2;
 
-		let (ctrlc_chan, tx) = CtrlCSignalChannel::new();
+		let (cancel_token, tx) = CancellationToken::new();
 
 		let request_stop_in_1s = async move {
 			tokio::time::sleep(Duration::from_secs(1)).await;
@@ -489,7 +489,7 @@ mod tests {
 
 		let mut task = Task::<(), _, _>::builder("test")
 			.action(pipeline)
-			.ctrlc_chan(ctrlc_chan)
+			.cancel_token(cancel_token)
 			.build_without_replies();
 
 		let now = Instant::now();

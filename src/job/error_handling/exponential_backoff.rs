@@ -19,7 +19,7 @@ use tokio::{select, time::sleep};
 
 use crate::{
 	error::FetcherError,
-	job::{ErrorChainDisplay, Trigger, ctrlc_wait},
+	job::{ErrorChainDisplay, Trigger, cancel_wait},
 	maybe_send::MaybeSync,
 };
 
@@ -327,7 +327,7 @@ async fn pause_job<Tr: MaybeSync>(dur: Duration, cx: HandleErrorContext<'_, Tr>)
 		() = sleep(dur) => {
 			true
 		}
-		() = ctrlc_wait(cx.ctrlc_chan) => {
+		() = cancel_wait(cx.cancel_token) => {
 			tracing::debug!("Job terminated mid exponential backoff pause");
 			false
 		}

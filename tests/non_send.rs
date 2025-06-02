@@ -41,14 +41,14 @@ async fn non_send_jobs() {
 				.tasks(task.clone())
 				.trigger(trigger::Never)
 				.error_handling(Forward)
-				.ctrlc_chan(None)
+				.cancel_token(None)
 				.build();
 
 			let mut job2 = Job::builder("job2")
 				.tasks(task)
 				.trigger(trigger::Never)
 				.error_handling(Forward)
-				.ctrlc_chan(None)
+				.cancel_token(None)
 				.build();
 
 			let _res = join!(job1.run(), job2.run());
