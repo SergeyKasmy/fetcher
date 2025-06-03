@@ -88,10 +88,10 @@ where
 		errors: NonEmptyVec<FetcherError>,
 		cx: HandleErrorContext<'_, Tr>,
 	) -> HandleErrorResult<Self::HandlerErr> {
-		if self.should_continue(&errors, cx).await {
-			HandleErrorResult::ContinueJob
+		if self.resume_job(&errors, cx).await {
+			HandleErrorResult::ResumeJob
 		} else {
-			HandleErrorResult::StopAndReturnErrs(errors)
+			HandleErrorResult::StopWithErrors(errors)
 		}
 	}
 }
@@ -152,9 +152,9 @@ enum AttemptLimitReached {
 }
 
 impl ExponentialBackoff {
-	/// Returns `true` if the job should continue executing.
-	/// Returns `false` if the job should stop.
-	async fn should_continue<Tr: Trigger>(
+	/// Returns `true` if the job should be resumed.
+	/// Returns `false` if the job should be stopped.
+	async fn resume_job<Tr: Trigger>(
 		&mut self,
 		errors: &[FetcherError],
 		cx: HandleErrorContext<'_, Tr>,
@@ -317,7 +317,7 @@ fn exponential_backoff_duration(attempt: u32, use_jitter: bool, mut rng: impl Rn
 	Duration::from_secs(final_duration)
 }
 
-/// Returns `true` if the job should continue after the pause.
+/// Returns `true` if the job should be resumed after the pause.
 /// Returns `false` if the pause was interrupted and the job should stop
 async fn pause_job<Tr: MaybeSync>(dur: Duration, cx: HandleErrorContext<'_, Tr>) -> bool {
 	tracing::info!("Pausing job {} for {}m", cx.job_name, dur.as_secs() / 60);

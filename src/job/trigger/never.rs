@@ -6,7 +6,7 @@
 
 use std::{convert::Infallible, time::Duration};
 
-use super::{ContinueJob, Trigger};
+use super::{Trigger, TriggerResult};
 
 /// Never retrigger the job, run once and stop
 #[derive(Clone, Copy, Debug)]
@@ -15,8 +15,8 @@ pub struct Never;
 impl Trigger for Never {
 	type Err = Infallible;
 
-	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
-		Ok(ContinueJob::No)
+	async fn wait(&mut self) -> Result<TriggerResult, Self::Err> {
+		Ok(TriggerResult::Stop)
 	}
 
 	fn twice_as_duration(&self) -> Duration {

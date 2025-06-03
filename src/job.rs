@@ -27,7 +27,7 @@ use std::panic;
 use tokio::select;
 
 use self::error_handling::{HandleErrorContext, HandleErrorResult};
-use self::trigger::ContinueJob;
+use self::trigger::TriggerResult;
 use crate::{
 	StaticStr,
 	cancellation_token::{CancellationToken, cancel_wait},
@@ -72,7 +72,7 @@ impl<Tr, H> Job<(), Tr, H> {
 	/// and makes it less bolierplate-y to create simpler jobs.
 	///
 	/// # Example
-	#[cfg_attr(all(feature = "source-http", feature = "action-html"), doc = " ```")]
+	#[cfg_attr(all(feature = "source-http", feature = "action-html"), doc = "```")]
 	#[cfg_attr(
 		not(all(feature = "source-http", feature = "action-html")),
 		doc = " ```ignore"
@@ -116,7 +116,7 @@ impl<Tr, H> Job<(), Tr, H> {
 	///     .build_with_default_error_handling();
 	/// # Ok(())
 	/// # }
-	/// ```
+	#[doc = "```"]
 	pub fn builder_simple<S, A>(name: impl Into<StaticStr>) -> SimpleJobBuilder<S, A, Tr, H> {
 		SimpleJob::builder(name)
 	}
@@ -141,8 +141,8 @@ where
 		tracing::info!("Running job {}", self.name);
 
 		match self.trigger.wait_start().await {
-			Ok(ContinueJob::Yes) => (),
-			Ok(ContinueJob::No) => return JobResult::Ok,
+			Ok(TriggerResult::Resume) => (),
+			Ok(TriggerResult::Stop) => return JobResult::Ok,
 			Err(e) => return JobResult::TriggerFailed(e.into()),
 		}
 
@@ -201,6 +201,7 @@ where
 		}
 	}
 
+	// TODO: move it inside the main run loop and handle errors in a match arm? This would avoid the duplicated wait_for_trigger call and allow it to be inlined
 	async fn run_inner(&mut self) -> JobResult {
 		// Error handling loop: exit out of it only when the job finishes or a fatal error occures, otherwise run the job once more
 		loop {
@@ -216,10 +217,9 @@ where
 				cancel_token: self.cancel_token.as_mut(),
 			};
 
-			// FIXME: re-triggers the job when it returns ContinueJob even if trigger is set to never
 			match self.error_handling.handle_errors(errors, cx).await {
-				HandleErrorResult::ContinueJob => (),
-				HandleErrorResult::StopAndReturnErrs(e) => return JobResult::Err(e),
+				HandleErrorResult::ResumeJob => (),
+				HandleErrorResult::StopWithErrors(e) => return JobResult::Err(e),
 				HandleErrorResult::ErrWhileHandling {
 					err,
 					original_errors,
@@ -310,7 +310,7 @@ where
 /// Sleep until the next trigger is hit or stop when the cancel token is triggered
 ///
 /// # Returns
-/// `ControlFlow::Continue(())` if the job should continue
+/// `ControlFlow::Continue(())` if the job should be resumed
 /// `ControlFlow::Break(res)` if the job should stop and return `res`
 async fn wait_for_trigger<Tr>(
 	mut trigger: Tr,
@@ -323,8 +323,8 @@ where
 	select! {
 		trigger_res = trigger.wait() => {
 			match trigger_res {
-				Ok(ContinueJob::Yes) => ControlFlow::Continue(()),
-				Ok(ContinueJob::No) => ControlFlow::Break(JobResult::Ok),
+				Ok(TriggerResult::Resume) => ControlFlow::Continue(()),
+				Ok(TriggerResult::Stop) => ControlFlow::Break(JobResult::Ok),
 				Err(e) => ControlFlow::Break(JobResult::TriggerFailed(e.into())),
 			}
 		},

@@ -30,10 +30,10 @@ pub trait Trigger: MaybeSendSync {
 	/// Block the current job until the appropriate condition is met
 	///
 	/// # Returns
-	/// `Ok(ContinueJob::Yes)` if the job should be retriggered after the wait has ended
-	/// `Ok(ContinueJob::No)` if the job should be stopped after the wait has ended
+	/// `Ok(TriggerResult::Resume)` if the job should be retriggered after the wait has ended
+	/// `Ok(TriggerResult::Stop)` if the job should be stopped after the wait has ended
 	/// `Err(Self::Err)` if an error occured while waiting
-	fn wait(&mut self) -> impl Future<Output = Result<ContinueJob, Self::Err>> + MaybeSend;
+	fn wait(&mut self) -> impl Future<Output = Result<TriggerResult, Self::Err>> + MaybeSend;
 
 	// TODO: not a very nice API. Provide more freedom for trigger and handleerror implementations to handle errors and waiting as they want.
 	// This one is too heavily coupled with ExponentialBackoff specifically
@@ -48,28 +48,27 @@ pub trait Trigger: MaybeSendSync {
 	/// Like [`Trigger::wait`] but is called just once when the job starts for the first time.
 	///
 	/// This function can just delegate itself to [`Trigger::wait`] to wait for the trigger first before running the job.
-	/// The default implementation just immediately returns [`ContinueJob::Yes`] to make the job run once before waiting for the trigger.
-	fn wait_start(&mut self) -> impl Future<Output = Result<ContinueJob, Self::Err>> + MaybeSend {
-		async { Ok(ContinueJob::Yes) }
+	/// The default implementation just immediately returns [`TriggerResult::Resume`] to make the job run once before waiting for the trigger.
+	fn wait_start(&mut self) -> impl Future<Output = Result<TriggerResult, Self::Err>> + MaybeSend {
+		async { Ok(TriggerResult::Resume) }
 	}
 }
 
-// TODO: replace with ControlFlow<()>?
 /// What should happen after the [`Trigger::wait`] has ended?
 #[derive(Clone, Copy, Debug)]
-pub enum ContinueJob {
-	/// The job should be continued and re-triggered
-	Yes,
+pub enum TriggerResult {
+	/// The job should be resumed and re-triggered
+	Resume,
 
 	/// The job should just be stopped
-	No,
+	Stop,
 }
 
 /// Forward implementation to [`Never`]
 impl Trigger for () {
 	type Err = <Never as Trigger>::Err;
 
-	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
+	async fn wait(&mut self) -> Result<TriggerResult, Self::Err> {
 		Never.wait().await
 	}
 
@@ -81,7 +80,7 @@ impl Trigger for () {
 impl<T: Trigger> Trigger for Option<T> {
 	type Err = T::Err;
 
-	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
+	async fn wait(&mut self) -> Result<TriggerResult, Self::Err> {
 		match self {
 			Some(inner) => inner.wait().await,
 			None => Never.wait().await.map_err(|e| match e {}),
@@ -99,7 +98,7 @@ impl<T: Trigger> Trigger for Option<T> {
 impl<T: Trigger> Trigger for &mut T {
 	type Err = T::Err;
 
-	fn wait(&mut self) -> impl Future<Output = Result<ContinueJob, Self::Err>> + MaybeSend {
+	fn wait(&mut self) -> impl Future<Output = Result<TriggerResult, Self::Err>> + MaybeSend {
 		(**self).wait()
 	}
 
@@ -115,7 +114,7 @@ where
 {
 	type Err = Box<dyn Error + Send + Sync>;
 
-	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
+	async fn wait(&mut self) -> Result<TriggerResult, Self::Err> {
 		match self {
 			Either::Left(tr) => tr.wait().await.map_err(Into::into),
 			Either::Right(tr) => tr.wait().await.map_err(Into::into),
@@ -132,7 +131,7 @@ where
 impl Trigger for Infallible {
 	type Err = Infallible;
 
-	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
+	async fn wait(&mut self) -> Result<TriggerResult, Self::Err> {
 		match *self {}
 	}
 
@@ -145,7 +144,7 @@ impl Trigger for Infallible {
 impl Trigger for ! {
 	type Err = !;
 
-	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
+	async fn wait(&mut self) -> Result<TriggerResult, Self::Err> {
 		match *self {}
 	}
 

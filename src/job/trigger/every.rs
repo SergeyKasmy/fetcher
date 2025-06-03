@@ -6,7 +6,7 @@
 
 use std::{convert::Infallible, time::Duration};
 
-use super::{ContinueJob, Trigger, sleep};
+use super::{Trigger, TriggerResult, sleep};
 
 /// Re-trigger the job every time after a time period has passed
 #[derive(Clone, Copy, Debug)]
@@ -15,9 +15,9 @@ pub struct Every(pub Duration);
 impl Trigger for Every {
 	type Err = Infallible;
 
-	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
+	async fn wait(&mut self) -> Result<TriggerResult, Self::Err> {
 		sleep(self.0).await;
-		Ok(ContinueJob::Yes)
+		Ok(TriggerResult::Resume)
 	}
 
 	fn twice_as_duration(&self) -> Duration {

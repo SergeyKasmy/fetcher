@@ -30,7 +30,7 @@ where
 	) -> HandleErrorResult<Self::HandlerErr> {
 		tracing::trace!("Forwarding errors");
 
-		HandleErrorResult::StopAndReturnErrs(errors)
+		HandleErrorResult::StopWithErrors(errors)
 	}
 }
 

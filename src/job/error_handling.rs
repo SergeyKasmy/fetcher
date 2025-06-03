@@ -62,11 +62,11 @@ where
 
 /// What should happen after the handler returns
 pub enum HandleErrorResult<E> {
-	/// The [`Job`](`super::Job`) should be continued as if nothing happened
-	ContinueJob,
+	/// The [`Job`](`super::Job`) should be resumed as if nothing happened
+	ResumeJob,
 
 	/// The [`Job`](`super::Job`) should be stopped and these errors should be returned
-	StopAndReturnErrs(NonEmptyVec<FetcherError>),
+	StopWithErrors(NonEmptyVec<FetcherError>),
 
 	/// The [`Job`](`super::Job`) should be stopped because an error has occured while handling the errors
 	ErrWhileHandling {
@@ -85,8 +85,8 @@ impl<E> HandleErrorResult<E> {
 		F: FnOnce(E) -> U,
 	{
 		match self {
-			HandleErrorResult::ContinueJob => HandleErrorResult::ContinueJob,
-			HandleErrorResult::StopAndReturnErrs(e) => HandleErrorResult::StopAndReturnErrs(e),
+			HandleErrorResult::ResumeJob => HandleErrorResult::ResumeJob,
+			HandleErrorResult::StopWithErrors(e) => HandleErrorResult::StopWithErrors(e),
 			HandleErrorResult::ErrWhileHandling {
 				err,
 				original_errors,
@@ -186,9 +186,9 @@ where
 	) -> HandleErrorResult<Self::HandlerErr> {
 		let Some(inner) = self else {
 			match Forward.handle_errors(errors, cx).await {
-				HandleErrorResult::ContinueJob => return HandleErrorResult::ContinueJob,
-				HandleErrorResult::StopAndReturnErrs(e) => {
-					return HandleErrorResult::StopAndReturnErrs(e);
+				HandleErrorResult::ResumeJob => return HandleErrorResult::ResumeJob,
+				HandleErrorResult::StopWithErrors(e) => {
+					return HandleErrorResult::StopWithErrors(e);
 				}
 				HandleErrorResult::ErrWhileHandling { err, .. } => match err {},
 			}

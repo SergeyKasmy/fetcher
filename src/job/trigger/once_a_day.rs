@@ -8,7 +8,7 @@ use std::{convert::Infallible, time::Duration};
 
 use chrono::{NaiveDateTime, NaiveTime, offset::Local as LocalTime};
 
-use super::{ContinueJob, Trigger, sleep};
+use super::{TriggerResult, Trigger, sleep};
 
 /// Re-trigger the job every day once a day at the provided wall clock time
 #[derive(Clone, Copy, Debug)]
@@ -17,12 +17,12 @@ pub struct OnceADayAt(pub NaiveTime);
 impl Trigger for OnceADayAt {
 	type Err = Infallible;
 
-	async fn wait(&mut self) -> Result<ContinueJob, Self::Err> {
+	async fn wait(&mut self) -> Result<TriggerResult, Self::Err> {
 		let now = LocalTime::now().naive_local();
 		let time_remaining = self.time_remaining_from(now);
 
 		sleep(time_remaining).await;
-		Ok(ContinueJob::Yes)
+		Ok(TriggerResult::Resume)
 	}
 
 	fn twice_as_duration(&self) -> Duration {

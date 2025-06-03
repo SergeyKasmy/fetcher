@@ -174,6 +174,7 @@ pub trait JobGroup: MaybeSendSync {
 	/// # Example
 	/// ```rust
 	/// # tokio_test::block_on(async {
+	/// # tokio::task::LocalSet::new().run_until(async {
 	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, trigger};
 	/// use futures::StreamExt;
 	///
@@ -190,6 +191,7 @@ pub trait JobGroup: MaybeSendSync {
 	/// // JobGroup::run returns a stream of (JobId, JobResult) where JobId contains the names of the job itself and all named groups its contained in
 	/// let (names, results): (Vec<_>, Vec<_>) = named_group2.run().map(|(id, result)| (id.to_string(), result)).unzip().await;
 	/// assert_eq!(names, &["something_else/important_jobs/job1", "something_else/important_jobs/job2"]);
+	/// # }).await;
 	/// # });
 	/// ```
 	fn with_name<S>(self, name: S) -> NamedJobGroup<Self>

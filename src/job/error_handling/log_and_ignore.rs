@@ -31,7 +31,7 @@ impl<Tr: MaybeSync> HandleError<Tr> for LogAndIgnore {
 			tracing::error!("{}", ErrorChainDisplay(error));
 		}
 
-		HandleErrorResult::ContinueJob
+		HandleErrorResult::ResumeJob
 	}
 }
 
