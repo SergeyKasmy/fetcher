@@ -75,6 +75,7 @@ impl TransformField for Extract {
 	}
 }
 
+/// Extracts and concats all capture groups into a single string
 fn extract_captures_from(regex: &Regex, from: &str) -> Option<String> {
 	regex.captures(from).map(|captures| {
 		captures

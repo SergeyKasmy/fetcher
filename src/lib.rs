@@ -49,13 +49,9 @@
 //!
 //! Contributions are very welcome! Please feel free to submit a pull request or open issues for any bugs, feature requests, or general feedback.
 
-#![cfg_attr(feature = "nightly", feature(never_type))]
 #![cfg_attr(not(feature = "send"), expect(clippy::future_not_send))]
+#![cfg_attr(feature = "nightly", feature(never_type))]
 #![cfg_attr(test, allow(clippy::unwrap_used))]
-// TODO: enable later
-#![allow(clippy::missing_docs_in_private_items)]
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::doc_markdown)]
 
 pub mod actions;
 pub mod auth;

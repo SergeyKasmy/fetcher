@@ -8,7 +8,7 @@ use std::{convert::Infallible, time::Duration};
 
 use chrono::{NaiveDateTime, NaiveTime, offset::Local as LocalTime};
 
-use super::{TriggerResult, Trigger, sleep};
+use super::{Trigger, TriggerResult, sleep};
 
 /// Re-trigger the job every day once a day at the provided wall clock time
 #[derive(Clone, Copy, Debug)]

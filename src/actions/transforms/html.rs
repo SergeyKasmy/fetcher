@@ -33,29 +33,30 @@ use std::{borrow::Cow, iter};
 /// HTML parser
 #[derive(bon::Builder, Debug)]
 pub struct Html {
-	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
+	/// One or more CSS selectors to find the text of an item.
+	/// If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field.
 	#[builder(field)]
 	pub text: Option<NonEmptyVec<DataSelector>>,
 
-	/// Selector to find an item/entry/article in a list on the page. None means to thread the entire page as a single item
+	/// CSS selector to find an item/entry/article in a list on the page. None means to threat the entire page as a single item
 	#[builder(with = |sel: &str| -> Result<_, SelectorError> { Selector::parse(sel).map_err(Into::into) })]
 	pub item: Option<Selector>,
 
-	/// Selector to find the title of an item
+	/// CSS selector to find the title of an item
 	#[builder(setters(
 		name = title_internal,
 		vis = ""
 	))]
 	pub title: Option<DataSelector>,
 
-	/// Selector to find the ID of an item
+	/// CSS selector to find the ID of an item
 	#[builder(setters(
 		name = id_internal,
 		vis = ""
 	))]
 	pub id: Option<DataSelector>,
 
-	/// Selector to find the link to an item
+	/// CSS selector to find the link to an item
 	#[builder(setters(
 		name = link_internal,
 		vis = ""
@@ -64,7 +65,7 @@ pub struct Html {
 
 	// TODO: support more media types
 	// TODO: why only one selector? JSON transform supports many
-	/// Selector to find the image of that item
+	/// CSS selector to find the image of that item
 	#[builder(setters(
 		name = img_internal,
 		vis = ""
@@ -76,7 +77,7 @@ pub struct Html {
 /// A [`DataSelector`] makes it possible to specify where the expect data should be, e.g. in an attribute or as the text of the element
 #[derive(Clone, Debug)]
 pub struct DataSelector {
-	/// A CSS selector to find the HTML element
+	/// CSS selector to find the HTML element
 	pub selector: Selector,
 
 	/// Places where to extract the expected data from
@@ -308,15 +309,23 @@ fn extract_imgs(
 }
 
 impl<S: html_builder::State> HtmlBuilder<S> {
-	/// Selector to find the text of an item.
+	/// CSS Selector to find the text of an item.
 	///
 	/// Can be called multiple times.
 	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
+	///
+	/// # Errors
+	/// if the CSS selector `sel` isn't actually a valid CSS selector
 	pub fn text(self, sel: &str) -> Result<Self, SelectorError> {
 		self.text_with_conf(sel, iter::once(DataLocation::Text), false)
 	}
 
-	/// Selector to find the text of an item.
+	/// CSS Selector to find the text of an item.
+	///
+	/// Can be called multiple times.
+	///
+	/// # Errors
+	/// if the CSS selector `sel` isn't actually a valid CSS selector
 	pub fn text_with_conf(
 		mut self,
 		sel: &str,
@@ -337,9 +346,12 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		Ok(self)
 	}
 
-	/// Selector to find the title of an item.
+	/// CSS Selector to find the title of an item.
 	///
 	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
+	///
+	/// # Errors
+	/// if the CSS selector `sel` isn't actually a valid CSS selector
 	pub fn title(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetTitle<S>>, SelectorError>
 	where
 		S::Title: html_builder::IsUnset,
@@ -347,7 +359,10 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		self.title_with_conf(sel, iter::once(DataLocation::Text), false)
 	}
 
-	/// Selector to find the title of an item.
+	/// CSS Selector to find the title of an item.
+	///
+	/// # Errors
+	/// if the CSS selector `sel` isn't actually a valid CSS selector
 	pub fn title_with_conf(
 		self,
 		sel: &str,
@@ -364,9 +379,12 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		}))
 	}
 
-	/// Selector to find the id of an item.
+	/// CSS Selector to find the ID of an item.
 	///
 	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
+	///
+	/// # Errors
+	/// if the CSS selector `sel` isn't actually a valid CSS selector
 	pub fn id(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetId<S>>, SelectorError>
 	where
 		S::Id: html_builder::IsUnset,
@@ -374,7 +392,10 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		self.id_with_conf(sel, iter::once(DataLocation::Text), false)
 	}
 
-	/// Selector to find the id of an item.
+	/// CSS Selector to find the ID of an item.
+	///
+	/// # Errors
+	/// if the CSS selector `sel` isn't actually a valid CSS selector
 	pub fn id_with_conf(
 		self,
 		sel: &str,
@@ -391,9 +412,12 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		}))
 	}
 
-	/// Selector to find the link of an item.
+	/// CSS Selector to find the link of an item.
 	///
 	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
+	///
+	/// # Errors
+	/// if the CSS selector `sel` isn't actually a valid CSS selector
 	pub fn link(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetLink<S>>, SelectorError>
 	where
 		S::Link: html_builder::IsUnset,
@@ -401,7 +425,10 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		self.link_with_conf(sel, iter::once(DataLocation::Text), false)
 	}
 
-	/// Selector to find the link of an item.
+	/// CSS Selector to find the link of an item.
+	///
+	/// # Errors
+	/// if the CSS selector `sel` isn't actually a valid CSS selector
 	pub fn link_with_conf(
 		self,
 		sel: &str,
@@ -418,9 +445,12 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		}))
 	}
 
-	/// Selector to find the img of an item.
+	/// CSS Selector to find the image of an item.
 	///
 	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
+	///
+	/// # Errors
+	/// if the CSS selector `sel` isn't actually a valid CSS selector
 	pub fn img(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetImg<S>>, SelectorError>
 	where
 		S::Img: html_builder::IsUnset,
@@ -428,7 +458,10 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		self.img_with_conf(sel, iter::once(DataLocation::Text), false)
 	}
 
-	/// Selector to find the img of an item.
+	/// CSS Selector to find the image of an item.
+	///
+	/// # Errors
+	/// if the CSS selector `sel` isn't actually a valid CSS selector
 	pub fn img_with_conf(
 		self,
 		sel: &str,

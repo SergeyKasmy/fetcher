@@ -27,6 +27,7 @@ impl TransformField for Trim {
 	}
 }
 
+/// Trims each line separately and joins them back
 fn trim(s: &str) -> String {
 	s.trim()
 		.lines()

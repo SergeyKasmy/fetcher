@@ -132,6 +132,9 @@ impl<T> TransformResult<T> {
 	}
 
 	/// The same as [`TransformResult::map`] but the function is allowed to return an error.
+	///
+	/// # Errors
+	/// if `f` returns [`Err`]
 	pub fn try_map<F, U, E>(self, f: F) -> Result<TransformResult<U>, E>
 	where
 		F: FnOnce(T) -> Result<U, E>,

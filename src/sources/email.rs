@@ -306,7 +306,7 @@ impl Email {
 	/// Creates an authenticated session with the IMAP server, passes it to the closure, and automatically logs out when the closure returns.
 	///
 	/// Passes &mut self as the first parameter to the closure to avoid borrowck errors.
-	/// Don't call session.logout() manually in the closure, this function will call it automatically at the end.
+	/// Don't call [`Session::logout()`] manually in the closure, this function will call it automatically at the end.
 	async fn with_session<F, T, E>(&mut self, f: F) -> Result<T, E>
 	where
 		F: AsyncFnOnce(&mut Email, &mut Session<TlsStream<TcpStream>>) -> Result<T, E>,

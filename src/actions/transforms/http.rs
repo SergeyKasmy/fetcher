@@ -26,6 +26,8 @@ use crate::{
 pub struct Http {
 	/// The field to get the URL from
 	pub from_field: Field,
+
+	/// Reqwest HTTP client
 	client: Client,
 }
 

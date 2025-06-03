@@ -87,10 +87,17 @@ pub type JobGroupResult = Vec<JobResult>;
 /// # });
 /// ```
 pub trait JobGroup: MaybeSendSync {
-	// TODO: fix docs
-	/// Runs all jobs in the group TODO
+	/// Runs all jobs in the group and returns a stream
+	/// that yields [`JobIds`](`JobId`) and [`JobResults`](`JobResult`) of contained jobs as soon as a job finishes.
 	///
-	/// This method spawns each job on a separate task using `tokio::spawn`.
+	/// By default this method spawns each job on a separate task using [`tokio::spawn`] if "send" feature is enabled.
+	///
+	/// If "send" is disabled, it uses [`tokio::task::spawn_local`].
+	/// This requires to wrap all your calls to [`JobGroup::run`] with
+	/// [`tokio::task::LocalSet::run_until()`], otherwise this function will panic
+	///
+	/// # Panics
+	/// if the "send" feature is disabled and the call is not wrapped in a [`tokio::task::LocalSet::run_until()`]
 	#[must_use = "the jobs could've finished with errors"]
 	fn run(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
 	where
