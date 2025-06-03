@@ -34,3 +34,34 @@ impl<Tr: MaybeSync> HandleError<Tr> for LogAndIgnore {
 		HandleErrorResult::ContinueJob
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use assert_matches::assert_matches;
+
+	use std::{error::Error, io};
+
+	use crate::{
+		Job,
+		actions::transform_fn,
+		entry::Entry,
+		job::{JobResult, error_handling::LogAndIgnore},
+	};
+
+	#[tokio::test]
+	async fn log_and_ignore_ignores_error() {
+		let mut job = Job::builder_simple::<(), _>("test")
+			.action(transform_fn(async |_| {
+				Err::<Entry, _>(
+					Box::new(io::Error::other("other error")) as Box<dyn Error + Send + Sync>
+				)
+			}))
+			.error_handling(LogAndIgnore)
+			.trigger(())
+			.cancel_token(None)
+			.build();
+
+		let result = job.run().await;
+		assert_matches!(result, JobResult::Ok);
+	}
+}

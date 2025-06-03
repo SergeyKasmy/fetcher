@@ -402,13 +402,13 @@ mod tests {
 			}
 		}
 
-		let mut rng = AlwaysExtremes(true);
+		let mut always_extremes = AlwaysExtremes(true);
 
 		for i in 0u32..=15 {
 			let expected_mins = 2u64.pow(i.saturating_sub(1));
 			// two separate calls will generate two jitter values in the two extremes of the allowed range. Confirm both are within range
-			check_exp_backoff_duration(i, true, m(expected_mins), &mut rng);
-			check_exp_backoff_duration(i, true, m(expected_mins), &mut rng);
+			check_exp_backoff_duration(i, true, m(expected_mins), &mut always_extremes);
+			check_exp_backoff_duration(i, true, m(expected_mins), &mut always_extremes);
 		}
 	}
 }

@@ -8,8 +8,6 @@
 //! - The [`HandleError`] trait used for implementing error handling strategies
 //! - Built-in handlers: [`Forward`], [`LogAndIgnore`], and [`ExponentialBackoff`]
 
-// TODO: add tests
-
 mod exponential_backoff;
 mod forward;
 mod log_and_ignore;

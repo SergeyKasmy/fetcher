@@ -33,3 +33,53 @@ where
 		HandleErrorResult::StopAndReturnErrs(errors)
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use std::{error::Error, io};
+
+	use assert_matches::assert_matches;
+
+	use crate::{
+		Job,
+		actions::{
+			transform_fn,
+			transforms::error::{TransformError, TransformErrorKind},
+		},
+		entry::Entry,
+		error::FetcherError,
+		job::JobResult,
+	};
+
+	use super::Forward;
+
+	#[tokio::test]
+	async fn forward_forwards_errors() {
+		let mut job = Job::builder_simple::<(), _>("test")
+			.action(transform_fn(async |_| {
+				Err::<Entry, _>(
+					Box::new(io::Error::other("other error")) as Box<dyn Error + Send + Sync>
+				)
+			}))
+			.error_handling(Forward)
+			.trigger(())
+			.cancel_token(None)
+			.build();
+
+		let JobResult::Err(error) = job.run().await else {
+			panic!("Job didn't return an error");
+		};
+
+		let FetcherError::Transform(transform_error) = error.first() else {
+			panic!("Unexpected error type");
+		};
+
+		assert_matches!(
+			&**transform_error,
+			TransformError {
+				kind: TransformErrorKind::Other(_),
+				..
+			}
+		);
+	}
+}

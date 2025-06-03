@@ -23,8 +23,6 @@ use std::convert::Infallible;
 
 use super::{Action, ActionContext, ActionResult};
 
-// TODO: add error assoc type.
-// Right now no built-in provided filters can error but a user-implemented one might
 /// Trait for all types that support filtering entries out of a list of [`Entry`]s
 pub trait Filter: MaybeSendSync {
 	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors

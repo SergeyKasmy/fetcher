@@ -141,8 +141,6 @@ impl Transform for Html {
 	}
 }
 
-// TODO: make sure (and add tests!) that it errors if no item was found
-// Won't remove this one till I add these goddamned tests >:(
 impl Html {
 	fn extract_entry(&self, html_fragment: ElementRef<'_>) -> Result<TransformedEntry, HtmlError> {
 		let title = self

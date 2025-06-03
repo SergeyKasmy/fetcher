@@ -54,6 +54,7 @@ pub trait Trigger: MaybeSendSync {
 	}
 }
 
+// TODO: replace with ControlFlow<()>?
 /// What should happen after the [`Trigger::wait`] has ended?
 #[derive(Clone, Copy, Debug)]
 pub enum ContinueJob {

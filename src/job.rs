@@ -22,6 +22,7 @@ pub use self::{
 use futures::FutureExt;
 use non_non_full::NonEmptyVec;
 use simple_job::{SimpleJob, SimpleJobBuilder};
+use std::ops::ControlFlow;
 use std::panic;
 use tokio::select;
 
@@ -167,19 +168,10 @@ where
 				return JobResult::Err(errors);
 			}
 
-			// sleep until the next trigger is hit or stop when the cancel token is triggered
-			select! {
-				trigger_res = self.trigger.wait() => {
-					match trigger_res {
-						Ok(ContinueJob::Yes) => (),
-						Ok(ContinueJob::No) => return JobResult::Ok,
-						Err(e) => return JobResult::TriggerFailed(e.into()),
-					}
-				},
-				() = cancel_wait(self.cancel_token.as_mut()) => {
-					tracing::info!("Job {} is shutting down...", self.name);
-					return JobResult::Ok;
-				}
+			match wait_for_trigger(&mut self.trigger, self.cancel_token.as_mut(), &self.name).await
+			{
+				ControlFlow::Continue(()) => (),
+				ControlFlow::Break(res) => return res,
 			}
 		}
 	}
@@ -224,6 +216,7 @@ where
 				cancel_token: self.cancel_token.as_mut(),
 			};
 
+			// FIXME: re-triggers the job when it returns ContinueJob even if trigger is set to never
 			match self.error_handling.handle_errors(errors, cx).await {
 				HandleErrorResult::ContinueJob => (),
 				HandleErrorResult::StopAndReturnErrs(e) => return JobResult::Err(e),
@@ -237,6 +230,12 @@ where
 
 					return JobResult::Err(original_errors);
 				}
+			}
+
+			match wait_for_trigger(&mut self.trigger, self.cancel_token.as_mut(), &self.name).await
+			{
+				ControlFlow::Continue(()) => (),
+				ControlFlow::Break(res) => return res,
 			}
 		}
 	}
@@ -305,5 +304,33 @@ where
 		}
 
 		job
+	}
+}
+
+/// Sleep until the next trigger is hit or stop when the cancel token is triggered
+///
+/// # Returns
+/// `ControlFlow::Continue(())` if the job should continue
+/// `ControlFlow::Break(res)` if the job should stop and return `res`
+async fn wait_for_trigger<Tr>(
+	mut trigger: Tr,
+	cancel_token: Option<&mut CancellationToken>,
+	job_name: &str,
+) -> ControlFlow<JobResult>
+where
+	Tr: Trigger,
+{
+	select! {
+		trigger_res = trigger.wait() => {
+			match trigger_res {
+				Ok(ContinueJob::Yes) => ControlFlow::Continue(()),
+				Ok(ContinueJob::No) => ControlFlow::Break(JobResult::Ok),
+				Err(e) => ControlFlow::Break(JobResult::TriggerFailed(e.into())),
+			}
+		},
+		() = cancel_wait(cancel_token) => {
+			tracing::info!("Job {job_name} is shutting down...");
+			ControlFlow::Break(JobResult::Ok)
+		}
 	}
 }
