@@ -171,30 +171,27 @@ pub trait JobGroup: MaybeSendSync {
 	/// The name is used for logging and debugging purposes.
 	///
 	///
-	// TODO: fix doccomment
-	// # Example
-	// ```rust
-	// # tokio_test::block_on(async {
-	// use fetcher::job::{Job, JobGroup, error_handling::Forward, Trigger};
-	//
-	// let job1 = Job::builder("job1").tasks(()).trigger(Trigger::Never).error_handling(Forward).cancel_token(None).build();
-	// let job2 = Job::builder("job2").tasks(()).trigger(Trigger::Never).error_handling(Forward).cancel_token(None).build();
-	//
-	// let group = (job1, job2);
-	//
-	// // Add a name to the group
-	// let named_group = group.with_name("important_jobs");
-	//
-	// let names = named_group.names().flatten().collect::<Vec<String>>();
-	// assert_eq!(names, vec!["important_jobs/job1", "important_jobs/job2"]);
-	//
-	// // Add a second name to the group
-	// let named_group2 = named_group.with_name("something_else");
-	//
-	// let names = named_group2.names().flatten().collect::<Vec<String>>();
-	// assert_eq!(names, vec!["something_else/important_jobs/job1", "something_else/important_jobs/job2"]);
-	// # });
-	// ```
+	/// # Example
+	/// ```rust
+	/// # tokio_test::block_on(async {
+	/// use fetcher::job::{Job, JobGroup, error_handling::Forward, trigger};
+	/// use futures::StreamExt;
+	///
+	/// let job1 = Job::builder("job1").tasks(()).trigger(trigger::Never).error_handling(Forward).cancel_token(None).build();
+	/// let job2 = Job::builder("job2").tasks(()).trigger(trigger::Never).error_handling(Forward).cancel_token(None).build();
+	///
+	/// let group = (job1, job2);
+	///
+	/// // Add a name to the group
+	/// let named_group = group.with_name("important_jobs");
+	/// // Add a second name to the group
+	/// let named_group2 = named_group.with_name("something_else");
+	///
+	/// // JobGroup::run returns a stream of (JobId, JobResult) where JobId contains the names of the job itself and all named groups its contained in
+	/// let (names, results): (Vec<_>, Vec<_>) = named_group2.run().map(|(id, result)| (id.to_string(), result)).unzip().await;
+	/// assert_eq!(names, &["something_else/important_jobs/job1", "something_else/important_jobs/job2"]);
+	/// # });
+	/// ```
 	fn with_name<S>(self, name: S) -> NamedJobGroup<Self>
 	where
 		Self: Sized,
