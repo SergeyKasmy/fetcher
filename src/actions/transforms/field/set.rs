@@ -50,7 +50,7 @@ impl Set {
 impl TransformField for Set {
 	type Err = Infallible;
 
-	fn transform_field(&mut self, _old_field: Option<&str>) -> Result<TrRes<String>, Self::Err> {
+	async fn transform_field(&mut self, _value: Option<&str>) -> Result<TrRes<String>, Self::Err> {
 		Ok(match self {
 			Set::Single(x) => TrRes::New(x.to_string()),
 			Set::Random(vec) => vec

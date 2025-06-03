@@ -57,7 +57,7 @@ impl Extract {
 impl TransformField for Extract {
 	type Err = ExtractError;
 
-	fn transform_field(
+	async fn transform_field(
 		&mut self,
 		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {

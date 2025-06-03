@@ -92,7 +92,7 @@ impl TransformField for LogFieldTransform {
 	type Err = Infallible;
 
 	/// `value` contains the value the field currently contains
-	fn transform_field(
+	async fn transform_field(
 		&mut self,
 		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {

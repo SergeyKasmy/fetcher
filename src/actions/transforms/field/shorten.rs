@@ -11,31 +11,34 @@ use crate::actions::transforms::result::{OptionUnwrapTransformResultExt, Transfo
 
 use std::{convert::Infallible, iter};
 
-/// Shorten a field to [`len`](`Shorten::len`). Makes the field completely empty if [`len`](`Shorten::len`) is 0, or trims the field to [`len`](`Shorten::len`) and adds "..." to the end
+/// Shorten a field to [`len`](`Shorten::len`).
+///
+/// Makes the field completely empty if [`len`](`Shorten::len`) is 0,
+/// or trims the field to [`len`](`Shorten::len`) characters and adds "..." to the end
 #[derive(Debug)]
 pub struct Shorten {
-	/// The maximum length of the field string
+	/// The maximum length of the field string in characters
 	pub len: usize,
 }
 
 impl TransformField for Shorten {
 	type Err = Infallible;
 
-	fn transform_field(
+	async fn transform_field(
 		&mut self,
-		field: Option<&str>,
+		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
 		// len == 0 means we should unset the field. Same effect as Set with value: None here
 		let new_val = if self.len == 0 {
 			None
-		} else if let Some(field) = field {
-			// pass-through the field if it's shorter than max len
-			if field.chars().count() < self.len {
-				Some(field.to_owned())
+		} else if let Some(value) = value {
+			// pass-through the value if it's shorter than max len
+			if value.chars().count() < self.len {
+				Some(value.to_owned())
 			} else {
-				// take self.len chars from field and append "..."
+				// take self.len chars from value and append "..."
 				Some(
-					field
+					value
 						.chars()
 						.take(self.len)
 						.chain(iter::repeat_n('.', 3))

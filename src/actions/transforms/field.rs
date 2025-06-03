@@ -35,7 +35,7 @@ use super::{
 use crate::{
 	actions::transforms::error::TransformErrorKind,
 	entry::{Entry, EntryId},
-	maybe_send::MaybeSendSync,
+	maybe_send::{MaybeSend, MaybeSendSync},
 };
 
 /// Transform/change the value of a field of an [`Entry `]
@@ -47,11 +47,10 @@ pub trait TransformField: MaybeSendSync {
 	///
 	/// # Errors
 	/// Refer to implementator's docs. Most of them never error but some do
-	// TODO: make async
 	fn transform_field(
 		&mut self,
 		value: Option<&str>,
-	) -> Result<TransformResult<String>, Self::Err>;
+	) -> impl Future<Output = Result<TransformResult<String>, Self::Err>> + MaybeSend;
 }
 
 /// List of all available fields for transformations
@@ -98,24 +97,28 @@ where
 				new_entry.msg.title = self
 					.transformator
 					.transform_field(entry.msg.title.as_deref())
+					.await
 					.map_err(Into::into)?;
 			}
 			Field::Body => {
 				new_entry.msg.body = self
 					.transformator
 					.transform_field(entry.msg.body.as_deref())
+					.await
 					.map_err(Into::into)?;
 			}
 			Field::Link => {
 				new_entry.msg.link = self
 					.transformator
 					.transform_field(entry.msg.link.as_deref())
+					.await
 					.map_err(Into::into)?;
 			}
 			Field::Id => {
 				new_entry.id = self
 					.transformator
 					.transform_field(entry.id.as_deref())
+					.await
 					.map_err(Into::into)?
 					.and_then(|id| EntryId::new(id).unwrap_or_empty());
 			}
@@ -123,6 +126,7 @@ where
 				new_entry.reply_to = self
 					.transformator
 					.transform_field(entry.reply_to.as_deref())
+					.await
 					.map_err(Into::into)?
 					.and_then(|id| EntryId::new(id).unwrap_or_empty());
 			}
@@ -130,6 +134,7 @@ where
 				new_entry.raw_contents = self
 					.transformator
 					.transform_field(entry.msg.body.as_deref())
+					.await
 					.map_err(Into::into)?;
 			}
 		}
@@ -141,7 +146,7 @@ where
 impl TransformField for () {
 	type Err = Infallible;
 
-	fn transform_field(
+	async fn transform_field(
 		&mut self,
 		_value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
@@ -152,7 +157,7 @@ impl TransformField for () {
 impl TransformField for Infallible {
 	type Err = Infallible;
 
-	fn transform_field(
+	async fn transform_field(
 		&mut self,
 		_value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
@@ -164,7 +169,7 @@ impl TransformField for Infallible {
 impl TransformField for ! {
 	type Err = !;
 
-	fn transform_field(
+	async fn transform_field(
 		&mut self,
 		_value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
@@ -178,7 +183,7 @@ where
 {
 	type Err = T::Err;
 
-	fn transform_field(
+	async fn transform_field(
 		&mut self,
 		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
@@ -186,7 +191,7 @@ where
 			return Ok(TransformResult::default());
 		};
 
-		inner.transform_field(value)
+		inner.transform_field(value).await
 	}
 }
 
@@ -196,11 +201,11 @@ where
 {
 	type Err = T::Err;
 
-	fn transform_field(
+	async fn transform_field(
 		&mut self,
 		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
-		(*self).transform_field(value)
+		(*self).transform_field(value).await
 	}
 }
 

@@ -45,7 +45,7 @@ impl Replace {
 impl TransformField for Replace {
 	type Err = Infallible;
 
-	fn transform_field(
+	async fn transform_field(
 		&mut self,
 		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {

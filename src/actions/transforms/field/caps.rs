@@ -19,7 +19,7 @@ impl TransformField for Caps {
 	type Err = Infallible;
 
 	// Infallible
-	fn transform_field(
+	async fn transform_field(
 		&mut self,
 		field: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {

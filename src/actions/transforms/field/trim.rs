@@ -19,7 +19,7 @@ pub struct Trim;
 impl TransformField for Trim {
 	type Err = Infallible;
 
-	fn transform_field(
+	async fn transform_field(
 		&mut self,
 		value: Option<&str>,
 	) -> Result<TransformResult<String>, Self::Err> {
