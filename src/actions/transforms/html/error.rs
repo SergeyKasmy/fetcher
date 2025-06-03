@@ -8,7 +8,7 @@
 
 use std::fmt::Display;
 
-use scraper::{Selector, selector::ToCss};
+use scraper::{Selector, error::SelectorErrorKind, selector::ToCss};
 
 use super::DataSelector;
 use crate::actions::transforms::error::RawContentsNotSetError;
@@ -41,6 +41,12 @@ pub enum HtmlErrorInner {
 	ElementEmpty(DataSelector),
 }
 
+/// String is not a valid CSS selector
+// Note: scrapper has SelectorErrorKind but it's not Send...
+#[derive(thiserror::Error, Debug)]
+#[error("{0}")]
+pub struct SelectorError(String);
+
 /// The error occured while parsing which field?
 #[expect(missing_docs, reason = "self-explanatory")]
 #[derive(Clone, Copy, Debug)]
@@ -66,5 +72,11 @@ impl Display for ErrorLocation {
 			Self::Link => f.write_str("link"),
 			Self::Img => f.write_str("img"),
 		}
+	}
+}
+
+impl From<SelectorErrorKind<'_>> for SelectorError {
+	fn from(value: SelectorErrorKind<'_>) -> Self {
+		Self(value.to_string())
 	}
 }

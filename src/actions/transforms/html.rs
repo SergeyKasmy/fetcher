@@ -11,7 +11,7 @@ pub mod error;
 pub use self::error::HtmlError;
 pub use scraper::Selector;
 
-use self::error::{ErrorLocation, HtmlErrorInner};
+use self::error::{ErrorLocation, HtmlErrorInner, SelectorError};
 use super::Transform;
 use crate::{
 	StaticStr,
@@ -27,20 +27,18 @@ use crate::{
 use either::Either;
 use itertools::Itertools;
 use non_non_full::NonEmptyVec;
-// TODO: SelectorErrorKind is not Send
-use scraper::{ElementRef, Html as HtmlDom, error::SelectorErrorKind};
+use scraper::{ElementRef, Html as HtmlDom};
 use std::{borrow::Cow, iter};
 
 /// HTML parser
 #[derive(bon::Builder, Debug)]
 pub struct Html {
 	/// One or more query to find the text of an item. If more than one, then they all get joined with "\n\n" in-between and put into the [`Message.body`] field
-	// TODO: what happens when the option is Some but the vec is empty? Should be handled probs
 	#[builder(field)]
 	pub text: Option<NonEmptyVec<DataSelector>>,
 
 	/// Selector to find an item/entry/article in a list on the page. None means to thread the entire page as a single item
-	#[builder(with = |sel: &str| -> Result<_, SelectorErrorKind> { Selector::parse(sel) })]
+	#[builder(with = |sel: &str| -> Result<_, SelectorError> { Selector::parse(sel).map_err(Into::into) })]
 	pub item: Option<Selector>,
 
 	/// Selector to find the title of an item
@@ -110,15 +108,26 @@ impl Transform for Html {
 
 		let root = dom.root_element();
 
+		// don't check this in prod, it should probably be fine. If it's not, it'll hopefully be caught while developing
+		#[cfg(debug_assertions)]
 		if root.text().collect::<String>().trim().is_empty() {
-			tracing::warn!("HTML body is completely empty");
-
-			// TODO: return an error instead
-			return Ok(Vec::new());
+			tracing::warn!("HTML body is empty");
 		}
 
 		let items = match self.item.as_ref() {
-			Some(item_sel) => Either::Left(root.select(item_sel)),
+			Some(item_sel) => {
+				let matched_items = root.select(item_sel);
+
+				if matched_items.clone().count() == 0 {
+					tracing::error!("Item selector didn't match an item");
+					return Err(HtmlError::Inner {
+						error: HtmlErrorInner::SelectorNotMatched(item_sel.clone()),
+						r#where: ErrorLocation::Item,
+					});
+				}
+
+				Either::Left(matched_items)
+			}
 			None => Either::Right(iter::once(root)),
 		};
 
@@ -204,7 +213,7 @@ fn extract_data(
 
 	if matched_elements.is_empty() {
 		if sel.optional {
-			// TODO: add warn
+			tracing::debug!("Selector didn't match any element");
 			return Ok(None);
 		} else {
 			return Err(HtmlErrorInner::SelectorNotMatched(sel.selector.clone()));
@@ -227,6 +236,7 @@ fn extract_data(
 	// selector matched an element that didn't have a required attribute
 	if extracted_data.is_empty() {
 		if sel.optional {
+			tracing::debug!("Selector matched an element but wasn't able to extract anything");
 			return Ok(None);
 		} else {
 			return Err(HtmlErrorInner::DataNotFoundInElement(sel.clone()));
@@ -235,6 +245,7 @@ fn extract_data(
 	// selector matched an empty (or full of whitespace) element
 	else if extracted_data.iter().all(String::is_empty) {
 		if sel.optional {
+			tracing::debug!("Selector matched an element but its contents were empty");
 			return Ok(None);
 		} else {
 			return Err(HtmlErrorInner::ElementEmpty(sel.clone()));
@@ -303,7 +314,7 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 	///
 	/// Can be called multiple times.
 	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
-	pub fn text(self, sel: &str) -> Result<Self, SelectorErrorKind> {
+	pub fn text(self, sel: &str) -> Result<Self, SelectorError> {
 		self.text_with_conf(sel, iter::once(DataLocation::Text), false)
 	}
 
@@ -313,7 +324,7 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		sel: &str,
 		locations: impl IntoIterator<Item = DataLocation>,
 		optional: bool,
-	) -> Result<Self, SelectorErrorKind> {
+	) -> Result<Self, SelectorError> {
 		let data_selector = DataSelector {
 			selector: Selector::parse(sel)?,
 			locations: locations.into_iter().collect(),
@@ -331,10 +342,7 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 	/// Selector to find the title of an item.
 	///
 	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
-	pub fn title(
-		self,
-		sel: &str,
-	) -> Result<HtmlBuilder<html_builder::SetTitle<S>>, SelectorErrorKind>
+	pub fn title(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetTitle<S>>, SelectorError>
 	where
 		S::Title: html_builder::IsUnset,
 	{
@@ -347,7 +355,7 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		sel: &str,
 		locations: impl IntoIterator<Item = DataLocation>,
 		optional: bool,
-	) -> Result<HtmlBuilder<html_builder::SetTitle<S>>, SelectorErrorKind>
+	) -> Result<HtmlBuilder<html_builder::SetTitle<S>>, SelectorError>
 	where
 		S::Title: html_builder::IsUnset,
 	{
@@ -361,7 +369,7 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 	/// Selector to find the id of an item.
 	///
 	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
-	pub fn id(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetId<S>>, SelectorErrorKind>
+	pub fn id(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetId<S>>, SelectorError>
 	where
 		S::Id: html_builder::IsUnset,
 	{
@@ -374,7 +382,7 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		sel: &str,
 		locations: impl IntoIterator<Item = DataLocation>,
 		optional: bool,
-	) -> Result<HtmlBuilder<html_builder::SetId<S>>, SelectorErrorKind>
+	) -> Result<HtmlBuilder<html_builder::SetId<S>>, SelectorError>
 	where
 		S::Id: html_builder::IsUnset,
 	{
@@ -388,7 +396,7 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 	/// Selector to find the link of an item.
 	///
 	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
-	pub fn link(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetLink<S>>, SelectorErrorKind>
+	pub fn link(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetLink<S>>, SelectorError>
 	where
 		S::Link: html_builder::IsUnset,
 	{
@@ -401,7 +409,7 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		sel: &str,
 		locations: impl IntoIterator<Item = DataLocation>,
 		optional: bool,
-	) -> Result<HtmlBuilder<html_builder::SetLink<S>>, SelectorErrorKind>
+	) -> Result<HtmlBuilder<html_builder::SetLink<S>>, SelectorError>
 	where
 		S::Link: html_builder::IsUnset,
 	{
@@ -415,7 +423,7 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 	/// Selector to find the img of an item.
 	///
 	/// Makes it not optional and extract from [`DataLocation::Text`] by default.
-	pub fn img(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetImg<S>>, SelectorErrorKind>
+	pub fn img(self, sel: &str) -> Result<HtmlBuilder<html_builder::SetImg<S>>, SelectorError>
 	where
 		S::Img: html_builder::IsUnset,
 	{
@@ -428,7 +436,7 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 		sel: &str,
 		locations: impl IntoIterator<Item = DataLocation>,
 		optional: bool,
-	) -> Result<HtmlBuilder<html_builder::SetImg<S>>, SelectorErrorKind>
+	) -> Result<HtmlBuilder<html_builder::SetImg<S>>, SelectorError>
 	where
 		S::Img: html_builder::IsUnset,
 	{
@@ -437,5 +445,242 @@ impl<S: html_builder::State> HtmlBuilder<S> {
 			locations: locations.into_iter().collect(),
 			optional,
 		}))
+	}
+}
+
+// TODO: add tests for multiple text selectors and multiple data locations with a "check" function to remove code duplication
+#[cfg(test)]
+mod tests {
+	use std::{iter, sync::LazyLock};
+
+	use assert_matches::assert_matches;
+
+	use super::Html;
+	use crate::{
+		actions::transforms::{
+			Transform,
+			html::{
+				DataLocation, HtmlError,
+				error::{ErrorLocation, HtmlErrorInner},
+			},
+		},
+		entry::Entry,
+	};
+
+	const DUMMY_HTML_PAGE: &str = r#"
+	<body>
+		<div>
+			<p class="title">Hello, World!</p>
+			<a href="https://example.com">Go to example.com</a>
+			<h1 class="empty"></h1>
+		</div>
+	</body>	
+	"#;
+
+	static ENTRY: LazyLock<Entry> = LazyLock::new(|| {
+		Entry::builder()
+			.raw_contents(DUMMY_HTML_PAGE.to_owned())
+			.build()
+	});
+
+	#[tokio::test]
+	async fn item_found() {
+		Html::builder()
+			.item("div")
+			.unwrap()
+			.build()
+			.transform_entry(ENTRY.clone())
+			.await
+			.unwrap();
+	}
+
+	#[tokio::test]
+	async fn item_not_found() {
+		let result = Html::builder()
+			.item("article")
+			.unwrap()
+			.build()
+			.transform_entry(ENTRY.clone())
+			.await;
+
+		assert_matches!(
+			result,
+			Err(HtmlError::Inner {
+				r#where: ErrorLocation::Item,
+				error: HtmlErrorInner::SelectorNotMatched(_)
+			})
+		);
+	}
+
+	#[tokio::test]
+	async fn title_extracts_by_full_path() {
+		let transformed_entries = Html::builder()
+			.item("div")
+			.unwrap()
+			.title("p.title")
+			.unwrap()
+			.build()
+			.transform_entry(ENTRY.clone())
+			.await
+			.unwrap();
+
+		let mut transformed_entries = transformed_entries.into_iter();
+		assert_eq!(
+			transformed_entries
+				.next()
+				.unwrap()
+				.into_entry(&*ENTRY)
+				.msg
+				.title
+				.as_deref(),
+			Some("Hello, World!")
+		);
+		assert_matches!(transformed_entries.next(), None);
+	}
+
+	#[tokio::test]
+	async fn title_extracts_by_class() {
+		let transformed_entries = Html::builder()
+			.item("div")
+			.unwrap()
+			.title(".title")
+			.unwrap()
+			.build()
+			.transform_entry(ENTRY.clone())
+			.await
+			.unwrap();
+
+		let mut transformed_entries = transformed_entries.into_iter();
+		assert_eq!(
+			transformed_entries
+				.next()
+				.unwrap()
+				.into_entry(&*ENTRY)
+				.msg
+				.title
+				.as_deref(),
+			Some("Hello, World!")
+		);
+		assert_matches!(transformed_entries.next(), None);
+	}
+
+	#[tokio::test]
+	async fn title_extracts_by_element_type() {
+		let transformed_entries = Html::builder()
+			.item("div")
+			.unwrap()
+			.title("p")
+			.unwrap()
+			.build()
+			.transform_entry(ENTRY.clone())
+			.await
+			.unwrap();
+
+		let mut transformed_entries = transformed_entries.into_iter();
+		assert_eq!(
+			transformed_entries
+				.next()
+				.unwrap()
+				.into_entry(&*ENTRY)
+				.msg
+				.title
+				.as_deref(),
+			Some("Hello, World!")
+		);
+		assert_matches!(transformed_entries.next(), None);
+	}
+
+	#[tokio::test]
+	async fn title_not_found() {
+		let result = Html::builder()
+			.item("div")
+			.unwrap()
+			.title("article.title")
+			.unwrap()
+			.build()
+			.transform_entry(ENTRY.clone())
+			.await;
+
+		assert_matches!(
+			result,
+			Err(HtmlError::Inner {
+				r#where: ErrorLocation::Title,
+				error: HtmlErrorInner::SelectorNotMatched(_)
+			})
+		);
+	}
+
+	#[tokio::test]
+	async fn link_extracts_from_attr() {
+		let transformed_entries = Html::builder()
+			.item("div")
+			.unwrap()
+			.link_with_conf(
+				"a",
+				iter::once(DataLocation::Attribute("href".into())),
+				false,
+			)
+			.unwrap()
+			.build()
+			.transform_entry(ENTRY.clone())
+			.await
+			.unwrap();
+
+		let mut transformed_entries = transformed_entries.into_iter();
+		assert_eq!(
+			transformed_entries
+				.next()
+				.unwrap()
+				.into_entry(&*ENTRY)
+				.msg
+				.link
+				.as_deref(),
+			Some("https://example.com")
+		);
+		assert_matches!(transformed_entries.next(), None);
+	}
+
+	#[tokio::test]
+	async fn link_matched_but_wrong_attr() {
+		let result = Html::builder()
+			.item("div")
+			.unwrap()
+			.link_with_conf(
+				"a",
+				iter::once(DataLocation::Attribute("url".into())),
+				false,
+			)
+			.unwrap()
+			.build()
+			.transform_entry(ENTRY.clone())
+			.await;
+
+		assert_matches!(
+			result,
+			Err(HtmlError::Inner {
+				r#where: ErrorLocation::Link,
+				error: HtmlErrorInner::DataNotFoundInElement(_),
+			})
+		);
+	}
+
+	#[tokio::test]
+	async fn body_matched_empty_elem() {
+		let result = Html::builder()
+			.item("div")
+			.unwrap()
+			.text("h1.empty")
+			.unwrap()
+			.build()
+			.transform_entry(ENTRY.clone())
+			.await;
+
+		assert_matches!(
+			result,
+			Err(HtmlError::Inner {
+				r#where: ErrorLocation::Text { index: 0 },
+				error: HtmlErrorInner::ElementEmpty(_),
+			})
+		);
 	}
 }
