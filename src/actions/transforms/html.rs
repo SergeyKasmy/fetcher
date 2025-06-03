@@ -27,6 +27,7 @@ use crate::{
 use either::Either;
 use itertools::Itertools;
 use non_non_full::NonEmptyVec;
+// TODO: SelectorErrorKind is not Send
 use scraper::{ElementRef, Html as HtmlDom, error::SelectorErrorKind};
 use std::{borrow::Cow, iter};
 

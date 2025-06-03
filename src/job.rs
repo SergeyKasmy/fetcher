@@ -9,6 +9,7 @@
 pub mod error_handling;
 pub mod job_group;
 pub mod opaque_job;
+mod simple_job;
 pub mod trigger;
 
 mod job_result;
@@ -20,6 +21,7 @@ pub use self::{
 
 use futures::FutureExt;
 use non_non_full::NonEmptyVec;
+use simple_job::{SimpleJob, SimpleJobBuilder};
 use std::panic;
 use tokio::select;
 
@@ -59,6 +61,61 @@ pub struct Job<T, Tr, H> {
 	/// Gracefully stop the job when signalled
 	#[builder(required)]
 	pub cancel_token: Option<CancellationToken>,
+}
+
+impl<Tr, H> Job<(), Tr, H> {
+	/// Creates an instance of [`Job`] using the builder syntax
+	/// that providers setters for all fields of a job with 1 child task
+	///
+	/// This builder is specialized for jobs containing just a single task
+	/// and makes it less bolierplate-y to create simpler jobs.
+	///
+	/// # Example
+	/// ```
+	/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+	/// // these 2 jobs are the same
+	///
+	/// use fetcher::{
+	///     Task,
+	///     Job,
+	///     actions::{sink, transform, transforms::Html},
+	///     sinks::Stdout,
+	///     sources::{Fetch, Http},
+	///     job::trigger,
+	/// };
+	/// use std::time::Duration;
+	///
+	/// let task = Task::builder("example")
+	///     .source(Http::new_get("https://ipinfo.io/ip")?.into_source_without_read_filter())
+	///     .tag("example_tag")
+	///     .action((
+	///         transform(Html::builder().text("body > pre").unwrap().build()),
+	///         sink(Stdout),
+	///     ))
+	///     .build_without_replies();
+	///
+	/// let _job = Job::builder("example")
+	///     .tasks(task)
+	///     .trigger(trigger::Every(Duration::from_secs(1)))
+	///     .cancel_token(None)
+	///     .build_with_default_error_handling();
+	///
+	/// let _simple_job = Job::builder_simple("example")
+	///     .source(Http::new_get("https://ipinfo.io/ip")?.into_source_without_read_filter())
+	///     .tag("example_tag")
+	///     .action((
+	///         transform(Html::builder().text("body > pre").unwrap().build()),
+	///         sink(Stdout),
+	///     ))
+	///     .trigger(trigger::Every(Duration::from_secs(1)))
+	///     .cancel_token(None)
+	///     .build_with_default_error_handling();
+	/// # Ok(())
+	/// # }
+	/// ```
+	pub fn builder_simple<S, A>(name: impl Into<StaticStr>) -> SimpleJobBuilder<S, A, Tr, H> {
+		SimpleJob::builder(name)
+	}
 }
 
 impl<T, Tr, H> Job<T, Tr, H>
