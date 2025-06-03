@@ -71,10 +71,12 @@ impl<Tr, H> Job<(), Tr, H> {
 	/// and makes it less bolierplate-y to create simpler jobs.
 	///
 	/// # Example
-	/// ```
+	#[cfg_attr(all(feature = "source-http", feature = "action-html"), doc = " ```")]
+	#[cfg_attr(
+		not(all(feature = "source-http", feature = "action-html")),
+		doc = " ```ignore"
+	)]
 	/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-	/// // these 2 jobs are the same
-	///
 	/// use fetcher::{
 	///     Task,
 	///     Job,
@@ -94,6 +96,7 @@ impl<Tr, H> Job<(), Tr, H> {
 	///     ))
 	///     .build_without_replies();
 	///
+	/// // these 2 jobs are the same
 	/// let _job = Job::builder("example")
 	///     .tasks(task)
 	///     .trigger(trigger::Every(Duration::from_secs(1)))
