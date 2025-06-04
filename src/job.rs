@@ -124,66 +124,10 @@ impl<Tr, H> Job<(), Tr, H> {
 impl<T, Tr, H> Job<T, Tr, H>
 where
 	T: TaskGroup,
-	Tr: Trigger,
-{
-	// that contains a list of errors that can be retrieved manually if needed instead
-	/// Run this job to completion or return early on an error.
-	///
-	/// # Errors
-	/// if any of the inner tasks return an error, refer to [`Task`](`crate::task::Task`) documentation
-	///
-	/// # Note
-	/// If you are a user of the library and want your job to stop as soon as any error occures,
-	/// set error handling to [`error_handling::Forward`] and just run the job as normal.
-	#[tracing::instrument(skip_all, fields(name = %self.name))]
-	async fn run_until_first_error(&mut self) -> JobResult {
-		tracing::info!("Running job {}", self.name);
-
-		match self.trigger.wait_start().await {
-			Ok(TriggerResult::Resume) => (),
-			Ok(TriggerResult::Stop) => return JobResult::Ok,
-			Err(e) => return JobResult::TriggerFailed(e.into()),
-		}
-
-		// Job loop: break out of it only on errors or if the job runs only once
-		loop {
-			let results = self.tasks.run_concurrently().await;
-
-			#[expect(clippy::manual_ok_err, reason = "false positive")]
-			let errors = results
-				.into_iter()
-				.filter_map(|r| {
-					tracing::trace!("Task result: {r:?}");
-
-					match r {
-						Ok(()) => None,
-						Err(e) => Some(e),
-					}
-				})
-				.collect::<Vec<_>>();
-
-			// returns errors if any
-			if let Some(errors) = NonEmptyVec::new(errors) {
-				return JobResult::Err(errors);
-			}
-
-			match wait_for_trigger(&mut self.trigger, self.cancel_token.as_mut(), &self.name).await
-			{
-				ControlFlow::Continue(()) => (),
-				ControlFlow::Break(res) => return res,
-			}
-		}
-	}
-}
-
-impl<T, Tr, H> Job<T, Tr, H>
-where
-	T: TaskGroup,
 	Tr: Trigger + MaybeSync,
 	H: HandleError<Tr>,
 {
-	/// Runs the job until it finishes (which can only occur without a [`Job::trigger`]),
-	/// or until an error or a panic happens.
+	/// Runs the job until it finishes or until an error or a panic happens.
 	///
 	/// # Note
 	/// This function never panics. If a panic occures, [`JobResult::Panicked`] is just returned instead.
@@ -200,34 +144,60 @@ where
 		}
 	}
 
-	// TODO: move it inside the main run loop and handle errors in a match arm? This would avoid the duplicated wait_for_trigger call and allow it to be inlined
 	async fn run_inner(&mut self) -> JobResult {
+		tracing::info!("Starting job {}", self.name);
+
 		// Error handling loop: exit out of it only when the job finishes or a fatal error occures, otherwise run the job once more
 		loop {
-			// if any errors occured, extract and handle them. Otherwise forward the result(e.g. Ok or Panicked)
-			let errors = match self.run_until_first_error().await {
-				JobResult::Err(errors) => errors,
-				other => return other,
-			};
+			match self.trigger.wait_start().await {
+				Ok(TriggerResult::Resume) => (),
+				Ok(TriggerResult::Stop) => return JobResult::Ok,
+				Err(e) => return JobResult::TriggerFailed(e.into()),
+			}
 
-			let cx = HandleErrorContext {
-				job_name: &self.name,
-				job_trigger: &self.trigger,
-				cancel_token: self.cancel_token.as_mut(),
-			};
+			let results = self.tasks.run_concurrently().await;
 
-			match self.error_handling.handle_errors(errors, cx).await {
-				HandleErrorResult::ResumeJob => (),
-				HandleErrorResult::StopWithErrors(e) => return JobResult::Err(e),
-				HandleErrorResult::ErrWhileHandling {
-					err,
-					original_errors,
-				} => {
-					tracing::error!(
-						"An error occured while handling other errors! Stopping the job and returning the original errors.\nDetails: {err}",
-					);
+			#[expect(clippy::manual_ok_err, reason = "false positive")]
+			let errors = results
+				.into_iter()
+				.filter_map(|r| {
+					tracing::trace!("Task result: {r:?}");
 
-					return JobResult::Err(original_errors);
+					match r {
+						Ok(()) => None,
+						Err(e) => Some(e),
+					}
+				})
+				.collect::<Vec<_>>();
+
+			// handle errors if there are some
+			if let Some(errors) = NonEmptyVec::new(errors) {
+				let cx = HandleErrorContext {
+					job_name: &self.name,
+					job_trigger: &self.trigger,
+					cancel_token: self.cancel_token.as_mut(),
+				};
+
+				match self.error_handling.handle_errors(errors, cx).await {
+					HandleErrorResult::ResumeJob {
+						wait_for_trigger: wait_on_the_trigger,
+					} => {
+						if !wait_on_the_trigger {
+							// make sure there is nothing else in the loop except for the `wait_for_trigger` call
+							continue;
+						}
+					}
+					HandleErrorResult::StopWithErrors(e) => return JobResult::Err(e),
+					HandleErrorResult::ErrWhileHandling {
+						err,
+						original_errors,
+					} => {
+						tracing::error!(
+							"An error occured while handling other errors! Stopping the job and returning the original errors.\nDetails: {err}",
+						);
+
+						return JobResult::Err(original_errors);
+					}
 				}
 			}
 

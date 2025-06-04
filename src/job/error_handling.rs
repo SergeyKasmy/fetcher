@@ -63,7 +63,14 @@ where
 /// What should happen after the handler returns
 pub enum HandleErrorResult<E> {
 	/// The [`Job`](`super::Job`) should be resumed as if nothing happened
-	ResumeJob,
+	ResumeJob {
+		/// Should the job call [`Trigger::wait`] afterwards or should it just restart the job from the beginning?
+		///
+		/// Error handlers that sleep (e.g. [`ExponentialBackoff`]) should return `false` to avoid double-sleep.\
+		/// Error handlers that don't actually handle errors, e.g. just log them (e.g. [`LogAndIgnore`]) should return `true`
+		/// to make sure the job sleeps between invokations.
+		wait_for_trigger: bool,
+	},
 
 	/// The [`Job`](`super::Job`) should be stopped and these errors should be returned
 	StopWithErrors(NonEmptyVec<FetcherError>),
@@ -85,7 +92,11 @@ impl<E> HandleErrorResult<E> {
 		F: FnOnce(E) -> U,
 	{
 		match self {
-			HandleErrorResult::ResumeJob => HandleErrorResult::ResumeJob,
+			HandleErrorResult::ResumeJob {
+				wait_for_trigger: wait_on_the_trigger,
+			} => HandleErrorResult::ResumeJob {
+				wait_for_trigger: wait_on_the_trigger,
+			},
 			HandleErrorResult::StopWithErrors(e) => HandleErrorResult::StopWithErrors(e),
 			HandleErrorResult::ErrWhileHandling {
 				err,
@@ -186,7 +197,13 @@ where
 	) -> HandleErrorResult<Self::HandlerErr> {
 		let Some(inner) = self else {
 			match Forward.handle_errors(errors, cx).await {
-				HandleErrorResult::ResumeJob => return HandleErrorResult::ResumeJob,
+				HandleErrorResult::ResumeJob {
+					wait_for_trigger: wait_on_the_trigger,
+				} => {
+					return HandleErrorResult::ResumeJob {
+						wait_for_trigger: wait_on_the_trigger,
+					};
+				}
 				HandleErrorResult::StopWithErrors(e) => {
 					return HandleErrorResult::StopWithErrors(e);
 				}

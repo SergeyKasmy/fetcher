@@ -89,7 +89,9 @@ where
 		cx: HandleErrorContext<'_, Tr>,
 	) -> HandleErrorResult<Self::HandlerErr> {
 		if self.resume_job(&errors, cx).await {
-			HandleErrorResult::ResumeJob
+			HandleErrorResult::ResumeJob {
+				wait_for_trigger: false,
+			}
 		} else {
 			HandleErrorResult::StopWithErrors(errors)
 		}
