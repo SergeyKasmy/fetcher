@@ -32,6 +32,12 @@ impl AuthError {
 		match self {
 			#[cfg(feature = "google-oauth2")]
 			Self::GoogleOAuth2(e) => e.is_connection_err(),
+
+			#[allow(
+				unreachable_patterns,
+				reason = "reachable in some feature combinations"
+			)]
+			_ => None,
 		}
 	}
 }

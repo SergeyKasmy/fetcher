@@ -58,7 +58,7 @@ pub struct BadRegexError(#[from] pub regex::Error);
 impl FetcherError {
 	/// Checks if the current error is somehow related to network connection and return it if it is
 	#[must_use]
-	pub(crate) fn is_connection_error(&self) -> Option<&(dyn StdError + Send + Sync)> {
+	pub fn is_connection_error(&self) -> Option<&(dyn StdError + Send + Sync)> {
 		// I know it will match any future variants automatically but I actually want it to do that anyways
 		#[expect(clippy::match_same_arms)]
 		match self {
