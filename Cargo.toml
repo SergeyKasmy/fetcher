@@ -131,7 +131,7 @@ unsafe_code = "forbid"
 pedantic = { level = "warn", priority = -1 }
 nursery  = { level = "warn", priority = -1 }
 
-### Hand-picked restrictions (as of Rust 1.87.0)
+### Hand-picked restrictions (as of Rust 1.88.0)
 clone_on_ref_ptr = "warn"
 dbg_macro = "warn"
 doc_include_without_cfg = "warn"
@@ -146,7 +146,8 @@ missing_assert_message = "warn"
 needless_raw_strings = "warn"
 pathbuf_init_then_push = "warn"
 print_stderr = "warn"
-redundant_test_prefix = "warn"
+# TODO: re-enable when 1.88.0 releases
+#redundant_test_prefix = "warn"
 rest_pat_in_fully_bound_structs = "warn"
 same_name_method = "warn"
 string_to_string = "warn"

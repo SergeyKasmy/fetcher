@@ -9,14 +9,12 @@
 use either::Either;
 
 use crate::actions::filters::error::FilterError;
+use crate::auth::AuthError;
 use crate::external_save::ExternalSaveError;
 use crate::{
 	actions::transforms::error::TransformError, sinks::error::SinkError,
 	sources::error::SourceError,
 };
-
-#[cfg(feature = "google-oauth2")]
-use crate::auth::google::GoogleOAuth2Error;
 
 use std::fmt::{self, Display};
 use std::{convert::Infallible, error::Error as StdError};
@@ -25,22 +23,20 @@ use std::{convert::Infallible, error::Error as StdError};
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum FetcherError {
-	#[error("Can't fetch data")]
+	#[error("Unable to fetch entries or mark an entry as read")]
 	Source(#[from] SourceError),
 
-	#[error("Can't transform entries")]
+	#[error("Unable to transform entries")]
 	Transform(#[from] Box<TransformError>),
 
-	#[error("Can't filter entries")]
+	#[error("Unable to filter some entries out")]
 	Filter(#[from] FilterError),
 
-	#[error("Can't send messages")]
+	#[error("Unable to send a message to sink")]
 	Sink(#[from] SinkError),
 
-	// TODO: create a separate AuthError and move that there
-	#[cfg(feature = "google-oauth2")]
-	#[error("Google authentication error")]
-	GoogleOAuth2(#[from] GoogleOAuth2Error),
+	#[error("Authentication failure")]
+	Auth(#[from] AuthError),
 
 	#[error(transparent)]
 	ExternalSave(#[from] ExternalSaveError),
@@ -62,15 +58,17 @@ pub struct BadRegexError(#[from] pub regex::Error);
 impl FetcherError {
 	/// Checks if the current error is somehow related to network connection and return it if it is
 	#[must_use]
-	pub fn is_connection_error(&self) -> Option<&(dyn StdError + Send + Sync)> {
+	pub(crate) fn is_connection_error(&self) -> Option<&(dyn StdError + Send + Sync)> {
 		// I know it will match any future variants automatically but I actually want it to do that anyways
+		#[expect(clippy::match_same_arms)]
 		match self {
 			Self::Source(e) => e.is_connection_err(),
 			Self::Transform(e) => e.is_connection_err(),
 			Self::Sink(e) => e.is_connection_err(),
-			#[cfg(feature = "google-oauth2")]
-			Self::GoogleOAuth2(e) => e.is_connection_err(),
-			_ => None,
+			Self::Auth(e) => e.is_connection_err(),
+			Self::Filter(_) | Self::ExternalSave(_) => None,
+			// FIXME: let other providers specify
+			Self::Other(_) => None,
 		}
 	}
 }
