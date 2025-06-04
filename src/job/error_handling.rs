@@ -64,7 +64,7 @@ where
 pub enum HandleErrorResult<E> {
 	/// The [`Job`](`super::Job`) should be resumed as if nothing happened
 	ResumeJob {
-		/// Should the job call [`Trigger::wait`] afterwards or should it just restart the job from the beginning?
+		/// Should the job call [`Trigger::wait`](`super::Trigger`) afterwards or should it just restart the job from the beginning?
 		///
 		/// Error handlers that sleep (e.g. [`ExponentialBackoff`]) should return `false` to avoid double-sleep.\
 		/// Error handlers that don't actually handle errors, e.g. just log them (e.g. [`LogAndIgnore`]) should return `true`

@@ -21,7 +21,6 @@ use {super::reddit::RedditError, roux::util::RouxError};
 
 use std::{convert::Infallible, error::Error as StdError, path::PathBuf};
 
-// TODO: Add "Other" error (Box<dyn Error>) for use for external source impls
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 pub enum SourceError {

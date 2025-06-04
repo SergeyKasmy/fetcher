@@ -17,7 +17,7 @@ use roux::{
 	Subreddit,
 	util::{FeedOption, TimePeriod},
 };
-use std::fmt::Debug;
+use std::{ffi::OsStr, fmt::Debug, path::Path};
 
 /// Source that fetches posts from a subreddit using the Reddit API
 pub struct Reddit {
@@ -111,17 +111,10 @@ impl Fetch for Reddit {
 				}
 
 				let link = post.url;
+				let is_picture = is_picture(link.as_deref());
+				let is_video = is_video(link.as_deref());
 
-				// TODO: don't igonre the clippy lint. Use a case insensetive ASCII search
-				#[expect(clippy::case_sensitive_file_extension_comparisons)]
-				let is_picture = link.as_ref().is_some_and(|link| link.ends_with(".jpg"));
-
-				#[expect(clippy::case_sensitive_file_extension_comparisons)]
-				let is_video = link.as_ref().is_some_and(|link| {
-					link.ends_with(".mp4") || link.ends_with(".gif") || link.ends_with(".gifv")
-				});
-
-				// post.url instead of link to avoid an unnecessary string -> url -> string conv
+				// TODO: why did I check for is_picture again?
 				let mut body = match (post.is_self, is_picture, &link) {
 					(true, _, _) => post.selftext,
 					(_, false, Some(link)) => link.clone(),
@@ -174,4 +167,26 @@ impl Debug for Reddit {
 			.field("score_threshold", &self.score_threshold)
 			.finish()
 	}
+}
+
+fn is_picture(url: Option<&str>) -> bool {
+	let Some(url) = url else {
+		return false;
+	};
+
+	Path::new(url)
+		.extension()
+		.is_some_and(|ext| ext.eq_ignore_ascii_case("jpg"))
+}
+
+fn is_video(url: Option<&str>) -> bool {
+	let video_extensions: [&'static OsStr; 3] = ["mp4".as_ref(), "gif".as_ref(), "gifv".as_ref()];
+
+	let Some(url) = url else {
+		return false;
+	};
+
+	Path::new(url)
+		.extension()
+		.is_some_and(|ext| video_extensions.contains(&ext))
 }
