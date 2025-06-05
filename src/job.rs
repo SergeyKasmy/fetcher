@@ -149,12 +149,6 @@ where
 
 		// Error handling loop: exit out of it only when the job finishes or a fatal error occures, otherwise run the job once more
 		loop {
-			match self.trigger.wait_start().await {
-				Ok(TriggerResult::Resume) => (),
-				Ok(TriggerResult::Stop) => return JobResult::Ok,
-				Err(e) => return JobResult::TriggerFailed(e.into()),
-			}
-
 			let results = self.tasks.run_concurrently().await;
 
 			#[expect(clippy::manual_ok_err, reason = "false positive")]

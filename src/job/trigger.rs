@@ -44,14 +44,6 @@ pub trait Trigger: MaybeSendSync {
 	/// can be reset, and thus it can be assumed that the next error isn't a consecutive error but a new one.
 	// TODO: improve docs
 	fn twice_as_duration(&self) -> Duration;
-
-	/// Like [`Trigger::wait`] but is called just once when the job starts for the first time.
-	///
-	/// This function can just delegate itself to [`Trigger::wait`] to wait for the trigger first before running the job.
-	/// The default implementation just immediately returns [`TriggerResult::Resume`] to make the job run once before waiting for the trigger.
-	fn wait_start(&mut self) -> impl Future<Output = Result<TriggerResult, Self::Err>> + MaybeSend {
-		async { Ok(TriggerResult::Resume) }
-	}
 }
 
 /// What should happen after the [`Trigger::wait`] has ended?
