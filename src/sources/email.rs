@@ -338,7 +338,7 @@ impl Email {
 	}
 }
 
-fn parse(mail: &ParsedMail, id: EntryId) -> Result<Entry, EmailError> {
+fn parse(mail: &ParsedMail<'_>, id: EntryId) -> Result<Entry, EmailError> {
 	tracing::trace!("Parsing the contents of an email with UID {id:?}");
 	let subject = mail.headers.iter().find_map(|x| {
 		if x.get_key_ref() == "Subject" {
