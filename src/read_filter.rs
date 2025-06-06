@@ -12,15 +12,14 @@ pub mod mark_as_read;
 mod external_save_wrapper;
 mod newer;
 mod not_present;
-
-mod external_implementations;
+mod shared;
 
 pub use self::{
 	external_save_wrapper::ExternalSaveRFWrapper, mark_as_read::MarkAsRead, newer::Newer,
-	not_present::NotPresent,
+	not_present::NotPresent, shared::Shared,
 };
 
-use crate::{actions::filters::Filter, maybe_send::MaybeSendSync};
+use crate::{actions::filters::Filter, external_save::ExternalSave, maybe_send::MaybeSendSync};
 
 use std::convert::Infallible;
 
@@ -29,7 +28,24 @@ use std::convert::Infallible;
 /// as well as marking an [Entry] as read
 ///
 /// [Entry]: crate::entry::Entry
-pub trait ReadFilter: MarkAsRead + Filter + MaybeSendSync {}
+pub trait ReadFilter: MarkAsRead + Filter + MaybeSendSync {
+	/// Wraps current read filter in [`Shared`]
+	fn into_shared(self) -> Shared<Self>
+	where
+		Self: Sized,
+	{
+		Shared::new(self)
+	}
+
+	/// Attaches the provided external save implementation to the current read filter
+	/// to be called on each on each [`MarkAsRead::mark_as_read`].
+	fn externally_saved<S: ExternalSave>(self, save: S) -> ExternalSaveRFWrapper<Self, S>
+	where
+		Self: Sized,
+	{
+		ExternalSaveRFWrapper::new(self, save)
+	}
+}
 
 impl<RF: ReadFilter> ReadFilter for Option<RF> {}
 impl ReadFilter for () {}

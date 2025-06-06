@@ -29,6 +29,16 @@ pub struct ExternalSaveRFWrapper<RF, S> {
 	pub external_save: Option<S>,
 }
 
+impl<RF, S> ExternalSaveRFWrapper<RF, S> {
+	/// Creates a new [`ExternalSaveRFWrapper`] containing the provided read filter and external save implementations
+	pub fn new(rf: RF, external_save: S) -> Self {
+		Self {
+			rf,
+			external_save: Some(external_save),
+		}
+	}
+}
+
 impl<RF, S> ReadFilter for ExternalSaveRFWrapper<RF, S>
 where
 	RF: ReadFilter + Serialize,
