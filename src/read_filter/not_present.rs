@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::{MarkAsRead, ReadFilter};
+use super::MarkAsRead;
 use crate::{
 	actions::filters::Filter,
 	entry::{Entry, EntryId},
@@ -54,8 +54,6 @@ impl NotPresent {
 		self.read_list.is_empty()
 	}
 }
-
-impl ReadFilter for NotPresent {}
 
 impl MarkAsRead for NotPresent {
 	type Err = Infallible;

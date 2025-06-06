@@ -8,7 +8,7 @@ use std::convert::Infallible;
 
 use serde::{Deserialize, Serialize};
 
-use super::{MarkAsRead, ReadFilter};
+use super::MarkAsRead;
 use crate::{
 	actions::filters::Filter,
 	entry::{Entry, EntryId},
@@ -34,8 +34,6 @@ impl Newer {
 		self.last_read_id.as_ref()
 	}
 }
-
-impl ReadFilter for Newer {}
 
 impl MarkAsRead for Newer {
 	type Err = Infallible;

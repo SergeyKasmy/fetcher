@@ -144,10 +144,13 @@ where
 		}
 	}
 
+	// TODO: pass cancel token to all things that might block, e.g. source
+	// Or maybe just select between the two in the job itself?
+	// The source might not like being cancelled, e.g. Email might want to send LOGOUT first
 	async fn run_inner(&mut self) -> JobResult {
 		tracing::info!("Starting job {}", self.name);
 
-		// Error handling loop: exit out of it only when the job finishes or a fatal error occures, otherwise run the job once more
+		// exit out of the loop only when the job is completely stopped
 		loop {
 			let results = self.tasks.run_concurrently().await;
 
