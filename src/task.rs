@@ -12,6 +12,8 @@ mod task_group;
 
 pub mod entry_to_msg_map;
 
+use std::convert::Infallible;
+
 pub use self::disabled_task::DisabledTask;
 pub use self::opaque_task::OpaqueTask;
 pub use self::task_group::TaskGroup;
@@ -121,20 +123,22 @@ where
 	}
 }
 
-impl<S, A, State: task_builder::State> TaskBuilder<S, A, (), State> {
+impl<S, A, State: task_builder::State> TaskBuilder<S, A, Infallible, State> {
 	/// Disables [`Task::entry_to_msg_map`].
 	///
 	/// Even though [`Task::entry_to_msg_map`] is optional, the generic still needs to be specified.
 	/// This method specifies the generic as [`()`] and sets [`Task::entry_to_msg_map`] to `None`.
-	pub fn no_entry_to_msg_map(self) -> TaskBuilder<S, A, (), task_builder::SetEntryToMsgMap<State>>
+	pub fn no_entry_to_msg_map(
+		self,
+	) -> TaskBuilder<S, A, Infallible, task_builder::SetEntryToMsgMap<State>>
 	where
 		State::EntryToMsgMap: task_builder::IsUnset,
 	{
-		self.maybe_entry_to_msg_map(None::<EntryToMsgMap<()>>)
+		self.maybe_entry_to_msg_map(None::<EntryToMsgMap<Infallible>>)
 	}
 
 	/// Builds the task while disabling the [`Task::entry_to_msg_map`] via [`TaskBuilder::no_entry_to_msg_map`].
-	pub fn build_without_replies(self) -> Task<S, A, ()>
+	pub fn build_without_replies(self) -> Task<S, A, Infallible>
 	where
 		State::EntryToMsgMap: task_builder::IsUnset,
 	{

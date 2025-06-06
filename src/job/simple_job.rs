@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use std::convert::Infallible;
+
 use staticstr::StaticStr;
 
 use crate::{Task, actions::Action, cancellation_token::CancellationToken, sources::Source};
@@ -52,7 +54,7 @@ where
 	Tr: Trigger,
 	H: HandleError<Tr>,
 {
-	pub fn build(self) -> Job<Task<S, A, ()>, Tr, H>
+	pub fn build(self) -> Job<Task<S, A, Infallible>, Tr, H>
 	where
 		State: simple_job_builder::IsComplete,
 	{
@@ -66,7 +68,7 @@ where
 			cancel_token,
 		} = self.build_internal();
 
-		let task = Task::builder(name.clone())
+		let task = Task::<S, A, Infallible>::builder(name.clone())
 			.maybe_tag(tag)
 			.maybe_source(source)
 			.maybe_action(action)
@@ -89,7 +91,9 @@ where
 	A: Action,
 	Tr: Trigger,
 {
-	pub fn build_with_default_error_handling(self) -> Job<Task<S, A, ()>, Tr, ExponentialBackoff>
+	pub fn build_with_default_error_handling(
+		self,
+	) -> Job<Task<S, A, Infallible>, Tr, ExponentialBackoff>
 	where
 		State::ErrorHandling: simple_job_builder::IsUnset,
 		State::Tag: simple_job_builder::IsSet,

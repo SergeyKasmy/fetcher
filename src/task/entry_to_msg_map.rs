@@ -6,7 +6,7 @@
 
 //! This module contains [`EntryToMsgMap`]
 
-use std::collections::HashMap;
+use std::{collections::HashMap, convert::Infallible};
 
 use crate::{
 	entry::EntryId, error::FetcherError, external_save::ExternalSave, sinks::message::MessageId,
@@ -17,7 +17,7 @@ use crate::{
 /// [entry]: crate::entry::Entry
 /// [message]: crate::sinks::message::Message
 #[derive(Clone, Debug)]
-pub struct EntryToMsgMap<E> {
+pub struct EntryToMsgMap<E = Infallible> {
 	/// External save location for that map.
 	/// It's called every time on [`Self::insert()`]
 	pub external_save: Option<E>,

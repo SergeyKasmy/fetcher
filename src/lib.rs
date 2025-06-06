@@ -98,7 +98,7 @@ mod tests {
 		external_save::ExternalSave,
 		job::{HandleError, OpaqueJob, Trigger},
 		maybe_send::MaybeSync,
-		read_filter::ReadFilter,
+		read_filter::MarkAsRead,
 		sinks::Sink,
 		sources::Source,
 		task::OpaqueTask,
@@ -120,7 +120,7 @@ mod tests {
 				+ HandleError<Tr>
 				+ OpaqueJob
 				+ OpaqueTask
-				+ ReadFilter
+				+ MarkAsRead
 				+ Sink
 				+ Source
 				+ Transform

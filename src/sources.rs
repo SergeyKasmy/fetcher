@@ -33,7 +33,7 @@ use self::error::SourceError;
 use crate::{
 	entry::{Entry, EntryId},
 	maybe_send::{MaybeSend, MaybeSendSync},
-	read_filter::{MarkAsRead, ReadFilter},
+	read_filter::MarkAsRead,
 };
 
 use std::convert::Infallible;
@@ -53,11 +53,11 @@ pub trait Fetch: MaybeSendSync {
 	fn into_source_with_read_filter<RF>(self, read_filter: RF) -> SourceWithSharedRF<Self, RF>
 	where
 		Self: Sized,
-		RF: ReadFilter,
+		RF: MarkAsRead,
 	{
 		SourceWithSharedRF {
 			source: self,
-			rf: read_filter,
+			rf: Some(read_filter),
 		}
 	}
 
@@ -68,7 +68,7 @@ pub trait Fetch: MaybeSendSync {
 	{
 		SourceWithSharedRF {
 			source: self,
-			rf: (),
+			rf: None,
 		}
 	}
 }
@@ -76,16 +76,12 @@ pub trait Fetch: MaybeSendSync {
 /// A wrapper around a [`Fetch`] that uses an external way to filter read entries,
 /// as well as a (read filter)[`ReadFilter`]
 #[derive(Debug)]
-pub struct SourceWithSharedRF<F, RF>
-where
-	F: Fetch,
-	RF: ReadFilter,
-{
+pub struct SourceWithSharedRF<F, RF> {
 	/// The source to fetch data from
 	pub source: F,
 
 	/// The read filter that's used to mark entries as read
-	pub rf: RF,
+	pub rf: Option<RF>,
 }
 
 impl Fetch for String {
@@ -167,7 +163,7 @@ where
 impl<F, RF> Source for SourceWithSharedRF<F, RF>
 where
 	F: Fetch,
-	RF: ReadFilter,
+	RF: MarkAsRead,
 {
 }
 
@@ -181,7 +177,7 @@ impl<S> Source for &mut S where S: Source {}
 impl<F, RF> Fetch for SourceWithSharedRF<F, RF>
 where
 	F: Fetch,
-	RF: ReadFilter,
+	RF: MarkAsRead,
 {
 	type Err = F::Err;
 
@@ -193,9 +189,9 @@ where
 impl<F, RF> MarkAsRead for SourceWithSharedRF<F, RF>
 where
 	F: Fetch,
-	RF: ReadFilter,
+	RF: MarkAsRead,
 {
-	type Err = <RF as MarkAsRead>::Err;
+	type Err = RF::Err;
 
 	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Self::Err> {
 		self.rf.mark_as_read(id).await

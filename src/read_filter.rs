@@ -4,54 +4,147 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+// FIXME: docs
 //! This module contains the [`ReadFilter`] that is used for keeping track of what Entry has been or not been read,
 //! including all of its stragedies
 
 pub mod mark_as_read;
 
-mod external_save_wrapper;
 mod newer;
 mod not_present;
-mod shared;
 
-pub use self::{
-	external_save_wrapper::ExternalSaveRFWrapper, mark_as_read::MarkAsRead, newer::Newer,
-	not_present::NotPresent, shared::Shared,
+pub use self::{mark_as_read::MarkAsRead, newer::Newer, not_present::NotPresent};
+
+use self::mark_as_read::MarkAsReadError;
+use crate::{
+	actions::filters::Filter,
+	entry::{Entry, EntryId},
+	external_save::ExternalSave,
+	maybe_send::MaybeSend,
 };
 
-use crate::{actions::filters::Filter, external_save::ExternalSave, maybe_send::MaybeSendSync};
+use std::{convert::Infallible, fmt::Debug};
 
-use std::convert::Infallible;
+use serde::Serialize;
+use tokio::sync::Mutex as TokioMutex;
 
-/// The trait that marks a type as a "read filter",
-/// that allows filtering out read items out of the list of [`entries`][Entry]
-/// as well as marking an [Entry] as read
+#[cfg(feature = "send")]
+type RefCounted<T> = std::sync::Arc<T>;
+#[cfg(not(feature = "send"))]
+type RefCounted<T> = std::rc::Rc<T>;
+
+// TODO: add example
+/// A reference-counted read-filter wrapper.
+/// Supports externally saving the inner read-filter's state if an [`ExternalSave`] is provided.
 ///
-/// [Entry]: crate::entry::Entry
-pub trait ReadFilter: MarkAsRead + Filter + MaybeSendSync {
-	/// Wraps current read filter in [`Shared`]
-	fn into_shared(self) -> Shared<Self>
-	where
-		Self: Sized,
-	{
-		Shared::new(self)
-	}
+/// # Note
+/// This is the expected way to use a read-filter in fetcher jobs.
+/// [`ReadFilter`] makes it easy to combine a read-filter implementation with a read-filter-less fetch
+/// and to actually filter out read entries with the read-filter.
+///
+/// `WITH_EXTERNAL_SAVE` specifies if [`ReadFilter`] should automatically save internal read-filter's state or not.\
+/// If it's `true`, then a [`Serialize`] bound is added to the inner read-filter
+/// and [`ExternalSave::save_read_filter`] is called with the inner read-filter every time [`MarkAsRead::mark_as_read`] is called.
+#[derive(Debug)]
+pub struct ReadFilter<T, const WITH_EXTERNAL_SAVE: bool, S = Infallible>(
+	RefCounted<TokioMutex<ReadFilterInner<T, WITH_EXTERNAL_SAVE, S>>>,
+);
 
-	/// Attaches the provided external save implementation to the current read filter
-	/// to be called on each on each [`MarkAsRead::mark_as_read`].
-	fn externally_saved<S: ExternalSave>(self, save: S) -> ExternalSaveRFWrapper<Self, S>
-	where
-		Self: Sized,
-	{
-		ExternalSaveRFWrapper::new(self, save)
+#[derive(Debug)]
+struct ReadFilterInner<T, const WITH_EXTERNAL_SAVE: bool, S = Infallible> {
+	read_filter: T,
+	/// Set to `None` when the read filter is set to read_only
+	external_save: Option<S>,
+}
+
+impl<T: MarkAsRead + Filter> ReadFilter<T, false> {
+	/// Creates a new [`ReadFilter`] without support for external saving
+	pub fn new(read_filter: T) -> Self {
+		Self(RefCounted::new(TokioMutex::new(ReadFilterInner {
+			read_filter,
+			external_save: None,
+		})))
 	}
 }
 
-impl<RF: ReadFilter> ReadFilter for Option<RF> {}
-impl ReadFilter for () {}
-impl ReadFilter for Infallible {}
+impl<T, S> ReadFilter<T, true, S>
+where
+	T: MarkAsRead + Filter,
+	S: ExternalSave,
+{
+	/// Creates a new [`ReadFilter`] with support for external saving via the provided `external_save`
+	pub fn with_external_save(read_filter: T, external_save: S) -> Self {
+		Self(RefCounted::new(TokioMutex::new(ReadFilterInner {
+			read_filter,
+			external_save: Some(external_save),
+		})))
+	}
+}
 
-#[cfg(feature = "nightly")]
-impl ReadFilter for ! {}
+impl<T, S> MarkAsRead for ReadFilter<T, true, S>
+where
+	T: MarkAsRead + Serialize,
+	S: ExternalSave,
+{
+	type Err = MarkAsReadError;
 
-impl<R> ReadFilter for &mut R where R: ReadFilter {}
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Self::Err> {
+		let mut inner = self.0.lock().await;
+
+		inner
+			.read_filter
+			.mark_as_read(id)
+			.await
+			.map_err(Into::into)?;
+
+		let ReadFilterInner {
+			read_filter,
+			external_save,
+		} = &mut *inner;
+
+		if let Some(ext_save) = external_save {
+			ext_save.save_read_filter(read_filter).await?;
+		}
+
+		Ok(())
+	}
+
+	async fn set_read_only(&mut self) {
+		let mut inner = self.0.lock().await;
+		inner.read_filter.set_read_only().await;
+		inner.external_save = None;
+	}
+}
+
+impl<T> MarkAsRead for ReadFilter<T, false>
+where
+	T: MarkAsRead,
+{
+	type Err = T::Err;
+
+	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Self::Err> {
+		self.0.lock().await.read_filter.mark_as_read(id).await
+	}
+
+	async fn set_read_only(&mut self) {
+		self.0.lock().await.read_filter.set_read_only().await
+	}
+}
+
+impl<T, const WITH_EXTERNAL_SAVE: bool, S> Clone for ReadFilter<T, WITH_EXTERNAL_SAVE, S> {
+	fn clone(&self) -> Self {
+		Self(RefCounted::clone(&self.0))
+	}
+}
+
+impl<T, const WITH_EXTERNAL_SAVE: bool, S> Filter for ReadFilter<T, WITH_EXTERNAL_SAVE, S>
+where
+	T: Filter,
+	S: MaybeSend,
+{
+	type Err = T::Err;
+
+	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
+		self.0.lock().await.read_filter.filter(entries).await
+	}
+}
