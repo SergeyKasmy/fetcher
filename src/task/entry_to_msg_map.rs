@@ -17,7 +17,7 @@ use crate::{
 /// [entry]: crate::entry::Entry
 /// [message]: crate::sinks::message::Message
 #[derive(Clone, Debug)]
-pub struct EntryToMsgMap<E = Infallible> {
+pub struct EntryToMsgMap<E> {
 	/// External save location for that map.
 	/// It's called every time on [`Self::insert()`]
 	pub external_save: Option<E>,
@@ -26,8 +26,8 @@ pub struct EntryToMsgMap<E = Infallible> {
 }
 
 impl<E> EntryToMsgMap<E> {
-	/// Create a new empty map but with [`Self::external_save`] set to `external_save`.
-	/// Use [`EntryToMsgMap::default()`] if you don't want to set [`Self::external_save`]
+	/// Creates a new empty map but with [`Self::external_save`] set to `external_save`.
+	/// Use [`EntryToMsgMap::without_external_saver()`] if you don't want to set [`Self::external_save`]
 	#[must_use]
 	pub fn new(external_save: E) -> Self {
 		Self {
@@ -36,7 +36,7 @@ impl<E> EntryToMsgMap<E> {
 		}
 	}
 
-	/// Create a new [`EntryToMsgMap`] with the provided `map` and `external_save` parameters
+	/// Creates a new [`EntryToMsgMap`] with the provided `map` and `external_save` parameters
 	#[must_use]
 	pub fn new_with_map(map: HashMap<EntryId, MessageId>, external_save: E) -> Self {
 		Self {
@@ -45,13 +45,22 @@ impl<E> EntryToMsgMap<E> {
 		}
 	}
 
-	/// Get the [`MessageId`] corresponding to the provided [`EntryId`]
+	/// Creates a new instance of [`EntryToMsgMap`] without an external saver.
+	/// This isn't very useful as all state will be lost when the program restarts.
+	pub fn without_external_saver() -> Self {
+		Self {
+			external_save: None,
+			map: HashMap::new(),
+		}
+	}
+
+	/// Gets the [`MessageId`] corresponding to the provided [`EntryId`]
 	#[must_use]
 	pub fn get(&self, eid: &EntryId) -> Option<&MessageId> {
 		self.map.get(eid)
 	}
 
-	/// Get the [`MessageId`] corresponding to the provided [`EntryId`] if it exists
+	/// Gets the [`MessageId`] corresponding to the provided [`EntryId`] if it exists
 	#[must_use]
 	pub fn get_if_exists(&self, eid: Option<&EntryId>) -> Option<&MessageId> {
 		eid.and_then(|eid| self.map.get(eid))
@@ -79,7 +88,7 @@ where
 	}
 }
 
-impl<E> Default for EntryToMsgMap<E> {
+impl Default for EntryToMsgMap<Infallible> {
 	fn default() -> Self {
 		Self {
 			external_save: None,

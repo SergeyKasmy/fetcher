@@ -57,26 +57,28 @@ struct ReadFilterInner<T, const WITH_EXTERNAL_SAVE: bool, S = Infallible> {
 	external_save: Option<S>,
 }
 
-impl<T: MarkAsRead + Filter> ReadFilter<T, false> {
-	/// Creates a new [`ReadFilter`] without support for external saving
-	pub fn new(read_filter: T) -> Self {
-		Self(RefCounted::new(TokioMutex::new(ReadFilterInner {
-			read_filter,
-			external_save: None,
-		})))
-	}
-}
-
 impl<T, S> ReadFilter<T, true, S>
 where
 	T: MarkAsRead + Filter,
 	S: ExternalSave,
 {
 	/// Creates a new [`ReadFilter`] with support for external saving via the provided `external_save`
-	pub fn with_external_save(read_filter: T, external_save: S) -> Self {
+	pub fn new(read_filter: T, external_save: S) -> Self {
 		Self(RefCounted::new(TokioMutex::new(ReadFilterInner {
 			read_filter,
 			external_save: Some(external_save),
+		})))
+	}
+}
+
+impl<T: MarkAsRead + Filter> ReadFilter<T, false> {
+	/// Creates a new [`ReadFilter`] without support for external saving.
+	///
+	/// This isn't very useful as all state will be lost when the program is restarted.
+	pub fn without_external_save(read_filter: T) -> Self {
+		Self(RefCounted::new(TokioMutex::new(ReadFilterInner {
+			read_filter,
+			external_save: None,
 		})))
 	}
 }

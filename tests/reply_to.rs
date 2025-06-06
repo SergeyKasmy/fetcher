@@ -70,7 +70,7 @@ impl Sink for DummySink {
 
 #[tokio::test]
 async fn reply_to() {
-	let mut entry_to_msg_map = EntryToMsgMap::<()>::default();
+	let mut entry_to_msg_map = EntryToMsgMap::default();
 
 	entry_to_msg_map
 		.insert(ENTRY_ID.to_owned(), MESSAGE_ID.into())

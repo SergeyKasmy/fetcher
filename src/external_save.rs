@@ -5,6 +5,7 @@
  */
 
 //! This module contains the [`ExternalSave`] trait that implementors can use to add a way to save read filter data and entry to message map externally,
+// TODO: rename to something more explicit, e.g. "StoreInPermanentStorage" or something?
 
 use std::{collections::HashMap, convert::Infallible, fmt::Debug, io};
 
