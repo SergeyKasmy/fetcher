@@ -22,10 +22,10 @@ jobs:
       uses: dtolnay/rust-toolchain@master
       with:
         toolchain: stable
-    - name: Install cargo hack
-      uses: taiki-e/install-action@cargo-hack
-    - name: Build
-      run: cargo hack --each-feature --skip nightly build --verbose
+    - name: Build with no default features
+      run: cargo build --no-default-features
+    - name: Build with feature "full"
+      run: cargo build -F full
 
   test:
     runs-on: ubuntu-latest
@@ -36,10 +36,10 @@ jobs:
       uses: dtolnay/rust-toolchain@master
       with:
         toolchain: stable
-    - name: Install cargo hack
-      uses: taiki-e/install-action@cargo-hack
-    - name: Run tests
-      run: cargo hack --each-feature --skip nightly test --verbose
+    - name: Test with no default features
+      run: cargo test --no-default-features
+    - name: Test with feature "full"
+      run: cargo test -F full
 
   clippy:
     runs-on: ubuntu-latest
