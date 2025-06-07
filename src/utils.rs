@@ -6,7 +6,6 @@
 
 //! Miscellaneous utility extention traits for external types
 
-pub mod display_debug;
 pub mod option_ext;
 
-pub use self::{display_debug::DisplayDebug, option_ext::OptionExt};
+pub use self::option_ext::OptionExt;

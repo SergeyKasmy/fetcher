@@ -18,7 +18,7 @@ use tap::TapOptional;
 use tokio::{select, time::sleep};
 
 use crate::{
-	error::FetcherError,
+	error::{Error, FetcherError},
 	job::{ErrorChainDisplay, Trigger, cancel_wait},
 	maybe_send::MaybeSync,
 };
@@ -166,7 +166,7 @@ impl ExponentialBackoff {
 
 		// get all errors that are not network related
 		let fatal_errors = errors.iter().filter(|e| {
-			e.is_connection_error()
+			e.is_network_related()
 				.tap_some(|net_err| {
 					tracing::warn!("Network error: {}", ErrorChainDisplay(net_err));
 				})

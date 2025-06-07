@@ -6,10 +6,11 @@
 
 //! This module contains the [`MarkAsRead`] trait.
 
-use std::{convert::Infallible, error::Error as StdError, fmt::Debug};
+use std::{convert::Infallible, fmt::Debug};
 
 use crate::{
 	entry::EntryId,
+	error::Error,
 	external_save::ExternalSaveError,
 	maybe_send::{MaybeSend, MaybeSendSync},
 };
@@ -44,7 +45,7 @@ pub enum MarkAsReadError {
 	ExternalSave(#[from] ExternalSaveError),
 
 	#[error(transparent)]
-	Other(#[from] Box<dyn StdError + Send + Sync>),
+	Other(#[from] Box<dyn Error>),
 }
 
 impl MarkAsRead for () {
@@ -135,5 +136,11 @@ impl From<Infallible> for MarkAsReadError {
 impl From<!> for MarkAsReadError {
 	fn from(value: !) -> Self {
 		match value {}
+	}
+}
+
+impl Error for MarkAsReadError {
+	fn is_network_related(&self) -> Option<&dyn Error> {
+		todo!()
 	}
 }

@@ -6,17 +6,21 @@
 
 //! This module contains all errors that [`fetcher`](`crate`) can emit
 
+mod error_chain_display;
+pub(crate) mod error_trait;
+
+pub use self::{error_chain_display::ErrorChainDisplay, error_trait::Error};
+
 use either::Either;
 
-use crate::actions::filters::error::FilterError;
-use crate::auth::AuthError;
-use crate::external_save::ExternalSaveError;
 use crate::{
-	actions::transforms::error::TransformError, sinks::error::SinkError,
+	actions::{filters::error::FilterError, transforms::error::TransformError},
+	auth::AuthError,
+	external_save::ExternalSaveError,
+	sinks::error::SinkError,
 	sources::error::SourceError,
 };
 
-use std::fmt::{self, Display};
 use std::{convert::Infallible, error::Error as StdError};
 
 // TODO: attach backtraces to all inner errors
@@ -42,7 +46,7 @@ pub enum FetcherError {
 	ExternalSave(#[from] ExternalSaveError),
 
 	#[error(transparent)]
-	Other(#[from] Box<dyn StdError + Send + Sync>),
+	Other(#[from] Box<dyn Error>),
 }
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
@@ -55,20 +59,18 @@ pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
 #[error("Invalid regular expression")]
 pub struct BadRegexError(#[from] pub regex::Error);
 
-impl FetcherError {
-	/// Checks if the current error is somehow related to network connection and return it if it is
-	#[must_use]
-	pub fn is_connection_error(&self) -> Option<&(dyn StdError + Send + Sync)> {
+impl Error for FetcherError {
+	fn is_network_related(&self) -> Option<&dyn Error> {
 		// I know it will match any future variants automatically but I actually want it to do that anyways
 		#[expect(clippy::match_same_arms)]
 		match self {
-			Self::Source(e) => e.is_connection_err(),
-			Self::Transform(e) => e.is_connection_err(),
-			Self::Sink(e) => e.is_connection_err(),
-			Self::Auth(e) => e.is_connection_err(),
-			Self::Filter(_) | Self::ExternalSave(_) => None,
-			// FIXME: let other providers specify
-			Self::Other(_) => None,
+			Self::Source(e) => e.is_network_related(),
+			Self::Transform(e) => e.is_network_related(),
+			Self::Sink(e) => e.is_network_related(),
+			Self::Auth(e) => e.is_network_related(),
+			Self::Filter(e) => e.is_network_related(),
+			Self::ExternalSave(_) => None,
+			Self::Other(e) => e.is_network_related(),
 		}
 	}
 }
@@ -76,6 +78,12 @@ impl FetcherError {
 impl From<TransformError> for FetcherError {
 	fn from(e: TransformError) -> Self {
 		FetcherError::Transform(Box::new(e))
+	}
+}
+
+impl From<Box<dyn StdError + Send + Sync>> for FetcherError {
+	fn from(value: Box<dyn StdError + Send + Sync>) -> Self {
+		Self::Other(value.into())
 	}
 }
 
@@ -102,39 +110,6 @@ where
 			Either::Left(a) => a.into(),
 			Either::Right(b) => b.into(),
 		}
-	}
-}
-
-/// Wrapper around a type implementing [`std::error::Error`]
-/// that provides a pretty [`Display`] implementation.
-///
-/// It may looked like this:
-///
-/// Error 1
-///
-/// Caused by:
-///   1: Error 2
-///   2: Error 3
-///   3: Error 4
-pub struct ErrorChainDisplay<'a>(pub &'a dyn StdError);
-
-impl Display for ErrorChainDisplay<'_> {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let mut current_err = self.0;
-		let mut counter = 0;
-		write!(f, "{current_err}")?;
-
-		while let Some(source) = StdError::source(current_err) {
-			current_err = source;
-			counter += 1;
-			if counter == 1 {
-				write!(f, "\n\nCaused by:")?;
-			}
-
-			write!(f, "\n\t{counter}: {current_err}")?;
-		}
-
-		Ok(())
 	}
 }
 

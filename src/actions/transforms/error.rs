@@ -7,7 +7,9 @@
 //! This module contains all errors that can happen in the (`parent`)[`super`] module
 
 use crate::{
-	actions::transforms::field::extract::ExtractError, entry::Entry, error::InvalidUrlError,
+	actions::transforms::field::extract::ExtractError,
+	entry::Entry,
+	error::{Error, InvalidUrlError, error_trait::BoxErrorWrapper},
 };
 
 #[cfg(feature = "action-http")]
@@ -60,13 +62,19 @@ pub enum TransformErrorKind {
 	Extract(#[from] ExtractError),
 
 	#[error(transparent)]
-	Other(#[from] Box<dyn StdError + Send + Sync>),
+	Other(#[from] Box<dyn Error>),
 }
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
 #[error("There's nothing to transform from")]
 pub struct RawContentsNotSetError;
+
+impl From<Box<dyn StdError + Send + Sync>> for TransformErrorKind {
+	fn from(value: Box<dyn StdError + Send + Sync>) -> Self {
+		Self::Other(Box::new(BoxErrorWrapper(value)))
+	}
+}
 
 impl From<Infallible> for TransformErrorKind {
 	fn from(value: Infallible) -> Self {
@@ -81,11 +89,14 @@ impl From<!> for TransformErrorKind {
 	}
 }
 
-impl TransformError {
-	pub(crate) fn is_connection_err(&self) -> Option<&(dyn StdError + Send + Sync)> {
+impl Error for TransformError {
+	fn is_network_related(&self) -> Option<&dyn Error> {
 		match &self.kind {
 			#[cfg(feature = "action-http")]
 			TransformErrorKind::Http(HttpError::Other(_)) => Some(self),
+			TransformErrorKind::Other(other_err) if other_err.is_network_related().is_some() => {
+				Some(self)
+			}
 			_ => None,
 		}
 	}

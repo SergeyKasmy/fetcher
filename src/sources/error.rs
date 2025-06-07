@@ -8,7 +8,10 @@
 
 pub use crate::exec::ExecError;
 
-use crate::read_filter::mark_as_read::MarkAsReadError;
+use crate::{
+	error::{Error, error_trait::BoxErrorWrapper},
+	read_filter::mark_as_read::MarkAsReadError,
+};
 
 #[cfg(feature = "source-http")]
 use super::http::HttpError;
@@ -46,13 +49,14 @@ pub enum SourceError {
 	Reddit(#[from] RedditError),
 
 	#[error(transparent)]
-	Other(#[from] Box<dyn StdError + Send + Sync>),
+	Other(#[from] Box<dyn Error>),
 }
 
-impl SourceError {
-	pub(crate) fn is_connection_err(&self) -> Option<&(dyn StdError + Send + Sync)> {
+impl Error for SourceError {
+	fn is_network_related(&self) -> Option<&dyn Error> {
 		#[allow(clippy::match_same_arms, reason = "clearer code")]
 		match self {
+			Self::MarkAsRead(e) if e.is_network_related().is_some() => Some(self),
 			#[cfg(feature = "source-http")]
 			Self::Http(_) => Some(self),
 			#[cfg(feature = "source-email")]
@@ -62,6 +66,7 @@ impl SourceError {
 			},
 			#[cfg(feature = "source-reddit")]
 			Self::Reddit(RedditError::Reddit(RouxError::Network(_))) => Some(self),
+			Self::Other(other_err) if other_err.is_network_related().is_some() => Some(self),
 			_ => None,
 		}
 	}
@@ -71,6 +76,12 @@ impl SourceError {
 impl From<EmailError> for SourceError {
 	fn from(e: EmailError) -> Self {
 		Self::Email(Box::new(e))
+	}
+}
+
+impl From<Box<dyn StdError + Send + Sync>> for SourceError {
+	fn from(value: Box<dyn StdError + Send + Sync>) -> Self {
+		Self::Other(Box::new(BoxErrorWrapper(value)))
 	}
 }
 

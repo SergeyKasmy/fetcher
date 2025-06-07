@@ -6,7 +6,7 @@
 
 //! An error that happened while sending to a sink
 
-use crate::error::InvalidUrlError;
+use crate::error::{Error, InvalidUrlError, error_trait::BoxErrorWrapper};
 pub use crate::exec::ExecError;
 
 use std::{convert::Infallible, error::Error as StdError, fmt::Debug, num::TryFromIntError};
@@ -41,21 +41,26 @@ pub enum SinkError {
 	Stdout(#[source] std::io::Error),
 
 	#[error(transparent)]
-	Other(#[from] Box<dyn StdError + Send + Sync>),
+	Other(#[from] Box<dyn Error>),
 }
 
-impl SinkError {
-	// TODO: rename to is_network_related, make it a trait and add it to all Error*::Other variants
-	// TODO: also, make an Other variant for SinkError
-	pub(crate) fn is_connection_err(&self) -> Option<&(dyn StdError + Send + Sync)> {
+impl Error for SinkError {
+	fn is_network_related(&self) -> Option<&dyn Error> {
 		match self {
 			#[cfg(feature = "sink-telegram")]
 			SinkError::Telegram {
 				source: teloxide::RequestError::Network(_),
 				..
 			} => Some(self),
+			Self::Other(other_err) if other_err.is_network_related().is_some() => Some(self),
 			_ => None,
 		}
+	}
+}
+
+impl From<Box<dyn StdError + Send + Sync>> for SinkError {
+	fn from(value: Box<dyn StdError + Send + Sync>) -> Self {
+		Self::Other(Box::new(BoxErrorWrapper(value)))
 	}
 }
 

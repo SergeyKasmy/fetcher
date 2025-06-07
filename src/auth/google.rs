@@ -10,7 +10,7 @@
 use serde::Deserialize;
 use std::time::{Duration, Instant};
 
-use crate::StaticStr;
+use crate::{StaticStr, error::Error};
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
 
@@ -153,12 +153,8 @@ impl Google {
 	}
 }
 
-impl GoogleOAuth2Error {
-	pub(crate) fn is_connection_err(&self) -> Option<&(dyn std::error::Error + Send + Sync)> {
-		// #[expect(
-		// 	clippy::match_wildcard_for_single_variants,
-		// 	reason = "yes, this will match all future variants. That's what we want"
-		// )]
+impl Error for GoogleOAuth2Error {
+	fn is_network_related(&self) -> Option<&dyn Error> {
 		match self {
 			GoogleOAuth2Error::Post(_) => Some(self),
 			_ => None,
