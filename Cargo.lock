@@ -735,7 +735,7 @@ dependencies = [
 
 [[package]]
 name = "fetcher"
-version = "0.15.0-alpha.3"
+version = "0.15.0-alpha.4"
 dependencies = [
  "assert_matches",
  "async-imap",

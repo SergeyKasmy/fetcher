@@ -6,7 +6,7 @@
 
 //! This module contains the [`ReadFilter`] type that wraps an actual read-filter implementation,
 //! the [`MarkAsRead`] trait that supports marking [`EntryIds`](`EntryId`) as read, as well as
-//! read-filter implementations [`Never`] and [`NotPresent`].
+//! read-filter implementations [`Newer`] and [`NotPresent`].
 //!
 //! A read-filter is just a type that implements both [`MarkAsRead`] for marking entries as read,
 //! and [`Filter`] to filter out already read entries.

@@ -49,7 +49,7 @@ pub trait Fetch: MaybeSendSync {
 	/// Fetches all available entries from the source
 	fn fetch(&mut self) -> impl Future<Output = Result<Vec<Entry>, Self::Err>> + MaybeSend;
 
-	/// Converts the value into a source with the provided [`ReadFilter`].
+	/// Converts the value into a source with the provided read-filter, implementing [`MarkAsRead`].
 	fn into_source_with_read_filter<RF>(self, read_filter: RF) -> SourceWithSharedRF<Self, RF>
 	where
 		Self: Sized,
@@ -73,8 +73,8 @@ pub trait Fetch: MaybeSendSync {
 	}
 }
 
-/// A wrapper around a [`Fetch`] that uses an external way to filter read entries,
-/// as well as a (read filter)[`ReadFilter`]
+/// A wrapper around a [`Fetch`] that uses an external way to filter read entries
+/// via the provided [`MarkAsRead`] implementing read-filter
 #[derive(Debug)]
 pub struct SourceWithSharedRF<F, RF> {
 	/// The source to fetch data from
