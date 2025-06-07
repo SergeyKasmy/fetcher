@@ -47,6 +47,7 @@ impl<E> EntryToMsgMap<E> {
 
 	/// Creates a new instance of [`EntryToMsgMap`] without an external saver.
 	/// This isn't very useful as all state will be lost when the program restarts.
+	#[must_use]
 	pub fn without_external_saver() -> Self {
 		Self {
 			external_save: None,

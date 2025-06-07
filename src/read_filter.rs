@@ -4,9 +4,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains the [`ReadFilter`] type that wraps an actual read-filter implementation,
-//! the [`MarkAsRead`] trait that supports marking [`EntryIds`](`EntryId`) as read, as well as
-//! read-filter implementations [`Newer`] and [`NotPresent`].
+// TODO: old header - too long
+// This module contains the [`ReadFilter`] type that wraps an actual read-filter implementation,
+// the [`MarkAsRead`] trait that supports marking [`EntryIds`](`EntryId`) as read, as well as
+// read-filter implementations [`Newer`] and [`NotPresent`].
+//! This module contains the [`ReadFilter`] type, the [`MarkAsRead`] trait, as well as read-filter implementations [`Newer`] and [`NotPresent`].
 //!
 //! A read-filter is just a type that implements both [`MarkAsRead`] for marking entries as read,
 //! and [`Filter`] to filter out already read entries.
@@ -55,7 +57,7 @@ pub struct ReadFilter<T, const WITH_EXTERNAL_SAVE: bool, S = Infallible>(
 #[derive(Debug)]
 struct ReadFilterInner<T, const WITH_EXTERNAL_SAVE: bool, S = Infallible> {
 	read_filter: T,
-	/// Set to `None` when the read filter is set to read_only
+	/// Set to `None` when the read filter is set to read-only
 	external_save: Option<S>,
 }
 
@@ -101,6 +103,10 @@ where
 {
 	type Err = MarkAsReadError;
 
+	#[expect(
+		clippy::significant_drop_tightening,
+		reason = "false positive, the MutexGuard is still borrowed via destructuring"
+	)]
 	async fn mark_as_read(&mut self, id: &EntryId) -> Result<(), Self::Err> {
 		let mut inner = self.0.lock().await;
 
@@ -140,7 +146,7 @@ where
 	}
 
 	async fn set_read_only(&mut self) {
-		self.0.lock().await.read_filter.set_read_only().await
+		self.0.lock().await.read_filter.set_read_only().await;
 	}
 }
 

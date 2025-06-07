@@ -69,7 +69,7 @@ impl ExternalSave for () {
 impl ExternalSave for Infallible {
 	async fn save_read_filter<RF>(&mut self, _read_filter: &RF) -> Result<(), ExternalSaveError>
 	where
-		RF: Serialize,
+		RF: Serialize + MaybeSync,
 	{
 		match *self {}
 	}
@@ -86,7 +86,7 @@ impl ExternalSave for Infallible {
 impl ExternalSave for ! {
 	async fn save_read_filter<RF>(&mut self, _read_filter: &RF) -> Result<(), ExternalSaveError>
 	where
-		RF: Serialize,
+		RF: Serialize + MaybeSync,
 	{
 		match *self {}
 	}
@@ -130,12 +130,12 @@ impl<E> ExternalSave for &mut E
 where
 	E: ExternalSave,
 {
-	fn save_read_filter<RF: MaybeSync>(
+	fn save_read_filter<RF>(
 		&mut self,
 		read_filter: &RF,
 	) -> impl Future<Output = Result<(), ExternalSaveError>> + MaybeSend
 	where
-		RF: Serialize,
+		RF: Serialize + MaybeSync,
 	{
 		(*self).save_read_filter(read_filter)
 	}
