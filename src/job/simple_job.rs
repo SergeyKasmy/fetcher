@@ -96,9 +96,6 @@ where
 	) -> Job<Task<S, A, Infallible>, Tr, ExponentialBackoff>
 	where
 		State::ErrorHandling: simple_job_builder::IsUnset,
-		State::Tag: simple_job_builder::IsSet,
-		State::Source: simple_job_builder::IsSet,
-		State::Action: simple_job_builder::IsSet,
 		State::Trigger: simple_job_builder::IsSet,
 		State::CancelToken: simple_job_builder::IsSet,
 	{

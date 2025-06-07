@@ -44,6 +44,7 @@ use crate::{
 /// or [`build_with_default_error_handling()`](`JobBuilder::build_with_default_error_handling()`).
 }))]
 #[non_exhaustive]
+// TODO: default all generics to () (and in Task)
 pub struct Job<T, Tr, H> {
 	/// Name of the job
 	#[builder(start_fn, into)]

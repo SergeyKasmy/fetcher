@@ -4,9 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// FIXME: docs
-//! This module contains the [`ReadFilter`] that is used for keeping track of what Entry has been or not been read,
-//! including all of its stragedies
+//! This module contains the [`ReadFilter`] type that wraps an actual read-filter implementation,
+//! the [`MarkAsRead`] trait that supports marking [`EntryIds`](`EntryId`) as read, as well as
+//! read-filter implementations [`Never`] and [`NotPresent`].
+//!
+//! A read-filter is just a type that implements both [`MarkAsRead`] for marking entries as read,
+//! and [`Filter`] to filter out already read entries.
 
 pub mod mark_as_read;
 
@@ -26,14 +29,13 @@ use crate::{
 use std::{convert::Infallible, fmt::Debug};
 
 use serde::Serialize;
-use tokio::sync::Mutex as TokioMutex;
+use tokio::sync::{MappedMutexGuard, Mutex as TokioMutex, MutexGuard};
 
 #[cfg(feature = "send")]
 type RefCounted<T> = std::sync::Arc<T>;
 #[cfg(not(feature = "send"))]
 type RefCounted<T> = std::rc::Rc<T>;
 
-// TODO: add example
 /// A reference-counted read-filter wrapper.
 /// Supports externally saving the inner read-filter's state if an [`ExternalSave`] is provided.
 ///
@@ -80,6 +82,15 @@ impl<T: MarkAsRead + Filter> ReadFilter<T, false> {
 			read_filter,
 			external_save: None,
 		})))
+	}
+}
+
+impl<T, const WITH_EXTERNAL_SAVE: bool, S> ReadFilter<T, WITH_EXTERNAL_SAVE, S> {
+	/// Returns a reference container for the contained read filter
+	pub async fn inner(&self) -> MappedMutexGuard<'_, T> {
+		let guard = self.0.lock().await;
+		MutexGuard::try_map(guard, |inner| Some(&mut inner.read_filter))
+			.unwrap_or_else(|_| unreachable!("closure never fails"))
 	}
 }
 
@@ -148,5 +159,97 @@ where
 
 	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
 		self.0.lock().await.read_filter.filter(entries).await
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use std::sync::{Arc, Mutex};
+
+	use serde::Serialize;
+
+	use crate::{
+		entry::EntryId,
+		external_save::{ExternalSave, ExternalSaveError},
+		maybe_send::MaybeSync,
+		read_filter::{MarkAsRead, Newer, ReadFilter},
+	};
+
+	#[tokio::test]
+	async fn external_save_is_called() {
+		#[derive(Clone, Default)]
+		struct LastReadFilterState(Arc<Mutex<LastReadFilterStateInner>>);
+
+		#[derive(Default)]
+		struct LastReadFilterStateInner {
+			last: Option<Newer>,
+			number_called: usize,
+		}
+
+		impl ExternalSave for LastReadFilterState {
+			async fn save_read_filter<RF>(
+				&mut self,
+				read_filter: &RF,
+			) -> Result<(), ExternalSaveError>
+			where
+				RF: Serialize + MaybeSync,
+			{
+				let newer_json = serde_json::to_string(read_filter).unwrap();
+				let newer: Newer = serde_json::from_str(&newer_json).unwrap();
+
+				let mut inner = self.0.lock().unwrap();
+				inner.last = Some(newer);
+				inner.number_called += 1;
+
+				Ok(())
+			}
+
+			async fn save_entry_to_msg_map(
+				&mut self,
+				_map: &std::collections::HashMap<
+					crate::entry::EntryId,
+					crate::sinks::message::MessageId,
+				>,
+			) -> Result<(), ExternalSaveError> {
+				unimplemented!()
+			}
+		}
+
+		let external_save = LastReadFilterState::default();
+		let mut rf = ReadFilter::new(Newer::default(), external_save.clone());
+
+		rf.mark_as_read(&EntryId::try_from("1").unwrap())
+			.await
+			.unwrap();
+
+		{
+			let inner = external_save.0.lock().unwrap();
+
+			assert_eq!(inner.last.as_ref().unwrap().last_read().unwrap(), "1");
+			assert_eq!(inner.number_called, 1);
+		}
+
+		rf.mark_as_read(&EntryId::try_from("2").unwrap())
+			.await
+			.unwrap();
+
+		rf.mark_as_read(&EntryId::try_from("3").unwrap())
+			.await
+			.unwrap();
+
+		rf.mark_as_read(&EntryId::try_from("4").unwrap())
+			.await
+			.unwrap();
+
+		rf.mark_as_read(&EntryId::try_from("5").unwrap())
+			.await
+			.unwrap();
+
+		{
+			let inner = external_save.0.lock().unwrap();
+
+			assert_eq!(inner.last.as_ref().unwrap().last_read().unwrap(), "5");
+			assert_eq!(inner.number_called, 5);
+		}
 	}
 }

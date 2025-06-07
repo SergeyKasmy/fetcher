@@ -74,3 +74,9 @@ impl TryFrom<String> for EntryId {
 		Self::new(value).ok_or(())
 	}
 }
+
+impl PartialEq<str> for EntryId {
+	fn eq(&self, other: &str) -> bool {
+		self.0.as_str() == other
+	}
+}

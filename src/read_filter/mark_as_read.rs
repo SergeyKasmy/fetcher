@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! This module contains the [`MarkAsRead`] trait
+//! This module contains the [`MarkAsRead`] trait.
 
 use std::{convert::Infallible, error::Error as StdError, fmt::Debug};
 
