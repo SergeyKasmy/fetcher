@@ -10,6 +10,7 @@ mod combined_job_group;
 mod disabled_job_group;
 mod named_job_group;
 
+use either::Either;
 use futures::{Stream, future::Either as FutureEither, stream};
 use itertools::Itertools;
 use tokio::sync::mpsc;
@@ -263,6 +264,22 @@ where
 		};
 
 		FutureEither::Right(group.run())
+	}
+}
+
+impl<A, B> JobGroup for Either<A, B>
+where
+	A: JobGroup,
+	B: JobGroup,
+{
+	fn run(self) -> impl Stream<Item = (JobId, JobResult)> + MaybeSend
+	where
+		Self: Sized + 'static,
+	{
+		match self {
+			Either::Left(a) => FutureEither::Left(a.run()),
+			Either::Right(b) => FutureEither::Right(b.run()),
+		}
 	}
 }
 

@@ -8,9 +8,10 @@
 
 use std::convert::Infallible;
 
-use crate::maybe_send::{MaybeSend, MaybeSendSync};
+use either::Either;
 
-use super::JobResult;
+use super::{DisabledJob, JobResult};
+use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
 /// A trait representing a runnable job.
 ///
@@ -42,6 +43,16 @@ pub trait OpaqueJob: MaybeSendSync {
 	/// (as well as to ease implementation of this trait for "empty" or "option"-like types).
 	fn name(&self) -> Option<&str> {
 		None
+	}
+
+	/// Disables the job, making [`OpaqueJob::run`] a no-op.
+	///
+	/// Useful for quicky disabling a job without removing its code.
+	fn disable(self) -> DisabledJob<Self>
+	where
+		Self: Sized,
+	{
+		DisabledJob(self)
 	}
 }
 
@@ -87,5 +98,25 @@ where
 {
 	fn run(&mut self) -> impl Future<Output = JobResult> + MaybeSend {
 		(*self).run()
+	}
+}
+
+impl<A, B> OpaqueJob for Either<A, B>
+where
+	A: OpaqueJob,
+	B: OpaqueJob,
+{
+	async fn run(&mut self) -> JobResult {
+		match self {
+			Either::Left(a) => a.run().await,
+			Either::Right(b) => b.run().await,
+		}
+	}
+
+	fn name(&self) -> Option<&str> {
+		match self {
+			Either::Left(a) => a.name(),
+			Either::Right(b) => b.name(),
+		}
 	}
 }
