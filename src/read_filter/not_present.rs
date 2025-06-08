@@ -6,8 +6,8 @@
 
 use super::MarkAsRead;
 use crate::{
-	actions::filters::Filter,
-	entry::{Entry, EntryId},
+	actions::filters::{Filter, FilterableEntries},
+	entry::EntryId,
 };
 
 use chrono::{DateTime, Utc};
@@ -77,7 +77,7 @@ impl Filter for NotPresent {
 	type Err = Infallible;
 
 	#[tracing::instrument(level = "debug", name = "filter_read", skip_all)]
-	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
+	async fn filter(&mut self, mut entries: FilterableEntries<'_>) -> Result<(), Self::Err> {
 		let old_len = entries.len();
 		entries.retain(|elem| {
 			// retain elements with no id
@@ -114,6 +114,8 @@ impl Default for NotPresent {
 #[cfg(test)]
 mod tests {
 	#![allow(clippy::unwrap_used)]
+	use crate::entry::Entry;
+
 	use super::*;
 
 	fn entry_id(id: &str) -> EntryId {
@@ -196,7 +198,9 @@ mod tests {
 			Entry::builder().id_raw(entry_id("8")).build(),
 		];
 
-		rf.filter(&mut entries).await.unwrap();
+		rf.filter(FilterableEntries::new(&mut entries))
+			.await
+			.unwrap();
 
 		// remove msgs
 		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();

@@ -8,8 +8,7 @@
 
 use std::convert::Infallible;
 
-use super::Filter;
-use crate::entry::Entry;
+use super::{FilterableEntries, Filter};
 
 /// Take only a set number of entries and discard all others
 #[derive(Clone, Debug)]
@@ -30,7 +29,7 @@ pub enum TakeFrom {
 impl Filter for Take {
 	type Err = Infallible;
 
-	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
+	async fn filter(&mut self, mut entries: FilterableEntries<'_>) -> Result<(), Self::Err> {
 		match self.from {
 			TakeFrom::Beginning => {
 				entries.truncate(self.num);
@@ -47,9 +46,12 @@ impl Filter for Take {
 
 #[cfg(test)]
 mod tests {
-	use crate::{actions::filters::Filter, entry::Entry, sinks::message::Message};
-
 	use super::{Take, TakeFrom};
+	use crate::{
+		actions::filters::{FilterableEntries, Filter},
+		entry::Entry,
+		sinks::message::Message,
+	};
 
 	#[tokio::test]
 	async fn beginning() {
@@ -66,7 +68,7 @@ mod tests {
 			num: 2,
 		};
 
-		take.filter(&mut entries).await.unwrap();
+		take.filter(FilterableEntries::new(&mut entries)).await.unwrap();
 
 		assert_eq!(
 			entries
@@ -92,7 +94,7 @@ mod tests {
 			num: 2,
 		};
 
-		take.filter(&mut entries).await.unwrap();
+		take.filter(FilterableEntries::new(&mut entries)).await.unwrap();
 
 		assert_eq!(
 			entries

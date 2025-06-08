@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 
 use super::MarkAsRead;
 use crate::{
-	actions::filters::Filter,
-	entry::{Entry, EntryId},
+	actions::filters::{FilterableEntries, Filter},
+	entry::EntryId,
 };
 
 /// Read Filter that stores the id of the last read entry
@@ -69,7 +69,7 @@ impl Filter for Newer {
 	/// * id 8
 	/// * id 3
 	#[tracing::instrument(level = "debug", name = "filter_read", skip_all)]
-	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
+	async fn filter(&mut self, mut entries: FilterableEntries<'_>) -> Result<(), Self::Err> {
 		if let Some(last_read_id) = &self.last_read_id {
 			if let Some(last_read_id_pos) = entries.iter().position(|x| {
 				let Some(id) = &x.id else { return false };
@@ -95,6 +95,8 @@ impl Default for Newer {
 #[cfg(test)]
 mod tests {
 	#![allow(clippy::unwrap_used)]
+	use crate::entry::Entry;
+
 	use super::*;
 
 	fn entry_id(id: &str) -> EntryId {
@@ -149,7 +151,7 @@ mod tests {
 			Entry::builder().id_raw(entry_id("8")).build(),
 		];
 
-		rf.filter(&mut entries).await.unwrap();
+		rf.filter(FilterableEntries::new(&mut entries)).await.unwrap();
 
 		// remove msgs
 		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
@@ -165,7 +167,7 @@ mod tests {
 		rf.mark_as_read(&entry_id("3")).await.unwrap();
 
 		let mut entries = vec![Entry::builder().id_raw(entry_id("1")).build()];
-		rf.filter(&mut entries).await.unwrap();
+		rf.filter(FilterableEntries::new(&mut entries)).await.unwrap();
 
 		// remove msgs
 		let entries_ids = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
@@ -178,7 +180,7 @@ mod tests {
 		rf.mark_as_read(&entry_id("1")).await.unwrap();
 
 		let mut entries = vec![Entry::builder().id_raw(entry_id("1")).build()];
-		rf.filter(&mut entries).await.unwrap();
+		rf.filter(FilterableEntries::new(&mut entries)).await.unwrap();
 
 		let entries_ids = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
 		assert_eq!(&entries_ids, &[]);

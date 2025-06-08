@@ -22,8 +22,8 @@ pub use self::{mark_as_read::MarkAsRead, newer::Newer, not_present::NotPresent};
 
 use self::mark_as_read::MarkAsReadError;
 use crate::{
-	actions::filters::Filter,
-	entry::{Entry, EntryId},
+	actions::filters::{FilterableEntries, Filter},
+	entry::EntryId,
 	external_save::ExternalSave,
 	maybe_send::MaybeSend,
 };
@@ -163,7 +163,7 @@ where
 {
 	type Err = T::Err;
 
-	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
+	async fn filter(&mut self, entries: FilterableEntries<'_>) -> Result<(), Self::Err> {
 		self.0.lock().await.read_filter.filter(entries).await
 	}
 }

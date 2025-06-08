@@ -25,7 +25,7 @@ use fetcher::{
 	Job, Task,
 	actions::{
 		filter,
-		filters::Filter,
+		filters::{FilterableEntries, Filter},
 		sink, transform_body, transform_fn,
 		transforms::{field::TransformField, result::TransformResult},
 	},
@@ -115,7 +115,7 @@ impl Filter for FilterEveryTenthEntry {
 	/// [`FilterEveryTenthEntry`] never errors
 	type Err = Infallible;
 
-	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
+	async fn filter(&mut self, mut entries: FilterableEntries<'_>) -> Result<(), Self::Err> {
 		entries.retain(|_| {
 			self.0 += 1;
 

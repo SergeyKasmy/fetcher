@@ -9,8 +9,8 @@
 use regex::Regex;
 use std::{borrow::Cow, convert::Infallible};
 
-use super::Filter;
-use crate::{actions::transforms::field::Field, entry::Entry, error::BadRegexError};
+use super::{Filter, FilterableEntries};
+use crate::{actions::transforms::field::Field, error::BadRegexError};
 
 /// Filter out all entries whose field doesn't match the regular expression
 #[derive(Clone, Debug)]
@@ -39,7 +39,7 @@ impl Filter for Contains {
 	type Err = Infallible;
 
 	/// Filter out some entries out of the `entries` vector
-	async fn filter(&mut self, entries: &mut Vec<Entry>) -> Result<(), Self::Err> {
+	async fn filter(&mut self, mut entries: FilterableEntries<'_>) -> Result<(), Self::Err> {
 		entries.retain(|ent| {
 			let field = match self.field {
 				Field::Title => ent.msg.title.as_deref().map(Cow::Borrowed),
@@ -60,7 +60,10 @@ impl Filter for Contains {
 #[cfg(test)]
 mod tests {
 	use crate::{
-		actions::{filters::Filter, transforms::field::Field},
+		actions::{
+			filters::{Filter, FilterableEntries},
+			transforms::field::Field,
+		},
 		entry::Entry,
 		sinks::message::Message,
 	};
@@ -87,7 +90,10 @@ mod tests {
 
 		let mut contains = Contains::new("World", Field::Body).unwrap();
 
-		contains.filter(&mut entries).await.unwrap();
+		contains
+			.filter(FilterableEntries::new(&mut entries))
+			.await
+			.unwrap();
 
 		assert_eq!(
 			entries
