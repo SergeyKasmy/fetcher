@@ -1,0 +1,18 @@
+[jobs.check-each]
+command = [
+  "cargo",
+  "hack",
+  "--each-feature",
+  "check"
+]
+
+[jobs.check-none-all]
+command = [
+  "cargo",
+  "hack",
+  "--each-feature",
+  # TODO: include no-default-features too
+  "--include-features",
+  "full",
+  "check"
+]

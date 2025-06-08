@@ -1,88 +1,80 @@
 # fetcher
 
-fetcher makes it easier to automate any information gathering, like news or articles from blogs, into a place most comfortable to you.
-It fetches anything you choose (from a list of available sources); processes it (filters and parses), and sends it wherever you want it to.
-Think of it like IFTTT but locally hosted and if it only supported transferring text.
+fetcher is a flexible async framework designed to make it easy to create robust applications for building data pipelines to extract, transform, and deliver data from various sources to diverse destinations.
+In easier words, it makes it easy to create an app that periodically checks a source, for example a website, for some data, makes it pretty, and sends it to the users.
 
-I wrote fetcher for myself after IFTTT had become paid, not to mention that by that time I was already not satisfied with it. I want to receive news and notifications in one place without having to search for it.
-For example, imagine I wanted to read tweets by somebody but only if it contained a particular string. Before I had to receive _all_ notifications from that user on my phone via the Twitter app and read every one of them to find those relevant to me (sadly, Twitter is no longer supported, at least for now).
-That honestly sucks. After looking for some locally hosted alternatives to IFTTT, I found none that were both lightweight and useful for me, so I decided to write my own.
+fetcher is made to be easily extensible to support as many use-cases as possible while providing tools to support most of the common ones out of the box.
 
-fetcher is both a binary, and a [library](https://docs.rs/fetcher-core/latest/fetcher_core) crate, so it can do programmatically everything it usually can.
+## Architecture
 
-Feel free to contribute if you want a particular feature added.
+At the heart of fetcher is the [`Task`](`crate::task::Task`). It represents a specific instance of a data pipeline which consists of 2 main stages:
 
-## Install
+* [`Source`](`crate::sources::Source`): Fetches data from an external source (e.g. HTTP endpoint, email inbox).
+* [`Action`](`crate::actions::Action`): Applies transformations (filters, modifications, parsing) to the fetched data.
+The most notable action is [`Sink`](`crate::sinks::Sink`) that sends the transformed data somewhere (e.g. Discord channel, Telegram chat, another program's stdin)
 
-Download and install from [crates.io](https://crates.io/crates/fetcher) with 
+An [`Entry`](`crate::entry::Entry`) is the unit of data flowing through the pipeline. It most notably contains:
 
-```
-cargo install fetcher
-```
+* [`id`](`crate::entry::Entry::id`): A unique identifier for the entry, used for tracking read/unread status and replies.
+* [`raw_contents`](`crate::entry::Entry::raw_contents`): The raw, untransformed data fetched from the source.
+* [`msg`](`crate::entry::Entry::msg`): A [`Message`](`crate::sinks::message::Message`) that contains the formated and structured data, like title, body, link, that will end up sent to a sink.
 
-or build manually with
+A [`Job`](`crate::job::Job`) is a collections of one or more tasks that are executed together, potentially on a schedule.
+Jobs can also be run either concurrently or in parallel (depending on the "send" feature) as a part of a [`JobGroup`](`crate::job::JobGroup`).
 
-```
-git clone -b main --single-branch https://github.com/SergeyKasmy/fetcher.git
-cd fetcher
-cargo build --release
-```
+## Getting started
 
-The final binary will be located in `target/release/fetcher` which you can then copy to `~/.local/bin` or any other dir included in your `$PATH`.
+To use fetcher, you need to add it as a dependency to your `Cargo.toml` file:
 
-## Setup
-
-The main unit of execution in fetcher is a job. A job consists of one or more tasks that are rerun every set interval or once a day at a particular time. A task contains a source where to fetch the data from, (a) action(s) which process the data (modify, filter, remove already read), and a sink where the data is later sent to. To create a job, create a `foo.yml` file in `$XDG_CONFIG_HOME/fetcher/jobs` or `/etc/xdg/fetcher/jobs` where `foo` is the name you want that job to have. A proper job config file looks something like this:
-
-```yaml
-refresh: 
-  every: 30m
-tasks:
-  news:
-    read_filter_type: newer_than_read
-    source:
-      http: '<RSS URL>'
-    process:
-      - feed
-      - read_filter # leave out only entries newer than the last one read
-      - contains:
-        body: '[Hh]ello'
-      - set:
-        title: 'New RSS article!'
-      - shorten:
-          body: 50
-    sink:
-      discord:
-        user: <your user id>
+```toml
+[dependencies]
+fetcher = { version = "0.15", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 ```
 
-This job is run every 30 minutes and has a single task named "news". This task:
-* gets the RSS feed from the provided RSS feed URL
-* parses the feed
-* removes all feed entries that have already been read (using the `newer_than_read` stradegy)
-* retains only tweets that contains "Hello" or "hello" in them
-* sets the title to "New RSS article"
-* shortens the body to 50 characters if it is longer
-* and sends all tweets left via DMs to a Discord user `<your_user_id>`.
+For the smallest example on how to use fetcher, please see `examples/simple_website_to_stdout.rs`.
+More complete examples can be found in the `examples/` directory. They demonstrate how toj
 
-## Running
+* Fetch data from various sources.
+* Transform and filter data using regular expressions, HTML parsing, JSON parsing.
+* Implement custom sources, actions, sinks
+* Persist the read filter state in an external storage system
 
-Run fetcher with `fetcher run`. This will run all jobs found in all config locations. fetcher searches for all `.yml` jobs first in `$XDG_CONFIG_HOME/fetcher/jobs`, and then in `/etc/xdg/fetcher/jobs`.
+## Features
 
-You can specify a job manually in the commandline using JSON when run with `fetcher run-manual`
+Each source, action, and sink (which is also an action but different enough to warrant being separate),
+is gated behind a feature gate to help on the already pretty bad build times for apps using fetcher.
 
-See `fetcher --help` for more details
+A feature is usually named using "(source|action|sink)-(name)" format.
+Not only that, all sources, actions, and sinks (and misc features like `google-oauth2`) are also grouped into "all-(sources|actions|sinks|misc)" features
+to enable every source, action, sink, or misc respectively.
 
-### Login credentials
+Every feature can be enabled with the feature `full`.
+This is the preffered way to use fetcher for the first time as it enables to use everything you might need before you actually know what you need.
+Later on `full` can be replaced with the actual features you use to get some easy compile time gains.
 
-To set up login credentials, run fetcher in save mode (`fetcher save`), following by a service name which is either of these:
+For example, an app fetching RSS feeds and sending them to a telegram channel might use features `source-http`, `action-feed`, and `sink-telegram`.
 
-* `google-oauth2`
-* `telegram`
-* `email-password`
+## Note
 
-After finishing the prompt, you will be able to use any of these services automatically without additional authorization.
+fetcher was completely rewritten in v0.15.0.
+It changed from an application with a config file to an application framework.
 
-## Job config format
+This was mostly done to make using fetcher correctly as easy and bug-free as possible.
+Not to mention the huge config file was getting unwieldy and difficult to write and extend to your needs.
+To make the config file more flexible would require integrating an actual programming language into it (like Lua).
+I actually considered integrating Lua into the config file (a-la the Astral web framework) before I remembered that
+we already have a properly integrated programming language, the one `fetcher` has always been written in in the first place.
 
-To see all available config options, see [config-format.md](/config-format.md)
+I decided to double down on the fact that `fetcher` is written in Rust,
+instead making `fetcher` a highly-extensible easy-to-use generic automation and data pipelining framework
+which can be used to build apps, including apps similar to what `fetcher` has originally been.
+
+Since then `fetcher-core` and `fetcher-config` crates are no longer used (or needed),
+so if anybody needs these on crates.io, hit me up!
+
+## Contributing
+
+Contributions are very welcome! Please feel free to submit a pull request or open issues for any bugs, feature requests, or general feedback.
+
+License: MPL-2.0

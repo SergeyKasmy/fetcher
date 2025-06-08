@@ -1,26 +1,139 @@
-[workspace]
-members = [
-	"fetcher",
-	"fetcher-core",
-	"fetcher-config",
-]
-resolver = "3"
+[package]
+name = "fetcher"
+description = "Data fetching and pipelining framework"
+version = "0.15.0"
+repository = "https://github.com/SergeyKasmy/fetcher"
+license = "MPL-2.0"
+edition.workspace = true
 
-[profile.release]
-lto = "thin"
+[workspace]
+members = [".", "crates/non-non-full", "crates/staticstr"]
 
 [workspace.package]
 edition = "2024"
 
+[features]
+default = ["send"]
+send = []
+scaffold = ["dep:tracing-journald", "dep:tracing-subscriber", "tokio/signal", "tokio-rustls?/aws_lc_rs"]
+nightly = []
+
+full = ["all-sources", "all-actions", "all-sinks", "all-misc"]
+
+all-sources = ["source-email", "source-reddit", "source-http"]
+source-email = ["dep:async-imap", "dep:mailparse", "dep:webpki-roots", "source-email-tokio-rustls", "google-oauth2"]
+source-email-tokio-rustls = ["dep:tokio-rustls"]
+source-reddit = ["dep:roux"]
+source-http = ["dep:reqwest", "dep:serde_json", "reqwest/json"]
+
+all-actions = ["action-http", "action-feed", "action-json", "action-html", "action-html-decode"]
+action-http = ["source-http"]
+action-feed = ["dep:feed-rs"]
+action-json = ["dep:serde_json"]
+action-html = ["dep:scraper"]
+action-html-decode = ["dep:html-escape"]
+
+all-sinks = ["sink-telegram", "sink-discord"]
+sink-telegram = ["dep:teloxide"]
+sink-discord = ["dep:serenity"]
+
+all-misc = ["google-oauth2"]
+google-oauth2 = ["dep:reqwest", "dep:serde_json"]
+
+[dependencies]
+bon = { version = "3.6.3", default-features = false }
+chrono = { version = "0.4.41", features = ["serde", "clock"], default-features = false }
+either = { version = "1.15.0", default-features = false }
+futures = { version = "0.3.31", features = ["std", "async-await"], default-features = false }
+itertools = { version = "0.14.0", features = ["use_std"], default-features = false }
+non-non-full = { version = "0.0.2", path = "crates/non-non-full", features = ["serde"], default-features = false }
+once_cell = { version = "1.21.3", default-features = false }
+rand = { version = "0.9.1", features = ["thread_rng"], default-features = false }
+regex = { version = "1.11.1", features = ["std"], default-features = false }
+serde = { version = "1.0.219", features = ["derive"], default-features = false }
+staticstr = { version = "0.0.1", path = "crates/staticstr", default-features = false }
+tap = { version = "1.0.1", default-features = false }
+thiserror = { version = "2.0.12", default-features = false }
+tokio-stream = { version = "0.1.17", default-features = false }
+tokio = { version = "1.45.1", features = ["fs", "io-std", "process", "macros", "io-util", "time", "sync", "rt"], default-features = false }
+tracing = { version = "0.1.41", features = ["attributes"], default-features = false }
+url = { version = "2.5.4", default-features = false }
+
+## feature = "all-sources"
+# email
+async-imap = { version = "0.10.4", features = ["runtime-tokio"], default-features = false, optional = true }
+mailparse = { version = "0.16.1", default-features = false, optional = true }
+tokio-rustls = { version = "0.26.2", features = ["logging"], default-features = false, optional = true }
+webpki-roots = { version = "1.0.0", default-features = false, optional = true }
+
+# reddit
+roux = { version = "2.2.14", features = ["rustls"], default-features = false, optional = true }
+
+
+## feature = "all-actions"
+# feed
+feed-rs = { version = "2.3.1", default-features = false, optional = true }
+
+# json
+serde_json = { version = "1.0.140", features = ["std"], default-features = false, optional = true }
+
+# html
+scraper = { version = "0.23.1", default-features = false, optional = true }
+
+# html decode
+html-escape = { version = "0.2.13", default-features = false, optional = true }
+
+
+## feature = "all-sinks"
+# telegram
+teloxide = { version = "0.15.0", features = ["rustls", "throttle"], default-features = false, optional = true }
+
+# discord
+serenity = { version = "0.12.4", features = ["rustls_backend", "builder", "http", "model"], default-features = false, optional = true }
+
+
+## shared dependencies
+reqwest = { version = "0.12.15", features = ["rustls-tls", "gzip", "cookies"], default-features = false, optional = true }
+
+
+## feature = "scaffold"
+tracing-journald = { version = "0.3.1", default-features = false, optional = true }
+tracing-subscriber = { version = "0.3.19", features = ["env-filter", "tracing-log", "time", "local-time", "fmt", "ansi"], default-features = false, optional = true }
+
+[dev-dependencies]
+assert_matches = "1.5"
+tokio-test = "0.4.4"
+serde_json = { version = "1.0.140", features = ["std"], default-features = false } # used in some tests
+
+[[test]]
+name = "job_group_stream"
+required-features = ["send", "scaffold", "tokio/rt-multi-thread"]
+
+[[example]]
+name = "simple_website_to_stdout"
+required-features = ["source-http", "action-html"]
+
+[[example]]
+name = "github_new_release_email_to_telegram"
+required-features = ["scaffold", "source-email", "sink-telegram"]
+
+[[example]]
+name = "custom_sources_actions_sinks"
+required-features = ["scaffold"]
+
+[lints]
+workspace = true
+
 [workspace.lints.rust]
 missing_docs = "warn"
 unsafe_code = "forbid"
+elided_lifetimes_in_paths = "warn"
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 nursery  = { level = "warn", priority = -1 }
 
-### Hand-picked restrictions (as of Rust 1.84.0)
+### Hand-picked restrictions (as of Rust 1.88.0)
 clone_on_ref_ptr = "warn"
 dbg_macro = "warn"
 doc_include_without_cfg = "warn"
@@ -31,14 +144,16 @@ format_push_string = "warn"
 let_underscore_untyped = "warn"
 map_with_unused_argument_over_ranges = "warn"
 missing_assert_message = "warn"
-missing_docs_in_private_items = "warn"
+#missing_docs_in_private_items = "warn"
 needless_raw_strings = "warn"
 pathbuf_init_then_push = "warn"
 print_stderr = "warn"
+# TODO: re-enable when 1.88.0 releases
+#redundant_test_prefix = "warn"
 rest_pat_in_fully_bound_structs = "warn"
 same_name_method = "warn"
-str_to_string = "warn"
 string_to_string = "warn"
+str_to_string = "warn"
 tests_outside_test_module = "warn"
 todo = "warn"
 try_err = "warn"
@@ -50,6 +165,9 @@ unwrap_used = "warn"
 # matches!() adds too much noise for little benefit
 equatable_if_let = "allow" 
 
+# sometimes useful
+explicit_deref_methods = "allow"
+
 # too much noise for little benefit (may change in the future)
 missing_const_for_fn = "allow"
 
@@ -59,8 +177,23 @@ module_name_repetitions = "allow"
 # "harder to read, false branch before true branch"
 option_if_let_else = "allow" 
 
+# sometimes makes the control flow harder to read, should be used at the developer's discretion
+redundant_else = "allow"
+
 # may be hard to understand what Self even is deep into a function's body
 use_self = "allow"
 
 # often a match can better highlight which branch is more important and draw attention to it
 single_match_else = "allow"
+
+# reverse order makes it more confusing, should be used at the developer's discretion
+map_unwrap_or = "allow"
+
+# false positive
+uninhabited_references = "allow"
+
+# a stylistic choice
+obfuscated_if_else = "allow"
+
+# sometimes asks to split an already small function which would just make it harder to read
+cognitive_complexity = "allow"
