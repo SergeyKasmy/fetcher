@@ -8,7 +8,7 @@
 
 use std::convert::Infallible;
 
-use super::{FilterableEntries, Filter};
+use super::{Filter, FilterableEntries};
 
 /// Take only a set number of entries and discard all others
 #[derive(Clone, Debug)]
@@ -48,7 +48,7 @@ impl Filter for Take {
 mod tests {
 	use super::{Take, TakeFrom};
 	use crate::{
-		actions::filters::{FilterableEntries, Filter},
+		actions::filters::{Filter, FilterableEntries},
 		entry::Entry,
 		sinks::message::Message,
 	};
@@ -68,7 +68,9 @@ mod tests {
 			num: 2,
 		};
 
-		take.filter(FilterableEntries::new(&mut entries)).await.unwrap();
+		take.filter(FilterableEntries::new(&mut entries))
+			.await
+			.unwrap();
 
 		assert_eq!(
 			entries
@@ -94,7 +96,9 @@ mod tests {
 			num: 2,
 		};
 
-		take.filter(FilterableEntries::new(&mut entries)).await.unwrap();
+		take.filter(FilterableEntries::new(&mut entries))
+			.await
+			.unwrap();
 
 		assert_eq!(
 			entries

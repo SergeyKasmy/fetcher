@@ -25,7 +25,7 @@ use fetcher::{
 	Job, Task,
 	actions::{
 		filter,
-		filters::{FilterableEntries, Filter},
+		filters::{Filter, FilterableEntries},
 		sink, transform_body, transform_fn,
 		transforms::{field::TransformField, result::TransformResult},
 	},

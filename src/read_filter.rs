@@ -22,7 +22,7 @@ pub use self::{mark_as_read::MarkAsRead, newer::Newer, not_present::NotPresent};
 
 use self::mark_as_read::MarkAsReadError;
 use crate::{
-	actions::filters::{FilterableEntries, Filter},
+	actions::filters::{Filter, FilterableEntries},
 	entry::EntryId,
 	external_save::ExternalSave,
 	maybe_send::MaybeSend,
