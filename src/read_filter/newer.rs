@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use super::MarkAsRead;
 use crate::{
-	actions::filters::{FilterableEntries, Filter},
+	actions::filters::{Filter, FilterableEntries},
 	entry::EntryId,
 };
 
@@ -151,7 +151,9 @@ mod tests {
 			Entry::builder().id_raw(entry_id("8")).build(),
 		];
 
-		rf.filter(FilterableEntries::new(&mut entries)).await.unwrap();
+		rf.filter(FilterableEntries::new(&mut entries))
+			.await
+			.unwrap();
 
 		// remove msgs
 		let entries = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
@@ -167,7 +169,9 @@ mod tests {
 		rf.mark_as_read(&entry_id("3")).await.unwrap();
 
 		let mut entries = vec![Entry::builder().id_raw(entry_id("1")).build()];
-		rf.filter(FilterableEntries::new(&mut entries)).await.unwrap();
+		rf.filter(FilterableEntries::new(&mut entries))
+			.await
+			.unwrap();
 
 		// remove msgs
 		let entries_ids = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
@@ -180,7 +184,9 @@ mod tests {
 		rf.mark_as_read(&entry_id("1")).await.unwrap();
 
 		let mut entries = vec![Entry::builder().id_raw(entry_id("1")).build()];
-		rf.filter(FilterableEntries::new(&mut entries)).await.unwrap();
+		rf.filter(FilterableEntries::new(&mut entries))
+			.await
+			.unwrap();
 
 		let entries_ids = entries.iter().map(|e| e.id.as_deref()).collect::<Vec<_>>();
 		assert_eq!(&entries_ids, &[]);
