@@ -17,12 +17,10 @@ pub mod error;
 pub(crate) mod async_fn;
 
 pub use self::{
-	field::{caps::Caps, set::Set, shorten::Shorten, trim::Trim},
+	field::{TransformField, caps::Caps, set::Set, shorten::Shorten, trim::Trim},
 	print::DebugPrint,
 	use_as::Use,
 };
-
-use std::convert::Infallible;
 
 #[cfg(feature = "action-http")]
 pub mod http;
@@ -44,9 +42,11 @@ pub mod html;
 #[cfg(feature = "action-html")]
 pub use self::html::Html;
 
-use self::error::TransformError;
-use self::error::TransformErrorKind;
-use self::result::TransformedEntry;
+use self::{
+	error::{TransformError, TransformErrorKind},
+	result::TransformedEntry,
+};
+use super::{Action, ActionContext, ActionResult};
 use crate::{
 	actres_try,
 	entry::Entry,
@@ -55,28 +55,27 @@ use crate::{
 	sources::Source,
 };
 
-use super::{Action, ActionContext, ActionResult};
+use std::convert::Infallible;
 
-/*
-/// Transform an [`Entry`] into one or more new (entries)[`Entry`].
+/// Adapter of [`Action`] tailored for "transforming"/changing/modifying entries as a whole,
+/// or a field of an entry (via [`TransformField`]) in some way.
 ///
-/// For example, a [`Json`] transform parses the contents of the [`Entry`] as JSON and returns new entries from it,
-/// while the [`Caps`] field transform just makes a field uppercase
-pub trait Transform: Debug + Send + Sync {
-	/// Transform an [`Entry`] to one or more entries
-	///
-	/// # Erorrs
-	/// Refer to implementators docs
-	async fn transform(&self, entry: Entry) -> Result<Vec<Entry>, TransformError>;
-}
-*/
-
-/// Transform an entry into one or more entries. This is the type transforms should implement as it includes easier error management
+/// A [`Transform`] might return more than one [`Entry`], not only modify existing ones.
+///
+/// For example, [`Html`] parses a single [`Entry`] containing raw HTML of a web page
+/// and transforms it into one or more articles/entries parsed from the page.
 pub trait Transform: MaybeSendSync {
-	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
+	/// Error that may be returned. Returns [`Infallible`] if it never errors
 	type Err: Into<TransformErrorKind>;
 
-	/// Transform the `entry` into one or several separate entries
+	/// Transform the [`Entry`] into one or multiple entries.
+	///
+	/// [`TransformedEntry`] allows to specify exact changes to the source entries
+	/// and not have to worry about copying over source entry's unmodified fields
+	/// that haven't been changed as this will be done automatically.
+	///
+	/// # Errors
+	/// Refer to implementator's docs.
 	fn transform_entry(
 		&mut self,
 		entry: Entry,

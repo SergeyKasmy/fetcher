@@ -41,12 +41,17 @@ use std::convert::Infallible;
 /// A trait that defines a way to fetch entries as well as mark them as read afterwards
 pub trait Source: Fetch + MarkAsRead + MaybeSendSync {}
 
-/// A trait that defines a way to fetch (entries)[`Entry`]
+/// Fetches or creates one or more [entries](`Entry`).
+///
+/// This is where entries are supposed to be first created and on which actions are later applied.
 pub trait Fetch: MaybeSendSync {
-	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
+	/// Error that may be returned. Returns [`Infallible`] if it never errors
 	type Err: Into<SourceError>;
 
 	/// Fetches all available entries from the source
+	///
+	/// # Errors
+	/// Refer to implementator's docs.
 	fn fetch(&mut self) -> impl Future<Output = Result<Vec<Entry>, Self::Err>> + MaybeSend;
 
 	/// Converts the value into a source with the provided read-filter, implementing [`MarkAsRead`].

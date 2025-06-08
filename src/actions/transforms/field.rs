@@ -38,15 +38,17 @@ use crate::{
 	maybe_send::{MaybeSend, MaybeSendSync},
 };
 
-/// Transform/change the value of a field of an [`Entry `]
+/// Adapter of [`Transform`] tailored for "transforming"/changing/modifying a specific field on an [`Entry`].
+///
+/// Most of the implementators of this trait just work directly on strings, like [`Trim`] and [`Replace`].
 pub trait TransformField: MaybeSendSync {
-	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
+	/// Error that may be returned. Returns [`Infallible`] if it never errors
 	type Err: Into<TransformErrorKind>;
 
-	/// Transform/change the `field` into a new one or `None` specifying what happens if `None` is returned
+	/// Transform/change/modify the value of the `field` into a new one, empty one, or the previous one (i.e. just keep it).
 	///
 	/// # Errors
-	/// Refer to implementator's docs. Most of them never error but some do
+	/// Refer to implementator's docs. Most of them never error but some do.
 	fn transform_field(
 		&mut self,
 		value: Option<&str>,
@@ -56,16 +58,21 @@ pub trait TransformField: MaybeSendSync {
 /// List of all available fields for transformations
 #[derive(Clone, Copy, Debug)]
 pub enum Field {
-	/// [`Message::title`](`crate::sinks::message::Message::title`) field
+	/// [`Message::title`](`crate::sinks::Message::title`) field
 	Title,
-	/// [`Message::body`](`crate::sinks::message::Message::body`) field
+
+	/// [`Message::body`](`crate::sinks::Message::body`) field
 	Body,
-	/// [`Message::link`](`crate::sinks::message::Message::link`) field
+
+	/// [`Message::link`](`crate::sinks::Message::link`) field
 	Link,
+
 	/// [`Entry::id`](`crate::entry::Entry::id`) field
 	Id,
+
 	/// [`Entry::reply_to`](`crate::entry::Entry::reply_to`) field
 	ReplyTo,
+
 	/// [`Entry::raw_contents`](`crate::entry::Entry::raw_contents`) field
 	RawContents,
 }

@@ -23,12 +23,16 @@ use std::convert::Infallible;
 
 use super::{Action, ActionContext, ActionResult};
 
-/// Trait for all types that support filtering entries out of a list of [`Entry`]s
+/// An adapter of [`Action`] tailored for filtering out entries, i.e. deciding which entries should be keept and which should not.
 pub trait Filter: MaybeSendSync {
 	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
 	type Err: Into<FilterError>;
 
-	/// Filter or modify the list of entries
+	// TODO: too easy to misuse and modify the entries instead. Maybe change to return a closure that will choose which entries to retain?
+	/// Filters the vector of entries
+	///
+	/// # Errors
+	/// Refer to implementator's docs.
 	fn filter(
 		&mut self,
 		entries: &mut Vec<Entry>,

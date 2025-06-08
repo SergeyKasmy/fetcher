@@ -47,6 +47,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 		sink(Stdout),
 	);
 
+	// TODO: use job::builder_simple but also mention that this is the same as this
 	// Create a new task named "example" that fetches data from the source and executes the actions on the data one by one in order
 	let task = Task::builder("example")
 		.source(source)

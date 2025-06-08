@@ -39,12 +39,28 @@ use crate::{
 
 use std::{borrow::Cow, collections::HashSet, convert::Infallible};
 
-/// An async function that sends a message somewhere
+/// Adapter of [`Action`] tailored for handling composed messages.
+///
+/// Each message of each entry is passed to [`Sink::send`],
+/// and if it returns `Ok`, the [`EntryId`] is automatically marked as read
+/// and the returned [`MessageId`], if any, is added to the [`EntryToMsgMap`].
 pub trait Sink: MaybeSendSync {
 	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors
 	type Err: Into<SinkError>;
 
-	/// Send the message with an optional tag (usually represented as a hashtag)
+	/// Sends the message with an optional tag.
+	///
+	/// The tag is often represented as a hashtag.
+	///
+	/// If the message is a reply to a different older already sent message,
+	/// its [`MessageId`] is also passed. If supported, the sink might mark the current message
+	/// as a reply to the older one.
+	///
+	/// # Returns
+	/// A result that contains either `Some(MessageId)` if the sink supports [`MessageIds`](`MessageId`),
+	/// or `None` if it doesn't.
+	///
+	/// The ID is currently only used for replies, so it's fine to return `None` if replies aren't used anyways.
 	fn send(
 		&mut self,
 		message: &Message,
@@ -53,7 +69,8 @@ pub trait Sink: MaybeSendSync {
 	) -> impl Future<Output = Result<Option<MessageId>, Self::Err>> + MaybeSend;
 }
 
-pub(crate) struct SinkWrapper<S>(pub S);
+/// Adapt a [`Sink`] to implement [`Action`] by applying [`Sink::send`] to each entry's message
+pub struct SinkAction<S>(pub S);
 
 impl<S: Sink> Sink for &mut S {
 	type Err = S::Err;
@@ -128,7 +145,7 @@ where
 	}
 }
 
-impl<Si> Action for SinkWrapper<Si>
+impl<Si> Action for SinkAction<Si>
 where
 	Si: Sink,
 {

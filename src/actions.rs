@@ -14,18 +14,24 @@ use std::convert::Infallible;
 use either::Either;
 use transforms::async_fn::AsyncFnTransform;
 
-use self::filters::{Filter, FilterAction};
-use self::transforms::Transform;
-use self::transforms::TransformAction;
-use self::transforms::async_fn::IntoTransformedEntries;
-use self::transforms::field::{Field, TransformField, TransformFieldAdapter};
+use self::{
+	filters::{Filter, FilterAction},
+	transforms::{
+		Transform, TransformAction,
+		async_fn::IntoTransformedEntries,
+		field::{Field, TransformField, TransformFieldAdapter},
+	},
+};
 
-use crate::actres_try;
-use crate::cancellation_token::CancellationToken;
-use crate::maybe_send::{MaybeSend, MaybeSendSync};
-use crate::sinks::{Sink, SinkWrapper};
 use crate::{
-	entry::Entry, error::FetcherError, external_save::ExternalSave, sources::Source,
+	actres_try,
+	cancellation_token::CancellationToken,
+	entry::Entry,
+	error::FetcherError,
+	external_save::ExternalSave,
+	maybe_send::{MaybeSend, MaybeSendSync},
+	sinks::{Sink, SinkAction},
+	sources::Source,
 	task::entry_to_msg_map::EntryToMsgMap,
 };
 
@@ -149,11 +155,11 @@ where
 }
 
 /// Transforms the provided [`Sink`] into an [`Action`]
-pub fn sink<S>(s: S) -> impl Action
+pub fn sink<S>(s: S) -> SinkAction<S>
 where
 	S: Sink,
 {
-	SinkWrapper(s)
+	SinkAction(s)
 }
 
 // "&mut ActionContext" is not Copy.
