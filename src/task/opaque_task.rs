@@ -8,6 +8,8 @@
 
 use std::convert::Infallible;
 
+use either::Either;
+
 use super::DisabledTask;
 use crate::{
 	cancellation_token::CancellationToken,
@@ -40,7 +42,7 @@ pub trait OpaqueTask: MaybeSendSync {
 	/// Sets the [`CancellationToken`] of the task to `token`
 	fn set_cancel_token(&mut self, token: CancellationToken);
 
-	/// Disables the task, Making [`OpaqueTask::run`] a no-op.
+	/// Disables the task, making [`OpaqueTask::run`] a no-op.
 	///
 	/// Useful for quicky disabling a task without removing its code.
 	fn disable(self) -> DisabledTask<Self>
@@ -111,5 +113,25 @@ where
 
 	fn set_cancel_token(&mut self, channel: CancellationToken) {
 		(*self).set_cancel_token(channel);
+	}
+}
+
+impl<A, B> OpaqueTask for Either<A, B>
+where
+	A: OpaqueTask,
+	B: OpaqueTask,
+{
+	async fn run(&mut self) -> Result<(), FetcherError> {
+		match self {
+			Either::Left(a) => a.run().await,
+			Either::Right(b) => b.run().await,
+		}
+	}
+
+	fn set_cancel_token(&mut self, token: CancellationToken) {
+		match self {
+			Either::Left(a) => a.set_cancel_token(token),
+			Either::Right(b) => b.set_cancel_token(token),
+		}
 	}
 }

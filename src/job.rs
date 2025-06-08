@@ -9,14 +9,16 @@
 pub mod error_handling;
 pub mod job_group;
 pub mod opaque_job;
-mod simple_job;
 pub mod trigger;
+
+mod disabled_job;
+mod simple_job;
 
 mod job_result;
 
 pub use self::{
-	error_handling::HandleError, job_group::JobGroup, job_result::JobResult, opaque_job::OpaqueJob,
-	trigger::Trigger,
+	disabled_job::DisabledJob, error_handling::HandleError, job_group::JobGroup,
+	job_result::JobResult, opaque_job::OpaqueJob, trigger::Trigger,
 };
 
 use futures::FutureExt;
