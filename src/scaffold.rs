@@ -6,7 +6,11 @@
 
 //! This module contains a "scaffold", in other words, functions that pre-configure your application for common uses of [`fetcher`](`crate`).
 //!
-//! The main entry point of this module is [`init`]
+//! The main entry point of this module is [`init`].
+//! [`init`] installs a global [`tracing`] subscriber, starts a background tokio task waiting for a Ctrl-C signal, among other things.
+//!
+//! Everything that is done here can be done manually (and in bigger crates where the whole crate isn't focused on `fetcher` - probably should),
+//! but if all your app does is run `fetcher` jobs, this might just be enough.
 
 use std::process;
 
@@ -22,9 +26,14 @@ pub struct InitResult {
 	pub ctrlc_cancel_token: CancellationToken,
 }
 
-/// Initializes a tracing subscriber and a background task that will notify when a Ctrl-C signal has arrived via a returned [`CancellationToken`].
+/// Calls all provided scaffold functions.
 ///
-/// See [`set_up_logging`] and [`set_up_ctrl_c_handler`] for more info
+/// In particular it:
+/// * Initializes a tracing subscriber via [`set_up_logging()`]
+/// * Installs `aws_lc` as the default crypto provider for rustls to use
+/// * Starts a background task that will notify when a Ctrl-C signal has arrived via a returned [`CancellationToken`] with [`set_up_ctrl_c_handler()`]
+///
+/// See [`set_up_logging`] and [`set_up_ctrl_c_handler`] for more info.
 pub fn init() -> InitResult {
 	if set_up_logging().is_err() {
 		tracing::debug!(
@@ -101,7 +110,7 @@ pub fn set_up_logging() -> Result<(), SetGlobalDefaultError> {
 	tracing::subscriber::set_global_default(subscriber)
 }
 
-/// Starts a detached tokio::task that sets up a Ctrl-C signal handler
+/// Starts a detached tokio::task that sets up a Ctrl-C signal handler.
 ///
 /// When a Ctrl-C signal is received,
 /// all jobs waiting on the returned [`CancellationToken`] will receive a notification

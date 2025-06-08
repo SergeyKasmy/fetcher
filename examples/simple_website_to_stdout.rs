@@ -11,19 +11,6 @@
 //!
 //! To make this more useful as an actual job, sink should be changed from stdout to something else.
 
-/*
-// TODO: Move this to a different example
-
-// scaffold::init() provides initializes a default logging framework (tracing), as well a Ctrl-C handling channel.
-// This is useful for small applications as a starting point and can be replaced by a manual implementation as soon as needed.
-let InitResult {
-	ctrl_c_signal_channel,
-} = scaffold::init();
-
-// Create a read filter that will keep track which entries have already been read and which have not
-let read_filter = Arc::new(RwLock::new(read_filter::Newer::new()));
-*/
-
 use std::{error::Error, time::Duration};
 
 use fetcher::{
