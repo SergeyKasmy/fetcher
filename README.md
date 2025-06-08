@@ -42,6 +42,12 @@ More complete examples can be found in the `examples/` directory. They demonstra
 
 ## Features
 
+Use the (enabled by default) `send` feature to enable tokio multithreading support.\
+If `send` is disabled, then the `Send + Sync` bounds are relaxed from most types
+but job groups no longer run jobs in parallel, using [`tokio::task::spawn_local`] instead of [`tokio::spawn`].
+Please note that this requires you to wrap your calls to [`JobGroup::run`] in a [`tokio::task::LocalSet`] to work.
+Please see `tests/non_send.rs` for an example.
+
 Each source, action, and sink (which is also an action but different enough to warrant being separate),
 is gated behind a feature gate to help on the already pretty bad build times for apps using fetcher.
 
