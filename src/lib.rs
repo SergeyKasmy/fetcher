@@ -96,6 +96,10 @@
 //!
 //! Contributions are very welcome! Please feel free to submit a pull request or open issues for any bugs, feature requests, or general feedback.
 
+// TODO: show required features on docs.rs using something like this (copied from tokio):
+//             #[cfg(any(all(doc, docsrs), windows))]
+//             #[cfg_attr(docsrs, doc(cfg(windows)))]
+
 #![cfg_attr(not(feature = "send"), expect(clippy::future_not_send))]
 #![cfg_attr(feature = "nightly", feature(never_type))]
 #![cfg_attr(test, allow(clippy::unwrap_used))]
