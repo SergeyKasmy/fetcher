@@ -9,7 +9,7 @@
 //!
 //! fetcher is made to be easily extensible to support as many use-cases as possible while providing tools to support most of the common ones out of the box.
 //!
-//! # Architecture
+//! ## Architecture
 //!
 //! At the heart of fetcher is the [`Task`](`crate::task::Task`). It represents a specific instance of a data pipeline which consists of 2 main stages:
 //!
@@ -26,7 +26,7 @@
 //! A [`Job`](`crate::job::Job`) is a collections of one or more tasks that are executed together, potentially on a schedule.
 //! Jobs can also be run either concurrently or in parallel (depending on the "send" feature) as a part of a [`JobGroup`](`crate::job::JobGroup`).
 //!
-//! # Getting started
+//! ## Getting started
 //!
 //! To use fetcher, you need to add it as a dependency to your `Cargo.toml` file:
 //!
@@ -44,7 +44,22 @@
 //! * Implement custom sources, actions, sinks
 //! * Persist the read filter state in an external storage system
 //!
-//! # Features
+//! ## Features
+//!
+//! # send
+//!
+//! Use the (enabled by default) `send` feature to enable tokio multithreading support.
+//!
+//! If `send` is disabled, then the `Send + Sync` bounds are relaxed from most types
+//! but job groups no longer run jobs in parallel, using [`tokio::task::spawn_local`] instead of [`tokio::spawn`].
+//! Please note that this requires you to wrap your calls to [`JobGroup::run`](`crate::job::job_group::JobGroup::run`) in a [`tokio::task::LocalSet`] to work.
+//! Please see `tests/non_send.rs` for an example.
+//!
+//! # nightly
+//!
+//! The `nightly` feature enables some traits implementation for some Rust nightly-only types, like `!`.
+//!
+//! # full and all-sources, all-actions, all-sinks, all-misc
 //!
 //! Each source, action, and sink (which is also an action but different enough to warrant being separate),
 //! is gated behind a feature gate to help on the already pretty bad build times for apps using fetcher.
@@ -59,7 +74,7 @@
 //!
 //! For example, an app fetching RSS feeds and sending them to a telegram channel might use features `source-http`, `action-feed`, and `sink-telegram`.
 //!
-//! # Note
+//! ## Note
 //!
 //! fetcher was completely rewritten in v0.15.0.
 //! It changed from an application with a config file to an application framework.
@@ -77,11 +92,11 @@
 //! Since then `fetcher-core` and `fetcher-config` crates are no longer used (or needed),
 //! so if anybody needs these on crates.io, hit me up!
 //!
-//! # Contributing
+//! ## Contributing
 //!
 //! Contributions are very welcome! Please feel free to submit a pull request or open issues for any bugs, feature requests, or general feedback.
 
-#![cfg_attr(not(feature = "send"), expect(clippyj:future_not_send))]
+#![cfg_attr(not(feature = "send"), expect(clippy::future_not_send))]
 #![cfg_attr(feature = "nightly", feature(never_type))]
 #![cfg_attr(test, allow(clippy::unwrap_used))]
 
