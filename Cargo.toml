@@ -46,7 +46,7 @@ chrono = { version = "0.4.41", features = ["serde", "clock"], default-features =
 either = { version = "1.15.0", default-features = false }
 futures = { version = "0.3.31", features = ["std", "async-await"], default-features = false }
 itertools = { version = "0.14.0", features = ["use_std"], default-features = false }
-non-non-full = { version = "0.0.2", path = "crates/non-non-full", features = ["serde"], default-features = false }
+non-non-full = { version = "0.0.3", path = "crates/non-non-full", features = ["serde"], default-features = false }
 once_cell = { version = "1.21.3", default-features = false }
 rand = { version = "0.9.1", features = ["thread_rng"], default-features = false }
 regex = { version = "1.11.1", features = ["std"], default-features = false }
