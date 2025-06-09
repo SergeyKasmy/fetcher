@@ -58,6 +58,7 @@ pub enum Sort {
 
 impl Reddit {
 	/// Creates a new [`Reddit`] source.
+	// TODO: support users
 	#[must_use]
 	pub fn new(subreddit: &str, sort: Sort, score_threshold: Option<u32>) -> Self {
 		Self {

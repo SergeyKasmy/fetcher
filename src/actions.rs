@@ -52,7 +52,12 @@ use crate::{
 /// In other words, prefer to implement [`Transform`], [`TransformField`], [`Filter`], or [`Sink`]
 /// instead of implementing [`Action`] directly,
 /// and implement [`Action`] only when these traits don't fit your usecase.
-// TODO: add similar explanations to all these action-like traits
+///
+/// # Chaining actions
+///
+/// [`Action`] is implemented on tuples up to 12 elements in size, where each following action
+/// is run on the resulting entries from the previous one. If you intend to use more than 12 actions,
+/// you can just nest tuples forever.
 pub trait Action: MaybeSendSync {
 	/// The associated error type that can be returned while applying the action
 	type Err: Into<FetcherError>;
@@ -144,6 +149,8 @@ where
 	transform_field(Field::Body, t)
 }
 
+// TODO: add example for using deserializing using serde-derive in the async closure.
+// TODO: also mention what return types are supported
 /// Transforms the provided async function implementing [`Transform`] into an [`Action`] action.
 pub fn transform_fn<F, Fut, T>(f: F) -> TransformAction<AsyncFnTransform<F>>
 where

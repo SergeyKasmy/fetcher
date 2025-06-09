@@ -38,6 +38,7 @@ use crate::{
 
 use std::convert::Infallible;
 
+// TODO: better docs
 /// A trait that defines a way to fetch entries as well as mark them as read afterwards
 pub trait Source: Fetch + MarkAsRead + MaybeSendSync {}
 

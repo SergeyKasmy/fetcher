@@ -4,7 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-//! fetcher is a flexible async framework designed to make it easy to create robust applications for building data pipelines to extract, transform, and deliver data from various sources to diverse destinations.
+//! fetcher is a flexible async framework designed to make it easy to create robust applications for building data pipelines to extract,
+//! transform, and deliver data from various sources to diverse destinations.
 //! In easier words, it makes it easy to create an app that periodically checks a source, for example a website, for some data, makes it pretty, and sends it to the users.
 //!
 //! fetcher is made to be easily extensible to support as many use-cases as possible while providing tools to support most of the common ones out of the box.
@@ -21,10 +22,37 @@
 //!
 //! * [`id`](`crate::entry::Entry::id`): A unique identifier for the entry, used for tracking read/unread status and replies.
 //! * [`raw_contents`](`crate::entry::Entry::raw_contents`): The raw, untransformed data fetched from the source.
-//! * [`msg`](`crate::entry::Entry::msg`): A [`Message`](`crate::sinks::message::Message`) that contains the formated and structured data, like title, body, link, that will end up sent to a sink.
+//! * [`msg`](`crate::entry::Entry::msg`): A [`Message`](`crate::sinks::message::Message`) that contains the formated and structured data,
+//! like title, body, link, that will end up sent to a sink.
 //!
 //! A [`Job`](`crate::job::Job`) is a collections of one or more tasks that are executed together, potentially on a schedule.
 //! Jobs can also be run either concurrently or in parallel (depending on the "send" feature) as a part of a [`JobGroup`](`crate::job::JobGroup`).
+//!
+//! ## fetcher is extensible
+//!
+//! Everything in fetcher is defined and used via traits, including but not limited to:
+//! [`Jobs`](`crate::job::OpaqueJob`), [`Tasks`](`crate::task::OpaqueTask`),
+//! [`Sources`](`crate::sources::Source`), [`Actions`](`crate::actions::Action`),
+//! [`JobGroups`](`crate::job::JobGroup`).
+//!
+//! This allows you to define and use anything you might be missing in fetcher by default without having to modify any fetcher code whatsoever.
+//!
+//! The easiest way to extend fetcher's parsing capabilities is to use [`transform_fn`][transform_fn]
+//! that allows you to just pass in an async closure that modifies entries in whatever way you might want.
+//!
+//! * Want to deserialize JSON into a struct with `serde` to get better error reporting and more flexibility than using [`Json`](`crate::actions::transforms::Json`)?
+//! Easy-peasy, just use [`transform_fn`][transform_fn] to wrap an async closure
+//! in which you just call `let deserialized: Foo = serde_json::from_str(&entry.raw_contents)` and use it however you want.
+//! * Want to do a bunch of text manipulations and avoid a thousand
+//! [`Replace's`](`crate::actions::transforms::field::Replace`) & [`Extract's`](`crate::actions::transforms::field::Extract`)?
+//! [`transform_fn`][transform_fn] got your back, too.
+//! * Current selection of sinks is not enough? Define your own by implementing the [`Sink`](`crate::sinks::Sink`) trait on your type.
+//! * Don't like default read-filtering strategies? Implement [`MarkAsRead`](`crate::read_filter::MarkAsRead`)
+//! and [`Filter`](`crate::actions::filters::Filter`) on your type.
+//! * Want to keep read state of entries in a database or just on the filesystem?
+//! Implement [`ExternalSave`](`crate::external_save::ExternalSave`) yourself and do whatever you want.
+//!
+//! If anything is *not* extensible, this is a bug and it should be reported.
 //!
 //! # Getting started
 //!
@@ -95,6 +123,8 @@
 //! # Contributing
 //!
 //! Contributions are very welcome! Please feel free to submit a pull request or open issues for any bugs, feature requests, or general feedback.
+//!
+//! [transform_fn]: `crate::actions::transform_fn`
 
 // TODO: show required features on docs.rs using something like this (copied from tokio):
 //             #[cfg(any(all(doc, docsrs), windows))]

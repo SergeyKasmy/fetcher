@@ -40,10 +40,10 @@ pub type JobGroupResult = Vec<JobResult>;
 /// - Add names to groups
 ///
 /// Job groups can be created in several ways:
-/// 1. Using tuples of jobs
-/// 2. Combining existing groups with [`combine_with`](JobGroup::combine_with)
-/// 3. Using [`Option`] for optional groups
-/// 4. Using unit `()` for empty groups
+/// 1. Using tuples of jobs (up to 12 elements in size). If 12 isn't enough, you can use [`JobGroup::combine_with`] or just nest the tuples.
+/// 2. Combining existing groups with [`combine_with`](JobGroup::combine_with).
+/// 3. Using [`Option`] for optional groups.
+/// 4. Using unit `()` for empty groups.
 ///
 /// # Running Jobs
 /// The [`run`](JobGroup::run) method automatically chooses between [`tokio::spawn`] and [`tokio::task::spawn_local`] based on the `send` feature flag.
