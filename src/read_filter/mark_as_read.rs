@@ -18,6 +18,7 @@ use crate::{
 #[cfg(feature = "source-email")]
 use crate::sources::email::ImapError;
 
+// TODO: better docs
 /// A trait that defines a way to mark an entry as read
 pub trait MarkAsRead: MaybeSendSync {
 	/// Error that may be returned. Returns [`Infallible`](`std::convert::Infallible`) if it never errors

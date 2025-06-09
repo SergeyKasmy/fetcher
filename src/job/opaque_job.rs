@@ -13,6 +13,7 @@ use either::Either;
 use super::{DisabledJob, JobResult};
 use crate::maybe_send::{MaybeSend, MaybeSendSync};
 
+// TODO: better header
 /// A trait representing a runnable job.
 ///
 /// This trait is mostly used to type-erase generics off of a [`Job`](`super::Job`)
