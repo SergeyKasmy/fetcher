@@ -142,6 +142,6 @@ impl From<!> for MarkAsReadError {
 
 impl Error for MarkAsReadError {
 	fn is_network_related(&self) -> Option<&dyn Error> {
-		todo!()
+		None
 	}
 }

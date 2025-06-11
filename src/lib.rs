@@ -65,7 +65,7 @@
 //! ```
 //!
 //! For the smallest example on how to use fetcher, please see `examples/simple_website_to_stdout.rs`.
-//! More complete examples can be found in the `examples/` directory. They demonstrate how toj
+//! More complete examples can be found in the `examples/` directory. They demonstrate how to:
 //!
 //! * Fetch data from various sources.
 //! * Transform and filter data using regular expressions, HTML parsing, JSON parsing.
