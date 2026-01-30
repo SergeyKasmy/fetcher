@@ -13,6 +13,7 @@ use std::time::{Duration, Instant};
 use crate::{StaticStr, error::Error};
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
+const TOKEN_REFRESH_BUFFER: Duration = Duration::from_secs(60);
 
 #[expect(clippy::doc_markdown, reason = "false positive")]
 /// Google OAuth2 authenticator
@@ -107,8 +108,6 @@ impl Google {
 	/// * if the responce isn't a valid `refresh_token`
 	#[tracing::instrument(name = "google_oauth2_access_token")]
 	pub async fn access_token(&mut self) -> Result<&str, GoogleOAuth2Error> {
-		// FIXME: for some reason the token sometimes expires by itself and should be renewed manually
-
 		// Update the token if:
 		if {
 			// we haven't done that yet
@@ -119,18 +118,21 @@ impl Google {
 
 			access_token_doesnt_exist
 		} || {
-			// or if if has expired
-			let is_expired = self
+			// or if it expires within the buffer time
+			let should_refresh = self
 				.access_token
 				.as_ref()
-				.and_then(|x| Instant::now().checked_duration_since(x.expires))
-				.is_some();
+				.map(|x| {
+					x.expires.duration_since(Instant::now()).unwrap_or_default()
+						<= TOKEN_REFRESH_BUFFER
+				})
+				.unwrap_or(true);
 
-			if is_expired {
-				tracing::trace!("Access token has expired");
+			if should_refresh {
+				tracing::trace!("Access token needs refresh (expires soon or doesn't exist)");
 			}
 
-			is_expired
+			should_refresh
 		} {
 			self.get_new_access_token().await?;
 		}
