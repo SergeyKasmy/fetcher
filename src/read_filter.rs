@@ -31,7 +31,7 @@ use crate::{
 use std::{convert::Infallible, fmt::Debug};
 
 use serde::Serialize;
-use tokio::sync::{MappedMutexGuard, Mutex as TokioMutex, MutexGuard};
+use tokio::sync::{Mutex as TokioMutex, MutexGuard};
 
 #[cfg(feature = "send")]
 type RefCounted<T> = std::sync::Arc<T>;
@@ -54,11 +54,13 @@ pub struct ReadFilter<T, const WITH_EXTERNAL_SAVE: bool, S = Infallible>(
 	RefCounted<TokioMutex<ReadFilterInner<T, WITH_EXTERNAL_SAVE, S>>>,
 );
 
-#[derive(Debug)]
-struct ReadFilterInner<T, const WITH_EXTERNAL_SAVE: bool, S = Infallible> {
-	read_filter: T,
-	/// Set to `None` when the read filter is set to read-only
-	external_save: Option<S>,
+// TODO: should it be hidden?
+#[doc(hidden)]
+#[derive(Clone, Debug)]
+pub struct ReadFilterInner<T, const WITH_EXTERNAL_SAVE: bool, S = Infallible> {
+	pub read_filter: T,
+	/// Set to `None` if [`ReadFilter::without_external_save`] was used or when the read filter was set to read-only via [`MarkAsRead::set_read_only`]
+	pub external_save: Option<S>,
 }
 
 impl<T, S> ReadFilter<T, true, S>
@@ -88,11 +90,8 @@ impl<T: MarkAsRead + Filter> ReadFilter<T, false> {
 }
 
 impl<T, const WITH_EXTERNAL_SAVE: bool, S> ReadFilter<T, WITH_EXTERNAL_SAVE, S> {
-	/// Returns a reference container for the contained read filter
-	pub async fn inner(&self) -> MappedMutexGuard<'_, T> {
-		let guard = self.0.lock().await;
-		MutexGuard::try_map(guard, |inner| Some(&mut inner.read_filter))
-			.unwrap_or_else(|_| unreachable!("closure never fails"))
+	pub async fn inner(&self) -> MutexGuard<'_, ReadFilterInner<T, WITH_EXTERNAL_SAVE, S>> {
+		self.0.lock().await
 	}
 }
 
