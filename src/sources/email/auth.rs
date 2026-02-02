@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use tokio::sync::MappedMutexGuard;
+
 use crate::{
 	StaticStr,
 	auth::google::{Google as GoogleAuth, GoogleOAuth2Error as GoogleAuthError},
@@ -20,7 +22,7 @@ pub enum Auth {
 
 pub(super) struct ImapOAuth2<'a> {
 	email: &'a str,
-	token: &'a str,
+	token: MappedMutexGuard<'a, str>,
 }
 
 impl async_imap::Authenticator for ImapOAuth2<'_> {

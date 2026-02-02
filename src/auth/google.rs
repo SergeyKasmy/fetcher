@@ -9,6 +9,7 @@
 
 use serde::Deserialize;
 use std::time::{Duration, Instant};
+use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 
 use crate::{StaticStr, error::Error};
 
@@ -17,8 +18,7 @@ const TOKEN_REFRESH_BUFFER: Duration = Duration::from_secs(60);
 
 #[expect(clippy::doc_markdown, reason = "false positive")]
 /// Google OAuth2 authenticator
-// TODO: link docs to the oauth2 spec
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Google {
 	/// OAuth2 client id
 	pub client_id: StaticStr,
@@ -30,7 +30,7 @@ pub struct Google {
 	pub refresh_token: StaticStr,
 
 	/// OAuth2 access token. It's used for the actual accessing of the data
-	access_token: Option<AccessToken>,
+	access_token: Mutex<Option<AccessToken>>,
 }
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
@@ -76,29 +76,8 @@ impl Google {
 			client_id: client_id.into(),
 			client_secret: client_secret.into(),
 			refresh_token: refresh_token.into(),
-			access_token: None,
+			access_token: Mutex::new(None),
 		}
-	}
-
-	/// Force fetch a new access token and overwrite the old one
-	///
-	/// # Errors
-	/// * if there was a network connection error
-	/// * if the responce isn't a valid `refresh_token`
-	pub async fn get_new_access_token(&mut self) -> Result<(), GoogleOAuth2Error> {
-		let AccessTokenResponce {
-			access_token,
-			expires_in,
-		} = generate_access_token(&self.client_id, &self.client_secret, &self.refresh_token).await?;
-
-		tracing::debug!("New access token expires in {expires_in}s");
-
-		self.access_token = Some(AccessToken {
-			token: access_token,
-			expires: Instant::now() + Duration::from_secs(expires_in),
-		});
-
-		Ok(())
 	}
 
 	/// Return a previously gotten `access_token` or fetch a new one
@@ -107,11 +86,13 @@ impl Google {
 	/// * if there was a network connection error
 	/// * if the responce isn't a valid `refresh_token`
 	#[tracing::instrument(name = "google_oauth2_access_token")]
-	pub async fn access_token(&mut self) -> Result<&str, GoogleOAuth2Error> {
+	pub async fn access_token(&mut self) -> Result<MappedMutexGuard<'_, str>, GoogleOAuth2Error> {
+		let mut access_token = self.access_token.lock().await;
+
 		// Update the token if:
 		if {
 			// we haven't done that yet
-			let access_token_doesnt_exist = self.access_token.is_none();
+			let access_token_doesnt_exist = access_token.is_none();
 			if access_token_doesnt_exist {
 				tracing::trace!("Access token doesn't exist");
 			}
@@ -119,13 +100,9 @@ impl Google {
 			access_token_doesnt_exist
 		} || {
 			// or if it expires within the buffer time
-			let should_refresh = self
-				.access_token
+			let should_refresh = access_token
 				.as_ref()
-				.map(|x| {
-					x.expires.duration_since(Instant::now()).unwrap_or_default()
-						<= TOKEN_REFRESH_BUFFER
-				})
+				.map(|x| x.expires.duration_since(Instant::now()) <= TOKEN_REFRESH_BUFFER)
 				.unwrap_or(true);
 
 			if should_refresh {
@@ -134,24 +111,31 @@ impl Google {
 
 			should_refresh
 		} {
-			self.get_new_access_token().await?;
+			let new_access_token =
+				generate_access_token(&self.client_id, &self.client_secret, &self.refresh_token)
+					.await?;
+
+			let expires = Instant::now() + Duration::from_secs(new_access_token.expires_in);
+
+			tracing::debug!(
+				"Access token is still valid for {:?}s",
+				expires
+					.checked_duration_since(Instant::now())
+					.map(|dur| dur.as_secs())
+			);
+
+			*access_token = Some(AccessToken {
+				token: new_access_token.access_token,
+				expires,
+			});
 		}
 
-		//#[expect(clippy::missing_panics_doc, reason = "never panics, unless bugged")]
-		let access_token = self
-			.access_token
-			.as_ref()
-			.expect("Token should have just been validated and thus be present and valid");
-
-		tracing::debug!(
-			"Access token is still valid for {:?}s",
-			access_token
-				.expires
-				.checked_duration_since(Instant::now())
-				.map(|dur| dur.as_secs())
-		);
-
-		Ok(&access_token.token)
+		Ok(MutexGuard::map(access_token, |token| {
+			&mut *token
+				.as_mut()
+				.expect("Token should've just been validated to be present and valid")
+				.token
+		}))
 	}
 }
 

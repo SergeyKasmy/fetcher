@@ -375,7 +375,7 @@ async fn authenticate_google_oauth2(
 ) -> Result<Session<TlsStream<TcpStream>>, ImapError> {
 	tracing::trace!("Logging into IMAP with Google OAuth2");
 	let _greeting = client.read_response().await;
-	let session = client
+	client
 		.authenticate(
 			"XOAUTH2",
 			google_auth
@@ -383,36 +383,8 @@ async fn authenticate_google_oauth2(
 				.await
 				.map_err(ImapError::GoogleOAuth2)?,
 		)
-		.await;
-
-	match session {
-		Ok(session) => {
-			tracing::trace!("Authenticated successfully");
-			Ok(session)
-		}
-		Err((e, mut client)) => {
-			tracing::error!("Denied access to IMAP via OAuth2: {e}");
-			tracing::info!("Refreshing OAuth2 access token and trying again");
-
-			google_auth
-				.get_new_access_token()
-				.await
-				.map_err(ImapError::GoogleOAuth2)?;
-
-			let _greeting = client.read_response().await;
-
-			client
-				.authenticate(
-					"XOAUTH2",
-					google_auth
-						.as_imap_oauth2(email)
-						.await
-						.map_err(ImapError::GoogleOAuth2)?,
-				)
-				.await
-				.map_err(|(e, _)| ImapError::Auth(e))
-		}
-	}
+		.await
+		.map_err(|(e, _)| ImapError::Auth(e))
 }
 
 async fn authenticate_password(
