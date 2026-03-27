@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// I can avoid the clippy::doc_markdown lint this way :P
+#![expect(clippy::doc_markdown)]
 #![doc = "This module contains the Google authenticator that can access Google services via OAuth2"]
 
 use serde::Deserialize;

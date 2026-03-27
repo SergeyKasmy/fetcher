@@ -57,21 +57,24 @@ impl From<u32> for EntryId {
 	}
 }
 
+#[expect(missing_docs, reason = "self-explanable")]
+#[derive(thiserror::Error, Clone, Copy, PartialEq, Eq, Debug)]
+#[error("EntryId cannot be empty")]
+pub struct EmptyIdError;
+
 impl TryFrom<&str> for EntryId {
-	// TODO: better error
-	type Error = ();
+	type Error = EmptyIdError;
 
 	fn try_from(value: &str) -> Result<Self, Self::Error> {
-		Self::new(value.to_owned()).ok_or(())
+		Self::new(value.to_owned()).ok_or(EmptyIdError)
 	}
 }
 
 impl TryFrom<String> for EntryId {
-	// TODO: better error
-	type Error = ();
+	type Error = EmptyIdError;
 
 	fn try_from(value: String) -> Result<Self, Self::Error> {
-		Self::new(value).ok_or(())
+		Self::new(value).ok_or(EmptyIdError)
 	}
 }
 
