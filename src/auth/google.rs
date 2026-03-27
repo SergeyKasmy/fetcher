@@ -14,7 +14,7 @@ use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use crate::{StaticStr, error::Error};
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
-const TOKEN_REFRESH_BUFFER: Duration = Duration::from_secs(60);
+const TOKEN_REFRESH_BUFFER: Duration = Duration::from_mins(1);
 
 #[expect(clippy::doc_markdown, reason = "false positive")]
 /// Google OAuth2 authenticator

@@ -22,7 +22,7 @@ impl Error for FilterError {
 	fn is_network_related(&self) -> Option<&dyn Error> {
 		match self {
 			Self::Other(other_err) if other_err.is_network_related().is_some() => Some(self),
-			_ => None,
+			Self::Other(_) => None,
 		}
 	}
 }

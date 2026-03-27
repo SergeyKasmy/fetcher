@@ -35,6 +35,7 @@ where
 			let g1_run = pin!(self.0.run());
 			let g2_run = pin!(self.1.run());
 
+			#[expect(clippy::needless_continue, reason = "inside a foreign macro")]
 			let mut stream = stream_select!(g1_run, g2_run);
 			while let Some(item) = stream.next().await {
 				if let Err(e) = tx.send(item).await {

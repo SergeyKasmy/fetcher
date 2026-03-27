@@ -137,15 +137,15 @@ fn compose_long_message(
 		};
 
 		// add the tail if it can still fit into the split
-		if max_len.saturating_sub(split_part.chars().count()) >= tail_len {
-			if let Some(tail) = tail.take() {
-				// insert a newline to separate tail from everything else
-				if add_newline {
-					split_part.push('\n');
-				}
-
-				split_part.push_str(tail);
+		if max_len.saturating_sub(split_part.chars().count()) >= tail_len
+			&& let Some(tail) = tail.take()
+		{
+			// insert a newline to separate tail from everything else
+			if add_newline {
+				split_part.push('\n');
 			}
+
+			split_part.push_str(tail);
 		}
 	}
 

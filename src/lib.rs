@@ -16,6 +16,7 @@
 //!
 //! * [`Source`](`crate::sources::Source`): Fetches data from an external source (e.g. HTTP endpoint, email inbox).
 //! * [`Action`](`crate::actions::Action`): Applies transformations (filters, modifications, parsing) to the fetched data.
+//! 
 //! The most notable action is [`Sink`](`crate::sinks::Sink`) that sends the transformed data somewhere (e.g. Discord channel, Telegram chat, another program's stdin)
 //!
 //! An [`Entry`](`crate::entry::Entry`) is the unit of data flowing through the pipeline. It most notably contains:
@@ -23,7 +24,7 @@
 //! * [`id`](`crate::entry::Entry::id`): A unique identifier for the entry, used for tracking read/unread status and replies.
 //! * [`raw_contents`](`crate::entry::Entry::raw_contents`): The raw, untransformed data fetched from the source.
 //! * [`msg`](`crate::entry::Entry::msg`): A [`Message`](`crate::sinks::message::Message`) that contains the formated and structured data,
-//! like title, body, link, that will end up sent to a sink.
+//!   like title, body, link, that will end up sent to a sink.
 //!
 //! A [`Job`](`crate::job::Job`) is a collections of one or more tasks that are executed together, potentially on a schedule.
 //! Jobs can also be run either concurrently or in parallel (depending on the "send" feature) as a part of a [`JobGroup`](`crate::job::JobGroup`).
@@ -41,16 +42,16 @@
 //! that allows you to just pass in an async closure that modifies entries in whatever way you might want.
 //!
 //! * Want to deserialize JSON into a struct with `serde` to get better error reporting and more flexibility than using [`Json`](`crate::actions::transforms::Json`)?
-//! Easy-peasy, just use [`transform_fn`][transform_fn] to wrap an async closure
-//! in which you just call `let deserialized: Foo = serde_json::from_str(&entry.raw_contents)` and use it however you want.
+//!   Easy-peasy, just use [`transform_fn`][transform_fn] to wrap an async closure
+//!   in which you just call `let deserialized: Foo = serde_json::from_str(&entry.raw_contents)` and use it however you want.
 //! * Want to do a bunch of text manipulations and avoid a thousand
-//! [`Replace's`](`crate::actions::transforms::field::Replace`) & [`Extract's`](`crate::actions::transforms::field::Extract`)?
-//! [`transform_fn`][transform_fn] got your back, too.
+//!   [`Replace's`](`crate::actions::transforms::field::Replace`) & [`Extract's`](`crate::actions::transforms::field::Extract`)?
+//!   [`transform_fn`][transform_fn] got your back, too.
 //! * Current selection of sinks is not enough? Define your own by implementing the [`Sink`](`crate::sinks::Sink`) trait on your type.
 //! * Don't like default read-filtering strategies? Implement [`MarkAsRead`](`crate::read_filter::MarkAsRead`)
-//! and [`Filter`](`crate::actions::filters::Filter`) on your type.
+//!   and [`Filter`](`crate::actions::filters::Filter`) on your type.
 //! * Want to keep read state of entries in a database or just on the filesystem?
-//! Implement [`ExternalSave`](`crate::external_save::ExternalSave`) yourself and do whatever you want.
+//!   Implement [`ExternalSave`](`crate::external_save::ExternalSave`) yourself and do whatever you want.
 //!
 //! If anything is *not* extensible, this is a bug and it should be reported.
 //!

@@ -26,7 +26,7 @@ impl StdError for Box<dyn Error> {
 // make a wrapper around Box<dyn StdError> and implement Error and StdError for it
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub(crate) struct BoxErrorWrapper(pub Box<dyn StdError + Send + Sync>);
+pub struct BoxErrorWrapper(pub Box<dyn StdError + Send + Sync>);
 
 impl Error for BoxErrorWrapper {
 	// assume an opaque error is not network related

@@ -102,8 +102,7 @@ impl ExponentialBackoff {
 	#[expect(missing_docs, reason = "self-explanatory")]
 	pub const DEFAULT_MAX_ATTEMPT_COUNT: u32 = 15;
 	#[expect(missing_docs, reason = "self-explanatory")]
-	pub const DEFAULT_NETWORK_ERROR_PAUSE_DURATION: Duration =
-		Duration::from_secs(5 * 60 /* secs in a min*/);
+	pub const DEFAULT_NETWORK_ERROR_PAUSE_DURATION: Duration = Duration::from_mins(5);
 
 	/// Creates a new [`ExponentialBackoff`] instance with the default values.
 	#[must_use]

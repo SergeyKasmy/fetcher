@@ -130,7 +130,7 @@ impl Sink for Discord {
 					.send_message(&self.bot, CreateMessage::new().content(&text))
 					.await
 					.map_err(|e| SinkError::Discord {
-						source: e,
+						source: Box::new(e),
 						msg: Box::new(text),
 					})?;
 
@@ -170,7 +170,7 @@ impl Sink for Discord {
 				.send_message(&self.bot, CreateMessage::new().embed(embed))
 				.await
 				.map_err(|e| SinkError::Discord {
-					source: e,
+					source: Box::new(e),
 					msg: Box::new(msg.clone()),
 				})?;
 

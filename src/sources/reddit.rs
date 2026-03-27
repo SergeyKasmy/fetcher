@@ -105,10 +105,11 @@ impl Fetch for Reddit {
 			.filter_map(|post| {
 				let post = post.data;
 
-				if let Some(score_threshold) = self.score_threshold {
-					if post.score < score_threshold.into() {
-						return None;
-					}
+				if self
+					.score_threshold
+					.is_some_and(|score_threshold| post.score < score_threshold.into())
+				{
+					return None;
 				}
 
 				let link = post.url;

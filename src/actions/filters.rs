@@ -54,13 +54,20 @@ impl<'a> FilterableEntries<'a> {
 	/// Returns the number of elements in the vector.
 	///
 	/// See [`Vec::len`].
+	#[must_use]
 	pub fn len(&self) -> usize {
 		self.0.len()
 	}
 
-	/// Returns an iterator over shared references to [`Entry`].
+	/// Returns `true` if the vector contains no elements.
 	///
-	/// See [`[Entry]::iter`].
+	/// See [`Vec::is_empty`].
+	#[must_use]
+	pub fn is_empty(&self) -> bool {
+		self.0.is_empty()
+	}
+
+	/// Returns an iterator over shared references to [`Entry`].
 	pub fn iter(&self) -> slice::Iter<'_, Entry> {
 		self.0.iter()
 	}
@@ -82,7 +89,7 @@ impl<'a> FilterableEntries<'a> {
 		self.0.truncate(len);
 	}
 
-	/// Removes the subslice indicated by the given range from the vector,  
+	/// Removes the subslice indicated by the given range from the vector,
 	/// returning a double-ended iterator over the removed subslice.
 	///
 	/// See [`Vec::drain`].
@@ -91,6 +98,16 @@ impl<'a> FilterableEntries<'a> {
 		R: RangeBounds<usize>,
 	{
 		self.0.drain(range)
+	}
+}
+
+impl<'a> IntoIterator for &'a FilterableEntries<'a> {
+	type Item = &'a Entry;
+
+	type IntoIter = std::slice::Iter<'a, Entry>;
+
+	fn into_iter(self) -> Self::IntoIter {
+		self.0.iter()
 	}
 }
 

@@ -90,6 +90,10 @@ impl<T: MarkAsRead + Filter> ReadFilter<T, false> {
 }
 
 impl<T, const WITH_EXTERNAL_SAVE: bool, S> ReadFilter<T, WITH_EXTERNAL_SAVE, S> {
+	/// Acquires a mutex guard over the inner [`ReadFilterInner`] and returns it.
+	///
+	/// This is the only way to access the inner read-filter's state (e.g. for inspection or testing).
+	/// Use [`MarkAsRead`] for an easier interface over the indented use-cases for read filters.
 	pub async fn inner(&self) -> MutexGuard<'_, ReadFilterInner<T, WITH_EXTERNAL_SAVE, S>> {
 		self.0.lock().await
 	}

@@ -213,9 +213,10 @@ impl Telegram {
 		}
 	}
 
-	/// Returns None if Media couldn't be sent but it's Telegram's fault
+	/// Returns None if Media couldn't be sent but it's Telegram's fault.
+	///
 	/// # Panics
-	/// if media.len() is more than 10
+	/// if `media.len()` is more than 10
 	#[tracing::instrument(level = "trace", skip(self))]
 	async fn send_media(
 		&self,

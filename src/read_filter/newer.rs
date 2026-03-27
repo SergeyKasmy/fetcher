@@ -70,16 +70,14 @@ impl Filter for Newer {
 	/// * id 3
 	#[tracing::instrument(level = "debug", name = "filter_read", skip_all)]
 	async fn filter(&mut self, mut entries: FilterableEntries<'_>) -> Result<(), Self::Err> {
-		if let Some(last_read_id) = &self.last_read_id {
-			if let Some(last_read_id_pos) = entries.iter().position(|x| {
-				let Some(id) = &x.id else { return false };
-
-				last_read_id == id
-			}) {
-				let removed_elems = entries.drain(last_read_id_pos..).count();
-				tracing::debug!("Removed {removed_elems} already read entries");
-				tracing::trace!("Unread entries remaining: {entries:#?}");
-			}
+		if let Some(last_read_id) = &self.last_read_id
+			&& let Some(last_read_id_pos) = entries
+				.iter()
+				.position(|x| x.id.as_ref() == Some(last_read_id))
+		{
+			let removed_elems = entries.drain(last_read_id_pos..).count();
+			tracing::debug!("Removed {removed_elems} already read entries");
+			tracing::trace!("Unread entries remaining: {entries:#?}");
 		}
 
 		Ok(())

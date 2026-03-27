@@ -26,9 +26,7 @@ impl Trigger for OnceADayAt {
 	}
 
 	fn twice_as_duration(&self) -> Duration {
-		const TWO_DAYS: Duration = Duration::from_secs(
-			2 /* days */ * 24 /* hours a day */ * 60 /* mins an hour */ * 60, /* secs a min */
-		);
+		const TWO_DAYS: Duration = Duration::from_hours(2 /* days */ * 24 /* hours a day */);
 
 		TWO_DAYS
 	}

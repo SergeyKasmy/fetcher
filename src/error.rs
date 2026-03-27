@@ -61,8 +61,6 @@ pub struct BadRegexError(#[from] pub regex::Error);
 
 impl Error for FetcherError {
 	fn is_network_related(&self) -> Option<&dyn Error> {
-		// I know it will match any future variants automatically but I actually want it to do that anyways
-		#[expect(clippy::match_same_arms)]
 		match self {
 			Self::Source(e) => e.is_network_related(),
 			Self::Transform(e) => e.is_network_related(),

@@ -30,7 +30,8 @@ pub enum SinkError {
 	#[cfg(feature = "sink-discord")]
 	#[error("Can't send via Discord. Message contents: {msg:?}")]
 	Discord {
-		source: serenity::Error,
+		// serenity::Error is huge
+		source: Box<serenity::Error>,
 		msg: Box<dyn Debug + Send + Sync>,
 	},
 
