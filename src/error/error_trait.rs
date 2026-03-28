@@ -6,36 +6,34 @@
 
 use std::error::Error as StdError;
 
-// TODO: better name??
-// TODO: use maybesendsync?
 /// A subtrait of [`std::error::Error`] that requires specifying if the error is somehow network-related
-pub trait Error: StdError + Send + Sync {
+pub trait RichError: StdError + Send + Sync {
 	/// Checks if the current error is somehow related to the network connection and return the error if it is.
 	///
 	/// Usually these errors shouldn't contribute to error handling in jobs and should just sleep for a bit before retrying.
 	#[must_use]
-	fn is_network_related(&self) -> Option<&dyn Error>;
+	fn is_network_related(&self) -> Option<&dyn RichError>;
 }
 
-impl StdError for Box<dyn Error> {
+impl StdError for Box<dyn RichError> {
 	fn source(&self) -> Option<&(dyn StdError + 'static)> {
 		(**self).source()
 	}
 }
 
-// make a wrapper around Box<dyn StdError> and implement Error and StdError for it
+// Wrapper around Box<dyn Error> that implements RichError
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
 pub struct BoxErrorWrapper(pub Box<dyn StdError + Send + Sync>);
 
-impl Error for BoxErrorWrapper {
+impl RichError for BoxErrorWrapper {
 	// assume an opaque error is not network related
-	fn is_network_related(&self) -> Option<&dyn Error> {
+	fn is_network_related(&self) -> Option<&dyn RichError> {
 		None
 	}
 }
 
-impl From<Box<dyn StdError + Send + Sync>> for Box<dyn Error> {
+impl From<Box<dyn StdError + Send + Sync>> for Box<dyn RichError> {
 	fn from(value: Box<dyn StdError + Send + Sync>) -> Self {
 		Box::new(BoxErrorWrapper(value))
 	}

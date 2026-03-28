@@ -9,7 +9,7 @@
 mod error_chain_display;
 pub(crate) mod error_trait;
 
-pub use self::{error_chain_display::ErrorChainDisplay, error_trait::Error};
+pub use self::{error_chain_display::ErrorChainDisplay, error_trait::RichError};
 
 use either::Either;
 
@@ -46,7 +46,7 @@ pub enum FetcherError {
 	ExternalSave(#[from] ExternalSaveError),
 
 	#[error(transparent)]
-	Other(#[from] Box<dyn Error>),
+	Other(#[from] Box<dyn RichError>),
 }
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
@@ -59,8 +59,8 @@ pub struct InvalidUrlError(#[source] pub url::ParseError, pub String);
 #[error("Invalid regular expression")]
 pub struct BadRegexError(#[from] pub regex::Error);
 
-impl Error for FetcherError {
-	fn is_network_related(&self) -> Option<&dyn Error> {
+impl RichError for FetcherError {
+	fn is_network_related(&self) -> Option<&dyn RichError> {
 		match self {
 			Self::Source(e) => e.is_network_related(),
 			Self::Transform(e) => e.is_network_related(),

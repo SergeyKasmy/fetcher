@@ -10,7 +10,7 @@ use std::{convert::Infallible, fmt::Debug};
 
 use crate::{
 	entry::EntryId,
-	error::Error,
+	error::RichError,
 	external_save::ExternalSaveError,
 	maybe_send::{MaybeSend, MaybeSendSync},
 };
@@ -46,7 +46,7 @@ pub enum MarkAsReadError {
 	ExternalSave(#[from] ExternalSaveError),
 
 	#[error(transparent)]
-	Other(#[from] Box<dyn Error>),
+	Other(#[from] Box<dyn RichError>),
 }
 
 impl MarkAsRead for () {
@@ -140,8 +140,8 @@ impl From<!> for MarkAsReadError {
 	}
 }
 
-impl Error for MarkAsReadError {
-	fn is_network_related(&self) -> Option<&dyn Error> {
+impl RichError for MarkAsReadError {
+	fn is_network_related(&self) -> Option<&dyn RichError> {
 		None
 	}
 }

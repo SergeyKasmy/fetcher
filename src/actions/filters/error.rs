@@ -6,7 +6,7 @@
 
 //! This module contains the [`FilterError`] type
 
-use crate::error::{Error, error_trait::BoxErrorWrapper};
+use crate::error::{RichError, error_trait::BoxErrorWrapper};
 
 use std::{convert::Infallible, error::Error as StdError};
 
@@ -15,11 +15,11 @@ use std::{convert::Infallible, error::Error as StdError};
 #[derive(thiserror::Error, Debug)]
 pub enum FilterError {
 	#[error("Other error")]
-	Other(Box<dyn Error>),
+	Other(Box<dyn RichError>),
 }
 
-impl Error for FilterError {
-	fn is_network_related(&self) -> Option<&dyn Error> {
+impl RichError for FilterError {
+	fn is_network_related(&self) -> Option<&dyn RichError> {
 		match self {
 			Self::Other(other_err) if other_err.is_network_related().is_some() => Some(self),
 			Self::Other(_) => None,

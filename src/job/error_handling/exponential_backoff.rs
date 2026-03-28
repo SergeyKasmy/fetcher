@@ -18,7 +18,7 @@ use tap::TapOptional;
 use tokio::{select, time::sleep};
 
 use crate::{
-	error::{Error, FetcherError},
+	error::{FetcherError, RichError},
 	job::{ErrorChainDisplay, Trigger, cancel_wait},
 	maybe_send::MaybeSync,
 };

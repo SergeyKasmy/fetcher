@@ -11,7 +11,7 @@ use serde::Deserialize;
 use std::time::{Duration, Instant};
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 
-use crate::{StaticStr, error::Error};
+use crate::{StaticStr, error::RichError};
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/token";
 const TOKEN_REFRESH_BUFFER: Duration = Duration::from_mins(1);
@@ -139,8 +139,8 @@ impl Google {
 	}
 }
 
-impl Error for GoogleOAuth2Error {
-	fn is_network_related(&self) -> Option<&dyn Error> {
+impl RichError for GoogleOAuth2Error {
+	fn is_network_related(&self) -> Option<&dyn RichError> {
 		match self {
 			GoogleOAuth2Error::Post(_) => Some(self),
 			_ => None,

@@ -9,7 +9,7 @@
 use crate::{
 	actions::transforms::field::extract::ExtractError,
 	entry::Entry,
-	error::{Error, InvalidUrlError, error_trait::BoxErrorWrapper},
+	error::{RichError, InvalidUrlError, error_trait::BoxErrorWrapper},
 };
 
 #[cfg(feature = "action-http")]
@@ -62,7 +62,7 @@ pub enum TransformErrorKind {
 	Extract(#[from] ExtractError),
 
 	#[error(transparent)]
-	Other(#[from] Box<dyn Error>),
+	Other(#[from] Box<dyn RichError>),
 }
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
@@ -89,8 +89,8 @@ impl From<!> for TransformErrorKind {
 	}
 }
 
-impl Error for TransformError {
-	fn is_network_related(&self) -> Option<&dyn Error> {
+impl RichError for TransformError {
+	fn is_network_related(&self) -> Option<&dyn RichError> {
 		match &self.kind {
 			#[cfg(feature = "action-http")]
 			TransformErrorKind::Http(HttpError::Other(_)) => Some(self),

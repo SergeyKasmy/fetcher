@@ -9,7 +9,7 @@
 pub use crate::exec::ExecError;
 
 use crate::{
-	error::{Error, error_trait::BoxErrorWrapper},
+	error::{RichError, error_trait::BoxErrorWrapper},
 	read_filter::mark_as_read::MarkAsReadError,
 };
 
@@ -49,11 +49,11 @@ pub enum SourceError {
 	Reddit(#[from] RedditError),
 
 	#[error(transparent)]
-	Other(#[from] Box<dyn Error>),
+	Other(#[from] Box<dyn RichError>),
 }
 
-impl Error for SourceError {
-	fn is_network_related(&self) -> Option<&dyn Error> {
+impl RichError for SourceError {
+	fn is_network_related(&self) -> Option<&dyn RichError> {
 		#[allow(clippy::match_same_arms, reason = "clearer code")]
 		match self {
 			Self::MarkAsRead(e) if e.is_network_related().is_some() => Some(self),

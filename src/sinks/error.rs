@@ -6,7 +6,7 @@
 
 //! An error that happened while sending to a sink
 
-use crate::error::{Error, InvalidUrlError, error_trait::BoxErrorWrapper};
+use crate::error::{RichError, InvalidUrlError, error_trait::BoxErrorWrapper};
 pub use crate::exec::ExecError;
 
 use std::{convert::Infallible, error::Error as StdError, fmt::Debug, num::TryFromIntError};
@@ -42,11 +42,11 @@ pub enum SinkError {
 	Stdout(#[source] std::io::Error),
 
 	#[error(transparent)]
-	Other(#[from] Box<dyn Error>),
+	Other(#[from] Box<dyn RichError>),
 }
 
-impl Error for SinkError {
-	fn is_network_related(&self) -> Option<&dyn Error> {
+impl RichError for SinkError {
+	fn is_network_related(&self) -> Option<&dyn RichError> {
 		match self {
 			#[cfg(feature = "sink-telegram")]
 			SinkError::Telegram {

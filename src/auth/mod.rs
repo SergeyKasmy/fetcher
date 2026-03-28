@@ -16,7 +16,7 @@ pub mod google;
 #[cfg(feature = "google-oauth2")]
 pub use google::Google;
 
-use crate::error::Error;
+use crate::error::RichError;
 
 #[expect(missing_docs, reason = "error message is self-documenting")]
 #[derive(thiserror::Error, Debug)]
@@ -26,8 +26,8 @@ pub enum AuthError {
 	GoogleOAuth2(#[from] google::GoogleOAuth2Error),
 }
 
-impl Error for AuthError {
-	fn is_network_related(&self) -> Option<&dyn Error> {
+impl RichError for AuthError {
+	fn is_network_related(&self) -> Option<&dyn RichError> {
 		match self {
 			#[cfg(feature = "google-oauth2")]
 			Self::GoogleOAuth2(e) => e.is_network_related(),
