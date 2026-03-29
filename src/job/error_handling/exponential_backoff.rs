@@ -338,7 +338,7 @@ async fn pause_job<Tr: MaybeSync>(dur: Duration, cx: HandleErrorContext<'_, Tr>)
 mod tests {
 	#![expect(clippy::cast_precision_loss, clippy::unimplemented)]
 
-	use std::time::Duration;
+	use std::{convert::Infallible, time::Duration};
 
 	use rand::Rng;
 
@@ -361,16 +361,11 @@ mod tests {
 		}
 	}
 
-	/// Converts minutes into a [`Duration`]
-	fn m(mins: u64) -> Duration {
-		Duration::from_secs(mins * 60 /* secs in a min*/)
-	}
-
 	#[test]
 	fn exponential_backoff_duration_no_jitter() {
 		for i in 0u32..=15 {
 			let expected_mins = 2u64.pow(i.saturating_sub(1));
-			check_exp_backoff_duration(i, false, m(expected_mins), rand::rng());
+			check_exp_backoff_duration(i, false, Duration::from_mins(expected_mins), rand::rng());
 		}
 	}
 
@@ -378,7 +373,7 @@ mod tests {
 	fn exponential_backoff_duration_with_jitter() {
 		for i in 0u32..=15 {
 			let expected_mins = 2u64.pow(i.saturating_sub(1));
-			check_exp_backoff_duration(i, true, m(expected_mins), rand::rng());
+			check_exp_backoff_duration(i, true, Duration::from_mins(expected_mins), rand::rng());
 		}
 	}
 
@@ -387,18 +382,20 @@ mod tests {
 		/// An Rng source that alternates between the MIN and MAX of a type
 		struct AlwaysExtremes(bool);
 
-		impl rand::RngCore for AlwaysExtremes {
-			fn next_u64(&mut self) -> u64 {
+		impl rand::TryRng for AlwaysExtremes {
+			type Error = Infallible;
+
+			fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
 				let min_or_max = self.0;
 				self.0 = !self.0;
-				if min_or_max { u64::MIN } else { u64::MAX }
+				Ok(if min_or_max { u64::MIN } else { u64::MAX })
 			}
 
-			fn next_u32(&mut self) -> u32 {
+			fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
 				unimplemented!()
 			}
 
-			fn fill_bytes(&mut self, _dst: &mut [u8]) {
+			fn try_fill_bytes(&mut self, _dst: &mut [u8]) -> Result<(), Self::Error> {
 				unimplemented!()
 			}
 		}
@@ -408,8 +405,18 @@ mod tests {
 		for i in 0u32..=15 {
 			let expected_mins = 2u64.pow(i.saturating_sub(1));
 			// two separate calls will generate two jitter values in the two extremes of the allowed range. Confirm both are within range
-			check_exp_backoff_duration(i, true, m(expected_mins), &mut always_extremes);
-			check_exp_backoff_duration(i, true, m(expected_mins), &mut always_extremes);
+			check_exp_backoff_duration(
+				i,
+				true,
+				Duration::from_mins(expected_mins),
+				&mut always_extremes,
+			);
+			check_exp_backoff_duration(
+				i,
+				true,
+				Duration::from_mins(expected_mins),
+				&mut always_extremes,
+			);
 		}
 	}
 }
