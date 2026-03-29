@@ -13,7 +13,7 @@ use std::{
 };
 
 use non_non_full::NonEmptyVec;
-use rand::Rng;
+use rand::{Rng, RngExt};
 use tap::TapOptional;
 use tokio::{select, time::sleep};
 
